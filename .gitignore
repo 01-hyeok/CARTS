@@ -1,0 +1,68 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+conda_env/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Training outputs
+runs/
+scripts/
+outputs/
+results/
+metrics/
+checkpoints/
+
+# Model files
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Dataset / large files
+data/
+dataset/
+datasets/
+Dataset/
+raw_data/
+processed_data/
+
+# Numpy / pickle generated artifacts
+*.npy
+*.npz
+*.pkl
+*.pickle
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Hugging Face / Torch cache
+.huggingface/
+.cache/
