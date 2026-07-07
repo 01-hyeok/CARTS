@@ -94,7 +94,7 @@ class Model(nn.Module):
     Inputs are normalized sliding windows:
       query_x: [B, L, C], query_y: [B, H, C]
       memory_y: [N, H, C], cand_mask: [B, N]
-    The teacher branch uses target-channel future MSE over all valid memory.
+    The teacher branch uses target-channel future similarity over all valid memory.
     The student branch uses an epoch-refreshed relation key memory bank.
     """
 
@@ -115,7 +115,7 @@ class Model(nn.Module):
         self.key_chunk_size = int(getattr(configs, 'stage1_key_chunk_size', 1024))
         self.eps = 1e-8
         self.encoder = RelationEncoder(configs)
-        if self.teacher_mode not in ('mse', 'ema_target'):
+        if self.teacher_mode not in ('mse', 'pearson', 'ema_target'):
             raise ValueError(f'Unsupported stage1_teacher_mode: {self.teacher_mode}')
         if self.relation_teacher_space == 'delta_last' and self.teacher_mse_space == 'raw':
             raise ValueError(
@@ -172,12 +172,23 @@ class Model(nn.Module):
                 raise ValueError('relation_teacher_space=delta_last requires memory_x_last')
             q = q - query_x[:, -1:, target_channel].detach()
             k = k - memory_x_last[:, target_channel].to(memory_y.device).unsqueeze(-1)
-        # MSE(q, k) over H without materializing [B, N, H].
+        # MSE(q, k) over H without materializing [B, N, H]. This is also
+        # retained as a teacher-independent quality metric for Pearson mode.
         q2 = (q ** 2).mean(dim=-1, keepdim=True)
         k2 = (k ** 2).mean(dim=-1).unsqueeze(0)
         qk = torch.matmul(q, k.transpose(0, 1)) / q.size(-1)
         mse = (q2 + k2 - 2.0 * qk).clamp_min(0.0)
-        return -mse / self.tau_teacher, mse
+        if self.teacher_mode != 'pearson':
+            return -mse / self.tau_teacher, mse
+
+        q_centered = q - q.mean(dim=-1, keepdim=True)
+        k_centered = k - k.mean(dim=-1, keepdim=True)
+        q_var = (q_centered ** 2).mean(dim=-1, keepdim=True)
+        k_var = (k_centered ** 2).mean(dim=-1).unsqueeze(0)
+        qk_centered = torch.matmul(q_centered, k_centered.transpose(0, 1)) / q.size(-1)
+        corr = qk_centered / torch.sqrt((q_var * k_var).clamp_min(self.eps))
+        corr = corr.clamp(min=-1.0, max=1.0)
+        return corr / self.tau_teacher, mse
 
     def _teacher_target_relation(self, future, target_channel, offset=None):
         target = future[..., target_channel]

@@ -117,8 +117,8 @@ if __name__ == '__main__':
     parser.add_argument('--target_channel', type=int, default=None, help='Stage-1 single target channel')
     parser.add_argument('--teacher_mse_space', type=str, default='normalized', choices=['normalized', 'raw'],
                         help='Space used for teacher future MSE')
-    parser.add_argument('--stage1_teacher_mode', type=str, default='mse', choices=['mse', 'ema_target'],
-                        help='Stage-1 teacher distribution source: future MSE or EMA target-future embedding similarity')
+    parser.add_argument('--stage1_teacher_mode', type=str, default='mse', choices=['mse', 'pearson', 'ema_target'],
+                        help='Stage-1 teacher distribution source: future MSE, future Pearson similarity, or EMA target-future embedding similarity')
     parser.add_argument('--relation_input_space', type=str, default='delta_last',
                         choices=['absolute', 'delta_last'],
                         help='Relation encoder input space: raw normalized values or values minus each role last value')
