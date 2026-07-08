@@ -31,6 +31,7 @@ logs/
 
 # Training outputs
 runs/
+stage1_vis/
 scripts/
 outputs/
 results/
@@ -53,6 +54,7 @@ raw_data/
 processed_data/
 
 # Numpy / pickle generated artifacts
+*.png
 *.npy
 *.npz
 *.pkl
