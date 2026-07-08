@@ -7,7 +7,7 @@ class RetrievalGate(nn.Module):
         super().__init__()
         if gate_mode not in ('scalar', 'horizon'):
             raise ValueError(f'Unsupported gate_mode: {gate_mode}')
-        if fusion_mode not in ('residual', 'mixture'):
+        if fusion_mode not in ('residual', 'mixture', 'raft_concat'):
             raise ValueError(f'Unsupported fusion_mode: {fusion_mode}')
         self.gate_mode = gate_mode
         self.fusion_mode = fusion_mode
@@ -26,6 +26,8 @@ class RetrievalGate(nn.Module):
         else:
             gate_feat = torch.cat([y_base, y_ret], dim=-1)
             lam = torch.sigmoid(self.net(gate_feat))
+        if self.fusion_mode == 'raft_concat':
+            raise RuntimeError('fusion_mode=raft_concat is handled by RelationStage2, not RetrievalGate')
         if self.fusion_mode == 'residual':
             y_final = y_base + lam * y_ret
         else:

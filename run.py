@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # model define
     parser.add_argument('--expand', type=int, default=2, help='expansion factor for Mamba')
     parser.add_argument('--d_conv', type=int, default=4, help='conv kernel size for Mamba')
-    parser.add_argument('--top_k', type=int, default=20, help='TimesBlock top-k or Stage-2 retrieval top-k')
+    parser.add_argument('--top_k', type=int, default=10, help='TimesBlock top-k or Stage-2 retrieval top-k')
     parser.add_argument('--num_kernels', type=int, default=6, help='for Inception')
     parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
@@ -132,6 +132,18 @@ if __name__ == '__main__':
                         help='Initial Stage-1 EMA teacher momentum for cosine schedule')
     parser.add_argument('--stage1_ema_momentum_final', type=float, default=0.9995,
                         help='Final Stage-1 EMA teacher momentum for cosine schedule')
+    parser.add_argument('--stage1_probe_vis', type=int, default=1,
+                        help='Write a fixed validation Stage-1 teacher/student distribution probe each epoch')
+    parser.add_argument('--stage1_probe_top_n', type=int, default=50,
+                        help='Number of teacher-ranked candidates to show in the Stage-1 probe plot')
+    parser.add_argument('--stage1_probe_query', type=int, default=0,
+                        help='Valid query index inside the fixed validation probe batch')
+    parser.add_argument('--stage1_probe_target_channel', type=int, default=0,
+                        help='Target channel index for the fixed validation Stage-1 probe')
+    parser.add_argument('--stage1_probe_source_channel', type=int, default=0,
+                        help='Source channel index for the fixed validation Stage-1 probe')
+    parser.add_argument('--stage1_probe_dir', type=str, default='./stage1_vis',
+                        help='Directory for fixed validation Stage-1 distribution probe plots')
     parser.add_argument('--build_memory_index', action='store_true',
                         help='Optional Stage-2 TODO hook for memory embedding cache')
     parser.add_argument('--stage1_ckpt_path', type=str, default='',
@@ -150,7 +162,7 @@ if __name__ == '__main__':
     parser.add_argument('--tau_topk', type=float, default=0.07,
                         help='Stage-2 top-k attention softmax temperature')
     parser.add_argument('--fusion_mode', type=str, default='mixture',
-                        choices=['residual', 'mixture'], help='Stage-2 base/retrieval fusion mode')
+                        choices=['residual', 'mixture', 'raft_concat'], help='Stage-2 base/retrieval fusion mode')
     parser.add_argument('--relation_mixer_input', type=str, default='retrieved_plus_query',
                         choices=['retrieved', 'retrieved_plus_query'], help='Stage-2 relation mixer input')
     parser.add_argument('--relation_mixer_hidden', type=int, default=128,

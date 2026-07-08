@@ -11,6 +11,7 @@ from exp.exp_basic import Exp_Basic
 from utils.relation_memory import RelationMemorySampler, build_memory_index
 from utils.stage1_metrics import MetricAverager, format_metrics
 from utils.tensorboard_logger import build_summary_writer, write_metric_scalars
+from utils.tools import adjust_learning_rate
 
 
 class Exp_Stage1_Relation(Exp_Basic):
@@ -24,6 +25,7 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.memory_x_last = None
         self.global_update_step = 0
         self.total_update_steps = 1
+        self.val_probe_batch = None
 
     def _build_model(self):
         model = self.model_dict[self.args.model].Model(self.args).float()
@@ -31,8 +33,8 @@ class Exp_Stage1_Relation(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-    def _get_data(self, flag):
-        return data_provider(self.args, flag)
+    def _get_data(self, flag, shuffle=None):
+        return data_provider(self.args, flag, shuffle=shuffle)
 
     def _select_optimizer(self):
         return optim.Adam([p for p in self.model.parameters() if p.requires_grad], lr=self.args.learning_rate)
@@ -40,7 +42,7 @@ class Exp_Stage1_Relation(Exp_Basic):
     def _ensure_memory(self):
         if self.memory_sampler is not None:
             return
-        train_data, _ = self._get_data(flag='train')
+        train_data, _ = self._get_data(flag='train', shuffle=False)
         self.train_data_for_memory = train_data
         self.memory_sampler = RelationMemorySampler(
             train_data,
@@ -151,13 +153,100 @@ class Exp_Stage1_Relation(Exp_Basic):
 
         return avg.average()
 
+    def _set_validation_probe(self, vali_loader):
+        if not bool(int(getattr(self.args, 'stage1_probe_vis', 1))):
+            return
+        if self.val_probe_batch is not None:
+            return
+        try:
+            batch = next(iter(vali_loader))
+        except StopIteration:
+            return
+        self.val_probe_batch = batch
+
+    def _plot_validation_probe(self, writer, setting, epoch):
+        if not bool(int(getattr(self.args, 'stage1_probe_vis', 1))):
+            return
+        if self.val_probe_batch is None:
+            return
+        try:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+        except ImportError:
+            print('[stage1_probe] matplotlib is unavailable; skip validation probe plot')
+            return
+
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        was_training = self.model.training
+        self.model.eval()
+        batch_x, batch_y, batch_start_idx = self.val_probe_batch
+        batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
+        cand_mask, _ = self._candidate_mask(batch_start_idx)
+        with torch.no_grad():
+            probe = model.distribution_probe(
+                batch_x,
+                batch_y,
+                cand_mask,
+                memory_y=self.memory_y,
+                key_bank=self.key_bank,
+                teacher_key_bank=self.teacher_key_bank,
+                memory_x_last=self.memory_x_last,
+                target_channel=getattr(self.args, 'stage1_probe_target_channel', 0),
+                source_channel=getattr(self.args, 'stage1_probe_source_channel', 0),
+                query_index=getattr(self.args, 'stage1_probe_query', 0),
+                top_n=getattr(self.args, 'stage1_probe_top_n', 50),
+            )
+        if was_training:
+            self.model.train()
+        if probe is None:
+            return
+
+        teacher = probe['teacher_prob'].numpy()
+        student = probe['student_prob'].numpy()
+        x = range(len(teacher))
+        width = 0.42
+        fig, ax = plt.subplots(figsize=(12, 4.5), constrained_layout=True)
+        ax.bar([i - width / 2 for i in x], teacher, width=width, label='teacher', color='tab:blue', alpha=0.75)
+        ax.bar([i + width / 2 for i in x], student, width=width, label='student', color='tab:orange', alpha=0.75)
+        ax.set_title(
+            'Stage1 val probe '
+            f'q={int(probe["query_index"])} c={int(probe["target_channel"])} r={int(probe["source_channel"])} '
+            f'top5_overlap={float(probe["top5_overlap"]):.3f} '
+            f'p_student@teacher_top1={float(probe["student_prob_on_teacher_top1"]):.3f}'
+        )
+        ax.set_xlabel('teacher-ranked candidate')
+        ax.set_ylabel('probability')
+        ax.legend()
+
+        out_dir = os.path.join(
+            getattr(self.args, 'stage1_probe_dir', './stage1_vis'),
+            self.args.data,
+            f'seq{self.args.seq_len}_pred{self.args.pred_len}',
+            setting,
+        )
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, f'epoch_{epoch:03d}_val_probe.png')
+        fig.savefig(out_path, dpi=160)
+        print(f'[stage1_probe] saved validation teacher/student distribution to {out_path}')
+        if writer is not None:
+            writer.add_figure('val_probe/teacher_student_topn', fig, epoch)
+            writer.add_scalar('val_probe/top5_overlap', float(probe['top5_overlap']), epoch)
+            writer.add_scalar(
+                'val_probe/student_prob_on_teacher_top1',
+                float(probe['student_prob_on_teacher_top1']),
+                epoch,
+            )
+        plt.close(fig)
+
     def vali(self, vali_data, vali_loader):
         return self._run_loader(vali_loader, optimizer=None)
 
     def train(self, setting):
         self._ensure_memory()
-        train_data, train_loader = self._get_data(flag='train')
-        vali_data, vali_loader = self._get_data(flag='val')
+        train_data, train_loader = self._get_data(flag='train', shuffle=True)
+        vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
+        self._set_validation_probe(vali_loader)
         self.total_update_steps = max(1, len(train_loader) * int(self.args.train_epochs))
 
         path = os.path.join(self.args.checkpoints, 'stage1', self.args.data, f'seq{self.args.seq_len}_pred{self.args.pred_len}', setting)
@@ -198,6 +287,8 @@ class Exp_Stage1_Relation(Exp_Basic):
                 print('Epoch: {} cost time: {:.2f}s'.format(epoch + 1, time.time() - epoch_time))
                 write_metric_scalars(writer, 'train', train_metrics, epoch + 1, tb_keys)
                 write_metric_scalars(writer, 'vali', val_metrics, epoch + 1, tb_keys)
+                self._plot_validation_probe(writer, setting, epoch + 1)
+                adjust_learning_rate(optimizer, epoch + 1, self.args)
 
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
@@ -225,7 +316,7 @@ class Exp_Stage1_Relation(Exp_Basic):
 
     def test(self, setting, test=0):
         self._ensure_memory()
-        test_data, test_loader = self._get_data(flag='test')
+        test_data, test_loader = self._get_data(flag='test', shuffle=False)
         metrics = self._run_loader(test_loader, optimizer=None)
         print(format_metrics('Stage1 Test', metrics))
         return metrics

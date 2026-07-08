@@ -12,6 +12,7 @@ from exp.exp_basic import Exp_Basic
 from utils.relation_memory import RelationMemoryBank
 from utils.stage1_metrics import MetricAverager, format_metrics
 from utils.tensorboard_logger import build_summary_writer, write_metric_scalars
+from utils.tools import adjust_learning_rate
 
 
 class Exp_Stage2_Relation(Exp_Basic):
@@ -137,8 +138,8 @@ class Exp_Stage2_Relation(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-    def _get_data(self, flag):
-        return data_provider(self.args, flag)
+    def _get_data(self, flag, shuffle=None):
+        return data_provider(self.args, flag, shuffle=shuffle)
 
     def _select_optimizer(self):
         params = [p for p in self.model.parameters() if p.requires_grad]
@@ -152,7 +153,7 @@ class Exp_Stage2_Relation(Exp_Basic):
             return
         if self.memory_bank is not None:
             return
-        train_data, _ = self._get_data(flag='train')
+        train_data, _ = self._get_data(flag='train', shuffle=False)
         self.memory_bank = RelationMemoryBank(
             train_data,
             seq_len=self.args.seq_len,
@@ -665,8 +666,9 @@ class Exp_Stage2_Relation(Exp_Basic):
 
     def train(self, setting):
         self._ensure_memory()
-        train_data, train_loader = self._get_data(flag='train')
-        vali_data, vali_loader = self._get_data(flag='val')
+        train_data, train_loader = self._get_data(flag='train', shuffle=True)
+        vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
+        _, train_cache_loader = self._get_data(flag='train', shuffle=False)
 
         path = os.path.join(self.args.checkpoints, 'stage2', self.args.data, f'seq{self.args.seq_len}_pred{self.args.pred_len}', setting)
         os.makedirs(path, exist_ok=True)
@@ -678,7 +680,7 @@ class Exp_Stage2_Relation(Exp_Basic):
 
         refresh_each_epoch = bool(int(self.args.refresh_memory_every_epoch))
         self._build_key_bank(force=True)
-        self._build_retrieval_cache('train', train_loader)
+        self._build_retrieval_cache('train', train_cache_loader)
         self._build_retrieval_cache('vali', vali_loader)
         writer = build_summary_writer(self.args, 'stage2', setting)
         tb_keys = [
@@ -743,6 +745,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                 print('Epoch: {} cost time: {:.2f}s'.format(epoch + 1, time.time() - epoch_time))
                 write_metric_scalars(writer, 'train', train_metrics, epoch + 1, tb_keys)
                 write_metric_scalars(writer, 'vali', val_metrics, epoch + 1, tb_keys)
+                adjust_learning_rate(optimizer, epoch + 1, self.args)
 
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
@@ -777,7 +780,7 @@ class Exp_Stage2_Relation(Exp_Basic):
             print(f'[stage2] checkpoint not found, testing current model: {ckpt_path}')
         self._ensure_memory()
         self._build_key_bank(force=not bool(int(self.args.freeze_stage1_encoder)))
-        test_data, test_loader = self._get_data(flag='test')
+        test_data, test_loader = self._get_data(flag='test', shuffle=False)
         self._build_retrieval_cache('test', test_loader)
         metrics = self._run_loader(test_loader, optimizer=None, split='test', epoch=0, setting=setting)
         print(format_metrics('Stage2 Test', metrics))

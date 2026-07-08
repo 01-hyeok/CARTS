@@ -50,6 +50,7 @@ class Model(nn.Module):
         self.memory_chunk_size = int(configs.memory_chunk_size)
         self.freeze_stage1_encoder = bool(int(configs.freeze_stage1_encoder))
         self.disable_retrieval = bool(int(getattr(configs, 'disable_retrieval', 0)))
+        self.fusion_mode = configs.fusion_mode
 
         self.stage1_encoder = RelationEncoder(configs)
         if self.freeze_stage1_encoder:
@@ -74,6 +75,11 @@ class Model(nn.Module):
             gate_mode=configs.gate_mode,
             fusion_mode=configs.fusion_mode,
             fixed_lambda=configs.fixed_lambda,
+        )
+        self.raft_concat_head = (
+            nn.Linear(2 * configs.pred_len, configs.pred_len)
+            if self.fusion_mode == 'raft_concat'
+            else None
         )
         self._shape_logged = False
 
@@ -349,7 +355,12 @@ class Model(nn.Module):
 
             y_ret_c, beta_c, relation_scores = self.relation_mixer(relation_outputs, relation_query_embs)
             y_base_c = y_base_all[:, :, c]
-            y_final_c, lambda_c = self.gate(y_base_c, y_ret_c)
+            if self.fusion_mode == 'raft_concat':
+                fusion_input = torch.cat([y_base_c, y_ret_c], dim=-1)
+                y_final_c = self.raft_concat_head(fusion_input)
+                lambda_c = y_base_c.new_ones(y_base_c.size(0), 1)
+            else:
+                y_final_c, lambda_c = self.gate(y_base_c, y_ret_c)
 
             y_ret_all[:, :, c] = y_ret_c
             y_final_all[:, :, c] = y_final_c

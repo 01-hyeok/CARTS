@@ -381,6 +381,82 @@ class Model(nn.Module):
         metrics.update(self._prefixed_average('cross_', cross_rows, query_x.device))
         return loss, metrics
 
+    @torch.no_grad()
+    def distribution_probe(
+        self,
+        query_x,
+        query_y,
+        cand_mask,
+        memory_y,
+        key_bank,
+        teacher_key_bank=None,
+        memory_x_last=None,
+        target_channel=0,
+        source_channel=0,
+        query_index=0,
+        top_n=50,
+    ):
+        if key_bank is None:
+            raise ValueError('distribution_probe requires a relation key memory bank')
+        if self.teacher_mode == 'ema_target' and teacher_key_bank is None:
+            raise ValueError('stage1_teacher_mode=ema_target requires a teacher key memory bank')
+
+        c = int(target_channel)
+        r = int(source_channel)
+        if c < 0 or c >= self.channels or r < 0 or r >= self.channels:
+            raise ValueError(f'invalid probe channels target={c}, source={r}, channels={self.channels}')
+
+        valid = torch.nonzero(cand_mask.sum(dim=1) > 0, as_tuple=False).flatten()
+        if valid.numel() == 0:
+            return None
+        q_pos = int(query_index)
+        q_pos = max(0, min(q_pos, valid.numel() - 1))
+        q_idx = valid[q_pos]
+
+        masked_fill = torch.finfo(query_x.dtype).min / 4
+        mse_teacher_logits, future_mse = self._teacher_logits(query_x, query_y, memory_y, memory_x_last, c)
+        if self.teacher_mode == 'ema_target':
+            teacher_logits = self._teacher_embedding_logits(query_x, query_y, teacher_key_bank, c)
+        else:
+            teacher_logits = mse_teacher_logits
+        teacher_logits = teacher_logits.masked_fill(~cand_mask, masked_fill)
+        teacher_prob = torch.softmax(teacher_logits, dim=-1)
+
+        q_rel = self._relation_tensor(query_x, c, r)
+        z_q = self.encoder(q_rel)
+        z_k = key_bank[c, r].to(query_x.device)
+        student_logits = torch.matmul(z_q, z_k.transpose(0, 1)) / self.tau_student
+        student_logits = student_logits.masked_fill(~cand_mask, masked_fill)
+        student_prob = torch.softmax(student_logits, dim=-1)
+
+        valid_mask = cand_mask[q_idx]
+        valid_count = int(valid_mask.sum().item())
+        if valid_count == 0:
+            return None
+        k = min(max(int(top_n), 1), valid_count)
+        ranked = torch.topk(teacher_prob[q_idx].masked_fill(~valid_mask, -1.0), k=k, dim=-1).indices
+        top5_student = torch.topk(student_prob[q_idx].masked_fill(~valid_mask, -1.0), k=min(5, valid_count), dim=-1).indices
+        top5_teacher = ranked[:min(5, k)]
+        top5_overlap = (
+            top5_student[:, None] == top5_teacher[None, :]
+        ).any(dim=1).float().mean()
+        teacher_top1 = ranked[0]
+        student_top1 = torch.argmax(student_prob[q_idx].masked_fill(~valid_mask, -1.0), dim=-1)
+
+        return {
+            'query_index': q_idx.detach().cpu(),
+            'target_channel': torch.tensor(c),
+            'source_channel': torch.tensor(r),
+            'candidate_indices': ranked.detach().cpu(),
+            'teacher_prob': teacher_prob[q_idx, ranked].detach().cpu(),
+            'student_prob': student_prob[q_idx, ranked].detach().cpu(),
+            'future_mse': future_mse[q_idx, ranked].detach().cpu(),
+            'teacher_top1': teacher_top1.detach().cpu(),
+            'student_top1': student_top1.detach().cpu(),
+            'student_prob_on_teacher_top1': student_prob[q_idx, teacher_top1].detach().cpu(),
+            'top5_overlap': top5_overlap.detach().cpu(),
+        }
+
     def _average_metrics(self, rows):
         if not rows:
             return {}
