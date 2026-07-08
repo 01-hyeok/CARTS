@@ -20,6 +20,8 @@ class BaseForecastHead(nn.Module):
             self.shared = nn.Linear(seq_len, pred_len)
 
     def forward(self, x):
+        offset = x[:, -1:, :].detach()
+        x = x - offset
         outs = []
         for c in range(self.channels):
             xc = x[:, :, c]
@@ -178,11 +180,87 @@ class Model(nn.Module):
 
     def _restore_retrieved_value(self, retrieved, query_offset):
         if self.relation_value_space == 'delta_last':
-            return retrieved + query_offset.unsqueeze(-1)
+            while query_offset.dim() < retrieved.dim():
+                query_offset = query_offset.unsqueeze(-1)
+            return retrieved + query_offset
         return retrieved
 
-    def forward(self, batch_x, memory_y, valid_mask, key_bank, memory_x_last=None):
+    @torch.no_grad()
+    def build_retrieval_cache(self, batch_x, memory_y, valid_mask, key_bank, memory_x_last=None):
         bsz = batch_x.size(0)
+        relation_outputs_all = torch.zeros(
+            bsz,
+            self.channels,
+            self.channels,
+            self.pred_len,
+            device=batch_x.device,
+            dtype=batch_x.dtype,
+        )
+        relation_query_embs_all = torch.zeros(
+            bsz,
+            self.channels,
+            self.channels,
+            key_bank.size(-1),
+            device=batch_x.device,
+            dtype=batch_x.dtype,
+        )
+        debug_rows = []
+
+        was_training = self.training
+        self.stage1_encoder.eval()
+        for c in self.target_channels():
+            memory_value_c, query_offset_c = self._memory_value(batch_x, memory_y, memory_x_last, c)
+            relation_debug_rows = []
+            for r in self.source_channels(c):
+                q_rel = self._relation_tensor(batch_x, c, r)
+                z_q = self.stage1_encoder(q_rel)
+                z_mem = key_bank[c, r].to(batch_x.device)
+                r_cr, alpha, top_idx, top_scores, ret_debug = retrieve_relation_future(
+                    z_q=z_q,
+                    z_mem=z_mem,
+                    memory_value_c=memory_value_c,
+                    valid_mask=valid_mask,
+                    top_k=self.top_k,
+                    tau_topk=self.tau_topk,
+                )
+                relation_outputs_all[:, c, r] = r_cr
+                relation_query_embs_all[:, c, r] = z_q
+                alpha_entropy = -(alpha * torch.log(alpha + 1e-8)).sum(dim=-1)
+                alpha_sorted = torch.sort(alpha, dim=-1, descending=True).values
+                alpha_top1 = alpha_sorted[:, 0]
+                alpha_margin = (
+                    alpha_sorted[:, 0] - alpha_sorted[:, 1]
+                    if alpha_sorted.size(-1) > 1
+                    else alpha_sorted[:, 0]
+                )
+                relation_debug_rows.append({
+                    'alpha_entropy': alpha_entropy,
+                    'alpha_top1': alpha_top1,
+                    'alpha_margin': alpha_margin,
+                    'top_k_effective': ret_debug['top_k_effective'],
+                })
+            debug_rows.append({
+                'alpha_entropy': torch.stack([row['alpha_entropy'] for row in relation_debug_rows], dim=1).mean(dim=1),
+                'alpha_top1': torch.stack([row['alpha_top1'] for row in relation_debug_rows], dim=1).mean(dim=1),
+                'alpha_margin': torch.stack([row['alpha_margin'] for row in relation_debug_rows], dim=1).mean(dim=1),
+                'top_k_effective': torch.stack([row['top_k_effective'] for row in relation_debug_rows], dim=1).mean(dim=1),
+            })
+        if was_training:
+            self.train()
+        cache = {
+            'relation_outputs': relation_outputs_all.detach(),
+            'relation_query_embs': relation_query_embs_all.detach(),
+        }
+        if debug_rows:
+            cache['alpha_entropy'] = torch.stack([row['alpha_entropy'] for row in debug_rows], dim=1).mean(dim=1).detach()
+            cache['alpha_top1'] = torch.stack([row['alpha_top1'] for row in debug_rows], dim=1).mean(dim=1).detach()
+            cache['alpha_margin'] = torch.stack([row['alpha_margin'] for row in debug_rows], dim=1).mean(dim=1).detach()
+            cache['top_k_effective'] = torch.stack([row['top_k_effective'] for row in debug_rows], dim=1).mean(dim=1).detach()
+        return cache
+
+    def forward(self, batch_x, memory_y, valid_mask, key_bank, memory_x_last=None, retrieval_cache=None):
+        bsz = batch_x.size(0)
+        output_offset = batch_x[:, -1:, :].detach()
         y_base_all = self.base_head(batch_x)
         y_ret_all = torch.zeros_like(y_base_all)
         y_final_all = y_base_all.clone()
@@ -198,66 +276,77 @@ class Model(nn.Module):
         )
 
         if self.disable_retrieval:
+            y_base_out = y_base_all + output_offset
+            y_ret_out = y_ret_all + output_offset
             debug = {
                 'beta': beta_all,
                 'lambda': lambda_all,
             }
-            return y_base_all, y_base_all, y_ret_all, beta_all, lambda_all, debug
+            return y_base_out, y_base_out, y_ret_out, beta_all, lambda_all, debug
 
         debug_rows = []
         first_debug = None
+        cached_relation_outputs = None
+        cached_relation_query_embs = None
+        if retrieval_cache is not None:
+            cached_relation_outputs = retrieval_cache['relation_outputs'].to(batch_x.device)
+            cached_relation_query_embs = retrieval_cache['relation_query_embs'].to(batch_x.device)
 
         for c in self.target_channels():
-            memory_value_c, query_offset_c = self._memory_value(batch_x, memory_y, memory_x_last, c)
             relation_outputs = []
             relation_query_embs = []
             relation_debug_rows = []
 
-            for r in self.source_channels(c):
-                q_rel = self._relation_tensor(batch_x, c, r)
-                if self.freeze_stage1_encoder:
-                    with torch.no_grad():
+            if cached_relation_outputs is None:
+                memory_value_c, query_offset_c = self._memory_value(batch_x, memory_y, memory_x_last, c)
+                for r in self.source_channels(c):
+                    q_rel = self._relation_tensor(batch_x, c, r)
+                    if self.freeze_stage1_encoder:
+                        with torch.no_grad():
+                            z_q = self.stage1_encoder(q_rel)
+                    else:
                         z_q = self.stage1_encoder(q_rel)
-                else:
-                    z_q = self.stage1_encoder(q_rel)
-                z_mem = key_bank[c, r].to(batch_x.device)
-                r_cr, alpha, top_idx, top_scores, ret_debug = retrieve_relation_future(
-                    z_q=z_q,
-                    z_mem=z_mem,
-                    memory_value_c=memory_value_c,
-                    valid_mask=valid_mask,
-                    top_k=self.top_k,
-                    tau_topk=self.tau_topk,
-                )
-                r_cr = self._restore_retrieved_value(r_cr, query_offset_c)
-                relation_outputs.append(r_cr)
-                relation_query_embs.append(z_q)
-                alpha_entropy = -(alpha * torch.log(alpha + 1e-8)).sum(dim=-1)
-                alpha_sorted = torch.sort(alpha, dim=-1, descending=True).values
-                alpha_top1 = alpha_sorted[:, 0]
-                alpha_margin = (
-                    alpha_sorted[:, 0] - alpha_sorted[:, 1]
-                    if alpha_sorted.size(-1) > 1
-                    else alpha_sorted[:, 0]
-                )
-                relation_debug_rows.append({
-                    'alpha_entropy': alpha_entropy,
-                    'alpha_top1': alpha_top1,
-                    'alpha_margin': alpha_margin,
-                    'top_k_effective': ret_debug['top_k_effective'],
-                })
-                if first_debug is None:
-                    first_debug = {
-                        'z_q': z_q,
-                        'z_mem': z_mem,
-                        'top_idx': top_idx,
-                        'v_top': ret_debug['v_top'],
-                        'alpha': alpha,
-                        'r_cr': r_cr,
-                    }
+                    z_mem = key_bank[c, r].to(batch_x.device)
+                    r_cr, alpha, top_idx, top_scores, ret_debug = retrieve_relation_future(
+                        z_q=z_q,
+                        z_mem=z_mem,
+                        memory_value_c=memory_value_c,
+                        valid_mask=valid_mask,
+                        top_k=self.top_k,
+                        tau_topk=self.tau_topk,
+                    )
+                    relation_outputs.append(r_cr)
+                    relation_query_embs.append(z_q)
+                    alpha_entropy = -(alpha * torch.log(alpha + 1e-8)).sum(dim=-1)
+                    alpha_sorted = torch.sort(alpha, dim=-1, descending=True).values
+                    alpha_top1 = alpha_sorted[:, 0]
+                    alpha_margin = (
+                        alpha_sorted[:, 0] - alpha_sorted[:, 1]
+                        if alpha_sorted.size(-1) > 1
+                        else alpha_sorted[:, 0]
+                    )
+                    relation_debug_rows.append({
+                        'alpha_entropy': alpha_entropy,
+                        'alpha_top1': alpha_top1,
+                        'alpha_margin': alpha_margin,
+                        'top_k_effective': ret_debug['top_k_effective'],
+                    })
+                    if first_debug is None:
+                        first_debug = {
+                            'z_q': z_q,
+                            'z_mem': z_mem,
+                            'top_idx': top_idx,
+                            'v_top': ret_debug['v_top'],
+                            'alpha': alpha,
+                            'r_cr': r_cr,
+                        }
+                relation_outputs = torch.stack(relation_outputs, dim=1)
+                relation_query_embs = torch.stack(relation_query_embs, dim=1)
+            else:
+                source_idx = self.source_channels(c)
+                relation_outputs = cached_relation_outputs[:, c, source_idx]
+                relation_query_embs = cached_relation_query_embs[:, c, source_idx]
 
-            relation_outputs = torch.stack(relation_outputs, dim=1)
-            relation_query_embs = torch.stack(relation_query_embs, dim=1)
             y_ret_c, beta_c, relation_scores = self.relation_mixer(relation_outputs, relation_query_embs)
             y_base_c = y_base_all[:, :, c]
             y_final_c, lambda_c = self.gate(y_base_c, y_ret_c)
@@ -266,16 +355,21 @@ class Model(nn.Module):
             y_final_all[:, :, c] = y_final_c
             beta_all[:, c, :] = beta_c
             lambda_all[:, c] = lambda_c.mean(dim=-1)
-            relation_outputs_all[:, c] = relation_outputs.detach()
+            relation_outputs_all[:, c] = self._restore_retrieved_value(
+                relation_outputs.detach(),
+                output_offset[:, 0, c],
+            )
 
             beta_entropy = -(beta_c * torch.log(beta_c + 1e-8)).sum(dim=-1)
-            debug_rows.append({
-                'beta_entropy': beta_entropy,
-                'alpha_entropy': torch.stack([row['alpha_entropy'] for row in relation_debug_rows], dim=1).mean(dim=1),
-                'alpha_top1': torch.stack([row['alpha_top1'] for row in relation_debug_rows], dim=1).mean(dim=1),
-                'alpha_margin': torch.stack([row['alpha_margin'] for row in relation_debug_rows], dim=1).mean(dim=1),
-                'top_k_effective': torch.stack([row['top_k_effective'] for row in relation_debug_rows], dim=1).mean(dim=1),
-            })
+            row = {'beta_entropy': beta_entropy}
+            if relation_debug_rows:
+                row.update({
+                    'alpha_entropy': torch.stack([item['alpha_entropy'] for item in relation_debug_rows], dim=1).mean(dim=1),
+                    'alpha_top1': torch.stack([item['alpha_top1'] for item in relation_debug_rows], dim=1).mean(dim=1),
+                    'alpha_margin': torch.stack([item['alpha_margin'] for item in relation_debug_rows], dim=1).mean(dim=1),
+                    'top_k_effective': torch.stack([item['top_k_effective'] for item in relation_debug_rows], dim=1).mean(dim=1),
+                })
+            debug_rows.append(row)
 
             if not self._shape_logged and first_debug is not None:
                 print(f'[stage2] batch_x={tuple(batch_x.shape)} memory_y={tuple(memory_y.shape)} valid_mask={tuple(valid_mask.shape)}')
@@ -291,8 +385,14 @@ class Model(nn.Module):
         }
         if debug_rows:
             debug['beta_entropy'] = torch.stack([row['beta_entropy'] for row in debug_rows], dim=1).mean()
-            debug['alpha_entropy'] = torch.stack([row['alpha_entropy'] for row in debug_rows], dim=1).mean()
-            debug['alpha_top1'] = torch.stack([row['alpha_top1'] for row in debug_rows], dim=1).mean()
-            debug['alpha_margin'] = torch.stack([row['alpha_margin'] for row in debug_rows], dim=1).mean()
-            debug['top_k_effective'] = torch.stack([row['top_k_effective'] for row in debug_rows], dim=1).mean()
-        return y_final_all, y_base_all, y_ret_all, beta_all, lambda_all, debug
+            for key in ('alpha_entropy', 'alpha_top1', 'alpha_margin', 'top_k_effective'):
+                if key in debug_rows[0]:
+                    debug[key] = torch.stack([row[key] for row in debug_rows], dim=1).mean()
+        if retrieval_cache is not None:
+            for key in ('alpha_entropy', 'alpha_top1', 'alpha_margin', 'top_k_effective'):
+                if key in retrieval_cache:
+                    debug[key] = retrieval_cache[key].to(batch_x.device).mean()
+        y_final_out = y_final_all + output_offset
+        y_base_out = y_base_all + output_offset
+        y_ret_out = y_ret_all + output_offset
+        return y_final_out, y_base_out, y_ret_out, beta_all, lambda_all, debug

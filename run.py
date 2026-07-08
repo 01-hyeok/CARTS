@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # model define
     parser.add_argument('--expand', type=int, default=2, help='expansion factor for Mamba')
     parser.add_argument('--d_conv', type=int, default=4, help='conv kernel size for Mamba')
-    parser.add_argument('--top_k', type=int, default=5, help='TimesBlock top-k or Stage-2 retrieval top-k')
+    parser.add_argument('--top_k', type=int, default=20, help='TimesBlock top-k or Stage-2 retrieval top-k')
     parser.add_argument('--num_kernels', type=int, default=6, help='for Inception')
     parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
@@ -107,9 +107,9 @@ if __name__ == '__main__':
     parser.add_argument('--tau_teacher', type=float, default=0.1, help='Stage-1 teacher softmax temperature')
     parser.add_argument('--stage1_key_chunk_size', type=int, default=1024,
                         help='Stage-1 key encoder chunk size for memory-safe full candidate training')
-    parser.add_argument('--candidate_mask', type=str, default='strict_causal',
-                        choices=['strict_causal', 'overlap_only', 'none'],
-                        help='Stage-1 memory candidate mask')
+    parser.add_argument('--candidate_mask', type=str, default='raft',
+                        choices=['raft', 'strict_causal', 'overlap_only', 'none'],
+                        help='Stage-1/Stage-2 memory candidate mask')
     parser.add_argument('--source_mode', type=str, default='all', choices=['all', 'topk_corr'],
                         help='Stage-1 source channel set mode; topk_corr is a TODO stub')
     parser.add_argument('--target_mode', type=str, default='all', choices=['all', 'single'],
@@ -163,7 +163,7 @@ if __name__ == '__main__':
                         help='Use fixed Stage-2 retrieval gate lambda when >= 0; negative keeps trainable gate')
     parser.add_argument('--disable_retrieval', type=int, default=0,
                         help='Disable Stage-2 memory retrieval and train/evaluate the base forecast head only')
-    parser.add_argument('--base_head_mode', type=str, default='per_channel_linear',
+    parser.add_argument('--base_head_mode', type=str, default='shared_target_linear',
                         choices=['per_channel_linear', 'shared_target_linear'],
                         help='Stage-2 base forecast head mode')
     parser.add_argument('--use_aux_base_loss', type=int, default=0,
@@ -182,8 +182,8 @@ if __name__ == '__main__':
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
     parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
-    parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
-    parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
+    parser.add_argument('--patience', type=int, default=5, help='early stopping patience')
+    parser.add_argument('--learning_rate', type=float, default=None, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='MSE', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -233,6 +233,13 @@ if __name__ == '__main__':
     parser.add_argument('--extra_tag', type=str, default="", help="Anything extra")
 
     args = parser.parse_args()
+    if args.learning_rate is None:
+        if args.task_name == 'stage1_relation':
+            args.learning_rate = 1e-3
+        elif args.task_name == 'stage2_relation':
+            args.learning_rate = 1e-2
+        else:
+            args.learning_rate = 1e-4
     # args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
     args.use_gpu = True if torch.cuda.is_available() else False
 

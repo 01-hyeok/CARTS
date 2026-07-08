@@ -21,6 +21,7 @@ class Exp_Stage2_Relation(Exp_Basic):
         self.memory_y = None
         self.memory_x_last = None
         self.key_bank = None
+        self.retrieval_caches = {}
         self.best_checkpoint_path = None
         self.current_setting = None
 
@@ -175,6 +176,72 @@ class Exp_Stage2_Relation(Exp_Basic):
             chunk_size=self.args.memory_chunk_size,
         ).to(self.device)
         print(f'[stage2] built relation key memory bank: {tuple(self.key_bank.shape)}')
+
+    def _use_retrieval_cache(self):
+        return (
+            not self._retrieval_disabled()
+            and bool(int(getattr(self.args, 'freeze_stage1_encoder', 0)))
+        )
+
+    def _build_retrieval_cache(self, split, loader):
+        if not self._use_retrieval_cache() or split in self.retrieval_caches:
+            return
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        was_training = self.model.training
+        self.model.eval()
+        cache_parts = {
+            'relation_outputs': [],
+            'relation_query_embs': [],
+            'alpha_entropy': [],
+            'alpha_top1': [],
+            'alpha_margin': [],
+            'top_k_effective': [],
+        }
+        starts = []
+        with torch.no_grad():
+            for batch_x, batch_y, batch_start_idx in loader:
+                batch_x, _, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
+                cand_mask, counts = self._candidate_mask(batch_start_idx)
+                cache = model.build_retrieval_cache(
+                    batch_x=batch_x,
+                    memory_y=self.memory_y,
+                    valid_mask=cand_mask,
+                    key_bank=self.key_bank,
+                    memory_x_last=self.memory_x_last,
+                )
+                for key in cache_parts:
+                    if key in cache:
+                        cache_parts[key].append(cache[key].detach().cpu())
+                starts.extend(int(value) for value in batch_start_idx.cpu().tolist())
+        if was_training:
+            self.model.train()
+        built = {
+            key: torch.cat(parts, dim=0)
+            for key, parts in cache_parts.items()
+            if parts
+        }
+        built['starts'] = torch.tensor(starts, dtype=torch.long)
+        built['start_to_row'] = {start: row for row, start in enumerate(starts)}
+        self.retrieval_caches[split] = built
+        print(f'[stage2] built {split} retrieval cache: {len(starts)} windows')
+
+    def _cached_retrieval_for_batch(self, split, batch_start_idx):
+        if not self._use_retrieval_cache() or split not in self.retrieval_caches:
+            return None
+        cache = self.retrieval_caches[split]
+        try:
+            rows = [
+                cache['start_to_row'][int(value)]
+                for value in batch_start_idx.cpu().tolist()
+            ]
+        except KeyError:
+            return None
+        row_idx = torch.tensor(rows, dtype=torch.long)
+        return {
+            key: value.index_select(0, row_idx)
+            for key, value in cache.items()
+            if key not in {'starts', 'start_to_row'}
+        }
 
     def _candidate_mask(self, batch_start_idx):
         cand_mask, counts = self.memory_bank.valid_mask_batch(batch_start_idx.cpu().numpy())
@@ -544,6 +611,7 @@ class Exp_Stage2_Relation(Exp_Basic):
             else:
                 cand_mask, counts = self._candidate_mask(batch_start_idx)
                 valid_query = counts.to(batch_x.device) > 0
+            retrieval_cache = self._cached_retrieval_for_batch(split, batch_start_idx)
             if valid_query.sum() == 0:
                 avg.update({
                     'skipped_batches': 1.0,
@@ -560,6 +628,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                     valid_mask=cand_mask,
                     key_bank=self.key_bank,
                     memory_x_last=self.memory_x_last,
+                    retrieval_cache=retrieval_cache,
                 )
                 loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
                 loss.backward()
@@ -572,6 +641,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                         valid_mask=cand_mask,
                         key_bank=self.key_bank,
                         memory_x_last=self.memory_x_last,
+                        retrieval_cache=retrieval_cache,
                     )
                     loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
 
@@ -608,6 +678,8 @@ class Exp_Stage2_Relation(Exp_Basic):
 
         refresh_each_epoch = bool(int(self.args.refresh_memory_every_epoch))
         self._build_key_bank(force=True)
+        self._build_retrieval_cache('train', train_loader)
+        self._build_retrieval_cache('vali', vali_loader)
         writer = build_summary_writer(self.args, 'stage2', setting)
         tb_keys = [
             'loss',
@@ -652,8 +724,9 @@ class Exp_Stage2_Relation(Exp_Basic):
         try:
             for epoch in range(self.args.train_epochs):
                 epoch_time = time.time()
-                if refresh_each_epoch and (epoch > 0 or not bool(int(self.args.freeze_stage1_encoder))):
+                if refresh_each_epoch and epoch > 0 and not bool(int(self.args.freeze_stage1_encoder)):
                     self._build_key_bank(force=True)
+                    self.retrieval_caches.clear()
 
                 train_metrics = self._run_loader(
                     train_loader,
@@ -703,8 +776,9 @@ class Exp_Stage2_Relation(Exp_Basic):
         else:
             print(f'[stage2] checkpoint not found, testing current model: {ckpt_path}')
         self._ensure_memory()
-        self._build_key_bank(force=True)
+        self._build_key_bank(force=not bool(int(self.args.freeze_stage1_encoder)))
         test_data, test_loader = self._get_data(flag='test')
+        self._build_retrieval_cache('test', test_loader)
         metrics = self._run_loader(test_loader, optimizer=None, split='test', epoch=0, setting=setting)
         print(format_metrics('Stage2 Test', metrics))
         return metrics

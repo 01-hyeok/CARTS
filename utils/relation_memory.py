@@ -40,8 +40,8 @@ class Stage1WindowDataset(Dataset):
 
 
 class RelationMemorySampler:
-    def __init__(self, train_dataset, seq_len, pred_len, mask_mode='strict_causal'):
-        if mask_mode not in ('strict_causal', 'overlap_only', 'none'):
+    def __init__(self, train_dataset, seq_len, pred_len, mask_mode='raft'):
+        if mask_mode not in ('raft', 'strict_causal', 'overlap_only', 'none'):
             raise ValueError(f'Unsupported candidate_mask: {mask_mode}')
         self.dataset = train_dataset
         self.seq_len = seq_len
@@ -60,7 +60,21 @@ class RelationMemorySampler:
     def valid_indices(self, query_start):
         query_start = int(query_start)
         candidate_end = self.starts + self.seq_len + self.pred_len
-        if self.mask_mode == 'strict_causal':
+        if self.mask_mode == 'raft':
+            if np.any(self.starts == query_start):
+                window = 2 * (self.seq_len + self.pred_len) - 1
+                mask_starts = (
+                    np.arange(window, dtype=np.int64)
+                    + query_start
+                    - self.seq_len
+                    - self.pred_len
+                    + 1
+                )
+                mask_starts = np.clip(mask_starts, self.starts[0], self.starts[-1])
+                valid = ~np.isin(self.starts, mask_starts)
+            else:
+                valid = np.ones_like(self.starts, dtype=bool)
+        elif self.mask_mode == 'strict_causal':
             valid = candidate_end <= query_start
         elif self.mask_mode == 'overlap_only':
             query_end = query_start + self.seq_len + self.pred_len
@@ -90,7 +104,7 @@ class RelationMemorySampler:
 class RelationMemoryBank:
     """Train-split memory used by Stage-2 retrieval."""
 
-    def __init__(self, train_dataset, seq_len, pred_len, mask_mode='strict_causal'):
+    def __init__(self, train_dataset, seq_len, pred_len, mask_mode='raft'):
         self.sampler = RelationMemorySampler(
             train_dataset,
             seq_len=seq_len,
