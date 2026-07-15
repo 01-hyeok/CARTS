@@ -16,6 +16,7 @@ class Stage1WindowDataset(Dataset):
         self.data_x = base_dataset.data_x
         self.data_y = base_dataset.data_y
         self.data = self.data_x
+        self.channel_names = getattr(base_dataset, 'channel_names', None)
         self.starts = np.arange(len(base_dataset), dtype=np.int64) + int(getattr(base_dataset, 'border1', 0))
 
     def __len__(self):
@@ -49,13 +50,17 @@ class RelationMemorySampler:
         self.mask_mode = mask_mode
         self.starts = train_dataset.get_all_valid_starts().astype(np.int64)
 
-        xs, ys = [], []
-        for i in range(len(train_dataset)):
-            x, y, _ = train_dataset[i]
-            xs.append(x)
-            ys.append(y)
-        self.memory_x = np.stack(xs).astype('float32')
-        self.memory_y = np.stack(ys).astype('float32')
+        data_x = np.asarray(train_dataset.data_x, dtype=np.float32)
+        data_y = np.asarray(train_dataset.data_y, dtype=np.float32)
+        num_windows = len(train_dataset)
+        memory_x = np.lib.stride_tricks.sliding_window_view(
+            data_x, self.seq_len, axis=0
+        ).transpose(0, 2, 1)
+        memory_y = np.lib.stride_tricks.sliding_window_view(
+            data_y[self.seq_len:], self.pred_len, axis=0
+        ).transpose(0, 2, 1)
+        self.memory_x = memory_x[:num_windows]
+        self.memory_y = memory_y[:num_windows]
 
     def valid_indices(self, query_start):
         query_start = int(query_start)

@@ -110,8 +110,16 @@ if __name__ == '__main__':
     parser.add_argument('--candidate_mask', type=str, default='raft',
                         choices=['raft', 'strict_causal', 'overlap_only', 'none'],
                         help='Stage-1/Stage-2 memory candidate mask')
-    parser.add_argument('--source_mode', type=str, default='all', choices=['all', 'topk_corr'],
-                        help='Stage-1 source channel set mode; topk_corr is a TODO stub')
+    parser.add_argument('--source_mode', type=str, default='auto', choices=['auto', 'all', 'topk_corr'],
+                        help='Source selection: auto enables absolute-Pearson Top-N when enc_in reaches threshold')
+    parser.add_argument('--relation_top_n', type=int, default=3,
+                        help='Total source channels per target including self; remaining sources use absolute Pearson')
+    parser.add_argument('--relation_graph_threshold', type=int, default=21,
+                        help='Auto-enable sparse Pearson relation graph when enc_in is at least this value')
+    parser.add_argument('--relation_graph_path', type=str, default='',
+                        help='Shared Stage1/Stage2 Pearson relation graph JSON path')
+    parser.add_argument('--relation_target_chunk_size', type=int, default=0,
+                        help='Stage1 target channels trained per batch; <=0 uses all targets')
     parser.add_argument('--target_mode', type=str, default='all', choices=['all', 'single'],
                         help='Stage-1 target channel mode')
     parser.add_argument('--target_channel', type=int, default=None, help='Stage-1 single target channel')
@@ -144,6 +152,31 @@ if __name__ == '__main__':
                         help='Source channel index for the fixed validation Stage-1 probe')
     parser.add_argument('--stage1_probe_dir', type=str, default='./stage1_vis',
                         help='Directory for fixed validation Stage-1 distribution probe plots')
+    parser.add_argument('--stage1_use_rank_loss', type=int, default=0,
+                        help='Add future-aware top-k pairwise ranking loss to Stage-1')
+    parser.add_argument('--stage1_loss_mode', type=str, default='kl',
+                        choices=['kl', 'kl_rank', 'rnc', 'kl_expected_mse'],
+                        help='Stage-1 objective; legacy stage1_use_rank_loss=1 maps kl to kl_rank')
+    parser.add_argument('--stage1_rank_weight', type=float, default=0.1,
+                        help='Weight for Stage-1 future-aware ranking loss')
+    parser.add_argument('--stage1_rank_margin', type=float, default=0.1,
+                        help='Margin for Stage-1 top-k pairwise ranking loss')
+    parser.add_argument('--stage1_rank_min_mse_gap', type=float, default=0.0,
+                        help='Minimum future MSE gap required for a valid Stage-1 ranking pair')
+    parser.add_argument('--stage1_rank_top_k', type=int, default=-1,
+                        help='Stage-1 ranking top-k; <=0 reuses --top_k')
+    parser.add_argument('--rnc_temperature', type=float, default=0.2,
+                        help='Temperature for query-conditioned Stage-1 RnC loss')
+    parser.add_argument('--rnc_tie_epsilon', type=float, default=0.0,
+                        help='Future-MSE tolerance used to form RnC tie groups')
+    parser.add_argument('--rnc_quality_source', type=str, default='future_mse',
+                        choices=['future_mse', 'ema_cosine'],
+                        help='RnC ordering source: actual future MSE or EMA future cosine')
+    parser.add_argument('--expected_mse_weight', type=float, default=0.1,
+                        help='Mixture coefficient: (1-w)*KL + w*expected future MSE')
+    parser.add_argument('--expected_mse_normalization', type=str, default='mean',
+                        choices=['none', 'mean', 'median'],
+                        help='Per-query future-MSE normalization for expected loss')
     parser.add_argument('--build_memory_index', action='store_true',
                         help='Optional Stage-2 TODO hook for memory embedding cache')
     parser.add_argument('--stage1_ckpt_path', type=str, default='',
@@ -163,7 +196,7 @@ if __name__ == '__main__':
                         help='Stage-2 top-k attention softmax temperature')
     parser.add_argument('--fusion_mode', type=str, default='mixture',
                         choices=['residual', 'mixture', 'raft_concat'], help='Stage-2 base/retrieval fusion mode')
-    parser.add_argument('--relation_mixer_input', type=str, default='retrieved_plus_query',
+    parser.add_argument('--relation_mixer_input', type=str, default='retrieved',
                         choices=['retrieved', 'retrieved_plus_query'], help='Stage-2 relation mixer input')
     parser.add_argument('--relation_mixer_hidden', type=int, default=128,
                         help='Stage-2 relation mixer hidden size')
@@ -188,6 +221,8 @@ if __name__ == '__main__':
                         help='Auxiliary retrieval forecast loss weight')
     parser.add_argument('--beta_entropy_reg', type=float, default=0.0,
                         help='Stage-2 relation beta entropy regularization weight')
+    parser.add_argument('--oracle_candidate_eval', type=int, default=0,
+                        help='Evaluate ground-truth Top-K candidate and relation oracles on the Stage-2 test split only')
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')

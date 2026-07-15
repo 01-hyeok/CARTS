@@ -10,6 +10,7 @@ from torch import optim
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.relation_memory import RelationMemoryBank
+from utils.relation_graph import load_or_build_relation_graph, relation_graph_enabled
 from utils.stage1_metrics import MetricAverager, format_metrics
 from utils.tensorboard_logger import build_summary_writer, write_metric_scalars
 from utils.tools import adjust_learning_rate
@@ -25,8 +26,12 @@ class Exp_Stage2_Relation(Exp_Basic):
         self.retrieval_caches = {}
         self.best_checkpoint_path = None
         self.current_setting = None
+        self.relation_graph = None
 
     def _channel_names(self, num_channels):
+        graph_names = getattr(self.args, 'relation_channel_names', None)
+        if graph_names is not None and len(graph_names) == num_channels:
+            return list(graph_names)
         if self.args.data in ('ETTh1', 'ETTh2', 'ETTm1', 'ETTm2') and num_channels == 7:
             return ['HUFL', 'HULL', 'MUFL', 'MULL', 'LUFL', 'LULL', 'OT']
         return [f'ch{i}' for i in range(num_channels)]
@@ -93,6 +98,9 @@ class Exp_Stage2_Relation(Exp_Basic):
             'relation_mixer_input': self.args.relation_mixer_input,
             'stage1_encoder_init': self.args.stage1_encoder_init,
             'disable_retrieval': int(getattr(self.args, 'disable_retrieval', 0)),
+            'source_mode': self.args.source_mode,
+            'relation_top_n': int(getattr(self.args, 'relation_top_n', 3)),
+            'relation_graph_path': getattr(self.args, 'relation_graph_path', ''),
         }
 
     def _append_csv(self, path, rows, fieldnames):
@@ -160,8 +168,20 @@ class Exp_Stage2_Relation(Exp_Basic):
             pred_len=self.args.pred_len,
             mask_mode=self.args.candidate_mask,
         )
-        self.memory_y = torch.from_numpy(self.memory_bank.memory_y).float().to(self.device)
-        self.memory_x_last = torch.from_numpy(self.memory_bank.memory_x[:, -1, :]).float().to(self.device)
+        self.relation_graph = load_or_build_relation_graph(
+            train_data,
+            self.args,
+            require_existing=(
+                relation_graph_enabled(self.args)
+                and getattr(self.args, 'stage1_encoder_init', 'checkpoint') != 'random'
+            ),
+        )
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        model.set_relation_graph(self.relation_graph)
+        if self.relation_graph is not None:
+            self.args.relation_channel_names = self.relation_graph['channel_names']
+        self.memory_y = torch.from_numpy(self.memory_bank.memory_y).float()
+        self.memory_x_last = torch.from_numpy(self.memory_bank.memory_x[:, -1, :]).float()
         print(f'[stage2] memory_x={tuple(self.memory_bank.memory_x.shape)} memory_y={tuple(self.memory_bank.memory_y.shape)}')
 
     def _build_key_bank(self, force=False):
@@ -175,13 +195,14 @@ class Exp_Stage2_Relation(Exp_Basic):
             self.memory_bank.memory_x,
             self.device,
             chunk_size=self.args.memory_chunk_size,
-        ).to(self.device)
+        )
         print(f'[stage2] built relation key memory bank: {tuple(self.key_bank.shape)}')
 
     def _use_retrieval_cache(self):
         return (
             not self._retrieval_disabled()
             and bool(int(getattr(self.args, 'freeze_stage1_encoder', 0)))
+            and not relation_graph_enabled(self.args)
         )
 
     def _build_retrieval_cache(self, split, loader):
@@ -198,10 +219,21 @@ class Exp_Stage2_Relation(Exp_Basic):
             'alpha_margin': [],
             'top_k_effective': [],
         }
+        if split == 'test' and bool(int(getattr(self.args, 'oracle_candidate_eval', 0))):
+            cache_parts.update({
+                'candidate_oracle_mse_sc': [],
+                'candidate_oracle_mae_sc': [],
+                'full_oracle_mse_sc': [],
+                'full_oracle_mae_sc': [],
+                'candidate_oracle_top_k_effective_sc': [],
+                'candidate_oracle_indices_sc': [],
+                'candidate_oracle_mse_topk_sc': [],
+                'candidate_oracle_valid_topk_sc': [],
+            })
         starts = []
         with torch.no_grad():
             for batch_x, batch_y, batch_start_idx in loader:
-                batch_x, _, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
+                batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
                 cand_mask, counts = self._candidate_mask(batch_start_idx)
                 cache = model.build_retrieval_cache(
                     batch_x=batch_x,
@@ -209,6 +241,11 @@ class Exp_Stage2_Relation(Exp_Basic):
                     valid_mask=cand_mask,
                     key_bank=self.key_bank,
                     memory_x_last=self.memory_x_last,
+                    oracle_target_y=(
+                        batch_y
+                        if split == 'test' and bool(int(getattr(self.args, 'oracle_candidate_eval', 0)))
+                        else None
+                    ),
                 )
                 for key in cache_parts:
                     if key in cache:
@@ -273,7 +310,6 @@ class Exp_Stage2_Relation(Exp_Basic):
         base_err_sc = ((y_base - batch_y) ** 2).mean(dim=1)
         ret_err_sc = ((y_ret - batch_y) ** 2).mean(dim=1)
         final_err_sc = ((y_final - batch_y) ** 2).mean(dim=1)
-        oracle_gate_mse = torch.minimum(base_err_sc, ret_err_sc).mean()
         ret_advantage = base_err_sc - ret_err_sc
         ret_better = ret_err_sc < base_err_sc
         final_mse_by_channel = ((y_final - batch_y) ** 2).mean(dim=(0, 1))
@@ -281,9 +317,23 @@ class Exp_Stage2_Relation(Exp_Basic):
         ret_mse_by_channel = ((y_ret - batch_y) ** 2).mean(dim=(0, 1))
         channel_gain = base_mse_by_channel - final_mse_by_channel
 
-        diag = torch.eye(beta.size(-1), device=beta.device, dtype=torch.bool)[None, :, :]
-        self_beta = beta.masked_select(diag).mean()
-        cross_beta = beta.masked_select(~diag).mean() if beta.size(-1) > 1 else torch.tensor(0.0, device=beta.device)
+        source_indices = debug.get('source_indices')
+        if source_indices is None:
+            source_indices = torch.arange(
+                beta.size(1), device=beta.device, dtype=torch.long
+            ).unsqueeze(0).expand(beta.size(1), -1)
+        source_indices = source_indices.to(beta.device)
+        target_indices = torch.arange(
+            beta.size(1), device=beta.device, dtype=torch.long
+        ).unsqueeze(-1)
+        self_mask = (source_indices == target_indices).unsqueeze(0)
+        self_beta = beta.masked_select(self_mask).mean()
+        cross_mask = ~self_mask
+        cross_beta = (
+            beta.masked_select(cross_mask).mean()
+            if cross_mask.sum() > 0
+            else torch.tensor(0.0, device=beta.device)
+        )
         beta_sorted = torch.sort(beta, dim=-1, descending=True).values
         beta_max = beta_sorted[..., 0].mean()
         beta_margin = (
@@ -301,8 +351,6 @@ class Exp_Stage2_Relation(Exp_Basic):
             'ret_mae': ret_mae.detach(),
             'retrieval_gain': (base_mse - final_mse).detach(),
             'ret_gain': ret_gain.detach(),
-            'oracle_gate_mse': oracle_gate_mse.detach(),
-            'oracle_gate_gain': (base_mse - oracle_gate_mse).detach(),
             'ret_better_frac': ret_better.float().mean().detach(),
             'beta_self_mean': self_beta.detach(),
             'beta_cross_mean': cross_beta.detach(),
@@ -322,21 +370,29 @@ class Exp_Stage2_Relation(Exp_Basic):
             'channel_gain_max': channel_gain.max().detach(),
             'frac_channels_improved': (channel_gain > 0).float().mean().detach(),
             'num_channels_improved': (channel_gain > 0).float().sum().detach(),
+            'relation_source_count': float(beta.size(-1)),
             'valid_candidate_count_mean': counts.float().mean().item(),
             'valid_candidate_count_min': counts.min().item() if counts.numel() else 0.0,
         }
-        channel_names = self._channel_names(beta.size(-1))
-        focus_idx, focus_name = self._focus_channel_index(beta.size(-1))
+        source_correlations = debug.get('source_correlations')
+        if source_correlations is not None:
+            selected_cross_corr = source_correlations.to(beta.device).masked_select(
+                cross_mask.squeeze(0)
+            )
+            metrics.update({
+                'pearson_selected_mean': selected_cross_corr.mean().detach(),
+                'abs_pearson_selected_mean': selected_cross_corr.abs().mean().detach(),
+                'negative_pearson_frac': (selected_cross_corr < 0).float().mean().detach(),
+            })
+        channel_names = self._channel_names(beta.size(1))
+        focus_idx, focus_name = self._focus_channel_index(beta.size(1))
         if focus_idx is not None and focus_idx < y_final.size(-1):
-            focus_oracle = torch.minimum(base_err_sc[:, focus_idx], ret_err_sc[:, focus_idx]).mean()
             metrics.update({
                 f'final_mse_{focus_name}': final_mse_by_channel[focus_idx].detach(),
                 f'base_mse_{focus_name}': base_mse_by_channel[focus_idx].detach(),
                 f'ret_mse_{focus_name}': ret_mse_by_channel[focus_idx].detach(),
                 f'final_gain_{focus_name}': channel_gain[focus_idx].detach(),
                 f'ret_gain_{focus_name}': (base_mse_by_channel[focus_idx] - ret_mse_by_channel[focus_idx]).detach(),
-                f'oracle_gate_mse_{focus_name}': focus_oracle.detach(),
-                f'oracle_gate_gain_{focus_name}': (base_mse_by_channel[focus_idx] - focus_oracle).detach(),
                 f'ret_better_frac_{focus_name}': ret_better[:, focus_idx].float().mean().detach(),
                 f'lambda_{focus_name}': lam[:, focus_idx].mean().detach(),
                 f'lambda_ret_adv_corr_{focus_name}': self._safe_corr(
@@ -348,13 +404,16 @@ class Exp_Stage2_Relation(Exp_Basic):
             target_y = batch_y.permute(0, 2, 1).unsqueeze(2)
             relation_mse = ((relation_outputs - target_y) ** 2).mean(dim=-1)
             relation_mse_mean = relation_mse.mean()
-            relation_mse_best, oracle_relation = relation_mse.min(dim=-1)
+            relation_mse_best, best_relation = relation_mse.min(dim=-1)
+            relation_mae = torch.abs(relation_outputs - target_y).mean(dim=-1)
+            relation_mae_best = relation_mae.gather(
+                -1, best_relation.unsqueeze(-1)
+            ).squeeze(-1)
             beta_choice = beta.argmax(dim=-1)
             beta_expected_mse = (beta * relation_mse).sum(dim=-1)
 
-            diag_cc = torch.eye(beta.size(-1), device=beta.device, dtype=torch.bool)[None, :, :]
-            relation_mse_self = relation_mse.masked_select(diag_cc).mean()
-            relation_mse_cross = relation_mse.masked_fill(diag_cc, float('inf'))
+            relation_mse_self = relation_mse.masked_select(self_mask).mean()
+            relation_mse_cross = relation_mse.masked_fill(self_mask, float('inf'))
             relation_mse_cross_best = relation_mse_cross.min(dim=-1).values
             relation_mse_cross_best = relation_mse_cross_best[torch.isfinite(relation_mse_cross_best)].mean()
 
@@ -364,9 +423,9 @@ class Exp_Stage2_Relation(Exp_Basic):
                 'relation_mse_self': relation_mse_self.detach(),
                 'relation_mse_cross_best': relation_mse_cross_best.detach(),
                 'beta_expected_relation_mse': beta_expected_mse.mean().detach(),
-                'beta_oracle_top1_match': (beta_choice == oracle_relation).float().mean().detach(),
+                'beta_best_relation_top1_match': (beta_choice == best_relation).float().mean().detach(),
                 'beta_gain_vs_uniform': (relation_mse_mean - beta_expected_mse.mean()).detach(),
-                'beta_regret_vs_oracle': (beta_expected_mse - relation_mse_best).mean().detach(),
+                'beta_regret_vs_best_relation': (beta_expected_mse - relation_mse_best).mean().detach(),
             })
             beta_rank = self._rank_average(-beta)
             quality_rank = self._rank_average(relation_mse)
@@ -381,17 +440,55 @@ class Exp_Stage2_Relation(Exp_Basic):
                     ot_beta_top1 = ot_beta.max(dim=-1).values
                     ot_mse_best = ot_relation_mse.gather(1, ot_best_relation[:, None]).squeeze(1)
                     ot_mse_beta_top1 = ot_relation_mse.gather(1, ot_beta_choice[:, None]).squeeze(1)
-                    ot_beta_on_oracle = ot_beta.gather(1, ot_best_relation[:, None]).squeeze(1)
-                    metrics['beta_OT_oracle_top1_match'] = (
+                    ot_beta_on_best_relation = ot_beta.gather(1, ot_best_relation[:, None]).squeeze(1)
+                    metrics['beta_OT_best_relation_top1_match'] = (
                         ot_beta_choice == ot_best_relation
                     ).float().mean().detach()
                     metrics['beta_OT_top1_mean'] = ot_beta_top1.mean().detach()
-                    metrics['beta_OT_on_oracle_mean'] = ot_beta_on_oracle.mean().detach()
+                    metrics['beta_OT_on_best_relation_mean'] = ot_beta_on_best_relation.mean().detach()
                     metrics['relation_mse_OT_best'] = ot_mse_best.mean().detach()
                     metrics['relation_mse_OT_beta_top1'] = ot_mse_beta_top1.mean().detach()
                     metrics['relation_mse_OT_beta_regret'] = (
                         ot_mse_beta_top1 - ot_mse_best
                     ).mean().detach()
+        if 'candidate_oracle_mse_sc' in debug:
+            candidate_oracle_mse_sc = debug['candidate_oracle_mse_sc'][valid_query]
+            candidate_oracle_mae_sc = debug['candidate_oracle_mae_sc'][valid_query]
+            full_oracle_mse_sc = debug['full_oracle_mse_sc'][valid_query]
+            full_oracle_mae_sc = debug['full_oracle_mae_sc'][valid_query]
+            candidate_oracle_top_k_effective_sc = debug[
+                'candidate_oracle_top_k_effective_sc'
+            ][valid_query]
+
+            metrics.update({
+                'candidate_oracle_mse': candidate_oracle_mse_sc.mean().detach(),
+                'candidate_oracle_mae': candidate_oracle_mae_sc.mean().detach(),
+                'candidate_oracle_gain_vs_base': (
+                    base_err_sc - candidate_oracle_mse_sc
+                ).mean().detach(),
+                'candidate_oracle_better_frac': (
+                    candidate_oracle_mse_sc < base_err_sc
+                ).float().mean().detach(),
+                'candidate_oracle_top_k_effective': (
+                    candidate_oracle_top_k_effective_sc.float().mean().detach()
+                ),
+                'relation_oracle_mse': relation_mse_best.mean().detach(),
+                'relation_oracle_mae': relation_mae_best.mean().detach(),
+                'relation_oracle_gain_vs_base': (
+                    base_err_sc - relation_mse_best
+                ).mean().detach(),
+                'relation_oracle_better_frac': (
+                    relation_mse_best < base_err_sc
+                ).float().mean().detach(),
+                'full_oracle_mse': full_oracle_mse_sc.mean().detach(),
+                'full_oracle_mae': full_oracle_mae_sc.mean().detach(),
+                'full_oracle_gain_vs_base': (
+                    base_err_sc - full_oracle_mse_sc
+                ).mean().detach(),
+                'full_oracle_better_frac': (
+                    full_oracle_mse_sc < base_err_sc
+                ).float().mean().detach(),
+            })
         for name in ('alpha_entropy', 'beta_entropy', 'top_k_effective'):
             if name in debug:
                 metrics[name] = debug[name].detach()
@@ -431,7 +528,48 @@ class Exp_Stage2_Relation(Exp_Basic):
                 for i in range(5)
             ],
             'ot_relation': None,
+            'relation_branches': None,
+            'oracle_candidates': [],
         }
+
+    def _update_oracle_candidate_rows(self, acc, retrieval_cache, batch_start_idx, valid_query):
+        if retrieval_cache is None or 'candidate_oracle_indices_sc' not in retrieval_cache:
+            return
+        indices = retrieval_cache['candidate_oracle_indices_sc'].detach().cpu()
+        mse = retrieval_cache['candidate_oracle_mse_topk_sc'].detach().cpu()
+        valid = retrieval_cache['candidate_oracle_valid_topk_sc'].detach().cpu().bool()
+        query_starts = batch_start_idx.detach().cpu().tolist()
+        valid_rows = valid_query.detach().cpu().bool().tolist()
+        channel_names = self._channel_names(indices.size(1))
+        memory_starts = self.memory_bank.memory_starts
+
+        for batch_row, is_valid_query in enumerate(valid_rows):
+            if not is_valid_query:
+                continue
+            query_start = int(query_starts[batch_row])
+            for target_idx, target_name in enumerate(channel_names):
+                for rank in range(indices.size(-1)):
+                    memory_index = int(indices[batch_row, target_idx, rank].item())
+                    is_valid = bool(valid[batch_row, target_idx, rank].item())
+                    memory_start = (
+                        int(memory_starts[memory_index])
+                        if is_valid and 0 <= memory_index < len(memory_starts)
+                        else ''
+                    )
+                    acc['oracle_candidates'].append({
+                        'query_start': query_start,
+                        'target_index': target_idx,
+                        'target_channel': target_name,
+                        'oracle_rank': rank + 1,
+                        'memory_index': memory_index if is_valid else '',
+                        'memory_start': memory_start,
+                        'future_mse': (
+                            float(mse[batch_row, target_idx, rank].item())
+                            if is_valid
+                            else ''
+                        ),
+                        'valid': int(is_valid),
+                    })
 
     def _update_csv_accumulators(self, acc, y_final, y_base, y_ret, batch_y, beta, lam, debug, valid_query):
         with torch.no_grad():
@@ -472,21 +610,64 @@ class Exp_Stage2_Relation(Exp_Basic):
             if 'relation_outputs' not in debug:
                 return
             relation_outputs = debug['relation_outputs'][valid_query]
-            channel_names = self._channel_names(beta.size(-1))
-            focus_idx, focus_name = self._focus_channel_index(beta.size(-1))
-            if focus_idx is None or focus_idx >= beta.size(1):
-                return
+            channel_names = self._channel_names(beta.size(1))
             target_y = batch_y.permute(0, 2, 1).unsqueeze(2)
             relation_mse = ((relation_outputs - target_y) ** 2).mean(dim=-1)
+            beta_top1 = beta.argmax(dim=-1)
+            best_relation = relation_mse.argmin(dim=-1)
+            source_indices = debug.get('source_indices')
+            if source_indices is None:
+                source_indices = torch.arange(beta.size(-1)).unsqueeze(0).expand(beta.size(1), -1)
+            source_indices = source_indices.detach().long().cpu()
+            source_correlations = debug.get('source_correlations')
+            if source_correlations is not None:
+                source_correlations = source_correlations.detach().float().cpu()
+            if acc['relation_branches'] is None:
+                num_targets = beta.size(1)
+                num_sources = beta.size(2)
+                acc['relation_branches'] = {
+                    'channel_names': channel_names,
+                    'source_indices': source_indices,
+                    'source_correlations': source_correlations,
+                    'count': torch.zeros(num_targets, dtype=torch.float64),
+                    'beta_sum': torch.zeros(num_targets, num_sources, dtype=torch.float64),
+                    'mse_sum': torch.zeros(num_targets, num_sources, dtype=torch.float64),
+                    'top1_count': torch.zeros(num_targets, num_sources, dtype=torch.float64),
+                    'best_count': torch.zeros(num_targets, num_sources, dtype=torch.float64),
+                }
+            branch_state = acc['relation_branches']
+            count_by_target = torch.full((beta.size(1),), beta.size(0), dtype=torch.float64)
+            branch_state['count'] += count_by_target
+            branch_state['beta_sum'] += beta.detach().double().cpu().sum(dim=0)
+            branch_state['mse_sum'] += relation_mse.detach().double().cpu().sum(dim=0)
+            branch_state['top1_count'] += torch.nn.functional.one_hot(
+                beta_top1.detach().cpu(), num_classes=beta.size(-1)
+            ).double().sum(dim=0)
+            branch_state['best_count'] += torch.nn.functional.one_hot(
+                best_relation.detach().cpu(), num_classes=beta.size(-1)
+            ).double().sum(dim=0)
+
+            focus_idx, focus_name = self._focus_channel_index(beta.size(1))
+            if focus_idx is None or focus_idx >= beta.size(1):
+                return
             ot_beta = beta[:, focus_idx, :]
             ot_mse = relation_mse[:, focus_idx, :]
             if acc['ot_relation'] is None:
+                focus_source_indices = source_indices[focus_idx].tolist()
+                focus_source_correlations = (
+                    None
+                    if source_correlations is None
+                    else source_correlations[focus_idx].tolist()
+                )
                 acc['ot_relation'] = {
                     'target_channel': focus_name,
-                    'source_names': channel_names,
+                    'target_index': focus_idx,
+                    'source_indices': focus_source_indices,
+                    'source_names': [channel_names[index] for index in focus_source_indices],
+                    'source_correlations': focus_source_correlations,
                     'count': 0.0,
-                    'beta_sum': torch.zeros(len(channel_names), dtype=torch.float64),
-                    'mse_sum': torch.zeros(len(channel_names), dtype=torch.float64),
+                    'beta_sum': torch.zeros(beta.size(-1), dtype=torch.float64),
+                    'mse_sum': torch.zeros(beta.size(-1), dtype=torch.float64),
                 }
             count = float(ot_beta.size(0))
             acc['ot_relation']['count'] += count
@@ -525,43 +706,139 @@ class Exp_Stage2_Relation(Exp_Basic):
         rank_mse = torch.empty_like(mse_order, dtype=torch.long)
         rank_beta[beta_order] = torch.arange(1, beta_order.numel() + 1, dtype=torch.long)
         rank_mse[mse_order] = torch.arange(1, mse_order.numel() + 1, dtype=torch.long)
-        oracle_idx = int(mse_order[0].item())
+        best_slot = int(mse_order[0].item())
         rows = []
-        for src_idx, src_name in enumerate(state['source_names']):
+        for source_slot, src_name in enumerate(state['source_names']):
+            source_index = int(state['source_indices'][source_slot])
+            pearson = (
+                ''
+                if state['source_correlations'] is None
+                else float(state['source_correlations'][source_slot])
+            )
             row = dict(context)
             row.update({
                 'target_channel': state['target_channel'],
+                'target_index': int(state['target_index']),
                 'source_channel': src_name,
-                'beta_mean': float(beta_mean[src_idx].item()),
-                'relation_mse': float(mse_mean[src_idx].item()),
-                'rank_by_beta': int(rank_beta[src_idx].item()),
-                'rank_by_relation_mse': int(rank_mse[src_idx].item()),
-                'is_self': int(src_name == state['target_channel']),
-                'is_oracle_best': int(src_idx == oracle_idx),
+                'source_index': source_index,
+                'source_slot': source_slot,
+                'pearson': pearson,
+                'abs_pearson': '' if pearson == '' else abs(pearson),
+                'beta_mean': float(beta_mean[source_slot].item()),
+                'relation_mse': float(mse_mean[source_slot].item()),
+                'rank_by_beta': int(rank_beta[source_slot].item()),
+                'rank_by_relation_mse': int(rank_mse[source_slot].item()),
+                'is_self': int(source_index == state['target_index']),
+                'is_best_relation': int(source_slot == best_slot),
             })
             rows.append(row)
+        return rows
+
+    def _relation_branch_rows(self, acc, context):
+        state = acc['relation_branches']
+        if state is None:
+            return []
+        rows = []
+        names = state['channel_names']
+        source_indices = state['source_indices']
+        source_correlations = state['source_correlations']
+        for tgt_idx, tgt_name in enumerate(names):
+            count = float(state['count'][tgt_idx].item())
+            if count <= 0:
+                continue
+            beta_mean = state['beta_sum'][tgt_idx] / count
+            mse_mean = state['mse_sum'][tgt_idx] / count
+            top1_frac = state['top1_count'][tgt_idx] / count
+            best_frac = state['best_count'][tgt_idx] / count
+            beta_order = torch.argsort(beta_mean, descending=True)
+            mse_order = torch.argsort(mse_mean, descending=False)
+            rank_beta = torch.empty_like(beta_order, dtype=torch.long)
+            rank_mse = torch.empty_like(mse_order, dtype=torch.long)
+            rank_beta[beta_order] = torch.arange(1, beta_order.numel() + 1, dtype=torch.long)
+            rank_mse[mse_order] = torch.arange(1, mse_order.numel() + 1, dtype=torch.long)
+            for source_slot in range(source_indices.size(1)):
+                source_index = int(source_indices[tgt_idx, source_slot].item())
+                src_name = names[source_index]
+                pearson = (
+                    ''
+                    if source_correlations is None
+                    else float(source_correlations[tgt_idx, source_slot].item())
+                )
+                row = dict(context)
+                row.update({
+                    'target_index': tgt_idx,
+                    'target_channel': tgt_name,
+                    'source_index': source_index,
+                    'source_channel': src_name,
+                    'source_slot': source_slot,
+                    'pearson': pearson,
+                    'abs_pearson': '' if pearson == '' else abs(pearson),
+                    'branch': f'{tgt_name}<-{src_name}',
+                    'beta_mean': float(beta_mean[source_slot].item()),
+                    'beta_top1_frac': float(top1_frac[source_slot].item()),
+                    'relation_mse': float(mse_mean[source_slot].item()),
+                    'best_relation_frac': float(best_frac[source_slot].item()),
+                    'rank_by_beta': int(rank_beta[source_slot].item()),
+                    'rank_by_relation_mse': int(rank_mse[source_slot].item()),
+                    'is_self': int(source_index == tgt_idx),
+                })
+                rows.append(row)
         return rows
 
     def _write_stage2_metric_csvs(self, setting, split, epoch, metrics, acc):
         context = self._csv_context(epoch, split, setting)
         base_dir = self._csv_base_dir(setting)
         focus = getattr(self.args, 'focus_channel', 'OT')
+        oracle_keys = [
+            'base_mse', 'base_mae', 'ret_mse', 'ret_mae',
+            'candidate_oracle_mse', 'candidate_oracle_mae',
+            'candidate_oracle_gain_vs_base', 'candidate_oracle_better_frac',
+            'candidate_oracle_top_k_effective',
+            'relation_oracle_mse', 'relation_oracle_mae',
+            'relation_oracle_gain_vs_base', 'relation_oracle_better_frac',
+            'full_oracle_mse', 'full_oracle_mae',
+            'full_oracle_gain_vs_base', 'full_oracle_better_frac',
+        ]
+        if any(key in metrics for key in ('candidate_oracle_mse', 'full_oracle_mse')):
+            oracle_row = dict(context)
+            oracle_row['oracle_candidate_definition'] = 'ground_truth_topk_encoder_alpha'
+            for key in oracle_keys:
+                oracle_row[key] = self._to_float(metrics.get(key, float('nan')))
+            self._append_csv(
+                os.path.join(base_dir, 'metrics_oracle_topk.csv'),
+                [oracle_row],
+                list(context.keys()) + ['oracle_candidate_definition'] + oracle_keys,
+            )
+            self._append_csv(
+                os.path.join(base_dir, 'metrics_oracle_candidates.csv'),
+                [dict(context, **row) for row in acc.get('oracle_candidates', [])],
+                list(context.keys()) + [
+                    'query_start', 'target_index', 'target_channel',
+                    'oracle_rank', 'memory_index', 'memory_start',
+                    'future_mse', 'valid',
+                ],
+            )
+            if bool(int(getattr(self.args, 'oracle_candidate_eval', 0))):
+                return
+
         main_keys = [
             'final_mse', 'final_mae', 'base_mse', 'base_mae', 'ret_mse', 'ret_mae',
             'retrieval_gain', 'ret_gain',
             f'final_mse_{focus}', f'base_mse_{focus}', f'ret_mse_{focus}',
             f'final_gain_{focus}', f'ret_gain_{focus}',
-            'oracle_gate_mse', 'oracle_gate_gain', 'ret_better_frac',
-            f'oracle_gate_mse_{focus}', f'oracle_gate_gain_{focus}', f'ret_better_frac_{focus}',
+            'ret_better_frac', f'ret_better_frac_{focus}',
             'lambda_mean', 'lambda_std', 'lambda_p10', 'lambda_p50', 'lambda_p90',
             f'lambda_{focus}', 'lambda_ret_adv_corr', f'lambda_ret_adv_corr_{focus}',
             'alpha_entropy_norm', 'alpha_top1_mean', 'alpha_margin_mean',
             'beta_entropy_norm', 'beta_effective_relations', 'beta_max_mean', 'beta_margin_mean',
             'beta_self_mean', 'beta_cross_mean', 'beta_self_minus_cross',
+            'relation_source_count', 'pearson_selected_mean',
+            'abs_pearson_selected_mean', 'negative_pearson_frac',
             'relation_mse_self', 'relation_mse_cross_best', 'relation_mse_best',
-            'beta_expected_relation_mse', 'beta_oracle_top1_match', 'beta_relation_rank_corr',
-            'beta_gain_vs_uniform', 'beta_regret_vs_oracle',
-            'beta_OT_oracle_top1_match', 'beta_OT_top1_mean', 'beta_OT_on_oracle_mean',
+            'beta_expected_relation_mse', 'beta_best_relation_top1_match', 'beta_relation_rank_corr',
+            'beta_gain_vs_uniform', 'beta_regret_vs_best_relation',
+            'beta_OT_best_relation_top1_match', 'beta_OT_top1_mean',
+            'beta_OT_on_best_relation_mean',
             'relation_mse_OT_best', 'relation_mse_OT_beta_top1', 'relation_mse_OT_beta_regret',
             'channel_gain_mean', 'channel_gain_min', 'channel_gain_max',
             'frac_channels_improved', 'num_channels_improved',
@@ -580,8 +857,23 @@ class Exp_Stage2_Relation(Exp_Basic):
             os.path.join(base_dir, 'metrics_ot_relation.csv'),
             ot_rows,
             list(context.keys()) + [
-                'target_channel', 'source_channel', 'beta_mean', 'relation_mse',
-                'rank_by_beta', 'rank_by_relation_mse', 'is_self', 'is_oracle_best',
+                'target_index', 'target_channel', 'source_index', 'source_channel',
+                'source_slot', 'beta_mean', 'relation_mse',
+                'pearson', 'abs_pearson',
+                'rank_by_beta', 'rank_by_relation_mse', 'is_self', 'is_best_relation',
+            ],
+        )
+
+        branch_rows = self._relation_branch_rows(acc, context)
+        self._append_csv(
+            os.path.join(base_dir, 'metrics_relation_branches.csv'),
+            branch_rows,
+            list(context.keys()) + [
+                'target_index', 'target_channel', 'source_index', 'source_channel',
+                'source_slot', 'branch',
+                'pearson', 'abs_pearson',
+                'beta_mean', 'beta_top1_frac', 'relation_mse', 'best_relation_frac',
+                'rank_by_beta', 'rank_by_relation_mse', 'is_self',
             ],
         )
 
@@ -646,6 +938,16 @@ class Exp_Stage2_Relation(Exp_Basic):
                     )
                     loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
 
+            if retrieval_cache is not None and 'candidate_oracle_mse_sc' in retrieval_cache:
+                for key in (
+                    'candidate_oracle_mse_sc',
+                    'candidate_oracle_mae_sc',
+                    'full_oracle_mse_sc',
+                    'full_oracle_mae_sc',
+                    'candidate_oracle_top_k_effective_sc',
+                ):
+                    debug[key] = retrieval_cache[key].to(batch_x.device)
+
             with torch.no_grad():
                 metrics = self._metrics(y_final, y_base, y_ret, batch_y, beta, lam, debug, counts, valid_query)
                 metrics['loss'] = loss.detach()
@@ -654,6 +956,9 @@ class Exp_Stage2_Relation(Exp_Basic):
                 if split is not None and epoch is not None and setting is not None:
                     self._update_csv_accumulators(
                         csv_acc, y_final, y_base, y_ret, batch_y, beta, lam, debug, valid_query
+                    )
+                    self._update_oracle_candidate_rows(
+                        csv_acc, retrieval_cache, batch_start_idx, valid_query
                     )
 
         averaged = avg.average()
@@ -692,19 +997,21 @@ class Exp_Stage2_Relation(Exp_Basic):
             'lambda_mean',
             'beta_self_mean', 'beta_cross_mean',
             'beta_self_minus_cross', 'beta_max_mean', 'beta_margin_mean',
+            'relation_source_count', 'pearson_selected_mean',
+            'abs_pearson_selected_mean', 'negative_pearson_frac',
             'alpha_entropy', 'alpha_entropy_norm', 'alpha_top1_mean', 'alpha_margin_mean',
             'beta_entropy', 'beta_entropy_norm',
             'beta_effective_relations',
             'relation_mse_mean', 'relation_mse_best',
             'relation_mse_self', 'relation_mse_cross_best',
             'beta_expected_relation_mse',
-            'beta_oracle_top1_match',
+            'beta_best_relation_top1_match',
             'beta_relation_rank_corr',
-            'beta_gain_vs_uniform', 'beta_regret_vs_oracle',
+            'beta_gain_vs_uniform', 'beta_regret_vs_best_relation',
             'top_k_effective',
-            'beta_OT_oracle_top1_match',
+            'beta_OT_best_relation_top1_match',
             'beta_OT_top1_mean',
-            'beta_OT_on_oracle_mean',
+            'beta_OT_on_best_relation_mean',
             'relation_mse_OT_best',
             'relation_mse_OT_beta_top1',
             'relation_mse_OT_beta_regret',
@@ -717,8 +1024,6 @@ class Exp_Stage2_Relation(Exp_Basic):
             f'ret_mse_{focus}',
             f'final_gain_{focus}',
             f'ret_gain_{focus}',
-            f'oracle_gate_mse_{focus}',
-            f'oracle_gate_gain_{focus}',
             f'ret_better_frac_{focus}',
             f'lambda_ret_adv_corr_{focus}',
         ])
@@ -769,6 +1074,10 @@ class Exp_Stage2_Relation(Exp_Basic):
         return self.model
 
     def test(self, setting, test=0):
+        if bool(int(getattr(self.args, 'oracle_candidate_eval', 0))) and not self._use_retrieval_cache():
+            raise ValueError(
+                '--oracle_candidate_eval requires retrieval enabled and --freeze_stage1_encoder 1'
+            )
         path = os.path.join(self.args.checkpoints, 'stage2', self.args.data, f'seq{self.args.seq_len}_pred{self.args.pred_len}', setting)
         ckpt_path = self.best_checkpoint_path or os.path.join(path, 'checkpoint.pth')
         if os.path.exists(ckpt_path):
@@ -784,4 +1093,22 @@ class Exp_Stage2_Relation(Exp_Basic):
         self._build_retrieval_cache('test', test_loader)
         metrics = self._run_loader(test_loader, optimizer=None, split='test', epoch=0, setting=setting)
         print(format_metrics('Stage2 Test', metrics))
+        if 'final_mse' in metrics and 'final_mae' in metrics:
+            print(
+                'Stage2 Test Final\n'
+                f'final_mse: {float(metrics["final_mse"]):.6f}\n'
+                f'final_mae: {float(metrics["final_mae"]):.6f}'
+            )
+        if 'candidate_oracle_mse' in metrics:
+            print(
+                'Stage2 Candidate Oracle Test\n'
+                f'candidate_oracle_mse: {float(metrics["candidate_oracle_mse"]):.6f}\n'
+                f'candidate_oracle_mae: {float(metrics["candidate_oracle_mae"]):.6f}\n'
+                f'candidate_oracle_top_k_effective: '
+                f'{float(metrics["candidate_oracle_top_k_effective"]):.2f}\n'
+                f'relation_oracle_mse: {float(metrics["relation_oracle_mse"]):.6f}\n'
+                f'relation_oracle_mae: {float(metrics["relation_oracle_mae"]):.6f}\n'
+                f'full_oracle_mse: {float(metrics["full_oracle_mse"]):.6f}\n'
+                f'full_oracle_mae: {float(metrics["full_oracle_mae"]):.6f}'
+            )
         return metrics

@@ -9,6 +9,7 @@ from torch import optim
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.relation_memory import RelationMemorySampler, build_memory_index
+from utils.relation_graph import load_or_build_relation_graph
 from utils.stage1_metrics import MetricAverager, format_metrics
 from utils.tensorboard_logger import build_summary_writer, write_metric_scalars
 from utils.tools import adjust_learning_rate
@@ -26,6 +27,7 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.global_update_step = 0
         self.total_update_steps = 1
         self.val_probe_batch = None
+        self.relation_graph = None
 
     def _build_model(self):
         model = self.model_dict[self.args.model].Model(self.args).float()
@@ -50,8 +52,15 @@ class Exp_Stage1_Relation(Exp_Basic):
             pred_len=self.args.pred_len,
             mask_mode=self.args.candidate_mask,
         )
-        self.memory_y = torch.from_numpy(self.memory_sampler.memory_y).float().to(self.device)
-        self.memory_x_last = torch.from_numpy(self.memory_sampler.memory_x[:, -1, :]).float().to(self.device)
+        self.relation_graph = load_or_build_relation_graph(
+            train_data, self.args, require_existing=False
+        )
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        model.set_relation_graph(self.relation_graph)
+        if self.relation_graph is not None:
+            self.args.relation_channel_names = self.relation_graph['channel_names']
+        self.memory_y = torch.from_numpy(self.memory_sampler.memory_y).float()
+        self.memory_x_last = torch.from_numpy(self.memory_sampler.memory_x[:, -1, :]).float()
 
     def _move_batch(self, batch_x, batch_y, batch_start_idx):
         batch_x = batch_x.float().to(self.device)
@@ -68,19 +77,20 @@ class Exp_Stage1_Relation(Exp_Basic):
 
     def _build_key_bank(self):
         model = self.model.module if hasattr(self.model, 'module') else self.model
+        self.key_bank = None
         self.key_bank = model.build_embedding_bank(
             self.memory_sampler.memory_x,
             self.device,
             chunk_size=self.args.stage1_key_chunk_size,
-        ).to(self.device)
+        )
         print(f'[stage1] built relation key memory bank: {tuple(self.key_bank.shape)}')
-        if self.args.stage1_teacher_mode == 'ema_target':
+        if model.requires_ema_teacher_bank():
             self.teacher_key_bank = model.build_teacher_embedding_bank(
                 self.memory_sampler.memory_y,
                 self.device,
                 chunk_size=self.args.stage1_key_chunk_size,
                 memory_x_last=self.memory_sampler.memory_x[:, -1, :],
-            ).to(self.device)
+            )
             print(f'[stage1] built EMA target teacher key memory bank: {tuple(self.teacher_key_bank.shape)}')
         else:
             self.teacher_key_bank = None
@@ -94,10 +104,10 @@ class Exp_Stage1_Relation(Exp_Basic):
         return final - (final - base) * (math.cos(math.pi * progress) + 1.0) / 2.0
 
     def _update_ema_teacher(self):
-        if self.args.stage1_teacher_mode != 'ema_target':
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        if not model.requires_ema_teacher_bank():
             return None
         momentum = self._ema_momentum()
-        model = self.model.module if hasattr(self.model, 'module') else self.model
         model.update_ema_teacher(momentum)
         self.global_update_step += 1
         return momentum
@@ -105,12 +115,22 @@ class Exp_Stage1_Relation(Exp_Basic):
     def _run_loader(self, loader, optimizer=None):
         train = optimizer is not None
         self.model.train(train)
-        if self.args.stage1_teacher_mode == 'ema_target':
-            model = self.model.module if hasattr(self.model, 'module') else self.model
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        if model.requires_ema_teacher_bank():
             model.teacher_encoder.eval()
         avg = MetricAverager()
 
-        for batch_x, batch_y, batch_start_idx in loader:
+        all_targets = model.target_channels()
+        target_chunk_size = int(getattr(self.args, 'relation_target_chunk_size', 0))
+        if target_chunk_size <= 0 or target_chunk_size >= len(all_targets):
+            target_chunks = [all_targets]
+        else:
+            target_chunks = [
+                all_targets[start:start + target_chunk_size]
+                for start in range(0, len(all_targets), target_chunk_size)
+            ]
+
+        for batch_idx, (batch_x, batch_y, batch_start_idx) in enumerate(loader):
             batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
             cand_mask, counts = self._candidate_mask(batch_start_idx)
             metrics_extra = {
@@ -126,6 +146,8 @@ class Exp_Stage1_Relation(Exp_Basic):
                     key_bank=self.key_bank,
                     teacher_key_bank=self.teacher_key_bank,
                     memory_x_last=self.memory_x_last,
+                    active_target_channels=target_chunks[batch_idx % len(target_chunks)],
+                    compute_detailed_metrics=False,
                 )
                 if torch.isfinite(loss) and loss.requires_grad:
                     loss.backward()
@@ -142,8 +164,10 @@ class Exp_Stage1_Relation(Exp_Basic):
                         key_bank=self.key_bank,
                         teacher_key_bank=self.teacher_key_bank,
                         memory_x_last=self.memory_x_last,
+                        active_target_channels=target_chunks[batch_idx % len(target_chunks)],
+                        compute_detailed_metrics=True,
                     )
-                    if self.args.stage1_teacher_mode == 'ema_target':
+                    if model.requires_ema_teacher_bank():
                         metrics = dict(metrics)
                         metrics['ema_momentum'] = self._ema_momentum()
 
@@ -154,6 +178,9 @@ class Exp_Stage1_Relation(Exp_Basic):
         return avg.average()
 
     def _set_validation_probe(self, vali_loader):
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        if model.loss_mode == 'rnc':
+            return
         if not bool(int(getattr(self.args, 'stage1_probe_vis', 1))):
             return
         if self.val_probe_batch is not None:
@@ -165,6 +192,9 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.val_probe_batch = batch
 
     def _plot_validation_probe(self, writer, setting, epoch):
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        if model.loss_mode == 'rnc':
+            return
         if not bool(int(getattr(self.args, 'stage1_probe_vis', 1))):
             return
         if self.val_probe_batch is None:
@@ -177,7 +207,6 @@ class Exp_Stage1_Relation(Exp_Basic):
             print('[stage1_probe] matplotlib is unavailable; skip validation probe plot')
             return
 
-        model = self.model.module if hasattr(self.model, 'module') else self.model
         was_training = self.model.training
         self.model.eval()
         batch_x, batch_y, batch_start_idx = self.val_probe_batch
@@ -259,31 +288,83 @@ class Exp_Stage1_Relation(Exp_Basic):
         writer = build_summary_writer(self.args, 'stage1', setting)
         tb_keys = [
             'loss', 'kl', 'self_kl', 'cross_kl',
+            'stage1_loss_total', 'stage1_loss_kl', 'stage1_loss_rank', 'stage1_loss_rank_weighted',
+            'total_loss', 'kl_loss', 'weighted_kl_loss', 'rank_loss', 'rnc_loss',
+            'expected_mse_loss', 'weighted_expected_mse_loss',
             'retrieval_gain', 'self_retrieval_gain', 'cross_retrieval_gain',
             'recall@1', 'recall@5',
             'self_recall@1', 'self_recall@5',
             'cross_recall@1', 'cross_recall@5',
             'teacher_entropy', 'student_entropy',
+            'student_entropy_normalized', 'student_max_probability',
+            'student_top5_probability_mass',
+            'student_expected_future_mse_raw',
+            'student_expected_future_mse_normalized',
             'teacher_effective_candidates', 'student_effective_candidates',
             'teacher_top1_prob', 'student_top1_prob',
             'student_prob_on_teacher_top1',
             'teacher_student_prob_l1',
             'teacher_student_top5_overlap',
             'student_teacher_top1_match',
+            'rank_teacher_student_topk_overlap',
+            'rank_teacher_student_topk_overlap_count',
+            'rank_missed_positive_count',
+            'rank_hard_negative_count',
+            'rank_valid_pair_count',
+            'rank_pair_accuracy',
+            'rank_score_gap',
+            'rank_margin_satisfied_ratio',
+            'rank_teacher_topk_future_mse',
+            'rank_student_topk_future_mse',
+            'rank_missed_positive_future_mse',
+            'rank_hard_negative_future_mse',
+            'rnc_valid_query_count', 'rnc_anchor_count',
+            'oracle_recall_at_1', 'oracle_recall_at_5', 'oracle_recall_at_10',
+            'retrieved_future_mse_at_1', 'retrieved_future_mse_at_5',
+            'retrieved_future_mse_at_10',
+            'oracle_future_mse_at_1', 'oracle_future_mse_at_5',
+            'oracle_future_mse_at_10',
+            'retrieval_regret_at_1', 'retrieval_regret_at_5',
+            'retrieval_regret_at_10',
+            'ndcg_at_5', 'ndcg_at_10', 'spearman_score_vs_negative_mse',
             'ema_momentum',
         ]
 
         try:
             for epoch in range(self.args.train_epochs):
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize(self.device)
                 epoch_time = time.time()
+                phase_time = epoch_time
                 self._build_key_bank()
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize(self.device)
+                key_bank_train_time = time.time() - phase_time
+                phase_time = time.time()
                 train_metrics = self._run_loader(train_loader, optimizer=optimizer)
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize(self.device)
+                train_time = time.time() - phase_time
+                phase_time = time.time()
                 self._build_key_bank()
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize(self.device)
+                key_bank_val_time = time.time() - phase_time
+                phase_time = time.time()
                 val_metrics = self.vali(vali_data, vali_loader)
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize(self.device)
+                val_time = time.time() - phase_time
                 val_loss = val_metrics.get('loss', float('inf'))
 
                 print(format_metrics(f'Epoch {epoch + 1} Train', train_metrics))
                 print(format_metrics(f'Epoch {epoch + 1} Vali', val_metrics))
+                print(
+                    '[stage1 timing] key_bank_train={:.2f}s train={:.2f}s '
+                    'key_bank_val={:.2f}s validation={:.2f}s'.format(
+                        key_bank_train_time, train_time, key_bank_val_time, val_time
+                    )
+                )
                 print('Epoch: {} cost time: {:.2f}s'.format(epoch + 1, time.time() - epoch_time))
                 write_metric_scalars(writer, 'train', train_metrics, epoch + 1, tb_keys)
                 write_metric_scalars(writer, 'vali', val_metrics, epoch + 1, tb_keys)
@@ -297,6 +378,7 @@ class Exp_Stage1_Relation(Exp_Basic):
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
                         'args': vars(self.args),
+                        'relation_graph': self.relation_graph,
                         'epoch': epoch + 1,
                         'best_val_loss': best_val_loss,
                     }, best_path)

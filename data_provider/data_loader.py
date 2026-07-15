@@ -64,6 +64,7 @@ class Dataset_ETT_hour(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+        self.channel_names = list(df_data.columns)
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -71,6 +72,7 @@ class Dataset_ETT_hour(Dataset):
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
+        data = data.astype(np.float32, copy=False)
 
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
@@ -158,6 +160,7 @@ class Dataset_ETT_minute(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+        self.channel_names = list(df_data.columns)
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -165,6 +168,7 @@ class Dataset_ETT_minute(Dataset):
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
+        data = data.astype(np.float32, copy=False)
 
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
@@ -264,6 +268,7 @@ class Dataset_Custom(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+        self.channel_names = list(df_data.columns)
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -271,6 +276,7 @@ class Dataset_Custom(Dataset):
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
+        data = data.astype(np.float32, copy=False)
 
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
