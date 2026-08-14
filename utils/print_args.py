@@ -38,6 +38,10 @@ def print_args(args):
     print(f'  {"Distil:":<20}{args.distil:<20}{"Dropout:":<20}{args.dropout:<20}')
     print(f'  {"Embed:":<20}{args.embed:<20}{"Activation:":<20}{args.activation:<20}')
     print(f'  {"Output Attention:":<20}{args.output_attention:<20}')
+    # The retrieval KL teacher decides whether the objective has a degenerate
+    # constant-embedding solution, so it has to be readable straight off a log.
+    print(f'  {"Retrieval KL W:":<20}{getattr(args, "retrieval_kl_weight", 0.0):<20}'
+          f'{"Retrieval KL Teacher:":<22}{getattr(args, "retrieval_kl_teacher", "ema"):<20}')
     print()
 
     print("\033[1m" + "Run Parameters" + "\033[0m")

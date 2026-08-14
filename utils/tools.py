@@ -22,9 +22,31 @@ def adjust_learning_rate(optimizer, epoch, args):
         lr_adjust = {epoch: args.learning_rate /2 * (1 + math.cos(epoch / args.train_epochs * math.pi))}
     if epoch in lr_adjust.keys():
         lr = lr_adjust[epoch]
+        base_lr = float(args.learning_rate)
+        applied = []
         for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
-        print('Updating learning rate to {}'.format(lr))
+            # A pretrained backbone starts orders of magnitude below the freshly
+            # initialised heads, so halving it every epoch switches it off after
+            # two or three epochs. Such a group opts out of the schedule and
+            # holds its learning rate instead.
+            if not param_group.get('lr_decay', True):
+                applied.append(param_group['lr'])
+                continue
+            # A group that was created with its own initial_lr (a pretrained
+            # encoder deliberately put on a far smaller step) keeps its ratio to
+            # the base learning rate. Overwriting every group with a single
+            # value silently discards that split after the first epoch.
+            initial_lr = param_group.get('initial_lr')
+            if initial_lr is not None and base_lr:
+                param_group['lr'] = lr * (float(initial_lr) / base_lr)
+            else:
+                param_group['lr'] = lr
+            applied.append(param_group['lr'])
+        if len(set(applied)) > 1:
+            print('Updating learning rate to {} (per group: {})'.format(
+                lr, ', '.join('{:g}'.format(v) for v in applied)))
+        else:
+            print('Updating learning rate to {}'.format(lr))
 
 
 class EarlyStopping:

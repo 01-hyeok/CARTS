@@ -6,16 +6,12 @@ import numpy as np
 
 
 def relation_graph_enabled(args):
-    channels = int(args.enc_in)
-    threshold = int(getattr(args, 'relation_graph_threshold', 21))
     mode = getattr(args, 'source_mode', 'auto')
     if mode == 'all':
         return False
-    if mode == 'topk_corr':
+    if mode in ('auto', 'topk_corr'):
         return True
-    if mode != 'auto':
-        raise ValueError(f'Unsupported source_mode: {mode}')
-    return channels >= threshold
+    raise ValueError(f'Unsupported source_mode: {mode}')
 
 
 def default_relation_graph_path(args):

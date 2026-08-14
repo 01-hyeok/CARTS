@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import os
 import torch
 from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
@@ -8,14 +9,55 @@ from utils.print_args import print_args
 import random
 import numpy as np
 
-if __name__ == '__main__':
-    fix_seed = 0
-    random.seed(fix_seed)
-    np.random.seed(fix_seed)
-    torch.manual_seed(fix_seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
+SETTING_COMPONENT_MAX_BYTES = 200
+
+
+def _shorten_path_component(value, max_bytes=SETTING_COMPONENT_MAX_BYTES):
+    """Keep an experiment name within a safe single-component path length."""
+    encoded = value.encode('utf-8')
+    if len(encoded) <= max_bytes:
+        return value
+
+    digest = hashlib.sha256(encoded).hexdigest()[:12]
+    prefix_max_bytes = max_bytes - len(digest) - 1
+    prefix = encoded[:prefix_max_bytes].decode('utf-8', errors='ignore')
+    prefix = prefix.rstrip(' ._-')
+    return '{}_{}'.format(prefix, digest)
+
+
+def build_experiment_setting(args, iteration):
+    setting_task_name = args.task_name.replace('_relation', '')
+    full_setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
+        setting_task_name,
+        args.model_id,
+        args.model,
+        args.data,
+        args.features,
+        args.seq_len,
+        args.label_len,
+        args.pred_len,
+        args.d_model,
+        args.n_heads,
+        args.e_layers,
+        args.d_layers,
+        args.d_ff,
+        args.expand,
+        args.d_conv,
+        args.factor,
+        args.embed,
+        args.distil,
+        args.des,
+        iteration,
+    )
+    setting = _shorten_path_component(full_setting)
+    if setting != full_setting:
+        print('[setting] experiment name exceeded {} bytes and was shortened to: {}'.format(
+            SETTING_COMPONENT_MAX_BYTES, setting
+        ))
+    return setting
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TimesNet')
 
     # basic config
@@ -98,24 +140,55 @@ if __name__ == '__main__':
     parser.add_argument('--patch_len', type=int, default=16, help='Stage-1 relation patch length')
     parser.add_argument('--stride', type=int, default=16, help='Stage-1 relation patch stride')
     parser.add_argument('--relation_encoder_type', type=str, default='transformer',
-                        choices=['transformer', 'mlp'], help='Relation encoder backbone for Stage-1/Stage-2')
+                        choices=['transformer', 'mlp', 'tcn'],
+                        help='Relation encoder backbone for Stage-1/Stage-2')
     parser.add_argument('--relation_pooling', type=str, default='cls',
-                        choices=['cls', 'mean'], help='Transformer relation pooling for Stage-1/Stage-2')
-    parser.add_argument('--relation_self_fill', type=str, default='zero',
-                        choices=['zero', 'repeat'], help='MLP self relation second-slot fill mode')
-    parser.add_argument('--tau_student', type=float, default=0.07, help='Stage-1 student softmax temperature')
+                        choices=['cls', 'mean', 'last'],
+                        help=('Relation pooling: cls/mean for transformer, '
+                              'last/mean for tcn (last reads the causal end state)'))
+    parser.add_argument('--relation_tcn_layers', type=int, default=4,
+                        help='TCN relation encoder residual blocks; dilation doubles per block')
+    parser.add_argument('--relation_tcn_kernel_size', type=int, default=3,
+                        help='TCN relation encoder causal convolution kernel size')
+    parser.add_argument('--relation_tcn_channels', type=int, default=0,
+                        help='TCN relation encoder hidden width; 0 uses d_model')
+    parser.add_argument('--relation_tcn_dropout', type=float, default=-1.0,
+                        help='TCN relation encoder dropout; negative uses --dropout')
+    parser.add_argument('--relation_self_fill', type=str, default='linear',
+                        choices=['zero', 'repeat', 'linear'],
+                        help=(
+                            'MLP relation input mode: zero/repeat pad a length-L relation to 2L; '
+                            'linear keeps self at L and projects cross [target,source] '
+                            'from 2L to L before a shared L->d_ff MLP'
+                        ))
+    parser.add_argument('--tau_student', type=float, default=0.1, help='Stage-1 student softmax temperature')
     parser.add_argument('--tau_teacher', type=float, default=0.1, help='Stage-1 teacher softmax temperature')
     parser.add_argument('--stage1_key_chunk_size', type=int, default=1024,
                         help='Stage-1 key encoder chunk size for memory-safe full candidate training')
+    parser.add_argument('--stage1_overfit_queries', type=int, default=0,
+                        help='Diagnostic mode: fixed number of train queries; 0 disables tiny-set overfit')
+    parser.add_argument('--stage1_overfit_candidates', type=int, default=0,
+                        help='Diagnostic mode: fixed candidate count shared by all tiny-set queries')
+    parser.add_argument('--stage1_overfit_steps', type=int, default=0,
+                        help='Diagnostic mode: repeated optimizer steps per Stage-1 epoch')
+    parser.add_argument('--stage1_overfit_oracle_per_query', type=int, default=20,
+                        help='Oracle-ranked candidates contributed by each tiny-set query')
+    parser.add_argument('--stage1_overfit_key_refresh', type=str, default='epoch',
+                        choices=['epoch', 'step'],
+                        help='Diagnostic mode: rebuild the relation key bank per epoch or optimizer step')
+    parser.add_argument('--stage1_overfit_self_only', type=int, default=0,
+                        help='Diagnostic mode: restrict every target to its self-relation branch')
+    parser.add_argument('--stage1_direct_eval', type=int, default=0,
+                        help='Evaluate encoder-free Diff1 Direct retrieval with the Stage-1 metrics')
     parser.add_argument('--candidate_mask', type=str, default='raft',
                         choices=['raft', 'strict_causal', 'overlap_only', 'none'],
                         help='Stage-1/Stage-2 memory candidate mask')
     parser.add_argument('--source_mode', type=str, default='auto', choices=['auto', 'all', 'topk_corr'],
-                        help='Source selection: auto enables absolute-Pearson Top-N when enc_in reaches threshold')
+                        help='Source selection: auto/topk_corr use self plus absolute-Pearson Top-N; all uses every channel')
     parser.add_argument('--relation_top_n', type=int, default=3,
                         help='Total source channels per target including self; remaining sources use absolute Pearson')
     parser.add_argument('--relation_graph_threshold', type=int, default=21,
-                        help='Auto-enable sparse Pearson relation graph when enc_in is at least this value')
+                        help='Deprecated compatibility option; auto now always uses the sparse Pearson graph')
     parser.add_argument('--relation_graph_path', type=str, default='',
                         help='Shared Stage1/Stage2 Pearson relation graph JSON path')
     parser.add_argument('--relation_target_chunk_size', type=int, default=0,
@@ -125,11 +198,20 @@ if __name__ == '__main__':
     parser.add_argument('--target_channel', type=int, default=None, help='Stage-1 single target channel')
     parser.add_argument('--teacher_mse_space', type=str, default='normalized', choices=['normalized', 'raw'],
                         help='Space used for teacher future MSE')
-    parser.add_argument('--stage1_teacher_mode', type=str, default='mse', choices=['mse', 'pearson', 'ema_target'],
-                        help='Stage-1 teacher distribution source: future MSE, future Pearson similarity, or EMA target-future embedding similarity')
+    parser.add_argument('--stage1_teacher_mode', type=str, default='mse',
+                        choices=['mse', 'pearson', 'ema_target', 'ema_input'],
+                        help=('Stage-1 teacher source. ema_target preserves the legacy future-EMA '
+                              'teacher; ema_input uses an EMA copy on the same past input as the student'))
+    parser.add_argument('--relation_teacher_type', type=str, default=None,
+                        choices=['future_mse', 'ema'],
+                        help=('Experiment-2 teacher alias: future_mse maps to stage1_teacher_mode=mse; '
+                              'ema maps to stage1_teacher_mode=ema_input'))
     parser.add_argument('--relation_input_space', type=str, default='delta_last',
-                        choices=['absolute', 'delta_last'],
-                        help='Relation encoder input space: raw normalized values or values minus each role last value')
+                        choices=['absolute', 'delta_last', 'diff1', 'delta_last_diff1'],
+                        help=('Relation encoder input space: raw normalized values, values minus each '
+                              'role last value, first-order differences of length L-1, or '
+                              'delta_last and diff1 stacked as two encoder input channels '
+                              '(both cropped to the trailing L-1 steps)'))
     parser.add_argument('--relation_teacher_space', type=str, default='delta_last',
                         choices=['absolute', 'delta_last'],
                         help='Stage-1 MSE teacher space for future matching')
@@ -152,11 +234,32 @@ if __name__ == '__main__':
                         help='Source channel index for the fixed validation Stage-1 probe')
     parser.add_argument('--stage1_probe_dir', type=str, default='./stage1_vis',
                         help='Directory for fixed validation Stage-1 distribution probe plots')
+    parser.add_argument('--stage1_collapse_metrics', type=int, default=1,
+                        help='Compute relation-bank representation-collapse metrics each bank refresh')
+    parser.add_argument('--stage1_collapse_sample_size', type=int, default=256,
+                        help='Candidate embeddings sampled per relation for collapse diagnostics')
+    parser.add_argument('--stage1_collapse_dead_std_threshold', type=float, default=1e-3,
+                        help='Per-dimension standard-deviation threshold used to count dead dimensions')
+    parser.add_argument('--stage1_variance_weight', type=float, default=0.0,
+                        help='Weight for relation-wise VICReg variance loss on online query embeddings')
+    parser.add_argument('--stage1_covariance_weight', type=float, default=0.0,
+                        help='Weight for relation-wise VICReg covariance loss on online query embeddings')
+    parser.add_argument('--stage1_variance_target', type=float, default=1.0,
+                        help='Minimum pre-L2-normalization embedding standard deviation per dimension')
     parser.add_argument('--stage1_use_rank_loss', type=int, default=0,
                         help='Add future-aware top-k pairwise ranking loss to Stage-1')
     parser.add_argument('--stage1_loss_mode', type=str, default='kl',
-                        choices=['kl', 'kl_rank', 'rnc', 'kl_expected_mse'],
+                        choices=['kl', 'kl_infonce', 'kl_rank', 'rnc', 'kl_expected_mse', 'topk_coverage'],
                         help='Stage-1 objective; legacy stage1_use_rank_loss=1 maps kl to kl_rank')
+    parser.add_argument('--stage1_infonce_weight', type=float, default=0.5,
+                        help='InfoNCE mixture weight for kl_infonce; KL uses one minus this value')
+    parser.add_argument('--stage1_infonce_top_k', type=int, default=-1,
+                        help='Future-MSE positive count for multi-positive InfoNCE; <=0 reuses --top_k')
+    parser.add_argument('--stage1_infonce_positive_source', type=str, default='target_mse',
+                        choices=['target_mse', 'ema_cosine'],
+                        help='Positive Top-K source for multi-positive InfoNCE: target future MSE or branch-wise EMA future cosine')
+    parser.add_argument('--stage1_coverage_top_k', type=int, default=-1,
+                        help='Oracle positive count for Top-K Coverage Loss; <=0 reuses --top_k')
     parser.add_argument('--stage1_rank_weight', type=float, default=0.1,
                         help='Weight for Stage-1 future-aware ranking loss')
     parser.add_argument('--stage1_rank_margin', type=float, default=0.1,
@@ -182,20 +285,113 @@ if __name__ == '__main__':
     parser.add_argument('--stage1_ckpt_path', type=str, default='',
                         help='Stage-1 relation checkpoint used to initialize Stage-2 encoder')
     parser.add_argument('--stage1_encoder_init', type=str, default='checkpoint',
-                        choices=['checkpoint', 'random'],
-                        help='Initialize Stage-2 relation encoder from Stage-1 checkpoint or keep random weights')
+                        choices=['checkpoint', 'random', 'none'],
+                        help='Initialize Stage-2 relation encoder from Stage-1, random weights, or no Stage-1 encoder')
+    parser.add_argument('--stage2_retrieval_encoder', type=str, default='online',
+                        choices=['online', 'ema'],
+                        help='Stage-1 retrieval backbone to load for Stage-2; encoder and shared projection are loaded as a matched pair')
+    parser.add_argument('--stage2_retrieval_backbone', type=str, default='stage1',
+                        choices=['stage1', 'identity', 'pearson', 'chronos'],
+                        help=(
+                            'Retrieval representation used for Stage-2 cosine Top-K; '
+                            'identity directly uses the raw relation history without an encoder, '
+                            'pearson additionally mean-centers it so the score is the RAFT-style '
+                            'raw Pearson correlation'
+                        ))
+    parser.add_argument('--chronos_model_id', type=str, default='amazon/chronos-t5-base',
+                        help='Hugging Face checkpoint used by the Chronos retrieval backbone')
+    parser.add_argument('--chronos_embedding_dim', type=int, default=768,
+                        help='Encoder hidden size expected from the Chronos checkpoint')
+    parser.add_argument('--chronos_pooling', type=str, default='mean',
+                        choices=['mean', 'eos'],
+                        help=(
+                            'How a Chronos window becomes one vector. mean drops the EOS token '
+                            'and averages the value tokens (this repo default). eos keeps only '
+                            'the EOS summary token, which is what TS-RAG retrieves with '
+                            '(embeddings[:, -1, :])'
+                        ))
+    parser.add_argument('--chronos_context_length', type=int, default=512,
+                        help='Maximum history length passed to the frozen Chronos retrieval encoder')
+    parser.add_argument('--chronos_dtype', type=str, default='bfloat16',
+                        choices=['float32', 'float16', 'bfloat16'],
+                        help='Weight dtype used for frozen Chronos encoding')
+    parser.add_argument('--chronos_random_init', type=int, default=0,
+                        help='Reinitialize the Chronos T5 weights before freezing (random-encoder control)')
+    parser.add_argument('--chronos_projection_dim', type=int, default=0,
+                        help=(
+                            'Project the concatenated [target || source] Chronos embeddings to this '
+                            'dimension before the cosine Top-K; 0 keeps the raw 2*embedding_dim space'
+                        ))
+    parser.add_argument('--chronos_projection_mode', type=str, default='cross_only',
+                        choices=['cross_only', 'uniform'],
+                        help=(
+                            'cross_only mirrors shared_cross_projection: self keeps the raw pooled '
+                            'embedding and only cross branches are projected 2D -> D. uniform projects '
+                            'both branches from 2D to chronos_projection_dim'
+                        ))
+    parser.add_argument('--chronos_projection_trainable', type=int, default=0,
+                        help=(
+                            'Train the Chronos projection with the Stage-2 loss while the encoder '
+                            'stays frozen; requires --refresh_memory_every_epoch 1'
+                        ))
+    parser.add_argument('--chronos_finetune', type=int, default=0,
+                        help=(
+                            'Train the Chronos retrieval encoder with the Stage-2 loss instead of '
+                            'freezing it; requires --refresh_memory_every_epoch 1 so the memory keys '
+                            'are re-encoded as the query encoder moves'
+                        ))
+    parser.add_argument('--chronos_lr_decay', type=int, default=0,
+                        help=(
+                            'Let the Chronos encoder follow the Stage-2 lr schedule. Off by '
+                            'default: --lradj type1 halves every epoch, which drives a 1e-5 '
+                            'encoder step to ~1e-8 by epoch 10 and stops fine-tuning entirely'
+                        ))
+    parser.add_argument('--chronos_grad_checkpointing', type=int, default=1,
+                        help=(
+                            'Recompute Chronos encoder activations during backward instead of '
+                            'storing them; only applies with --chronos_finetune 1. Without it a '
+                            'seq_len 336 batch of 32 x 7 channels needs more than 79 GiB'
+                        ))
+    parser.add_argument('--chronos_lr', type=float, default=-1.0,
+                        help=(
+                            'Learning rate for the Chronos encoder parameters when --chronos_finetune 1; '
+                            'negative uses the Stage-2 learning_rate unchanged'
+                        ))
     parser.add_argument('--freeze_stage1_encoder', type=int, default=1,
                         help='Freeze Stage-1 relation encoder during Stage-2')
-    parser.add_argument('--refresh_memory_every_epoch', type=int, default=1,
-                        help='Refresh Stage-2 memory key bank at each epoch')
+    parser.add_argument('--refresh_memory_every_epoch', type=int, default=0,
+                        help='Refresh Stage-2 memory key bank at each epoch; frozen precomputed retrieval defaults to 0')
     parser.add_argument('--memory_cache_mode', type=str, default='precompute',
                         choices=['precompute', 'on_the_fly'], help='Stage-2 memory cache mode')
     parser.add_argument('--memory_chunk_size', type=int, default=1024,
                         help='Stage-2 memory encoder chunk size')
-    parser.add_argument('--tau_topk', type=float, default=0.07,
+    parser.add_argument('--tau_topk', type=float, default=0.1,
                         help='Stage-2 top-k attention softmax temperature')
-    parser.add_argument('--fusion_mode', type=str, default='mixture',
+    parser.add_argument('--retrieval_soft_all', type=int, default=0,
+                        help=(
+                            'Weight every valid candidate with softmax(scores/tau_topk) instead '
+                            'of selecting a Top-K first. Top-K picks indices, which is not '
+                            'differentiable, so the forecasting loss can only reweight candidates '
+                            'that were already chosen; weighting the whole bank puts every score '
+                            'on the gradient path and lets one end-to-end loss train retrieval. '
+                            'tau_topk has to be far smaller here - the softmax runs over N '
+                            'candidates, not k'
+                        ))
+    parser.add_argument('--retrieval_similarity', type=str, default='cosine',
+                        choices=['cosine', 'l2'],
+                        help=(
+                            'Stage-2 candidate score. cosine L2-normalises the query and key '
+                            'and takes a dot product. l2 skips that normalisation and scores '
+                            'with the negative mean squared distance, which is what TS-RAG '
+                            'retrieves with (faiss IndexFlatL2). On normalised vectors the two '
+                            'give the same ranking, so l2 only differs because the norm - the '
+                            'amplitude the encoder put in the embedding - is kept'
+                        ))
+    parser.add_argument('--fusion_mode', type=str, default='raft_concat',
                         choices=['residual', 'mixture', 'raft_concat'], help='Stage-2 base/retrieval fusion mode')
+    parser.add_argument('--stage2_relation_fusion', type=str, default='gate',
+                        choices=['concat_linear', 'gate'],
+                        help='Fuse relation retrieved futures with a shared score MLP and softmax gate, or concat+Linear')
     parser.add_argument('--relation_mixer_input', type=str, default='retrieved',
                         choices=['retrieved', 'retrieved_plus_query'], help='Stage-2 relation mixer input')
     parser.add_argument('--relation_mixer_hidden', type=int, default=128,
@@ -219,10 +415,28 @@ if __name__ == '__main__':
                         help='Use auxiliary retrieval forecast loss in Stage-2')
     parser.add_argument('--aux_ret_weight', type=float, default=0.1,
                         help='Auxiliary retrieval forecast loss weight')
+    parser.add_argument('--retrieval_kl_weight', type=float, default=0.0,
+                        help=(
+                            'End-to-end lambda on KL(future-MSE teacher || cosine student) over all '
+                            'candidates. Zero trains retrieval through the forecasting loss only, '
+                            'which cannot reorder candidates because Top-K is not differentiable. '
+                            'Uses --tau_teacher / --tau_student, as Stage-1 does'
+                        ))
+    parser.add_argument('--retrieval_kl_teacher', type=str, default='ema',
+                        choices=['ema', 'future_mse'],
+                        help=(
+                            'Teacher for the end-to-end retrieval KL. ema mirrors Stage-1: an EMA '
+                            'copy of the encoder embeds candidate futures and the cosine over those '
+                            'is the target, so end-to-end keeps the retrieval objective the 2-stage '
+                            'pipeline defines. future_mse replaces it with raw future L2 distance'
+                        ))
     parser.add_argument('--beta_entropy_reg', type=float, default=0.0,
                         help='Stage-2 relation beta entropy regularization weight')
     parser.add_argument('--oracle_candidate_eval', type=int, default=0,
-                        help='Evaluate ground-truth Top-K candidate and relation oracles on the Stage-2 test split only')
+                        help='Evaluate branchwise target/source-concat future Oracle Top-K on the Stage-2 test split only')
+    parser.add_argument('--stage2_oracle_train_mode', type=str, default='none',
+                        choices=['none', 'candidate', 'relation', 'full'],
+                        help='Use Oracle retrieval for Stage-2; full is encoder-free branchwise relation-future MSE Top-K plus MSE-softmax weighting')
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
@@ -280,6 +494,42 @@ if __name__ == '__main__':
     parser.add_argument('--extra_tag', type=str, default="", help="Anything extra")
 
     args = parser.parse_args()
+    if args.relation_teacher_type is not None:
+        mapped_teacher_mode = {
+            'future_mse': 'mse',
+            'ema': 'ema_input',
+        }[args.relation_teacher_type]
+        if args.stage1_teacher_mode not in ('mse', mapped_teacher_mode):
+            raise ValueError(
+                '--relation_teacher_type conflicts with --stage1_teacher_mode: '
+                f'{args.relation_teacher_type} vs {args.stage1_teacher_mode}'
+            )
+        args.stage1_teacher_mode = mapped_teacher_mode
+    if args.relation_encoder_type == 'tcn' and args.relation_pooling not in ('last', 'mean'):
+        raise ValueError(
+            '--relation_encoder_type tcn requires --relation_pooling last or mean, '
+            f'got {args.relation_pooling}'
+        )
+    if args.relation_encoder_type != 'tcn' and args.relation_pooling == 'last':
+        raise ValueError(
+            f'--relation_pooling last is only supported by the tcn relation encoder, '
+            f'got --relation_encoder_type {args.relation_encoder_type}'
+        )
+    if bool(int(args.stage1_direct_eval)):
+        if args.task_name != 'stage1_relation':
+            raise ValueError('--stage1_direct_eval requires --task_name stage1_relation')
+        if bool(int(args.is_training)):
+            raise ValueError('--stage1_direct_eval is evaluation-only; use --is_training 0')
+    fix_seed = int(args.seed)
+    random.seed(fix_seed)
+    np.random.seed(fix_seed)
+    torch.manual_seed(fix_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(fix_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    print(f'[seed] using seed={fix_seed}')
+
     if args.learning_rate is None:
         if args.task_name == 'stage1_relation':
             args.learning_rate = 1e-3
@@ -316,58 +566,17 @@ if __name__ == '__main__':
         for ii in range(args.itr):
             # setting record of experiments
             exp = Exp(args)  # set experiments
-            setting_task_name = args.task_name.replace('_relation', '')
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
-                setting_task_name,
-                args.model_id,
-                args.model,
-                args.data,
-                args.features,
-                args.seq_len,
-                args.label_len,
-                args.pred_len,
-                args.d_model,
-                args.n_heads,
-                args.e_layers,
-                args.d_layers,
-                args.d_ff,
-                args.expand,
-                args.d_conv,
-                args.factor,
-                args.embed,
-                args.distil,
-                args.des, ii)
+            setting = build_experiment_setting(args, ii)
 
             print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
             exp.train(setting)
 
-            if args.task_name != 'stage1_relation':
-                print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-                exp.test(setting)
+            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+            exp.test(setting)
             torch.cuda.empty_cache()
     else:
         ii = 0
-        setting_task_name = args.task_name.replace('_relation', '')
-        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
-            setting_task_name,
-            args.model_id,
-            args.model,
-            args.data,
-            args.features,
-            args.seq_len,
-            args.label_len,
-            args.pred_len,
-            args.d_model,
-            args.n_heads,
-            args.e_layers,
-            args.d_layers,
-            args.d_ff,
-            args.expand,
-            args.d_conv,
-            args.factor,
-            args.embed,
-            args.distil,
-            args.des, ii)
+        setting = build_experiment_setting(args, ii)
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))

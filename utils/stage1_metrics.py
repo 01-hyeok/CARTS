@@ -4,27 +4,35 @@ import torch
 class MetricAverager:
     def __init__(self):
         self.totals = {}
-        self.count = 0
+        self.weights = {}
 
-    def update(self, metrics):
-        self.count += 1
+    def update(self, metrics, weight=1.0):
+        weight = float(weight)
+        if weight <= 0:
+            return
         for key, value in metrics.items():
             if isinstance(value, torch.Tensor):
                 value = value.detach().float().mean()
                 current = self.totals.get(key)
-                self.totals[key] = value if current is None else current + value
+                weighted_value = value * weight
+                self.totals[key] = (
+                    weighted_value
+                    if current is None
+                    else current + weighted_value
+                )
             else:
                 current = self.totals.get(key, 0.0)
-                self.totals[key] = current + float(value)
+                self.totals[key] = current + float(value) * weight
+            self.weights[key] = self.weights.get(key, 0.0) + weight
 
     def average(self):
-        if self.count == 0:
+        if not self.totals:
             return {}
         return {
             key: (
-                value.item() / self.count
+                value.item() / self.weights[key]
                 if isinstance(value, torch.Tensor)
-                else value / self.count
+                else value / self.weights[key]
             )
             for key, value in self.totals.items()
         }

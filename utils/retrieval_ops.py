@@ -2,14 +2,32 @@ import torch
 import torch.nn.functional as F
 
 
-def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_topk):
-    """Retrieve target-channel futures with top-k cosine scores.
+def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_topk,
+                             similarity='cosine', soft_all=False):
+    """Retrieve target-channel futures by similarity over the candidate bank.
 
     Args:
-        z_q: [B, D], normalized query embeddings.
-        z_mem: [N, D], normalized memory key embeddings.
+        z_q: [B, D], query embeddings.
+        z_mem: [N, D], memory key embeddings.
         memory_value_c: [N, H], target-channel future values.
         valid_mask: [B, N], True for non-leaking candidates.
+        similarity: 'cosine' scores with a dot product and expects both sides to
+            be L2-normalised. 'l2' scores with the negative mean squared
+            distance and expects them *not* to be normalised - on normalised
+            vectors -||q-k||^2 = 2<q,k> - 2, a monotone map of the dot product,
+            so the two would return an identical Top-K. Dividing by D keeps the
+            l2 scores on a comparable scale to cosine so tau_topk still applies.
+        soft_all: weight *every* valid candidate with softmax(scores/tau_topk)
+            instead of taking a Top-K first. Top-K picks indices, which is not
+            differentiable, so the forecasting loss can currently only reshape
+            the weights over candidates that were already selected. Weighting the
+            whole bank puts every candidate score on the gradient path, which is
+            what makes a single end-to-end loss able to train retrieval.
+
+            tau_topk matters far more here: the softmax runs over N candidates
+            rather than k, so a temperature tuned for Top-K leaves the weights
+            spread over hundreds of them. Top-K indices are still computed for
+            the recall and oracle diagnostics.
     """
     bsz, num_memory = valid_mask.shape
     k = min(int(top_k), int(num_memory))
@@ -17,17 +35,41 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
         raise ValueError('top_k must be positive and memory bank must be non-empty')
 
     masked_fill = torch.finfo(z_q.dtype).min / 4
-    scores = torch.matmul(z_q, z_mem.transpose(0, 1))
+    if similarity == 'cosine':
+        scores = torch.matmul(z_q, z_mem.transpose(0, 1))
+    elif similarity == 'l2':
+        # Un-normalised keys are stored in half for the Chronos bank; squaring
+        # them there overflows, so the distance is always taken in float32.
+        z_q = z_q.float()
+        z_mem = z_mem.float()
+        dim = float(z_q.size(-1))
+        q_sq = z_q.pow(2).sum(dim=-1, keepdim=True)
+        k_sq = z_mem.pow(2).sum(dim=-1).unsqueeze(0)
+        scores = -(q_sq + k_sq - 2.0 * torch.matmul(z_q, z_mem.transpose(0, 1))) / dim
+    else:
+        raise ValueError(f'Unsupported retrieval similarity: {similarity}')
     scores = scores.masked_fill(~valid_mask, masked_fill)
 
+    # Kept in both modes: recall@k and the oracle metrics are defined on the
+    # Top-K set, and soft_all still needs them to stay comparable.
     top_scores, top_idx = torch.topk(scores, k=k, dim=-1)
     top_valid = top_scores > masked_fill / 2
     v_top = memory_value_c[top_idx]
 
-    scaled_scores = (top_scores / float(tau_topk)).masked_fill(~top_valid, masked_fill)
-    alpha = F.softmax(scaled_scores, dim=-1) * top_valid.float()
-    alpha = alpha / alpha.sum(dim=-1, keepdim=True).clamp_min(1e-8)
-    retrieved = (alpha.unsqueeze(-1) * v_top).sum(dim=1)
+    if soft_all:
+        alpha_all = F.softmax(scores / float(tau_topk), dim=-1) * valid_mask.float()
+        alpha_all = alpha_all / alpha_all.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+        retrieved = torch.matmul(alpha_all, memory_value_c.to(alpha_all.dtype))
+        # exp(H(alpha)) over the whole bank: how many candidates the weighting
+        # actually keeps. Top-K reports the same quantity over its k entries.
+        eff = torch.exp(-(alpha_all * torch.log(alpha_all + 1e-12)).sum(dim=-1))
+        alpha = alpha_all.gather(-1, top_idx)      # diagnostics only, not renormalised
+    else:
+        scaled_scores = (top_scores / float(tau_topk)).masked_fill(~top_valid, masked_fill)
+        alpha = F.softmax(scaled_scores, dim=-1) * top_valid.float()
+        alpha = alpha / alpha.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+        retrieved = (alpha.unsqueeze(-1) * v_top).sum(dim=1)
+        eff = top_valid.float().sum(dim=-1)
 
     debug = {
         'scores': scores,
@@ -36,6 +78,6 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
         'top_valid': top_valid,
         'v_top': v_top,
         'alpha': alpha,
-        'top_k_effective': top_valid.float().sum(dim=-1),
+        'top_k_effective': eff,
     }
     return retrieved, alpha, top_idx, top_scores, debug

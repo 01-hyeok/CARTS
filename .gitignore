@@ -33,6 +33,11 @@ logs/
 runs/
 stage1_vis/
 scripts/
+!scripts/
+scripts/*
+!scripts/run_experiment2_diff1_etth1.sh
+!scripts/run_experiment2_diff1.sh
+!scripts/summarize_experiment2_diff1.py
 outputs/
 results/
 metrics/

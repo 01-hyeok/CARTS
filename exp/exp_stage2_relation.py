@@ -95,6 +95,9 @@ class Exp_Stage2_Relation(Exp_Basic):
             'relation_teacher_space': getattr(self.args, 'relation_teacher_space', 'absolute'),
             'relation_value_space': getattr(self.args, 'relation_value_space', 'absolute'),
             'fusion_mode': self.args.fusion_mode,
+            'stage2_relation_fusion': getattr(self.args, 'stage2_relation_fusion', 'gate'),
+            'stage2_retrieval_encoder': getattr(self.args, 'stage2_retrieval_encoder', 'online'),
+            'stage2_retrieval_backbone': getattr(self.args, 'stage2_retrieval_backbone', 'stage1'),
             'relation_mixer_input': self.args.relation_mixer_input,
             'stage1_encoder_init': self.args.stage1_encoder_init,
             'disable_retrieval': int(getattr(self.args, 'disable_retrieval', 0)),
@@ -126,14 +129,43 @@ class Exp_Stage2_Relation(Exp_Basic):
             return ''
         return value
 
+    def _relation_metric_key(self, prefix, target_name, source_name):
+        safe_target = ''.join(ch if ch.isalnum() else '_' for ch in str(target_name))
+        safe_source = ''.join(ch if ch.isalnum() else '_' for ch in str(source_name))
+        return f'{prefix}_{safe_target}_{safe_source}'
+
     def _retrieval_disabled(self):
         return bool(int(getattr(self.args, 'disable_retrieval', 0)))
+
+    def _oracle_train_mode(self):
+        return getattr(self.args, 'stage2_oracle_train_mode', 'none')
+
+    def _encoder_free_full_oracle(self):
+        return self._oracle_train_mode() == 'full'
+
+    def _active_relation_order(self):
+        if self._retrieval_disabled():
+            return None
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        return [
+            model.source_channels(channel)
+            for channel in model.target_channels()
+        ]
 
     def _build_model(self):
         model = self.model_dict[self.args.model].Model(self.args).float()
         encoder_init = getattr(self.args, 'stage1_encoder_init', 'checkpoint')
+        retrieval_backbone = getattr(self.args, 'stage2_retrieval_backbone', 'stage1')
         if self._retrieval_disabled():
             print('[stage2] retrieval disabled; skipping Stage-1 encoder checkpoint initialization')
+        elif self._encoder_free_full_oracle():
+            print('[stage2] encoder-free Full Oracle; skipping Stage-1 encoder checkpoint initialization')
+        elif retrieval_backbone == 'identity':
+            print('[stage2] using encoder-free identity relation retrieval')
+        elif retrieval_backbone == 'pearson':
+            print('[stage2] using encoder-free raw Pearson relation retrieval')
+        elif retrieval_backbone == 'chronos':
+            print(f'[stage2] using frozen Chronos backbone: {self.args.chronos_model_id}')
         elif encoder_init == 'checkpoint':
             if not self.args.stage1_ckpt_path:
                 raise ValueError('--stage1_ckpt_path is required when --stage1_encoder_init checkpoint')
@@ -142,6 +174,20 @@ class Exp_Stage2_Relation(Exp_Basic):
             print('[stage2] using random Stage-1 encoder initialization')
         else:
             raise ValueError(f'Unsupported stage1_encoder_init: {encoder_init}')
+        if self._oracle_train_mode() != 'none':
+            if self._retrieval_disabled():
+                raise ValueError('Stage-2 oracle training requires retrieval enabled')
+            if (
+                not self._encoder_free_full_oracle()
+                and not bool(int(getattr(self.args, 'freeze_stage1_encoder', 0)))
+            ):
+                raise ValueError('Stage-2 oracle training requires --freeze_stage1_encoder 1')
+            if getattr(self.args, 'relation_mixer_input', 'retrieved') != 'retrieved':
+                raise ValueError(
+                    'Stage-2 oracle training requires --relation_mixer_input retrieved '
+                    'because encoder-free Oracle branches do not provide query embeddings'
+                )
+            print(f'[stage2] oracle training mode: {self._oracle_train_mode()}')
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
@@ -150,7 +196,66 @@ class Exp_Stage2_Relation(Exp_Basic):
         return data_provider(self.args, flag, shuffle=shuffle)
 
     def _select_optimizer(self):
-        params = [p for p in self.model.parameters() if p.requires_grad]
+        trainable = [
+            (name, param)
+            for name, param in self.model.named_parameters()
+            if param.requires_grad
+        ]
+        if self._retrieval_disabled():
+            unexpected = [
+                name
+                for name, _ in trainable
+                if not (
+                    name.startswith('base_head.')
+                    or name.startswith('module.base_head.')
+                )
+            ]
+            if unexpected:
+                raise RuntimeError(
+                    'No Retrieval must train only the base predictor; '
+                    f'unexpected trainable parameters: {unexpected}'
+                )
+        if not trainable:
+            raise RuntimeError('Stage-2 has no trainable parameters')
+        if self._chronos_finetune():
+            # The pretrained encoder needs a far smaller step than the freshly
+            # initialised heads; a single Stage-2 learning rate would destroy it.
+            chronos_params = [
+                param for name, param in trainable if '_chronos_encoder.' in name
+            ]
+            other_params = [
+                param for name, param in trainable if '_chronos_encoder.' not in name
+            ]
+            if not chronos_params:
+                raise RuntimeError(
+                    'chronos_finetune=1 but no Chronos parameters are trainable; '
+                    'the encoder was not registered as a submodule'
+                )
+            chronos_lr = float(getattr(self.args, 'chronos_lr', -1.0))
+            if chronos_lr <= 0:
+                # Default to the single Stage-2 learning rate; pass --chronos_lr
+                # to give the pretrained encoder a smaller step if it diverges.
+                chronos_lr = float(self.args.learning_rate)
+            print(
+                f'[stage2] chronos fine-tuning: {len(chronos_params)} tensors at lr={chronos_lr}, '
+                f'{len(other_params)} tensors at lr={self.args.learning_rate}'
+            )
+            # initial_lr is what keeps adjust_learning_rate from collapsing the
+            # two groups onto a single value at the first epoch boundary;
+            # lr_decay=0 additionally holds the encoder at chronos_lr instead of
+            # halving it out of existence within a few epochs.
+            chronos_lr_decay = bool(int(getattr(self.args, 'chronos_lr_decay', 0)))
+            print(
+                f'[stage2] chronos lr schedule: '
+                f'{"decays with the Stage-2 schedule" if chronos_lr_decay else f"held at {chronos_lr}"}'
+            )
+            return optim.Adam([
+                {'params': other_params, 'lr': self.args.learning_rate,
+                 'initial_lr': self.args.learning_rate},
+                {'params': chronos_params, 'lr': chronos_lr,
+                 'initial_lr': chronos_lr, 'lr_decay': chronos_lr_decay},
+            ])
+        params = [param for _, param in trainable]
         return optim.Adam(params, lr=self.args.learning_rate)
 
     def _ensure_memory(self):
@@ -173,7 +278,8 @@ class Exp_Stage2_Relation(Exp_Basic):
             self.args,
             require_existing=(
                 relation_graph_enabled(self.args)
-                and getattr(self.args, 'stage1_encoder_init', 'checkpoint') != 'random'
+                and getattr(self.args, 'stage1_encoder_init', 'checkpoint') == 'checkpoint'
+                and getattr(self.args, 'stage2_retrieval_backbone', 'stage1') == 'stage1'
             ),
         )
         model = self.model.module if hasattr(self.model, 'module') else self.model
@@ -185,8 +291,9 @@ class Exp_Stage2_Relation(Exp_Basic):
         print(f'[stage2] memory_x={tuple(self.memory_bank.memory_x.shape)} memory_y={tuple(self.memory_bank.memory_y.shape)}')
 
     def _build_key_bank(self, force=False):
-        if self._retrieval_disabled():
+        if self._retrieval_disabled() or self._encoder_free_full_oracle():
             self.key_bank = None
+            self.teacher_key_bank = None
             return
         if self.key_bank is not None and not force:
             return
@@ -197,29 +304,143 @@ class Exp_Stage2_Relation(Exp_Basic):
             chunk_size=self.args.memory_chunk_size,
         )
         print(f'[stage2] built relation key memory bank: {tuple(self.key_bank.shape)}')
+        if self._uses_ema_retrieval_teacher():
+            # The EMA weights move with the student, so the teacher bank is stale
+            # the moment the student bank is. Rebuild them together, always.
+            self.teacher_key_bank = model.build_teacher_key_bank(
+                self.memory_bank.memory_y,
+                self.device,
+                self.memory_x_last,
+                chunk_size=self.args.memory_chunk_size,
+            )
+            print(
+                f'[stage2] built EMA teacher future key bank: '
+                f'{tuple(self.teacher_key_bank.shape)}'
+            )
 
-    def _use_retrieval_cache(self):
+    def _uses_ema_retrieval_teacher(self):
         return (
-            not self._retrieval_disabled()
-            and bool(int(getattr(self.args, 'freeze_stage1_encoder', 0)))
-            and not relation_graph_enabled(self.args)
+            float(getattr(self.args, 'retrieval_kl_weight', 0.0)) != 0.0
+            and getattr(self.args, 'retrieval_kl_teacher', 'ema') == 'ema'
+            and not self._retrieval_disabled()
         )
 
+    def _ema_momentum(self):
+        total = max(int(getattr(self, 'total_update_steps', 1)), 1)
+        base = float(getattr(self.args, 'stage1_ema_momentum_base', 0.99))
+        final = float(getattr(self.args, 'stage1_ema_momentum_final', 0.9995))
+        if total <= 1:
+            return final
+        progress = min(float(getattr(self, 'global_update_step', 0)) / float(total - 1), 1.0)
+        return final - (final - base) * (math.cos(math.pi * progress) + 1.0) / 2.0
+
+    def _chronos_finetune(self):
+        return (
+            getattr(self.args, 'stage2_retrieval_backbone', 'stage1') == 'chronos'
+            and bool(int(getattr(self.args, 'chronos_finetune', 0)))
+        )
+
+    def _chronos_projection_trainable(self):
+        return (
+            getattr(self.args, 'stage2_retrieval_backbone', 'stage1') == 'chronos'
+            and bool(int(getattr(self.args, 'chronos_projection_trainable', 0)))
+        )
+
+    def _chronos_retrieval_trainable(self):
+        """Anything that makes the Chronos retrieval space move during training."""
+        return self._chronos_finetune() or self._chronos_projection_trainable()
+
+    def _retrieval_space_trainable(self):
+        """True whenever the embedding space behind the key bank still moves.
+
+        The key bank has to be rebuilt every epoch in exactly these cases, and
+        freeze_stage1_encoder alone cannot decide it: a Chronos run passes
+        freeze_stage1_encoder=1 because it has no Stage-1 encoder at all, which
+        previously suppressed the rebuild while Chronos itself was training.
+        """
+        if getattr(self.args, 'stage2_retrieval_backbone', 'stage1') == 'chronos':
+            return self._chronos_retrieval_trainable()
+        return not bool(int(getattr(self.args, 'freeze_stage1_encoder', 1)))
+
+    def _use_retrieval_cache(self):
+        if self._chronos_retrieval_trainable():
+            # Retrieval outputs change every step once the encoder trains, so a
+            # cache computed before the first epoch would silently be reused.
+            return False
+        return (
+            not self._retrieval_disabled()
+            and (
+                self._encoder_free_full_oracle()
+                or bool(int(getattr(self.args, 'freeze_stage1_encoder', 0)))
+            )
+            and (
+                self._oracle_train_mode() != 'none'
+                or not relation_graph_enabled(self.args)
+                or getattr(self.args, 'stage2_retrieval_backbone', 'stage1')
+                in ('identity', 'pearson', 'chronos')
+            )
+        )
+
+    def _use_oracle_evaluation_cache(self, split):
+        """Allow a test-only cache for oracle metrics with a frozen retriever.
+
+        Relation-graph Stage-1 backbones intentionally do not use the normal
+        train/validation retrieval cache.  Oracle candidate evaluation still
+        needs the same per-query retrieval outputs plus ground-truth oracle
+        candidates, so build that cache only for the test split.
+        """
+        # A trainable retrieval encoder is still fixed by the time test() runs:
+        # it restores the best checkpoint and forces a key-bank rebuild before
+        # this cache is built, so the cache matches the weights being evaluated.
+        # Requiring freeze_stage1_encoder here would deny oracle metrics to
+        # exactly the end-to-end runs that need them most - recall@k is how a
+        # collapsed retriever is caught.
+        return (
+            split == 'test'
+            and bool(int(getattr(self.args, 'oracle_candidate_eval', 0)))
+            and not self._retrieval_disabled()
+        )
+
+    def _use_retrieval_cache_for_split(self, split):
+        return self._use_retrieval_cache() or self._use_oracle_evaluation_cache(split)
+
     def _build_retrieval_cache(self, split, loader):
-        if not self._use_retrieval_cache() or split in self.retrieval_caches:
+        if not self._use_retrieval_cache_for_split(split) or split in self.retrieval_caches:
             return
         model = self.model.module if hasattr(self.model, 'module') else self.model
         was_training = self.model.training
         self.model.eval()
-        cache_parts = {
-            'relation_outputs': [],
-            'relation_query_embs': [],
-            'alpha_entropy': [],
-            'alpha_top1': [],
-            'alpha_margin': [],
-            'top_k_effective': [],
-        }
-        if split == 'test' and bool(int(getattr(self.args, 'oracle_candidate_eval', 0))):
+        if self._encoder_free_full_oracle():
+            cache_parts = {
+                # The mixer is configured with input_mode=retrieved, so this
+                # zero-width tensor satisfies the common forward interface
+                # without retaining an unused encoder representation.
+                'relation_query_embs': [],
+            }
+        else:
+            cache_parts = {
+                'relation_outputs': [],
+                'relation_query_embs': [],
+                'alpha_entropy': [],
+                'alpha_top1': [],
+                'alpha_margin': [],
+                'top_k_effective': [],
+                'topk_mean_similarity': [],
+                'topk_weight_entropy': [],
+            }
+        oracle_training = self._oracle_train_mode() != 'none'
+        oracle_evaluation = (
+            split == 'test'
+            and bool(int(getattr(self.args, 'oracle_candidate_eval', 0)))
+        )
+        if oracle_training:
+            oracle_output_key = {
+                'candidate': 'candidate_oracle_relation_outputs',
+                'relation': 'relation_oracle_relation_outputs',
+                'full': 'full_oracle_relation_outputs',
+            }[self._oracle_train_mode()]
+            cache_parts[oracle_output_key] = []
+        if oracle_evaluation:
             cache_parts.update({
                 'candidate_oracle_mse_sc': [],
                 'candidate_oracle_mae_sc': [],
@@ -229,8 +450,17 @@ class Exp_Stage2_Relation(Exp_Basic):
                 'candidate_oracle_indices_sc': [],
                 'candidate_oracle_mse_topk_sc': [],
                 'candidate_oracle_valid_topk_sc': [],
+                'student_relation_oracle_recall_at_1_sc': [],
+                'student_relation_oracle_recall_at_5_sc': [],
+                'student_relation_oracle_recall_at_10_sc': [],
             })
         starts = []
+        active_key_bank = self.key_bank
+        if (
+            active_key_bank is not None
+            and getattr(self.args, 'stage2_retrieval_backbone', 'stage1') == 'chronos'
+        ):
+            active_key_bank = active_key_bank.to(self.device)
         with torch.no_grad():
             for batch_x, batch_y, batch_start_idx in loader:
                 batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
@@ -239,13 +469,14 @@ class Exp_Stage2_Relation(Exp_Basic):
                     batch_x=batch_x,
                     memory_y=self.memory_y,
                     valid_mask=cand_mask,
-                    key_bank=self.key_bank,
+                    key_bank=active_key_bank,
                     memory_x_last=self.memory_x_last,
                     oracle_target_y=(
                         batch_y
-                        if split == 'test' and bool(int(getattr(self.args, 'oracle_candidate_eval', 0)))
+                        if oracle_training or oracle_evaluation
                         else None
                     ),
+                    full_oracle_only=self._encoder_free_full_oracle(),
                 )
                 for key in cache_parts:
                     if key in cache:
@@ -261,10 +492,11 @@ class Exp_Stage2_Relation(Exp_Basic):
         built['starts'] = torch.tensor(starts, dtype=torch.long)
         built['start_to_row'] = {start: row for row, start in enumerate(starts)}
         self.retrieval_caches[split] = built
+        del active_key_bank
         print(f'[stage2] built {split} retrieval cache: {len(starts)} windows')
 
     def _cached_retrieval_for_batch(self, split, batch_start_idx):
-        if not self._use_retrieval_cache() or split not in self.retrieval_caches:
+        if not self._use_retrieval_cache_for_split(split) or split not in self.retrieval_caches:
             return None
         cache = self.retrieval_caches[split]
         try:
@@ -275,11 +507,19 @@ class Exp_Stage2_Relation(Exp_Basic):
         except KeyError:
             return None
         row_idx = torch.tensor(rows, dtype=torch.long)
-        return {
+        selected = {
             key: value.index_select(0, row_idx)
             for key, value in cache.items()
             if key not in {'starts', 'start_to_row'}
         }
+        oracle_key = {
+            'candidate': 'candidate_oracle_relation_outputs',
+            'relation': 'relation_oracle_relation_outputs',
+            'full': 'full_oracle_relation_outputs',
+        }.get(self._oracle_train_mode())
+        if oracle_key is not None:
+            selected['relation_outputs'] = selected[oracle_key]
+        return selected
 
     def _candidate_mask(self, batch_start_idx):
         cand_mask, counts = self.memory_bank.valid_mask_batch(batch_start_idx.cpu().numpy())
@@ -301,9 +541,15 @@ class Exp_Stage2_Relation(Exp_Basic):
         lam = lam[valid_query]
 
         final_mse = torch.mean((y_final - batch_y) ** 2)
+        final_mae = torch.mean(torch.abs(y_final - batch_y))
+        if self._retrieval_disabled():
+            return {
+                'final_mse': final_mse.detach(),
+                'final_mae': final_mae.detach(),
+            }
+
         base_mse = torch.mean((y_base - batch_y) ** 2)
         ret_mse = torch.mean((y_ret - batch_y) ** 2)
-        final_mae = torch.mean(torch.abs(y_final - batch_y))
         base_mae = torch.mean(torch.abs(y_base - batch_y))
         ret_mae = torch.mean(torch.abs(y_ret - batch_y))
         ret_gain = base_mse - ret_mse
@@ -343,6 +589,7 @@ class Exp_Stage2_Relation(Exp_Basic):
         ).mean()
 
         metrics = {
+            'stage2_loss': final_mse.detach(),
             'final_mse': final_mse.detach(),
             'final_mae': final_mae.detach(),
             'base_mse': base_mse.detach(),
@@ -350,6 +597,7 @@ class Exp_Stage2_Relation(Exp_Basic):
             'ret_mse': ret_mse.detach(),
             'ret_mae': ret_mae.detach(),
             'retrieval_gain': (base_mse - final_mse).detach(),
+            'retrieval_gain_vs_base': (base_mse - final_mse).detach(),
             'ret_gain': ret_gain.detach(),
             'ret_better_frac': ret_better.float().mean().detach(),
             'beta_self_mean': self_beta.detach(),
@@ -373,6 +621,11 @@ class Exp_Stage2_Relation(Exp_Basic):
             'relation_source_count': float(beta.size(-1)),
             'valid_candidate_count_mean': counts.float().mean().item(),
             'valid_candidate_count_min': counts.min().item() if counts.numel() else 0.0,
+            'valid_candidate_fraction': (
+                counts.float().mean().item() / max(float(self.memory_y.size(0)), 1.0)
+                if self.memory_y is not None
+                else 0.0
+            ),
         }
         source_correlations = debug.get('source_correlations')
         if source_correlations is not None:
@@ -427,6 +680,36 @@ class Exp_Stage2_Relation(Exp_Basic):
                 'beta_gain_vs_uniform': (relation_mse_mean - beta_expected_mse.mean()).detach(),
                 'beta_regret_vs_best_relation': (beta_expected_mse - relation_mse_best).mean().detach(),
             })
+            source_indices_cpu = source_indices.detach().long().cpu()
+            for tgt_idx, tgt_name in enumerate(channel_names):
+                if tgt_idx >= relation_mse.size(1):
+                    continue
+                for source_slot in range(relation_mse.size(2)):
+                    source_idx = int(source_indices_cpu[tgt_idx, source_slot].item())
+                    source_name = channel_names[source_idx]
+                    metrics[self._relation_metric_key('relation_mse', tgt_name, source_name)] = (
+                        relation_mse[:, tgt_idx, source_slot].mean().detach()
+                    )
+                    metrics[self._relation_metric_key('relation_mae', tgt_name, source_name)] = (
+                        relation_mae[:, tgt_idx, source_slot].mean().detach()
+                    )
+            if 'topk_mean_similarity' in debug:
+                topk_similarity = debug['topk_mean_similarity'][valid_query]
+                topk_entropy = debug.get('topk_weight_entropy')
+                topk_entropy = None if topk_entropy is None else topk_entropy[valid_query]
+                for tgt_idx, tgt_name in enumerate(channel_names):
+                    if tgt_idx >= topk_similarity.size(1):
+                        continue
+                    for source_slot in range(topk_similarity.size(2)):
+                        source_idx = int(source_indices_cpu[tgt_idx, source_slot].item())
+                        source_name = channel_names[source_idx]
+                        metrics[self._relation_metric_key('topk_mean_similarity', tgt_name, source_name)] = (
+                            topk_similarity[:, tgt_idx, source_slot].mean().detach()
+                        )
+                        if topk_entropy is not None:
+                            metrics[self._relation_metric_key('topk_weight_entropy', tgt_name, source_name)] = (
+                                topk_entropy[:, tgt_idx, source_slot].mean().detach()
+                            )
             beta_rank = self._rank_average(-beta)
             quality_rank = self._rank_average(relation_mse)
             metrics['beta_relation_rank_corr'] = self._safe_corr(beta_rank, quality_rank).detach()
@@ -489,6 +772,31 @@ class Exp_Stage2_Relation(Exp_Basic):
                     full_oracle_mse_sc < base_err_sc
                 ).float().mean().detach(),
             })
+            for metric_k in (1, 5, 10):
+                recall_key = (
+                    f'student_relation_oracle_recall_at_{metric_k}_sc'
+                )
+                if recall_key in debug:
+                    recall_sc = debug[recall_key][valid_query]
+                    metrics[
+                        f'student_relation_oracle_recall_at_{metric_k}'
+                    ] = recall_sc.mean().detach()
+                    source_indices_cpu = source_indices.detach().long().cpu()
+                    for target_idx, target_name in enumerate(channel_names):
+                        for source_slot in range(recall_sc.size(2)):
+                            source_idx = int(
+                                source_indices_cpu[
+                                    target_idx, source_slot
+                                ].item()
+                            )
+                            source_name = channel_names[source_idx]
+                            metrics[self._relation_metric_key(
+                                f'student_relation_oracle_recall_at_{metric_k}',
+                                target_name,
+                                source_name,
+                            )] = recall_sc[
+                                :, target_idx, source_slot
+                            ].mean().detach()
         for name in ('alpha_entropy', 'beta_entropy', 'top_k_effective'):
             if name in debug:
                 metrics[name] = debug[name].detach()
@@ -512,12 +820,19 @@ class Exp_Stage2_Relation(Exp_Basic):
         batch_y = batch_y[valid_query]
 
         loss = torch.mean((y_final - batch_y) ** 2)
+        if self._retrieval_disabled():
+            return loss
         if int(self.args.use_aux_base_loss):
             loss = loss + float(self.args.aux_base_weight) * torch.mean((y_base - batch_y) ** 2)
         if int(self.args.use_aux_ret_loss):
             loss = loss + float(self.args.aux_ret_weight) * torch.mean((y_ret - batch_y) ** 2)
         if float(self.args.beta_entropy_reg) != 0.0 and 'beta_entropy' in debug:
             loss = loss - float(self.args.beta_entropy_reg) * debug['beta_entropy']
+        kl_weight = float(getattr(self.args, 'retrieval_kl_weight', 0.0))
+        if kl_weight != 0.0 and 'retrieval_kl_per_query' in debug:
+            kl = debug['retrieval_kl_per_query'][valid_query]
+            if kl.numel() and torch.isfinite(kl).all():
+                loss = loss + kl_weight * kl.mean()
         return loss
 
     def _init_csv_accumulators(self):
@@ -542,34 +857,67 @@ class Exp_Stage2_Relation(Exp_Basic):
         valid_rows = valid_query.detach().cpu().bool().tolist()
         channel_names = self._channel_names(indices.size(1))
         memory_starts = self.memory_bank.memory_starts
+        model = self.model.module if hasattr(self.model, 'module') else self.model
 
         for batch_row, is_valid_query in enumerate(valid_rows):
             if not is_valid_query:
                 continue
             query_start = int(query_starts[batch_row])
             for target_idx, target_name in enumerate(channel_names):
-                for rank in range(indices.size(-1)):
-                    memory_index = int(indices[batch_row, target_idx, rank].item())
-                    is_valid = bool(valid[batch_row, target_idx, rank].item())
-                    memory_start = (
-                        int(memory_starts[memory_index])
-                        if is_valid and 0 <= memory_index < len(memory_starts)
-                        else ''
-                    )
-                    acc['oracle_candidates'].append({
-                        'query_start': query_start,
-                        'target_index': target_idx,
-                        'target_channel': target_name,
-                        'oracle_rank': rank + 1,
-                        'memory_index': memory_index if is_valid else '',
-                        'memory_start': memory_start,
-                        'future_mse': (
-                            float(mse[batch_row, target_idx, rank].item())
-                            if is_valid
+                source_indices = model.source_channels(target_idx)
+                for source_slot, source_idx in enumerate(source_indices):
+                    source_name = channel_names[source_idx]
+                    for rank in range(indices.size(-1)):
+                        memory_index = int(
+                            indices[
+                                batch_row,
+                                target_idx,
+                                source_slot,
+                                rank,
+                            ].item()
+                        )
+                        is_valid = bool(
+                            valid[
+                                batch_row,
+                                target_idx,
+                                source_slot,
+                                rank,
+                            ].item()
+                        )
+                        memory_start = (
+                            int(memory_starts[memory_index])
+                            if (
+                                is_valid
+                                and 0 <= memory_index < len(memory_starts)
+                            )
                             else ''
-                        ),
-                        'valid': int(is_valid),
-                    })
+                        )
+                        acc['oracle_candidates'].append({
+                            'query_start': query_start,
+                            'target_index': target_idx,
+                            'target_channel': target_name,
+                            'source_slot': source_slot,
+                            'source_index': source_idx,
+                            'source_channel': source_name,
+                            'oracle_rank': rank + 1,
+                            'memory_index': (
+                                memory_index if is_valid else ''
+                            ),
+                            'memory_start': memory_start,
+                            'relation_future_mse': (
+                                float(
+                                    mse[
+                                        batch_row,
+                                        target_idx,
+                                        source_slot,
+                                        rank,
+                                    ].item()
+                                )
+                                if is_valid
+                                else ''
+                            ),
+                            'valid': int(is_valid),
+                        })
 
     def _update_csv_accumulators(self, acc, y_final, y_base, y_ret, batch_y, beta, lam, debug, valid_query):
         with torch.no_grad():
@@ -788,12 +1136,31 @@ class Exp_Stage2_Relation(Exp_Basic):
     def _write_stage2_metric_csvs(self, setting, split, epoch, metrics, acc):
         context = self._csv_context(epoch, split, setting)
         base_dir = self._csv_base_dir(setting)
+        if self._retrieval_disabled():
+            no_retrieval_row = dict(context)
+            no_retrieval_row.update({
+                'final_mse': self._to_float(
+                    metrics.get('final_mse', float('nan'))
+                ),
+                'final_mae': self._to_float(
+                    metrics.get('final_mae', float('nan'))
+                ),
+            })
+            self._append_csv(
+                os.path.join(base_dir, 'metrics_main.csv'),
+                [no_retrieval_row],
+                list(context.keys()) + ['final_mse', 'final_mae'],
+            )
+            return
         focus = getattr(self.args, 'focus_channel', 'OT')
         oracle_keys = [
             'base_mse', 'base_mae', 'ret_mse', 'ret_mae',
             'candidate_oracle_mse', 'candidate_oracle_mae',
             'candidate_oracle_gain_vs_base', 'candidate_oracle_better_frac',
             'candidate_oracle_top_k_effective',
+            'student_relation_oracle_recall_at_1',
+            'student_relation_oracle_recall_at_5',
+            'student_relation_oracle_recall_at_10',
             'relation_oracle_mse', 'relation_oracle_mae',
             'relation_oracle_gain_vs_base', 'relation_oracle_better_frac',
             'full_oracle_mse', 'full_oracle_mae',
@@ -801,7 +1168,9 @@ class Exp_Stage2_Relation(Exp_Basic):
         ]
         if any(key in metrics for key in ('candidate_oracle_mse', 'full_oracle_mse')):
             oracle_row = dict(context)
-            oracle_row['oracle_candidate_definition'] = 'ground_truth_topk_encoder_alpha'
+            oracle_row['oracle_candidate_definition'] = (
+                'concat_target_source_future_mse_topk_encoder_alpha'
+            )
             for key in oracle_keys:
                 oracle_row[key] = self._to_float(metrics.get(key, float('nan')))
             self._append_csv(
@@ -814,16 +1183,55 @@ class Exp_Stage2_Relation(Exp_Basic):
                 [dict(context, **row) for row in acc.get('oracle_candidates', [])],
                 list(context.keys()) + [
                     'query_start', 'target_index', 'target_channel',
+                    'source_slot', 'source_index', 'source_channel',
                     'oracle_rank', 'memory_index', 'memory_start',
-                    'future_mse', 'valid',
+                    'relation_future_mse', 'valid',
+                ],
+            )
+            model = self.model.module if hasattr(self.model, 'module') else self.model
+            channel_names = self._channel_names(int(self.args.enc_in))
+            branch_recall_rows = []
+            for target_idx, target_name in enumerate(channel_names):
+                for source_slot, source_idx in enumerate(
+                    model.source_channels(target_idx)
+                ):
+                    source_name = channel_names[source_idx]
+                    row = dict(context)
+                    row.update({
+                        'target_index': target_idx,
+                        'target_channel': target_name,
+                        'source_slot': source_slot,
+                        'source_index': source_idx,
+                        'source_channel': source_name,
+                    })
+                    for metric_k in (1, 5, 10):
+                        metric_key = self._relation_metric_key(
+                            f'student_relation_oracle_recall_at_{metric_k}',
+                            target_name,
+                            source_name,
+                        )
+                        row[f'recall_at_{metric_k}'] = self._to_float(
+                            metrics.get(metric_key, float('nan'))
+                        )
+                    branch_recall_rows.append(row)
+            self._append_csv(
+                os.path.join(
+                    base_dir, 'metrics_oracle_branch_recall.csv'
+                ),
+                branch_recall_rows,
+                list(context.keys()) + [
+                    'target_index', 'target_channel',
+                    'source_slot', 'source_index', 'source_channel',
+                    'recall_at_1', 'recall_at_5', 'recall_at_10',
                 ],
             )
             if bool(int(getattr(self.args, 'oracle_candidate_eval', 0))):
                 return
 
         main_keys = [
+            'stage2_loss',
             'final_mse', 'final_mae', 'base_mse', 'base_mae', 'ret_mse', 'ret_mae',
-            'retrieval_gain', 'ret_gain',
+            'retrieval_gain', 'retrieval_gain_vs_base', 'ret_gain',
             f'final_mse_{focus}', f'base_mse_{focus}', f'ret_mse_{focus}',
             f'final_gain_{focus}', f'ret_gain_{focus}',
             'ret_better_frac', f'ret_better_frac_{focus}',
@@ -833,6 +1241,7 @@ class Exp_Stage2_Relation(Exp_Basic):
             'beta_entropy_norm', 'beta_effective_relations', 'beta_max_mean', 'beta_margin_mean',
             'beta_self_mean', 'beta_cross_mean', 'beta_self_minus_cross',
             'relation_source_count', 'pearson_selected_mean',
+            'valid_candidate_count_mean', 'valid_candidate_fraction',
             'abs_pearson_selected_mean', 'negative_pearson_frac',
             'relation_mse_self', 'relation_mse_cross_best', 'relation_mse_best',
             'beta_expected_relation_mse', 'beta_best_relation_top1_match', 'beta_relation_rank_corr',
@@ -890,8 +1299,9 @@ class Exp_Stage2_Relation(Exp_Basic):
         train = optimizer is not None
         self.model.train(train)
         model = self.model.module if hasattr(self.model, 'module') else self.model
-        if bool(int(self.args.freeze_stage1_encoder)):
+        if bool(int(self.args.freeze_stage1_encoder)) and model.stage1_encoder is not None:
             model.stage1_encoder.eval()
+            model.shared_cross_projection.eval()
         avg = MetricAverager()
         csv_acc = self._init_csv_accumulators()
 
@@ -910,7 +1320,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                     'skipped_batches': 1.0,
                     'valid_candidate_count_mean': counts.float().mean().item(),
                     'valid_candidate_count_min': counts.min().item() if counts.numel() else 0.0,
-                })
+                }, weight=batch_x.size(0))
                 continue
 
             if train:
@@ -922,10 +1332,16 @@ class Exp_Stage2_Relation(Exp_Basic):
                     key_bank=self.key_bank,
                     memory_x_last=self.memory_x_last,
                     retrieval_cache=retrieval_cache,
+                    target_y=batch_y,
+                    teacher_key_bank=getattr(self, 'teacher_key_bank', None),
                 )
                 loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
                 loss.backward()
                 optimizer.step()
+                if self._uses_ema_retrieval_teacher():
+                    model = self.model.module if hasattr(self.model, 'module') else self.model
+                    model.update_ema_teacher(self._ema_momentum())
+                    self.global_update_step = getattr(self, 'global_update_step', 0) + 1
             else:
                 with torch.no_grad():
                     y_final, y_base, y_ret, beta, lam, debug = self.model(
@@ -945,6 +1361,9 @@ class Exp_Stage2_Relation(Exp_Basic):
                     'full_oracle_mse_sc',
                     'full_oracle_mae_sc',
                     'candidate_oracle_top_k_effective_sc',
+                    'student_relation_oracle_recall_at_1_sc',
+                    'student_relation_oracle_recall_at_5_sc',
+                    'student_relation_oracle_recall_at_10_sc',
                 ):
                     debug[key] = retrieval_cache[key].to(batch_x.device)
 
@@ -952,7 +1371,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                 metrics = self._metrics(y_final, y_base, y_ret, batch_y, beta, lam, debug, counts, valid_query)
                 metrics['loss'] = loss.detach()
                 metrics['skipped_batches'] = 0.0
-                avg.update(metrics)
+                avg.update(metrics, weight=int(valid_query.sum().item()))
                 if split is not None and epoch is not None and setting is not None:
                     self._update_csv_accumulators(
                         csv_acc, y_final, y_base, y_ret, batch_y, beta, lam, debug, valid_query
@@ -970,7 +1389,13 @@ class Exp_Stage2_Relation(Exp_Basic):
         return self._run_loader(vali_loader, optimizer=None, split='vali', epoch=epoch, setting=setting)
 
     def train(self, setting):
+        if self._chronos_retrieval_trainable() and not bool(int(self.args.refresh_memory_every_epoch)):
+            raise ValueError(
+                'a trainable Chronos retrieval space requires --refresh_memory_every_epoch 1; '
+                'otherwise the memory keys stay in the old embedding space while the query moves'
+            )
         self._ensure_memory()
+        model = self.model.module if hasattr(self.model, 'module') else self.model
         train_data, train_loader = self._get_data(flag='train', shuffle=True)
         vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
         _, train_cache_loader = self._get_data(flag='train', shuffle=False)
@@ -984,16 +1409,18 @@ class Exp_Stage2_Relation(Exp_Basic):
         bad_epochs = 0
 
         refresh_each_epoch = bool(int(self.args.refresh_memory_every_epoch))
+        self.global_update_step = 0
+        self.total_update_steps = max(len(train_loader) * int(self.args.train_epochs), 1)
         self._build_key_bank(force=True)
         self._build_retrieval_cache('train', train_cache_loader)
         self._build_retrieval_cache('vali', vali_loader)
         writer = build_summary_writer(self.args, 'stage2', setting)
         tb_keys = [
-            'loss',
+            'loss', 'stage2_loss',
             'final_mse', 'final_mae',
             'base_mse', 'base_mae',
             'ret_mse', 'ret_mae',
-            'retrieval_gain',
+            'retrieval_gain', 'retrieval_gain_vs_base',
             'lambda_mean',
             'beta_self_mean', 'beta_cross_mean',
             'beta_self_minus_cross', 'beta_max_mean', 'beta_margin_mean',
@@ -1009,6 +1436,7 @@ class Exp_Stage2_Relation(Exp_Basic):
             'beta_relation_rank_corr',
             'beta_gain_vs_uniform', 'beta_regret_vs_best_relation',
             'top_k_effective',
+            'valid_candidate_fraction',
             'beta_OT_best_relation_top1_match',
             'beta_OT_top1_mean',
             'beta_OT_on_best_relation_mean',
@@ -1031,7 +1459,7 @@ class Exp_Stage2_Relation(Exp_Basic):
         try:
             for epoch in range(self.args.train_epochs):
                 epoch_time = time.time()
-                if refresh_each_epoch and epoch > 0 and not bool(int(self.args.freeze_stage1_encoder)):
+                if refresh_each_epoch and epoch > 0 and self._retrieval_space_trainable():
                     self._build_key_bank(force=True)
                     self.retrieval_caches.clear()
 
@@ -1058,6 +1486,11 @@ class Exp_Stage2_Relation(Exp_Basic):
                     torch.save({
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
+                        'stage1_ckpt_path': getattr(self.args, 'stage1_ckpt_path', ''),
+                        'stage2_retrieval_encoder': getattr(self.args, 'stage2_retrieval_encoder', 'online'),
+                        'stage2_retrieval_backbone': getattr(self.args, 'stage2_retrieval_backbone', 'stage1'),
+                        'stage2_relation_fusion': getattr(self.args, 'stage2_relation_fusion', 'gate'),
+                        'active_relation_order': self._active_relation_order(),
                         'args': vars(self.args),
                         'epoch': epoch + 1,
                         'best_val_loss': best_val_loss,
@@ -1074,9 +1507,13 @@ class Exp_Stage2_Relation(Exp_Basic):
         return self.model
 
     def test(self, setting, test=0):
-        if bool(int(getattr(self.args, 'oracle_candidate_eval', 0))) and not self._use_retrieval_cache():
+        if (
+            bool(int(getattr(self.args, 'oracle_candidate_eval', 0)))
+            and not self._use_oracle_evaluation_cache('test')
+        ):
             raise ValueError(
-                '--oracle_candidate_eval requires retrieval enabled and --freeze_stage1_encoder 1'
+                '--oracle_candidate_eval requires retrieval enabled and a frozen '
+                'retrieval backbone (or encoder-free full oracle)'
             )
         path = os.path.join(self.args.checkpoints, 'stage2', self.args.data, f'seq{self.args.seq_len}_pred{self.args.pred_len}', setting)
         ckpt_path = self.best_checkpoint_path or os.path.join(path, 'checkpoint.pth')
@@ -1086,13 +1523,26 @@ class Exp_Stage2_Relation(Exp_Basic):
             state = ckpt.get('model_state_dict', ckpt)
             self.model.load_state_dict(state)
         else:
-            print(f'[stage2] checkpoint not found, testing current model: {ckpt_path}')
+            raise FileNotFoundError(
+                f'Stage-2 test checkpoint not found: {ckpt_path}'
+            )
         self._ensure_memory()
-        self._build_key_bank(force=not bool(int(self.args.freeze_stage1_encoder)))
+        saved_relation_order = ckpt.get('active_relation_order')
+        if saved_relation_order is not None:
+            current_relation_order = self._active_relation_order()
+            if saved_relation_order != current_relation_order:
+                raise RuntimeError(
+                    'Stage-2 checkpoint active relation order does not match current config: '
+                    f'checkpoint={saved_relation_order} current={current_relation_order}'
+                )
+        # A fine-tuned retrieval encoder makes the key bank checkpoint-specific:
+        # test() restores the best epoch, so keys from the last epoch are stale.
+        self._build_key_bank(force=self._retrieval_space_trainable())
         test_data, test_loader = self._get_data(flag='test', shuffle=False)
         self._build_retrieval_cache('test', test_loader)
         metrics = self._run_loader(test_loader, optimizer=None, split='test', epoch=0, setting=setting)
-        print(format_metrics('Stage2 Test', metrics))
+        if not self._retrieval_disabled():
+            print(format_metrics('Stage2 Test', metrics))
         if 'final_mse' in metrics and 'final_mae' in metrics:
             print(
                 'Stage2 Test Final\n'
@@ -1106,6 +1556,12 @@ class Exp_Stage2_Relation(Exp_Basic):
                 f'candidate_oracle_mae: {float(metrics["candidate_oracle_mae"]):.6f}\n'
                 f'candidate_oracle_top_k_effective: '
                 f'{float(metrics["candidate_oracle_top_k_effective"]):.2f}\n'
+                f'student_relation_oracle_recall_at_1: '
+                f'{float(metrics["student_relation_oracle_recall_at_1"]):.6f}\n'
+                f'student_relation_oracle_recall_at_5: '
+                f'{float(metrics["student_relation_oracle_recall_at_5"]):.6f}\n'
+                f'student_relation_oracle_recall_at_10: '
+                f'{float(metrics["student_relation_oracle_recall_at_10"]):.6f}\n'
                 f'relation_oracle_mse: {float(metrics["relation_oracle_mse"]):.6f}\n'
                 f'relation_oracle_mae: {float(metrics["relation_oracle_mae"]):.6f}\n'
                 f'full_oracle_mse: {float(metrics["full_oracle_mse"]):.6f}\n'
