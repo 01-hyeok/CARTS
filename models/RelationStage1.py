@@ -10,6 +10,109 @@ from layers.relation_patch_embed import RelationPatchEmbedding
 from layers.relation_tcn import RelationTCN
 
 
+def stable_topk_indices(values, k, dim=-1, largest=True):
+    """Top-k indices with ties broken by candidate index.
+
+    `torch.topk` leaves tie order unspecified, so ranking a compacted row and
+    ranking the same row with its invalid entries masked out could pick
+    different — equally scored — candidates. Sorting stably makes the choice a
+    property of the data instead of the layout, which is what lets the
+    vectorized retrieval metrics be pinned to the per-query reference.
+    """
+    key = -values if largest else values
+    return stable_argsort(key, dim=dim).narrow(dim, 0, int(k))
+
+
+def stable_argsort(values, dim=-1):
+    """Ascending stable argsort that also works on torch < 1.13.
+
+    `torch.argsort` only grew a `stable` keyword in 1.13, while `torch.sort`
+    has had one since 1.9. Ties must keep their candidate order, otherwise the
+    rank-based retrieval diagnostics move with the sort implementation.
+    """
+    return torch.sort(values, dim=dim, stable=True).indices
+
+
+@torch.no_grad()
+def select_training_candidates(bank_scores, future_mse, valid_mask, top_m, oracle_k):
+    """Mine Bank Top-M by cosine, guaranteeing the global Oracle Top-K inside.
+
+    The memory bank keeps its job of searching the whole candidate pool; this
+    only decides *which* candidates the loss will be computed over. Injection is
+    training-only supervision: a fresh encoder can rank every good candidate
+    outside its Top-M, and then the loss never sees a positive at all.
+
+    Returns
+    -------
+    selected : [B, M] long
+        Distinct candidate indices, best bank rank first. Oracle candidates that
+        were missing from Bank Top-M replace the worst-ranked non-Oracle slots,
+        so the count stays exactly M.
+    stats : dict
+        Mining diagnostics measured *before* injection.
+    """
+    if bank_scores.shape != valid_mask.shape or bank_scores.shape != future_mse.shape:
+        raise ValueError(
+            'bank_scores, future_mse and valid_mask must share shape; got '
+            f'{tuple(bank_scores.shape)}, {tuple(future_mse.shape)}, {tuple(valid_mask.shape)}'
+        )
+    bsz, num_cand = bank_scores.shape
+    valid_mask = valid_mask.bool()
+    top_m = min(int(top_m), num_cand)
+    oracle_k = min(int(oracle_k), num_cand)
+    if top_m <= 0 or oracle_k <= 0:
+        raise ValueError('top_m and oracle_k must be positive')
+    if oracle_k > top_m:
+        raise ValueError(
+            f'oracle_k={oracle_k} cannot exceed top_m={top_m}; the Oracle set '
+            'would not fit inside the selected candidates'
+        )
+
+    device = bank_scores.device
+    scores = bank_scores.detach().float().masked_fill(~valid_mask, float('-inf'))
+    distances = future_mse.detach().float().masked_fill(~valid_mask, float('inf'))
+
+    bank_top = torch.topk(scores, k=top_m, dim=-1, largest=True).indices
+    oracle = torch.topk(distances, k=oracle_k, dim=-1, largest=False).indices
+
+    # A row with fewer than oracle_k valid candidates pads its Oracle set with
+    # invalid entries. Those must never be injected.
+    oracle_is_valid = valid_mask.gather(1, oracle)
+
+    in_bank = (oracle.unsqueeze(-1) == bank_top.unsqueeze(-2)).any(dim=-1)
+    stats = {
+        'oracle_count_in_bank_top_m': (in_bank & oracle_is_valid).sum(dim=-1).float(),
+        'oracle_valid_count': oracle_is_valid.sum(dim=-1).float(),
+    }
+    # Treat invalid Oracle slots as already present so they are never injected.
+    in_bank = in_bank | ~oracle_is_valid
+    missing_per_row = (~in_bank).sum(dim=-1)
+
+    if int(missing_per_row.max()) == 0:
+        stats['oracle_missing_count_before_injection'] = missing_per_row.float()
+        return bank_top, stats
+
+    # Missing Oracle candidates first, each group keeping its Oracle rank order.
+    order = stable_argsort(in_bank.int(), dim=1)
+    ordered_oracle = oracle.gather(1, order)
+
+    # Walk the bank ranking worst-first and overwrite non-Oracle slots.
+    reverse = torch.arange(top_m - 1, -1, -1, device=device)
+    bank_reversed = bank_top.index_select(1, reverse)
+    holds_oracle = (
+        bank_reversed.unsqueeze(-1) == oracle.unsqueeze(-2)
+    ).any(dim=-1)
+    free_slot = ~holds_oracle
+    free_rank = free_slot.long().cumsum(dim=-1) - 1
+    take = free_slot & (free_rank < missing_per_row.unsqueeze(1)) & (free_rank >= 0)
+    replacement = ordered_oracle.gather(1, free_rank.clamp(0, oracle_k - 1))
+    bank_reversed = torch.where(take, replacement, bank_reversed)
+    selected = bank_reversed.index_select(1, reverse)
+
+    stats['oracle_missing_count_before_injection'] = missing_per_row.float()
+    return selected, stats
+
+
 def future_aware_topk_ranking_loss(
     student_scores,
     future_mse,
@@ -376,7 +479,7 @@ def prepare_query_conditioned_rnc_targets(
         row_future = future_mse[query_idx].index_select(0, valid_indices).float()
         if not torch.isfinite(row_future).all():
             raise ValueError('future_mse contains NaN or Inf at a valid candidate')
-        order = torch.argsort(row_future, dim=0, stable=True)
+        order = stable_argsort(row_future, dim=0)
         sorted_future = row_future[order]
         sorted_candidate_indices = valid_indices[order]
 
@@ -565,8 +668,189 @@ def expected_future_mse_loss(
 
 
 @torch.no_grad()
-def _student_retrieval_metrics(student_scores, student_prob, future_mse, valid_mask, eps=1e-8):
-    """Future-aware diagnostics; NDCG uses relevance=1/(1+mean-normalized MSE)."""
+def normalize_teacher_scores(scores, valid_mask, mode, eps=1e-8):
+    """Put a teacher's scores on a per-query unit scale so tau means one thing.
+
+    Future-MSE differences and utility differences live on very different scales
+    -- at tau=0.01 the future teacher keeps ~3 effective candidates while the
+    utility teacher keeps ~22 -- so comparing arms at a shared tau without this
+    would compare sharpness, not targets.
+
+    Only the scale is divided out, never the mean. Softmax is shift-invariant so
+    that costs nothing for a plain KL, and it matters for the NULL arms, where a
+    utility of exactly zero is the abstention action's own score and must keep
+    its meaning.
+    """
+    if mode == 'none':
+        return scores
+    if mode != 'per_query_scale':
+        raise ValueError(f'Unsupported teacher normalization: {mode}')
+    count = valid_mask.sum(dim=-1, keepdim=True).clamp_min(1).to(scores.dtype)
+    masked = scores.masked_fill(~valid_mask, 0.0)
+    mean = masked.sum(dim=-1, keepdim=True) / count
+    variance = (scores - mean).masked_fill(~valid_mask, 0.0).square().sum(dim=-1, keepdim=True) / count
+    return scores / variance.clamp_min(eps).sqrt()
+
+
+@torch.no_grad()
+def external_pool_utility_metrics(student_scores, utility, valid_mask, seed=0, depth=10):
+    """How much measured downstream gain the student's own ranking collects.
+
+    Reported for every arm on the fixed pool, whatever teacher trained it, so
+    checkpoint selection can run on downstream gain instead of on Future Recall
+    -- the alignment study showed those two disagree.
+
+    Gap recovery is framed against a shuffled ranking rather than against zero:
+    0 means no better than picking at random from the same pool, 1 means matching
+    the best selection available in it.
+    """
+    masked_fill = torch.finfo(student_scores.dtype).min
+    utility = utility.float()
+    width = min(depth, student_scores.size(-1))
+
+    def collect(scores):
+        return utility.gather(
+            1, scores.masked_fill(~valid_mask, masked_fill).topk(width, dim=-1).indices
+        )
+
+    retrieved = collect(student_scores)
+    generator = torch.Generator(device='cpu').manual_seed(seed)
+    shuffled = torch.rand(student_scores.shape, generator=generator).to(student_scores.device)
+    random = collect(shuffled)
+    oracle = collect(utility)
+
+    graded = utility.clamp_min(0.0).masked_fill(~valid_mask, 0.0)
+    discount = 1.0 / torch.log2(
+        torch.arange(width, device=utility.device, dtype=torch.float32) + 2.0
+    )
+    by_student = student_scores.masked_fill(~valid_mask, masked_fill).topk(width, dim=-1).indices
+    ideal = graded.topk(width, dim=-1).indices
+    dcg = (graded.gather(1, by_student) * discount).sum(-1)
+    idcg = (graded.gather(1, ideal) * discount).sum(-1)
+    keep = idcg > 0
+    ndcg = (dcg[keep] / idcg[keep]).mean() if keep.any() else dcg.new_zeros(())
+
+    retrieved_mean, random_mean = retrieved.mean(), random.mean()
+    return {
+        'utility_retrieved_at_10': retrieved_mean,
+        'utility_random_at_10': random_mean,
+        'utility_oracle_at_10': oracle.mean(),
+        'utility_positive_rate_at_10': (retrieved > 0).float().mean(),
+        'utility_best_available': utility.masked_fill(~valid_mask, masked_fill).max(-1).values.mean(),
+        'utility_ndcg_at_10': ndcg,
+        'utility_gap_recovery_at_10': (
+            (retrieved_mean - random_mean) / (oracle.mean() - random_mean).clamp_min(1e-8)
+        ),
+    }
+
+
+def utility_teacher_loss(
+    student_scores,
+    teacher_scores,
+    utility,
+    valid_mask,
+    tau_student,
+    tau_teacher,
+    objective='kl',
+    normalize='per_query_scale',
+    null_logit=None,
+    eps=1e-8,
+):
+    """Retrieval supervision from an externally measured teacher.
+
+    Two objectives over the same fixed candidate pool:
+
+        kl                KL(teacher || student), teacher = softmax(scores / tau)
+        expected_utility  -E_{k ~ student}[U(q, k)], maximising the actual gain
+                          the student's own distribution would collect
+
+    `null_logit` adds an explicit abstention action whose utility is exactly zero
+    -- the "retrieve nothing" branch. Without it a softmax retriever must always
+    pick someone, which is wrong whenever every candidate in the pool is harmful,
+    and in the long horizons that is most queries.
+
+    Shapes are [B, M] throughout; `null_logit` is [B] or [B, 1].
+    """
+    if objective not in ('kl', 'expected_utility'):
+        raise ValueError(f'Unsupported teacher objective: {objective}')
+    for name, tensor in (('teacher_scores', teacher_scores), ('utility', utility),
+                         ('valid_mask', valid_mask)):
+        if tensor.shape != student_scores.shape:
+            raise ValueError(
+                f'{name} shape {tuple(tensor.shape)} does not match student '
+                f'{tuple(student_scores.shape)}'
+            )
+    masked_fill = torch.finfo(student_scores.dtype).min
+
+    teacher_source = normalize_teacher_scores(
+        teacher_scores.detach().float(), valid_mask, normalize, eps
+    )
+    utility = utility.detach().float()
+
+    student_logits = (student_scores / tau_student).masked_fill(~valid_mask, masked_fill)
+    teacher_logits = (teacher_source / tau_teacher).masked_fill(~valid_mask, masked_fill)
+    # The abstention action is always available, so its column is never masked.
+    if null_logit is not None:
+        null_logit = null_logit.reshape(-1, 1)
+        student_logits = torch.cat([student_logits, null_logit / tau_student], dim=-1)
+        null_teacher = normalize_teacher_scores(
+            torch.zeros_like(null_logit), valid_mask.new_ones(null_logit.shape), 'none'
+        )
+        teacher_logits = torch.cat([teacher_logits, null_teacher / tau_teacher], dim=-1)
+        utility = torch.cat([utility, torch.zeros_like(null_logit, dtype=utility.dtype)], dim=-1)
+        valid_mask = torch.cat([valid_mask, valid_mask.new_ones(null_logit.shape)], dim=-1)
+
+    student_log_prob = torch.log_softmax(student_logits, dim=-1)
+    student_prob = student_log_prob.exp()
+    teacher_prob = torch.softmax(teacher_logits, dim=-1).detach()
+
+    if objective == 'kl':
+        per_query = (teacher_prob * ((teacher_prob + eps).log() - student_log_prob)).sum(dim=-1)
+    else:
+        per_query = -(student_prob * utility).sum(dim=-1)
+
+    active = valid_mask.sum(dim=-1) > (1 if null_logit is not None else 0)
+    per_query = per_query[active]
+    if per_query.numel() == 0 or not torch.isfinite(per_query).all():
+        return None, {}
+    loss = per_query.mean()
+
+    zero = loss.detach() * 0.0
+    expected_utility = (student_prob * utility).sum(dim=-1)
+    depth = min(10, student_scores.size(-1))
+    retrieved = utility[:, :student_scores.size(-1)].gather(
+        1, student_scores.masked_fill(~valid_mask[:, :student_scores.size(-1)], masked_fill)
+        .topk(depth, dim=-1).indices
+    )
+    metrics = {
+        'utility_teacher_loss': loss.detach(),
+        'utility_teacher_expected_utility': expected_utility[active].mean().detach(),
+        'utility_teacher_entropy': -(
+            teacher_prob * (teacher_prob + eps).log()
+        ).sum(dim=-1)[active].mean().detach(),
+        'utility_student_entropy': -(
+            student_prob * student_log_prob
+        ).sum(dim=-1)[active].mean().detach(),
+        'utility_retrieved_at_10': retrieved.mean().detach(),
+        'utility_positive_rate_at_10': (retrieved > 0).float().mean().detach(),
+        'utility_best_available': utility.masked_fill(~valid_mask, masked_fill)
+        .max(dim=-1).values[active].mean().detach(),
+        'utility_null_probability': (
+            student_prob[:, -1][active].mean().detach() if null_logit is not None else zero
+        ),
+        'utility_teacher_null_probability': (
+            teacher_prob[:, -1][active].mean().detach() if null_logit is not None else zero
+        ),
+    }
+    return loss, metrics
+
+def _student_retrieval_metrics_reference(student_scores, student_prob, future_mse, valid_mask, eps=1e-8):
+    """Per-query reference implementation, kept as the correctness oracle.
+
+    `_student_retrieval_metrics` is the vectorized form of exactly this; the
+    differential test in tests/test_stage1_metric_vectorization.py pins them
+    together so the fast path can never silently drift.
+    """
     valid_mask = valid_mask.bool()
     rows = []
     for query_idx in range(student_scores.size(0)):
@@ -587,7 +871,9 @@ def _student_retrieval_metrics(student_scores, student_prob, future_mse, valid_m
         row = {
             'student_entropy_normalized': entropy_norm,
             'student_max_probability': prob.max(),
-            'student_top5_probability_mass': torch.topk(prob, k=min(5, count)).values.sum(),
+            'student_top5_probability_mass': prob[
+                stable_topk_indices(prob, min(5, count))
+            ].sum(),
         }
 
         mean_distance = distances.mean().clamp_min(float(eps))
@@ -595,8 +881,8 @@ def _student_retrieval_metrics(student_scores, student_prob, future_mse, valid_m
         oracle_best_idx = torch.argmin(distances)
         for k in (1, 5, 10):
             effective_k = min(k, count)
-            student_idx = torch.topk(scores, k=effective_k, largest=True).indices
-            oracle_idx = torch.topk(distances, k=effective_k, largest=False).indices
+            student_idx = stable_topk_indices(scores, effective_k, largest=True)
+            oracle_idx = stable_topk_indices(distances, effective_k, largest=False)
             overlap = (
                 student_idx[:, None] == oracle_idx[None, :]
             ).any(dim=1).float().mean()
@@ -622,8 +908,8 @@ def _student_retrieval_metrics(student_scores, student_prob, future_mse, valid_m
                 row[f'ndcg_at_{k}'] = dcg / idcg.clamp_min(float(eps))
 
         if count > 1:
-            score_order = torch.argsort(scores, stable=True)
-            quality_order = torch.argsort(-distances, stable=True)
+            score_order = stable_argsort(scores)
+            quality_order = stable_argsort(-distances)
             score_rank = torch.empty_like(scores)
             quality_rank = torch.empty_like(distances)
             score_rank[score_order] = torch.arange(count, device=scores.device, dtype=torch.float32)
@@ -663,6 +949,192 @@ def _student_retrieval_metrics(student_scores, student_prob, future_mse, valid_m
     }
 
 
+_STUDENT_RETRIEVAL_KEYS = [
+    'student_entropy_normalized', 'student_max_probability',
+    'student_top5_probability_mass', 'spearman_score_vs_negative_mse',
+    *[
+        f'{name}_at_{k}'
+        for k in (1, 5, 10)
+        for name in (
+            'oracle_recall', 'oracle_best_hit', 'topk_probability_mass',
+            'oracle_topk_probability_mass', 'retrieved_future_mse',
+            'best_future_mse', 'oracle_future_mse', 'retrieval_regret',
+        )
+    ],
+    'ndcg_at_5', 'ndcg_at_10',
+]
+
+
+def _masked_ranks(sort_key, valid_mask, counts):
+    """Dense 0-based ranks of the valid entries, ascending by sort_key.
+
+    Invalid entries are pushed past every valid one so the valid entries keep
+    exactly the ranks 0..count-1 they would get from ranking a compacted row.
+    """
+    pushed = sort_key.masked_fill(~valid_mask, float('inf'))
+    order = stable_argsort(pushed, dim=-1)
+    ranks = torch.empty_like(pushed)
+    positions = torch.arange(
+        pushed.size(-1), device=pushed.device, dtype=pushed.dtype
+    ).expand_as(pushed)
+    ranks.scatter_(-1, order, positions)
+    return ranks
+
+
+@torch.no_grad()
+def _student_retrieval_metrics(student_scores, student_prob, future_mse, valid_mask, eps=1e-8):
+    """Future-aware diagnostics; NDCG uses relevance=1/(1+mean-normalized MSE).
+
+    Vectorized over the batch. `_student_retrieval_metrics_reference` is the
+    per-query original and stays the definition of correct; every rule it has is
+    reproduced here rather than approximated:
+
+    * queries with no valid candidate are dropped from the mean, not zero-filled
+    * each query uses its own ``effective_k = min(k, count)``
+    * ranks and means are taken over that query's valid candidates only
+    """
+    valid_mask = valid_mask.bool()
+    counts = valid_mask.sum(dim=-1)
+    active = counts > 0
+    zero = student_scores.detach().sum() * 0.0
+    if not bool(active.any()):
+        return {key: zero for key in _STUDENT_RETRIEVAL_KEYS}
+
+    scores = student_scores.detach().float()
+    prob = student_prob.detach().float()
+    distances = future_mse.detach().float()
+    if not torch.isfinite(scores[valid_mask]).all() or not torch.isfinite(prob[valid_mask]).all():
+        raise ValueError('student distribution contains NaN or Inf at a valid candidate')
+    if not torch.isfinite(distances[valid_mask]).all():
+        raise ValueError('future_mse contains NaN or Inf at a valid candidate')
+
+    num_cand = scores.size(-1)
+    count_f = counts.clamp_min(1).float()
+    # Losing-end fills so masked entries can never win a topk or a min.
+    score_pick = scores.masked_fill(~valid_mask, float('-inf'))
+    dist_pick = distances.masked_fill(~valid_mask, float('inf'))
+    prob_pick = prob.masked_fill(~valid_mask, float('-inf'))
+    prob_zero = prob.masked_fill(~valid_mask, 0.0)
+    dist_zero = distances.masked_fill(~valid_mask, 0.0)
+
+    entropy = -(prob_zero * torch.log(prob_zero.clamp_min(float(eps)))).sum(dim=-1)
+    entropy = torch.where(valid_mask.any(dim=-1), entropy, torch.zeros_like(entropy))
+    log_count = torch.log(count_f)
+    entropy_norm = torch.where(
+        counts > 1, entropy / log_count.clamp_min(float(eps)), torch.zeros_like(entropy)
+    )
+
+    out = {
+        'student_entropy_normalized': entropy_norm,
+        'student_max_probability': prob_pick.max(dim=-1).values,
+    }
+
+    def take(values, indices, keep, fill):
+        gathered = values.gather(1, indices)
+        return gathered.masked_fill(~keep, fill)
+
+    positions = torch.arange(num_cand, device=scores.device).unsqueeze(0)
+
+    top5 = min(5, num_cand)
+    idx5 = stable_topk_indices(prob_pick, top5, largest=True)
+    keep5 = positions[:, :top5] < counts.clamp_max(top5).unsqueeze(1)
+    out['student_top5_probability_mass'] = take(prob, idx5, keep5, 0.0).sum(dim=-1)
+
+    mean_distance = (dist_zero.sum(dim=-1) / count_f).clamp_min(float(eps))
+    relevance = 1.0 / (1.0 + distances / mean_distance.unsqueeze(1))
+    oracle_best_idx = dist_pick.argmin(dim=-1)
+
+    for k in (1, 5, 10):
+        width = min(k, num_cand)
+        effective_k = counts.clamp_max(width)
+        keep = positions[:, :width] < effective_k.unsqueeze(1)
+        denom = effective_k.clamp_min(1).float()
+
+        student_idx = stable_topk_indices(score_pick, width, largest=True)
+        oracle_idx = stable_topk_indices(dist_pick, width, largest=False)
+
+        pair = (student_idx.unsqueeze(-1) == oracle_idx.unsqueeze(-2))
+        pair = pair & keep.unsqueeze(-1) & keep.unsqueeze(-2)
+        out[f'oracle_recall_at_{k}'] = pair.any(dim=-1).float().sum(dim=-1) / denom
+        out[f'oracle_best_hit_at_{k}'] = (
+            (student_idx == oracle_best_idx.unsqueeze(1)) & keep
+        ).any(dim=-1).float()
+
+        retrieved_mse = take(distances, student_idx, keep, 0.0).sum(dim=-1) / denom
+        oracle_mse = take(distances, oracle_idx, keep, 0.0).sum(dim=-1) / denom
+        out[f'topk_probability_mass_at_{k}'] = take(prob, student_idx, keep, 0.0).sum(dim=-1)
+        out[f'oracle_topk_probability_mass_at_{k}'] = take(
+            prob, oracle_idx, keep, 0.0
+        ).sum(dim=-1)
+        out[f'retrieved_future_mse_at_{k}'] = retrieved_mse
+        out[f'best_future_mse_at_{k}'] = take(
+            distances, student_idx, keep, float('inf')
+        ).min(dim=-1).values
+        out[f'oracle_future_mse_at_{k}'] = oracle_mse
+        out[f'retrieval_regret_at_{k}'] = retrieved_mse - oracle_mse
+
+        if k in (5, 10):
+            # Discount at rank i does not depend on effective_k, so one row of
+            # discounts serves every query once the tail is masked away.
+            discounts = 1.0 / torch.log2(
+                torch.arange(width, device=scores.device, dtype=torch.float32) + 2.0
+            )
+            dcg = (take(relevance, student_idx, keep, 0.0) * discounts).sum(dim=-1)
+            idcg = (take(relevance, oracle_idx, keep, 0.0) * discounts).sum(dim=-1)
+            out[f'ndcg_at_{k}'] = dcg / idcg.clamp_min(float(eps))
+
+    score_rank = _masked_ranks(scores, valid_mask, counts)
+    quality_rank = _masked_ranks(-distances, valid_mask, counts)
+    score_rank = (score_rank - (score_rank * valid_mask).sum(dim=-1, keepdim=True) / count_f.unsqueeze(1)) * valid_mask
+    quality_rank = (quality_rank - (quality_rank * valid_mask).sum(dim=-1, keepdim=True) / count_f.unsqueeze(1)) * valid_mask
+    denominator = torch.sqrt(
+        score_rank.square().sum(dim=-1) * quality_rank.square().sum(dim=-1)
+    ).clamp_min(float(eps))
+    spearman = (score_rank * quality_rank).sum(dim=-1) / denominator
+    out['spearman_score_vs_negative_mse'] = torch.where(
+        counts > 1, spearman, torch.zeros_like(spearman)
+    )
+
+    return {
+        key: value[active].mean().detach()
+        for key, value in out.items()
+    }
+
+
+def student_retrieval_metric_aliases(metrics):
+    """Republish `_student_retrieval_metrics` rows under their `student_` names.
+
+    The teacher branches name the same quantities `student_oracle_recall_at_k`,
+    `student_retrieval_regret_at_k`, ... through `_ranking_source_topk_metrics`.
+    Teacher-free objectives never reach that helper, so this restates the keys
+    they do produce under the shared names instead of recomputing anything.
+    """
+    aliases = {}
+    for k in (1, 5, 10):
+        for source, target in (
+            (f'oracle_recall_at_{k}', f'student_oracle_recall_at_{k}'),
+            (f'oracle_best_hit_at_{k}', f'student_oracle_best_hit_at_{k}'),
+            (f'topk_probability_mass_at_{k}', f'student_topk_probability_mass_at_{k}'),
+            (
+                f'oracle_topk_probability_mass_at_{k}',
+                f'student_oracle_topk_probability_mass_at_{k}',
+            ),
+            (f'retrieved_future_mse_at_{k}', f'student_retrieved_future_mse_at_{k}'),
+            (f'best_future_mse_at_{k}', f'student_best_future_mse_at_{k}'),
+            (f'retrieval_regret_at_{k}', f'student_retrieval_regret_at_{k}'),
+        ):
+            if source in metrics:
+                aliases[target] = metrics[source]
+    for k in (5, 10):
+        if f'ndcg_at_{k}' in metrics:
+            aliases[f'student_ndcg_at_{k}'] = metrics[f'ndcg_at_{k}']
+    if 'spearman_score_vs_negative_mse' in metrics:
+        aliases['student_spearman_score_vs_negative_mse'] = metrics[
+            'spearman_score_vs_negative_mse'
+        ]
+    return aliases
+
+
 @torch.no_grad()
 def _score_rank_spearman(first_scores, second_scores, valid_mask, eps=1e-8):
     """Mean per-query Spearman correlation over the same valid candidate pool."""
@@ -684,8 +1156,8 @@ def _score_rank_spearman(first_scores, second_scores, valid_mask, eps=1e-8):
         if not torch.isfinite(first).all() or not torch.isfinite(second).all():
             raise ValueError('rank-correlation scores contain NaN or Inf')
 
-        first_order = torch.argsort(first, stable=True)
-        second_order = torch.argsort(second, stable=True)
+        first_order = stable_argsort(first)
+        second_order = stable_argsort(second)
         first_rank = torch.empty_like(first)
         second_rank = torch.empty_like(second)
         rank_values = torch.arange(
@@ -706,13 +1178,13 @@ def _score_rank_spearman(first_scores, second_scores, valid_mask, eps=1e-8):
 
 
 @torch.no_grad()
-def _teacher_student_distribution_metrics(
+def _teacher_student_distribution_metrics_reference(
     teacher_prob,
     student_prob,
     valid_mask,
     eps=1e-8,
 ):
-    """Compare teacher and student distributions on each valid candidate pool."""
+    """Per-query reference for `_teacher_student_distribution_metrics`."""
     if teacher_prob.dim() != 2:
         raise ValueError(
             f'teacher_prob must be [B, N], got {tuple(teacher_prob.shape)}'
@@ -778,8 +1250,8 @@ def _teacher_student_distribution_metrics(
         }
 
         if count > 1:
-            teacher_order = torch.argsort(teacher, stable=True)
-            student_order = torch.argsort(student, stable=True)
+            teacher_order = stable_argsort(teacher)
+            student_order = stable_argsort(student)
             rank_values = torch.arange(
                 count, device=teacher.device, dtype=torch.float32
             )
@@ -800,12 +1272,8 @@ def _teacher_student_distribution_metrics(
 
         for k in (1, 5, 10):
             effective_k = min(k, count)
-            teacher_topk = torch.topk(
-                teacher, k=effective_k, largest=True
-            ).indices
-            student_topk = torch.topk(
-                student, k=effective_k, largest=True
-            ).indices
+            teacher_topk = stable_topk_indices(teacher, effective_k, largest=True)
+            student_topk = stable_topk_indices(student, effective_k, largest=True)
             overlap = (
                 teacher_topk[:, None] == student_topk[None, :]
             ).any(dim=1).float().mean()
@@ -840,15 +1308,139 @@ def _teacher_student_distribution_metrics(
     }
 
 
+_DISTRIBUTION_KEYS = [
+    'teacher_student_kl_divergence',
+    'student_teacher_kl_divergence',
+    'teacher_student_js_divergence',
+    'teacher_student_prob_l1',
+    'teacher_student_total_variation',
+    'teacher_student_hellinger_distance',
+    'teacher_student_probability_cosine',
+    'teacher_student_entropy_gap',
+    'teacher_student_entropy_abs_gap',
+    'student_teacher_spearman',
+    *[
+        f'{name}_at_{k}'
+        for k in (1, 5, 10)
+        for name in ('teacher_student_topk_overlap', 'student_teacher_recall')
+    ],
+]
+
+
 @torch.no_grad()
-def _ranking_source_topk_metrics(
+def _teacher_student_distribution_metrics(
+    teacher_prob,
+    student_prob,
+    valid_mask,
+    eps=1e-8,
+):
+    """Compare teacher and student distributions on each valid candidate pool.
+
+    Vectorized form of `_teacher_student_distribution_metrics_reference`; the
+    two are pinned together by tests/test_stage1_metric_vectorization.py. Each
+    query is renormalized over its own valid candidates, so masked entries are
+    zeroed before every sum rather than being allowed to leak in.
+    """
+    if teacher_prob.dim() != 2:
+        raise ValueError(
+            f'teacher_prob must be [B, N], got {tuple(teacher_prob.shape)}'
+        )
+    if teacher_prob.shape != student_prob.shape or teacher_prob.shape != valid_mask.shape:
+        raise ValueError(
+            'teacher_prob, student_prob, and valid_mask must have the same shape'
+        )
+
+    valid_mask = valid_mask.bool()
+    counts = valid_mask.sum(dim=-1)
+    active = counts > 0
+    zero = teacher_prob.detach().sum() * 0.0
+    if not bool(active.any()):
+        return {key: zero for key in _DISTRIBUTION_KEYS}
+
+    teacher = teacher_prob.detach().float()
+    student = student_prob.detach().float()
+    if not torch.isfinite(teacher[valid_mask]).all() or not torch.isfinite(student[valid_mask]).all():
+        raise ValueError('teacher/student distribution contains NaN or Inf')
+    if (teacher[valid_mask] < 0).any() or (student[valid_mask] < 0).any():
+        raise ValueError('teacher/student distribution contains a negative probability')
+
+    teacher = teacher.masked_fill(~valid_mask, 0.0)
+    student = student.masked_fill(~valid_mask, 0.0)
+    teacher = teacher / teacher.sum(dim=-1, keepdim=True).clamp_min(float(eps))
+    student = student / student.sum(dim=-1, keepdim=True).clamp_min(float(eps))
+
+    def masked_sum(values):
+        return (values * valid_mask).sum(dim=-1)
+
+    teacher_log = torch.log(teacher.clamp_min(float(eps)))
+    student_log = torch.log(student.clamp_min(float(eps)))
+    midpoint_log = torch.log((0.5 * (teacher + student)).clamp_min(float(eps)))
+
+    teacher_entropy = -masked_sum(teacher * teacher_log)
+    student_entropy = -masked_sum(student * student_log)
+    l1 = masked_sum(torch.abs(teacher - student))
+
+    out = {
+        'teacher_student_kl_divergence': masked_sum(teacher * (teacher_log - student_log)),
+        'student_teacher_kl_divergence': masked_sum(student * (student_log - teacher_log)),
+        'teacher_student_js_divergence': 0.5 * (
+            masked_sum(teacher * (teacher_log - midpoint_log))
+            + masked_sum(student * (student_log - midpoint_log))
+        ),
+        'teacher_student_prob_l1': l1,
+        'teacher_student_total_variation': 0.5 * l1,
+        'teacher_student_hellinger_distance': torch.sqrt(
+            (0.5 * masked_sum((torch.sqrt(teacher) - torch.sqrt(student)).square())).clamp_min(0.0)
+        ),
+        'teacher_student_probability_cosine': F.cosine_similarity(
+            teacher, student, dim=-1, eps=float(eps)
+        ),
+        'teacher_student_entropy_gap': student_entropy - teacher_entropy,
+        'teacher_student_entropy_abs_gap': torch.abs(student_entropy - teacher_entropy),
+    }
+
+    count_f = counts.clamp_min(1).float()
+    teacher_rank = _masked_ranks(teacher, valid_mask, counts)
+    student_rank = _masked_ranks(student, valid_mask, counts)
+    teacher_rank = (teacher_rank - masked_sum(teacher_rank).unsqueeze(1) / count_f.unsqueeze(1)) * valid_mask
+    student_rank = (student_rank - masked_sum(student_rank).unsqueeze(1) / count_f.unsqueeze(1)) * valid_mask
+    rank_denominator = torch.sqrt(
+        teacher_rank.square().sum(dim=-1) * student_rank.square().sum(dim=-1)
+    ).clamp_min(float(eps))
+    spearman = (teacher_rank * student_rank).sum(dim=-1) / rank_denominator
+    out['student_teacher_spearman'] = torch.where(
+        counts > 1, spearman, torch.zeros_like(spearman)
+    )
+
+    num_cand = teacher.size(-1)
+    positions = torch.arange(num_cand, device=teacher.device).unsqueeze(0)
+    teacher_pick = teacher.masked_fill(~valid_mask, float('-inf'))
+    student_pick = student.masked_fill(~valid_mask, float('-inf'))
+    for k in (1, 5, 10):
+        width = min(k, num_cand)
+        effective_k = counts.clamp_max(width)
+        keep = positions[:, :width] < effective_k.unsqueeze(1)
+        teacher_topk = stable_topk_indices(teacher_pick, width, largest=True)
+        student_topk = stable_topk_indices(student_pick, width, largest=True)
+        pair = teacher_topk.unsqueeze(-1) == student_topk.unsqueeze(-2)
+        pair = pair & keep.unsqueeze(-1) & keep.unsqueeze(-2)
+        overlap = pair.any(dim=-1).float().sum(dim=-1) / effective_k.clamp_min(1).float()
+        out[f'teacher_student_topk_overlap_at_{k}'] = overlap
+        # With equal-size Top-K sets, precision and recall are both overlap/K.
+        out[f'student_teacher_recall_at_{k}'] = overlap
+
+    return {key: value[active].mean().detach() for key, value in out.items()}
+
+
+@torch.no_grad()
+def _ranking_source_topk_metrics_reference(
     student_scores,
     teacher_scores,
     future_mse,
     future_cosine,
     valid_mask,
 ):
-    """Pairwise Top-K overlap among Student, Teacher, and two future Oracles."""
+    """Per-query reference for `_ranking_source_topk_metrics`."""
     tensors = {
         'student': student_scores,
         'teacher': teacher_scores,
@@ -889,7 +1481,7 @@ def _ranking_source_topk_metrics(
         for k in (1, 5, 10):
             effective_k = min(k, count)
             topk = {
-                key: torch.topk(value, k=effective_k, largest=True).indices
+                key: stable_topk_indices(value, effective_k, largest=True)
                 for key, value in row_scores.items()
             }
             for first, second in pairs:
@@ -920,6 +1512,97 @@ def _ranking_source_topk_metrics(
             f'oracle_cos_student_topk_overlap_at_{k}'
         ]
     return metrics
+
+
+_RANKING_SOURCE_PAIRS = (
+    ('teacher', 'student'),
+    ('oracle_mse', 'student'),
+    ('teacher', 'oracle_mse'),
+    ('oracle_cos', 'student'),
+    ('teacher', 'oracle_cos'),
+    ('oracle_mse', 'oracle_cos'),
+)
+
+
+@torch.no_grad()
+def _ranking_source_topk_metrics(
+    student_scores,
+    teacher_scores,
+    future_mse,
+    future_cosine,
+    valid_mask,
+):
+    """Pairwise Top-K overlap among Student, Teacher, and two future Oracles.
+
+    Vectorized form of `_ranking_source_topk_metrics_reference`; the two are
+    pinned together by tests/test_stage1_metric_vectorization.py.
+    """
+    tensors = {
+        'student': student_scores,
+        'teacher': teacher_scores,
+        'oracle_mse': -future_mse,
+        'oracle_cos': future_cosine,
+    }
+    expected_shape = valid_mask.shape
+    if any(value.shape != expected_shape for value in tensors.values()):
+        shapes = {key: tuple(value.shape) for key, value in tensors.items()}
+        raise ValueError(
+            f'all ranking sources and valid_mask must have shape {tuple(expected_shape)}; '
+            f'got {shapes}'
+        )
+
+    valid_mask = valid_mask.bool()
+    counts = valid_mask.sum(dim=-1)
+    active = counts > 0
+    keys = [
+        f'{first}_{second}_topk_overlap_at_{k}'
+        for first, second in _RANKING_SOURCE_PAIRS
+        for k in (1, 5, 10)
+    ]
+
+    def finish(metrics):
+        for k in (1, 5, 10):
+            metrics[f'student_oracle_recall_at_{k}'] = metrics[
+                f'oracle_mse_student_topk_overlap_at_{k}'
+            ]
+            metrics[f'student_oracle_cos_recall_at_{k}'] = metrics[
+                f'oracle_cos_student_topk_overlap_at_{k}'
+            ]
+        return metrics
+
+    zero = student_scores.detach().sum() * 0.0
+    if not bool(active.any()):
+        return finish({key: zero for key in keys})
+
+    ranked = {}
+    for key, value in tensors.items():
+        value = value.detach().float()
+        if not torch.isfinite(value[valid_mask]).all():
+            raise ValueError('ranking source contains NaN or Inf at a valid candidate')
+        ranked[key] = value.masked_fill(~valid_mask, float('-inf'))
+
+    num_cand = valid_mask.size(-1)
+    positions = torch.arange(num_cand, device=valid_mask.device).unsqueeze(0)
+    out = {}
+    for k in (1, 5, 10):
+        width = min(k, num_cand)
+        effective_k = counts.clamp_max(width)
+        keep = positions[:, :width] < effective_k.unsqueeze(1)
+        denom = effective_k.clamp_min(1).float()
+        topk = {
+            key: stable_topk_indices(value, width, largest=True)
+            for key, value in ranked.items()
+        }
+        for first, second in _RANKING_SOURCE_PAIRS:
+            pair = topk[first].unsqueeze(-1) == topk[second].unsqueeze(-2)
+            pair = pair & keep.unsqueeze(-1) & keep.unsqueeze(-2)
+            out[f'{first}_{second}_topk_overlap_at_{k}'] = (
+                pair.any(dim=-1).float().sum(dim=-1) / denom
+            )
+
+    return finish({
+        key: value[active].mean().detach() for key, value in out.items()
+    })
 
 
 @torch.no_grad()
@@ -1529,6 +2212,95 @@ class Model(nn.Module):
             raise ValueError('stage1_covariance_weight must be non-negative')
         if self.variance_target <= 0.0:
             raise ValueError('stage1_variance_target must be positive')
+        # Residual teacher over an arbitrary pool, including the full bank.
+        # Scores are computed inline from cached base-forecast residuals rather
+        # than read from a per-pool score matrix, which is what makes full-bank
+        # residual supervision affordable at all.
+        self.residual_teacher_active = bool(int(getattr(configs, 'stage1_residual_teacher', 0)))
+        self.reference_pool_size = int(getattr(configs, 'stage1_pool_size', 0))
+
+        # Externally measured retrieval teacher. The supervision signal moves
+        # from "which candidate's future looks like mine" to "which candidate
+        # actually improves the forecast", which cannot be computed inside this
+        # loop -- it needs a Stage-2 forward -- so it arrives precomputed over a
+        # fixed candidate pool shared by every teacher arm.
+        self.external_teacher_target = getattr(configs, 'stage1_teacher_target', 'future')
+        if self.external_teacher_target not in ('future', 'residual', 'utility'):
+            raise ValueError(
+                'stage1_teacher_target must be one of: future, residual, utility; '
+                f'got {self.external_teacher_target}'
+            )
+        self.external_teacher_objective = getattr(configs, 'stage1_teacher_loss', 'kl')
+        if self.external_teacher_objective not in ('kl', 'expected_utility'):
+            raise ValueError(
+                'stage1_teacher_loss must be kl or expected_utility; '
+                f'got {self.external_teacher_objective}'
+            )
+        self.external_teacher_normalize = getattr(
+            configs, 'stage1_teacher_normalize', 'per_query_scale'
+        )
+        self.external_teacher_tau = float(getattr(configs, 'stage1_teacher_tau', 0.05))
+        if self.external_teacher_tau <= 0.0:
+            raise ValueError('stage1_teacher_tau must be positive')
+        # Explicit abstention. A softmax retriever always sums to one, so it must
+        # pick someone even when every candidate in the pool is harmful -- which
+        # the utility diagnostic showed is most queries at long horizons.
+        self.null_mode = getattr(configs, 'stage1_null_mode', 'off')
+        if self.null_mode not in ('off', 'fixed', 'query'):
+            raise ValueError(
+                f'stage1_null_mode must be off, fixed or query; got {self.null_mode}'
+            )
+        self.null_head = (
+            nn.Linear(int(configs.d_model), 1) if self.null_mode == 'query' else None
+        )
+
+        # Training-only candidate subset. The memory bank keeps mining the whole
+        # pool; these decide which mined candidates the loss runs over and
+        # whether the candidate side carries gradient.
+        self.candidate_subset_mode = getattr(
+            configs, 'stage1_candidate_subset_mode', 'none'
+        )
+        if self.candidate_subset_mode not in (
+            'none', 'selected_detached', 'selected_reencode'
+        ):
+            raise ValueError(
+                'stage1_candidate_subset_mode must be one of: none, '
+                f'selected_detached, selected_reencode; got {self.candidate_subset_mode}'
+            )
+        self.candidate_mine_top_m = int(
+            getattr(configs, 'stage1_candidate_mine_top_m', 100)
+        )
+        requested_inject_k = int(
+            getattr(configs, 'stage1_candidate_oracle_inject_k', -1)
+        )
+        self.candidate_oracle_inject_k = (
+            requested_inject_k
+            if requested_inject_k > 0
+            else int(getattr(configs, 'top_k', 10))
+        )
+        if self.candidate_subset_mode != 'none':
+            if self.candidate_mine_top_m <= 0:
+                raise ValueError('stage1_candidate_mine_top_m must be positive')
+            if self.candidate_oracle_inject_k > self.candidate_mine_top_m:
+                raise ValueError(
+                    'stage1_candidate_oracle_inject_k cannot exceed '
+                    'stage1_candidate_mine_top_m'
+                )
+            # The experiment isolates the candidate-gradient effect, so the
+            # objective is pinned to one of the two future-supervised losses:
+            # the KL distillation the pipeline ships with, or the explicit
+            # Oracle Top-K coverage loss the tiny-overfit diagnostic used.
+            if self.loss_mode not in ('kl', 'topk_coverage'):
+                raise ValueError(
+                    'stage1_candidate_subset_mode requires --stage1_loss_mode kl '
+                    f'or topk_coverage; got {self.loss_mode}'
+                )
+            if self.loss_mode == 'kl' and self.teacher_mode != 'mse':
+                raise ValueError(
+                    'stage1_candidate_subset_mode with kl requires '
+                    f'--stage1_teacher_mode mse; got {self.teacher_mode}'
+                )
+
         self.eps = 1e-8
         self.encoder = RelationEncoder(configs)
         self.shared_cross_projection = nn.Linear(
@@ -1565,6 +2337,7 @@ class Model(nn.Module):
         for param in self.teacher_shared_cross_projection.parameters():
             param.requires_grad = False
         self._shape_logged = False
+        self._subset_logged = False
         self.relation_sources = None
 
     def set_relation_graph(self, graph):
@@ -1703,6 +2476,32 @@ class Model(nn.Module):
         q = F.normalize(q, dim=-1, eps=self.eps)
         k = F.normalize(k, dim=-1, eps=self.eps)
         return torch.matmul(q, k.transpose(0, 1))
+
+    def _residual_mse(self, query_residual, memory_residual, target_channel):
+        """Pairwise MSE between query and candidate base-forecast residuals.
+
+        Same expansion `_future_mse` uses -- ||q||^2 + ||k||^2 - 2<q,k> over the
+        horizon -- so the residual teacher costs one matmul against the whole bank
+        and scales to any pool size, unlike measured utility.
+        """
+        q = query_residual[:, :, target_channel]
+        k = memory_residual[:, :, target_channel]
+        q2 = q.square().mean(dim=-1, keepdim=True)
+        k2 = k.square().mean(dim=-1).unsqueeze(0)
+        qk = torch.matmul(q, k.transpose(0, 1)) / q.size(-1)
+        return (q2 + k2 - 2.0 * qk).clamp_min(0.0)
+
+    def reference_pool(self, reference_scores, valid_mask, pool_size):
+        """Top-M candidate ids under a frozen reference encoder.
+
+        The pool has to be identical across teacher arms, so it comes from a
+        checkpoint that never moves rather than from the encoder being trained --
+        otherwise each arm would be scored on a pool it chose for itself.
+        """
+        if pool_size <= 0 or pool_size >= reference_scores.size(-1):
+            return None
+        masked = reference_scores.masked_fill(~valid_mask, torch.finfo(reference_scores.dtype).min)
+        return masked.topk(pool_size, dim=-1).indices
 
     def _teacher_logits(
         self,
@@ -1844,6 +2643,86 @@ class Model(nn.Module):
                 chunks.append(self.encoder(cur))
         return torch.cat(chunks, dim=0)
 
+    def candidate_subset_active(self):
+        """Training-only. Validation and test always score the full memory bank."""
+        return self.candidate_subset_mode != 'none' and self.training
+
+    def external_teacher_active(self):
+        """Whether this model is supervised by a precomputed non-Future teacher."""
+        return (
+            self.external_teacher_target != 'future'
+            or self.external_teacher_objective != 'kl'
+            or self.null_mode != 'off'
+        )
+
+    def null_logit(self, z_q):
+        """Score of the explicit no-retrieval action, or None when disabled."""
+        if self.null_mode == 'off':
+            return None
+        if self.null_mode == 'fixed':
+            return z_q.new_zeros(z_q.size(0), 1)
+        if z_q.size(-1) != self.null_head.in_features:
+            raise ValueError(
+                f'null head expects {self.null_head.in_features} dims, got {z_q.size(-1)}'
+            )
+        return self.null_head(z_q)
+
+    @torch.no_grad()
+    def _candidate_mining_metrics(self, bank_scores, future_mse, valid_mask, stats):
+        """How much of the global Oracle the bank finds *before* injection.
+
+        Injection makes the training candidate set artificially good, so these
+        are the only honest read on what the current encoder retrieves.
+        """
+        valid_mask = valid_mask.bool()
+        scores = bank_scores.detach().float().masked_fill(~valid_mask, float('-inf'))
+        distances = future_mse.detach().float().masked_fill(~valid_mask, float('inf'))
+        num_cand = scores.size(-1)
+        oracle_k = min(int(self.candidate_oracle_inject_k), num_cand)
+        oracle = torch.topk(distances, k=oracle_k, dim=-1, largest=False).indices
+        oracle_valid = valid_mask.gather(1, oracle)
+        denominator = oracle_valid.sum(dim=-1).float().clamp_min(1.0)
+
+        metrics = {}
+        for depth in (oracle_k, min(int(self.candidate_mine_top_m), num_cand)):
+            bank_top = torch.topk(scores, k=depth, dim=-1, largest=True).indices
+            hit = (
+                (oracle.unsqueeze(-1) == bank_top.unsqueeze(-2)).any(dim=-1)
+                & oracle_valid
+            )
+            metrics[f'bank_oracle_recall_at_{depth}'] = (
+                hit.sum(dim=-1).float() / denominator
+            ).mean()
+        metrics['oracle_count_in_bank_top_m'] = stats['oracle_count_in_bank_top_m'].mean()
+        metrics['oracle_missing_count_before_injection'] = stats[
+            'oracle_missing_count_before_injection'
+        ].mean()
+        return metrics
+
+    def _reencode_selected_candidates(
+        self, candidate_x, selected_indices, target_channel, source_channel
+    ):
+        """Embed the selected candidate pasts with the *current* encoder.
+
+        Queries and candidates share one encoder and one parameter set, and the
+        result stays inside the graph, so the candidate side carries gradient.
+        Rows overlap heavily after Top-M mining, so the unique index set is
+        encoded once and scattered back instead of encoding B*M relations.
+        """
+        bsz, top_m = selected_indices.shape
+        flat = selected_indices.reshape(-1)
+        unique_indices, inverse = torch.unique(flat, return_inverse=True)
+        cand_x = candidate_x.index_select(0, unique_indices)
+        k_rel = self._relation_tensor(cand_x, target_channel, source_channel)
+        # Deliberately not _encode_keys: its gradient checkpointing
+        # (use_reentrant=False) retains memory across optimizer steps on the
+        # installed torch, which grew ~0.25 GiB/step until the run died. The
+        # unique set is bounded by batch_size * top_m, so a plain forward is
+        # both small enough and flat across steps.
+        z_k_unique = self.encoder(k_rel)
+        z_k = z_k_unique.index_select(0, inverse).view(bsz, top_m, -1)
+        return z_k, unique_indices.numel()
+
     @torch.no_grad()
     def build_embedding_bank(self, memory_x, device, chunk_size=None):
         """Build stale relation-wise key bank [C, S, N, D] for one epoch."""
@@ -1976,9 +2855,78 @@ class Model(nn.Module):
         active_target_channels=None,
         compute_detailed_metrics=True,
         direct_retrieval=False,
+        candidate_x=None,
+        differentiable_keys=False,
+        external_pool=None,
+        external_teacher=None,
+        external_utility=None,
+        query_residual=None,
+        memory_residual=None,
+        reference_scores=None,
     ):
         bsz, num_cand = cand_mask.shape
-        if key_bank is None:
+        if self.residual_teacher_active and (query_residual is None or memory_residual is None):
+            raise ValueError(
+                'stage1_residual_teacher needs the cached query and memory residuals'
+            )
+        if self.reference_pool_size > 0:
+            if reference_scores is None:
+                raise ValueError('a reference pool needs frozen reference scores [B, C, N]')
+            if external_pool is not None:
+                raise ValueError(
+                    'reference pool and precomputed pool are two ways of choosing the '
+                    'same columns; enable only one'
+                )
+            external_pool = torch.stack([
+                self.reference_pool(reference_scores[:, c], cand_mask, self.reference_pool_size)
+                for c in range(self.channels)
+            ], dim=1)
+            # The pool restriction block below expects the measured teachers too;
+            # with a residual teacher those are computed inline instead.
+            external_teacher = torch.zeros_like(external_pool, dtype=cand_mask.new_zeros(1).float().dtype)
+            external_utility = torch.zeros_like(external_teacher)
+        external_active = external_pool is not None
+        if external_active:
+            if external_teacher is None or external_utility is None:
+                raise ValueError(
+                    'an external candidate pool needs both its teacher scores and '
+                    'its measured utility'
+                )
+            for name, tensor in (('external_teacher', external_teacher),
+                                 ('external_utility', external_utility)):
+                if tensor.shape != external_pool.shape:
+                    raise ValueError(
+                        f'{name} shape {tuple(tensor.shape)} does not match the pool '
+                        f'{tuple(external_pool.shape)}'
+                    )
+            if external_pool.dim() != 3 or external_pool.size(0) != bsz:
+                raise ValueError(
+                    f'external_pool must be [B, C, M] with B={bsz}, '
+                    f'got {tuple(external_pool.shape)}'
+                )
+            if self.candidate_subset_active():
+                raise ValueError(
+                    'an external candidate pool and mined candidate subsets are two '
+                    'ways of choosing the same columns; enable only one'
+                )
+        if differentiable_keys:
+            # Diagnostic path: re-encode every candidate history with the current
+            # parameters inside the graph, so the key side carries gradient too.
+            if direct_retrieval:
+                raise ValueError(
+                    'differentiable candidate encoding is incompatible with '
+                    'encoder-free direct retrieval'
+                )
+            if candidate_x is None:
+                raise ValueError(
+                    'differentiable candidate encoding requires candidate_x [N, L, C]'
+                )
+            if candidate_x.dim() != 3 or candidate_x.size(0) != num_cand:
+                raise ValueError(
+                    f'candidate_x must be [{num_cand}, L, C], '
+                    f'got {tuple(candidate_x.shape)}'
+                )
+        elif key_bank is None:
             raise ValueError('full-memory Stage-1 requires a relation key memory bank')
         if self.requires_ema_teacher_bank() and teacher_key_bank is None:
             raise ValueError('EMA Stage-1 teacher requires a teacher key memory bank')
@@ -1995,7 +2943,13 @@ class Model(nn.Module):
 
         if not self._shape_logged:
             print(f'[stage1] batch_x={tuple(query_x.shape)} batch_y={tuple(query_y.shape)}')
-            print(f'[stage1] key_bank={tuple(key_bank.shape)} memory_y={tuple(memory_y.shape)} mask={tuple(cand_mask.shape)}')
+            key_shape = None if key_bank is None else tuple(key_bank.shape)
+            print(f'[stage1] key_bank={key_shape} memory_y={tuple(memory_y.shape)} mask={tuple(cand_mask.shape)}')
+            if differentiable_keys:
+                print(
+                    '[stage1] differentiable candidate encoding enabled: '
+                    f'candidate_x={tuple(candidate_x.shape)} (key bank bypassed)'
+                )
             if teacher_key_bank is not None:
                 print(f'[stage1] teacher_key_bank={tuple(teacher_key_bank.shape)} teacher_mode={self.teacher_mode}')
             print(
@@ -2024,8 +2978,15 @@ class Model(nn.Module):
         cross_rows = []
 
         targets = self.target_channels() if active_target_channels is None else active_target_channels
+        # The candidate subset narrows cand_mask/valid_query to the selected
+        # columns, and the selection is per relation branch. Keep the full-pool
+        # originals so each branch starts from them.
+        full_cand_mask = cand_mask
+        full_valid_query = valid_query
         for c in targets:
             for source_slot, r in enumerate(self.source_channels(c)):
+                cand_mask = full_cand_mask
+                valid_query = full_valid_query
                 future_mse = self._future_mse(
                     query_x,
                     query_y,
@@ -2058,6 +3019,12 @@ class Model(nn.Module):
                             c,
                             r,
                         )
+                        if self.residual_teacher_active:
+                            # future_mse stays as it is: it still feeds Recall and
+                            # regret, which remain auxiliary diagnostics here.
+                            teacher_logits = -self._residual_mse(
+                                query_residual, memory_residual, c
+                            ) / self.tau_teacher
                         teacher_logits = teacher_logits.masked_fill(
                             ~cand_mask, masked_fill
                         )
@@ -2122,9 +3089,13 @@ class Model(nn.Module):
                 regularization_loss = (
                     weighted_variance_loss + weighted_covariance_loss
                 )
-                z_k = key_bank[c, source_slot].to(
-                    device=query_x.device, dtype=z_q.dtype
-                )
+                if differentiable_keys:
+                    k_rel = self._relation_tensor(candidate_x, c, r)
+                    z_k = self._encode_keys(k_rel).to(dtype=z_q.dtype)
+                else:
+                    z_k = key_bank[c, source_slot].to(
+                        device=query_x.device, dtype=z_q.dtype
+                    )
 
                 if self.encoder.retrieval_similarity == 'l2':
                     # The encoder already skipped its L2 normalisation, so z_q and
@@ -2141,6 +3112,142 @@ class Model(nn.Module):
                     ) / float(q_l2.size(-1))
                 else:
                     student_scores = torch.matmul(z_q, z_k.transpose(0, 1))
+
+                subset_metrics = {}
+                selected_indices = None
+                external_teacher_c = None
+                external_utility_c = None
+                if external_active:
+                    # A fixed pool, identical across teacher arms, so "subset cost"
+                    # and "teacher effect" never end up folded into one number.
+                    selected = external_pool[:, c]
+                    selected_indices = selected
+                    student_scores = student_scores.gather(1, selected)
+                    future_mse = future_mse.gather(1, selected)
+                    cand_mask = cand_mask.gather(1, selected)
+                    valid_query = cand_mask.sum(dim=1) > 0
+                    external_teacher_c = external_teacher[:, c]
+                    external_utility_c = external_utility[:, c]
+                    subset_metrics = external_pool_utility_metrics(
+                        student_scores.detach(), external_utility_c, cand_mask
+                    )
+                    if self.loss_mode == 'topk_coverage':
+                        coverage_targets = prepare_topk_coverage_targets(
+                            future_mse, cand_mask, self.coverage_top_k
+                        )
+                    else:
+                        teacher_logits = teacher_logits.gather(1, selected).masked_fill(
+                            ~cand_mask, masked_fill
+                        )
+                        teacher_prob = torch.softmax(teacher_logits, dim=-1).detach()
+                    if compute_detailed_metrics:
+                        oracle_rank = torch.argmin(
+                            future_mse.masked_fill(~cand_mask, float('inf')), dim=-1
+                        )
+                        random_mse = (
+                            future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
+                            / cand_mask.sum(dim=-1).clamp_min(1)
+                        ).detach()
+                        if self.loss_mode != 'topk_coverage':
+                            teacher_entropy = -(
+                                teacher_prob * torch.log(teacher_prob + self.eps)
+                            ).sum(dim=-1)
+                            teacher_rank = torch.argmax(teacher_prob, dim=-1)
+                elif self.candidate_subset_active():
+                    if candidate_x is None:
+                        raise ValueError(
+                            'stage1_candidate_subset_mode requires candidate_x '
+                            '[N, L, C] so selected candidates can be re-encoded'
+                        )
+                    selected, mining_stats = select_training_candidates(
+                        student_scores,
+                        future_mse,
+                        cand_mask,
+                        top_m=self.candidate_mine_top_m,
+                        oracle_k=self.candidate_oracle_inject_k,
+                    )
+                    subset_metrics = self._candidate_mining_metrics(
+                        student_scores, future_mse, cand_mask, mining_stats
+                    )
+                    selected_indices = selected
+
+                    if self.candidate_subset_mode == 'selected_reencode':
+                        # Same encoder, same parameters, no detach: the candidate
+                        # side is part of the graph the KL backpropagates through.
+                        z_k_sel, unique_count = self._reencode_selected_candidates(
+                            candidate_x, selected, c, r
+                        )
+                        if self.encoder.retrieval_similarity == 'l2':
+                            student_scores = -(
+                                z_q.float().pow(2).sum(dim=-1, keepdim=True)
+                                + z_k_sel.float().pow(2).sum(dim=-1)
+                                - 2.0 * (z_q.float().unsqueeze(1) * z_k_sel.float()).sum(dim=-1)
+                            ) / float(z_q.size(-1))
+                        else:
+                            student_scores = (
+                                z_q.unsqueeze(1) * z_k_sel.to(dtype=z_q.dtype)
+                            ).sum(dim=-1)
+                        # The metric averager stacks tensors, so keep every row
+                        # entry a tensor rather than a python scalar.
+                        subset_metrics['candidate_unique_encoded'] = z_q.new_tensor(
+                            float(unique_count)
+                        )
+                        if not self._subset_logged:
+                            print(
+                                '[stage1 candidate-subset] mode=selected_reencode '
+                                f'top_m={selected.size(1)} '
+                                f'oracle_inject_k={self.candidate_oracle_inject_k} '
+                                f'unique_encoded={unique_count}/{selected.numel()} '
+                                f'z_q.requires_grad={z_q.requires_grad} '
+                                f'z_k.requires_grad={z_k_sel.requires_grad}'
+                            )
+                            self._subset_logged = True
+                    else:
+                        # Control arm: identical candidate set, but the scores keep
+                        # coming from the detached bank embeddings.
+                        student_scores = student_scores.gather(1, selected)
+                        if not self._subset_logged:
+                            print(
+                                '[stage1 candidate-subset] mode=selected_detached '
+                                f'top_m={selected.size(1)} '
+                                f'oracle_inject_k={self.candidate_oracle_inject_k} '
+                                '(bank embeddings, no candidate gradient)'
+                            )
+                            self._subset_logged = True
+
+                    # Every downstream tensor moves onto the selected columns so
+                    # the loss, its target and the metrics all live on [B, M].
+                    future_mse = future_mse.gather(1, selected)
+                    cand_mask = cand_mask.gather(1, selected)
+                    valid_query = cand_mask.sum(dim=1) > 0
+                    if self.loss_mode == 'topk_coverage':
+                        # The Oracle positives were prepared over the full pool,
+                        # so their indices mean nothing on the selected columns.
+                        # Injection guarantees the global Oracle Top-K survived
+                        # the mining, so recomputing here reselects the same
+                        # candidates under their new positions.
+                        coverage_targets = prepare_topk_coverage_targets(
+                            future_mse, cand_mask, self.coverage_top_k
+                        )
+                    else:
+                        teacher_logits = teacher_logits.gather(1, selected).masked_fill(
+                            ~cand_mask, masked_fill
+                        )
+                        teacher_prob = torch.softmax(teacher_logits, dim=-1).detach()
+                    if compute_detailed_metrics:
+                        oracle_rank = torch.argmin(
+                            future_mse.masked_fill(~cand_mask, float('inf')), dim=-1
+                        )
+                        random_mse = (
+                            future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
+                            / cand_mask.sum(dim=-1).clamp_min(1)
+                        ).detach()
+                        if self.loss_mode != 'topk_coverage':
+                            teacher_entropy = -(
+                                teacher_prob * torch.log(teacher_prob + self.eps)
+                            ).sum(dim=-1)
+                            teacher_rank = torch.argmax(teacher_prob, dim=-1)
+
                 if self.loss_mode == 'rnc':
                     if self.rnc_quality_source == 'ema_cosine':
                         teacher_scores = self._teacher_embedding_scores(
@@ -2239,6 +3346,64 @@ class Model(nn.Module):
                     (self_rows if c == r else cross_rows).append(row)
                     continue
 
+                if external_active and self.external_teacher_active():
+                    teacher_source = {
+                        'future': -future_mse,
+                        'residual': external_teacher_c,
+                        'utility': external_utility_c,
+                    }[self.external_teacher_target]
+                    utility_loss, utility_metrics = utility_teacher_loss(
+                        student_scores,
+                        teacher_source,
+                        external_utility_c,
+                        cand_mask,
+                        tau_student=self.tau_student,
+                        tau_teacher=self.external_teacher_tau,
+                        objective=self.external_teacher_objective,
+                        normalize=self.external_teacher_normalize,
+                        null_logit=self.null_logit(z_q),
+                        eps=self.eps,
+                    )
+                    if utility_loss is None:
+                        continue
+                    zero_metric = utility_loss.detach() * 0.0
+                    total_loss = utility_loss + regularization_loss
+                    student_logits = (student_scores / self.tau_student).masked_fill(
+                        ~cand_mask, masked_fill
+                    )
+                    student_log_prob = torch.log_softmax(student_logits, dim=-1)
+                    student_prob = student_log_prob.exp()
+                    row = {
+                        'stage1_loss_total': total_loss.detach(),
+                        'stage1_loss_kl': zero_metric,
+                        'stage1_loss_rank': zero_metric,
+                        'stage1_loss_rank_weighted': zero_metric,
+                        'total_loss': total_loss.detach(),
+                        'kl': zero_metric,
+                        'kl_loss': zero_metric,
+                        'weighted_kl_loss': zero_metric,
+                        'rank_loss': zero_metric,
+                        'rnc_loss': zero_metric,
+                        'expected_mse_loss': zero_metric,
+                        'weighted_expected_mse_loss': zero_metric,
+                        'stage1_loss_variance': variance_loss.detach(),
+                        'stage1_loss_variance_weighted': weighted_variance_loss.detach(),
+                        'stage1_loss_covariance': covariance_loss.detach(),
+                        'stage1_loss_covariance_weighted': weighted_covariance_loss.detach(),
+                        'embedding_std_mean': embedding_std_mean.detach(),
+                    }
+                    row.update(subset_metrics)
+                    row.update(utility_metrics)
+                    if compute_detailed_metrics:
+                        row.update(_student_retrieval_metrics(
+                            student_scores, student_prob, future_mse, cand_mask, eps=self.eps
+                        ))
+                        row.update(student_retrieval_metric_aliases(row))
+                    losses.append(total_loss)
+                    metric_rows.append(row)
+                    (self_rows if c == r else cross_rows).append(row)
+                    continue
+
                 if self.loss_mode == 'topk_coverage':
                     valid_student_scores = student_scores[cand_mask]
                     if (
@@ -2309,6 +3474,9 @@ class Model(nn.Module):
                             'random_future_mse': random_mse[valid_query].detach().mean(),
                         })
                         row.update(retrieval_metrics)
+                        row.update(
+                            student_retrieval_metric_aliases(retrieval_metrics)
+                        )
                         row['recall@1'] = row['oracle_recall_at_1']
                         row['recall@5'] = row['oracle_recall_at_5']
                         row['retrieved_future_mse_top1'] = row[
@@ -2448,6 +3616,7 @@ class Model(nn.Module):
                 row.update(rank_metrics)
                 row.update(expected_mse_metrics)
                 row.update(infonce_metrics)
+                row.update(subset_metrics)
                 if compute_detailed_metrics:
                     retrieval_metrics = _student_retrieval_metrics(
                         student_scores, student_prob, future_mse, cand_mask, eps=self.eps
@@ -2473,6 +3642,9 @@ class Model(nn.Module):
                         c,
                         r,
                     )
+                    if selected_indices is not None:
+                        # Every ranking source has to live on the same columns.
+                        future_cosine = future_cosine.gather(1, selected_indices)
                     ranking_source_metrics = _ranking_source_topk_metrics(
                         student_scores,
                         teacher_logits,

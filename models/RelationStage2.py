@@ -15,7 +15,15 @@ from models.RelationStage1 import (
     transform_relation_features,
     transform_relation_history,
 )
-from utils.retrieval_ops import retrieve_relation_future
+from utils.retrieval_ops import retrieve_relation_future, reweight_selected_candidates
+from utils.rank_losses import (
+    MODES as RANK_MODES,
+    embedding_geometry,
+    mine_ranking_candidates,
+    ranking_loss,
+    score_geometry,
+    weight_geometry,
+)
 
 
 class BaseForecastHead(nn.Module):
@@ -106,6 +114,36 @@ class Model(nn.Module):
         # product, so the Top-K would be identical to cosine.
         # Soft attention over the whole bank instead of Top-K, so the forecasting
         # loss reaches every candidate score rather than only the k already picked.
+        # End-to-end retrieval: the forecast loss reaches the Stage-1 encoder
+        # through the Top-K weights. Selection stays exactly as it was -- the
+        # retrieval universe is still the full bank -- but the selected
+        # candidates are re-encoded live so the candidate side carries gradient
+        # too, which the precomputed key bank cannot.
+        self.e2e_retrieval = bool(int(getattr(configs, 'stage2_e2e', 0)))
+        self.rank_loss_mode = getattr(configs, 'stage2_rank_loss', 'none')
+        self.rank_loss_weight = float(getattr(configs, 'stage2_rank_weight', 0.0))
+        self.rank_margin = float(getattr(configs, 'stage2_rank_margin', 0.05))
+        self.rank_top_p = int(getattr(configs, 'stage2_rank_top_p', 10))
+        self.rank_hard_negatives = int(getattr(configs, 'stage2_rank_hard_negatives', 30))
+        self.rank_random_negatives = int(getattr(configs, 'stage2_rank_random_negatives', 10))
+        # v2 corrections. The audit found the v1 loss aimed almost entirely
+        # outside the Top-K it was built to decompress: 3.7% of pairs inside,
+        # carrying 1.9% of the loss, against pairs already 24x wider.
+        self.rank_topk_gamma = float(getattr(configs, 'stage2_rank_topk_gamma', -1.0))
+        self.rank_margin_mode = getattr(configs, 'stage2_rank_margin_mode', 'absolute')
+        self.rank_margin_cap = float(getattr(configs, 'stage2_rank_margin_cap', 0.2))
+        self.rank_sigma_mode = getattr(configs, 'stage2_rank_sigma_mode', 'fixed')
+        if self.rank_loss_mode not in RANK_MODES:
+            raise ValueError(
+                f'stage2_rank_loss must be one of {RANK_MODES}; got {self.rank_loss_mode}'
+            )
+        if self.rank_loss_mode != 'none' and not self.e2e_retrieval:
+            # The ranking loss needs differentiable candidate scores, which only
+            # the end-to-end path produces. Stage-wise ranking lives in Stage-1.
+            raise ValueError(
+                'stage2_rank_loss requires stage2_e2e=1; for a stage-wise ranking '
+                'control use the Stage-1 ranking loss instead'
+            )
         self.retrieval_soft_all = bool(int(getattr(configs, 'retrieval_soft_all', 0)))
         self.retrieval_similarity = getattr(configs, 'retrieval_similarity', 'cosine')
         if self.retrieval_similarity not in ('cosine', 'l2'):
@@ -1272,9 +1310,181 @@ class Model(nn.Module):
             cache['top_k_effective'] = torch.stack([row['top_k_effective'] for row in debug_rows], dim=1).mean(dim=1).detach()
         return cache
 
+    def _residual_pair_mse(self, query_residual, memory_residual, target_channel):
+        """Pairwise MSE between query and candidate base-forecast residuals.
+
+        Same expansion the Stage-1 residual teacher uses, so the two agree by
+        construction: one matmul against the whole bank, no per-candidate forward.
+        """
+        q = query_residual[:, :, target_channel]
+        k = memory_residual[:, :, target_channel].to(q.device, q.dtype)
+        return (
+            q.square().mean(-1, keepdim=True)
+            + k.square().mean(-1).unsqueeze(0)
+            - 2.0 * torch.matmul(q, k.transpose(0, 1)) / q.size(-1)
+        ).clamp_min(0.0)
+
+    def encode_candidate_histories(self, candidate_x, target_channel, source_channel):
+        """Embed raw candidate windows with the *live* encoder, gradient on.
+
+        The key bank is built once per epoch and detached, so scores taken against
+        it carry no candidate-side gradient. Re-encoding the handful of selected
+        candidates restores it. Unique ids are encoded once; gradient checkpointing
+        is deliberately not used here because it leaks memory on this torch build.
+        """
+        if self.retrieval_backbone != 'stage1':
+            raise RuntimeError('end-to-end re-encoding requires the Stage-1 backbone')
+        relation = self._relation_tensor(candidate_x, target_channel, source_channel)
+        return self.stage1_encoder(relation)
+
+    def _reencode_indices(self, candidate_x, indices, target_channel, source_channel):
+        """Embeddings for [B, K] candidate ids, shaped [B, K, D]."""
+        flat = indices.reshape(-1)
+        unique, inverse = torch.unique(flat, return_inverse=True)
+        embeddings = self.encode_candidate_histories(
+            candidate_x.index_select(0, unique), target_channel, source_channel
+        )
+        return embeddings.index_select(0, inverse).view(*indices.shape, -1)
+
+    def expand_candidate_indices(self, candidate_indices, bsz):
+        """Accept [K], [B, K] or [B, C, K] candidate ids and return [B, C, K].
+
+        Pools are mined per query and per channel -- each target channel has its
+        own key bank -- but a diagnostic that shares one global pool is just the
+        degenerate case, so all three shapes stay valid callers.
+        """
+        idx = candidate_indices.long()
+        if idx.dim() == 1:
+            idx = idx.view(1, 1, -1).expand(bsz, self.channels, -1)
+        elif idx.dim() == 2:
+            if idx.size(0) != bsz:
+                raise ValueError(f'candidate_indices batch {idx.size(0)} != {bsz}')
+            idx = idx.unsqueeze(1).expand(-1, self.channels, -1)
+        elif idx.dim() == 3:
+            if idx.shape[:2] != (bsz, self.channels):
+                raise ValueError(
+                    f'candidate_indices leading shape {tuple(idx.shape[:2])} '
+                    f'!= {(bsz, self.channels)}'
+                )
+        else:
+            raise ValueError(f'candidate_indices must be 1-D, 2-D or 3-D, got {idx.dim()}-D')
+        return idx.contiguous()
+
+    def relation_values_for_candidates(self, batch_x, memory_y, memory_x_last, candidate_indices):
+        """Retrieval-branch value of individual candidates, in the model's own space.
+
+        `build_retrieval_cache` stores `r_cr` -- the top-k weighted memory value --
+        *without* restoring the query offset, and `forward` consumes it in exactly
+        that space. Retrieving a single candidate is the degenerate case where one
+        weight is 1, so its branch value is just that candidate's `_memory_value`
+        row. Deriving it here keeps analysis code from restating the delta_last
+        convention, which is where the earlier residual diagnostics went wrong.
+
+        Returns [B, channels, K, pred_len].
+        """
+        index = self.expand_candidate_indices(candidate_indices, batch_x.size(0)).to(batch_x.device)
+        values = [
+            self._memory_value(batch_x, memory_y, memory_x_last, c)[0]
+            .index_select(0, index[:, c].reshape(-1))
+            .view(index.size(0), index.size(2), self.pred_len)
+            for c in range(self.channels)
+        ]
+        return torch.stack(values, dim=1)
+
+    def forward_from_retrieval_values(self, relation_outputs, *, batch_x, retrieval_cache,
+                                      **forward_kwargs):
+        """Production forward with the retrieval branch forced to supplied values.
+
+        This calls `forward` rather than re-implementing the fusion tail on
+        purpose: the mixer, the gate and the final `+ output_offset` restore have
+        to stay a single source of truth. `relation_outputs` is
+        [B, channels, source_slots, pred_len] in the same space the cache holds,
+        i.e. not offset-restored.
+        """
+        if retrieval_cache is None:
+            raise ValueError('forward_from_retrieval_values needs a retrieval cache to override')
+        expected = (batch_x.size(0), self.channels, self.num_source_slots(), self.pred_len)
+        if tuple(relation_outputs.shape) != expected:
+            raise ValueError(
+                f'relation_outputs shape {tuple(relation_outputs.shape)} != {expected}'
+            )
+        cache = dict(retrieval_cache)
+        cache['relation_outputs'] = relation_outputs
+        return self.forward(batch_x=batch_x, retrieval_cache=cache, **forward_kwargs)
+
+    @torch.no_grad()
+    def evaluate_candidate_correction(self, *, batch_x, batch_y, candidate_indices,
+                                      memory_y, valid_mask, key_bank, memory_x_last=None,
+                                      retrieval_cache=None, candidate_chunk=16):
+        """Per-(query, candidate, channel) forecast utility, measured through `forward`.
+
+        Each candidate is injected alone into the retrieval branch and the real
+        Stage-2 forward is run, so the returned number is that candidate's actual
+        downstream effect rather than a residual-algebra stand-in:
+
+            utility[q, k, c] = MSE_c(Y_q, no-retrieval) - MSE_c(Y_q, final given k)
+
+        When a target channel has several source slots they are all set to the
+        same candidate, that being the analogue of "only this window is retrieved".
+
+        `candidate_indices` may be [K] (one shared pool), [B, K] (per query) or
+        [B, C, K] (per query and target channel).
+
+        Returns (utility [B, K, C], base_mse [B, C]).
+        """
+        bsz, horizon, channels = batch_y.shape
+        slots = self.num_source_slots()
+        values = self.relation_values_for_candidates(
+            batch_x, memory_y, memory_x_last, candidate_indices
+        )
+        num_candidates = values.size(2)
+        base_mse = None
+        chunks = []
+        for start in range(0, num_candidates, candidate_chunk):
+            block = values[:, :, start:start + candidate_chunk, :]
+            group = block.size(2)
+            # Query b under the k-th pooled candidate lands at row k * bsz + b.
+            x_rep = batch_x.unsqueeze(0).expand(group, -1, -1, -1).reshape(group * bsz, *batch_x.shape[1:])
+            branch = (
+                block.permute(2, 0, 1, 3)           # [g, B, C, H]
+                .unsqueeze(3).expand(-1, -1, -1, slots, -1)
+                .reshape(group * bsz, channels, slots, horizon)
+            )
+            cache = {
+                key: (
+                    value.unsqueeze(0).expand(group, *([-1] * value.dim()))
+                    .reshape(group * value.size(0), *value.shape[1:])
+                    if torch.is_tensor(value) and value.size(0) == bsz else value
+                )
+                for key, value in retrieval_cache.items()
+            }
+            y_final, y_base = self.forward_from_retrieval_values(
+                branch,
+                batch_x=x_rep,
+                retrieval_cache=cache,
+                memory_y=memory_y,
+                valid_mask=valid_mask.unsqueeze(0).expand(group, -1, -1).reshape(group * bsz, -1),
+                key_bank=key_bank,
+                memory_x_last=memory_x_last,
+            )[:2]
+            y_final = y_final.view(group, bsz, horizon, channels)
+            if base_mse is None:
+                base = y_base.view(group, bsz, horizon, channels)[0]
+                if base.shape != batch_y.shape:
+                    raise ValueError(f'base shape {tuple(base.shape)} != {tuple(batch_y.shape)}')
+                base_mse = (base - batch_y).square().mean(dim=1)
+            target = batch_y.unsqueeze(0).expand_as(y_final)
+            chunks.append((y_final - target).square().mean(dim=2))
+        final_mse = torch.cat(chunks, dim=0).permute(1, 0, 2)
+        return base_mse.unsqueeze(1) - final_mse, base_mse
+
     def forward(self, batch_x, memory_y, valid_mask, key_bank, memory_x_last=None, retrieval_cache=None,
-                target_y=None, teacher_key_bank=None):
+                target_y=None, teacher_key_bank=None, candidate_x=None,
+                query_residual=None, memory_residual=None):
         bsz = batch_x.size(0)
+        rank_loss_terms = []
+        rank_metric_rows = []
+        geometry_rows = []
         output_offset = batch_x[:, -1:, :].detach()
         # target_y is the ground-truth future; it only ever feeds the detached
         # teacher of the retrieval KL, never the forecast path.
@@ -1390,6 +1600,73 @@ class Model(nn.Module):
                         similarity=self.retrieval_similarity,
                         soft_all=self.retrieval_soft_all,
                     )
+                    if self.e2e_retrieval:
+                        if candidate_x is None:
+                            raise ValueError(
+                                'stage2_e2e=1 needs candidate_x [N, L, C] so the selected '
+                                'candidates can be re-encoded differentiably'
+                            )
+                        # Selection is untouched; only the scores behind the Top-K
+                        # weights become differentiable on both sides.
+                        z_k_sel = self._reencode_indices(candidate_x, top_idx, c, r)
+                        r_cr, alpha, top_scores = reweight_selected_candidates(
+                            z_q=z_q, z_k_sel=z_k_sel, values=ret_debug['v_top'],
+                            top_valid=ret_debug['top_valid'], tau_topk=self.tau_topk,
+                            similarity=self.retrieval_similarity,
+                        )
+                        ret_debug['top_scores'] = top_scores
+                        ret_debug['alpha'] = alpha
+                        geometry_rows.append({
+                            **score_geometry(top_scores.detach(), ret_debug['top_valid']),
+                            **weight_geometry(alpha.detach(), ret_debug['top_valid']),
+                            **embedding_geometry(z_q.detach(), z_k_sel.detach()),
+                        })
+                        if self.rank_loss_mode != 'none':
+                            if query_residual is None or memory_residual is None:
+                                raise ValueError(
+                                    'a ranking loss needs the cached base-forecast '
+                                    'residuals for its teacher'
+                                )
+                            teacher = -self._residual_pair_mse(
+                                query_residual, memory_residual, c
+                            )
+                            mined, mining_counts = mine_ranking_candidates(
+                                teacher, ret_debug['scores'], valid_mask,
+                                top_p=self.rank_top_p,
+                                hard_negatives=self.rank_hard_negatives,
+                                random_negatives=self.rank_random_negatives,
+                            )
+                            z_k_rank = self._reencode_indices(candidate_x, mined, c, r)
+                            if self.retrieval_similarity == 'l2':
+                                # Score the pairs the same way retrieval does, or
+                                # the loss trains an ordering the retriever never uses.
+                                rank_scores = -(
+                                    z_q.float().pow(2).sum(-1, keepdim=True)
+                                    + z_k_rank.float().pow(2).sum(-1)
+                                    - 2.0 * (z_q.float().unsqueeze(1) * z_k_rank.float()).sum(-1)
+                                ) / float(z_q.size(-1))
+                            else:
+                                rank_scores = (z_q.unsqueeze(1) * z_k_rank.to(z_q.dtype)).sum(-1)
+                            # Which mined slots are the Top-K Stage-2 actually weights.
+                            mined_in_topk = (
+                                mined.unsqueeze(-1) == top_idx.unsqueeze(-2)
+                            ).any(-1)
+                            rank_term, rank_metrics = ranking_loss(
+                                teacher.gather(1, mined),
+                                rank_scores,
+                                valid_mask.gather(1, mined),
+                                mode=self.rank_loss_mode,
+                                margin=self.rank_margin,
+                                topk_mask=mined_in_topk,
+                                gamma=(self.rank_topk_gamma
+                                       if self.rank_topk_gamma >= 0.0 else None),
+                                margin_mode=self.rank_margin_mode,
+                                margin_cap=self.rank_margin_cap,
+                                sigma_mode=self.rank_sigma_mode,
+                            )
+                            if rank_term is not None:
+                                rank_loss_terms.append(rank_term)
+                                rank_metric_rows.append({**rank_metrics, **mining_counts})
                     if collect_retrieval_kl:
                         # ret_debug['scores'] is the cosine over *every* candidate,
                         # before the non-differentiable Top-K, so the KL gradient
@@ -1535,6 +1812,21 @@ class Model(nn.Module):
             for key in ('alpha_entropy', 'alpha_top1', 'alpha_margin', 'top_k_effective'):
                 if key in retrieval_cache:
                     debug[key] = retrieval_cache[key].to(batch_x.device).mean()
+        if rank_loss_terms:
+            # Averaged over relation branches, matching how every other Stage-2
+            # per-branch quantity is reduced.
+            debug['rank_loss_term'] = torch.stack(rank_loss_terms).mean()
+        if rank_metric_rows:
+            for key in rank_metric_rows[0]:
+                values = [row[key] for row in rank_metric_rows if key in row]
+                debug[key] = torch.stack([
+                    v if torch.is_tensor(v) else batch_x.new_tensor(float(v)) for v in values
+                ]).float().mean()
+        if geometry_rows:
+            for key in geometry_rows[0]:
+                debug[key] = torch.stack([
+                    row[key] for row in geometry_rows if key in row
+                ]).float().mean()
         y_final_out = y_final_all + output_offset
         y_base_out = y_base_all + output_offset
         y_ret_out = y_ret_all + output_offset

@@ -3,6 +3,8 @@ import time
 import csv
 import math
 
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from torch import optim
@@ -521,6 +523,81 @@ class Exp_Stage2_Relation(Exp_Basic):
             selected['relation_outputs'] = selected[oracle_key]
         return selected
 
+    def _e2e_extras(self, split, batch_start_idx):
+        """Raw candidate windows and residual teachers for the end-to-end path."""
+        if not bool(int(getattr(self.args, 'stage2_e2e', 0))):
+            return {}
+        if not hasattr(self, '_candidate_x'):
+            self._candidate_x = torch.from_numpy(
+                self.memory_bank.memory_x).float().to(self.device)
+            print(f'[stage2] e2e candidate histories {tuple(self._candidate_x.shape)}')
+        extras = {'candidate_x': self._candidate_x}
+        root = getattr(self.args, 'stage2_residual_cache', '')
+        if not root:
+            return extras
+        if not hasattr(self, '_residual_cache_value'):
+            from scripts.precompute_residual_teacher import load
+
+            path = Path(root)
+            if path.is_dir():
+                path = path / f'{self.args.data}_pred{self.args.pred_len}.pt'
+            cache = load(path)
+            meta = cache['meta']
+            if meta['dataset'] != self.args.data or meta['pred_len'] != int(self.args.pred_len):
+                raise ValueError(f'residual cache {path} was built for another setting')
+            cache['memory_residual'] = cache['memory_residual'].to(self.device)
+            self._residual_cache_value = cache
+            print(f'[stage2] residual teacher {path} '
+                  f'memory_residual={tuple(cache["memory_residual"].shape)}')
+        cache = self._residual_cache_value
+        # Stage-2 names the validation split 'vali'; the cache was built through
+        # the data provider, which calls it 'val'.
+        key = split if split in cache['splits'] else {'vali': 'val', 'val': 'vali'}.get(split)
+        if key not in cache['splits']:
+            raise KeyError(
+                f'residual cache has splits {sorted(cache["splits"])}, not {split!r}'
+            )
+        part = cache['splits'][key]
+        try:
+            rows = [part['start_to_row'][int(v)] for v in batch_start_idx.cpu().tolist()]
+        except KeyError:
+            raise KeyError(f'residual cache for {split} does not cover this batch')
+        index = torch.tensor(rows, dtype=torch.long)
+        extras['query_residual'] = part['query_residual'].index_select(0, index).to(self.device)
+        extras['memory_residual'] = cache['memory_residual']
+        return extras
+
+    def _gradient_norms(self):
+        """Per-module gradient norms, so "end-to-end" is verified, not assumed.
+
+        The point of this experiment is that the forecast loss reaches the Stage-1
+        encoder. If `grad_norm_stage1_encoder` is zero the arm is not end-to-end,
+        whatever the flags say, so it is measured every step rather than trusted.
+        """
+        if not bool(int(getattr(self.args, 'stage2_e2e', 0))):
+            return {}
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        modules = {
+            'grad_norm_stage1_encoder': getattr(model, 'stage1_encoder', None),
+            'grad_norm_base_head': getattr(model, 'base_head', None),
+            'grad_norm_relation_mixer': getattr(model, 'relation_mixer', None),
+            'grad_norm_gate': getattr(model, 'gate', None),
+        }
+        out = {}
+        for name, module in modules.items():
+            if module is None:
+                continue
+            total = 0.0
+            for parameter in module.parameters():
+                if parameter.grad is not None:
+                    total += float(parameter.grad.detach().float().pow(2).sum())
+            out[name] = total ** 0.5
+        return out
+
+    def _ema_enabled(self):
+        """EMA teacher is off in the end-to-end arms; the flag keeps it reproducible."""
+        return bool(int(getattr(self.args, 'use_ema_teacher', 1)))
+
     def _candidate_mask(self, batch_start_idx):
         cand_mask, counts = self.memory_bank.valid_mask_batch(batch_start_idx.cpu().numpy())
         return cand_mask.bool().to(self.device), counts
@@ -800,6 +877,29 @@ class Exp_Stage2_Relation(Exp_Basic):
         for name in ('alpha_entropy', 'beta_entropy', 'top_k_effective'):
             if name in debug:
                 metrics[name] = debug[name].detach()
+        # Score/weight geometry and ranking diagnostics: this experiment is about
+        # whether separation appears at all, so they are logged every epoch.
+        for name in (
+            'rank_loss', 'rank_loss_term', 'rank_pairs', 'rank_order_accuracy',
+            'rank_margin_satisfied', 'rank_mean_student_gap', 'rank_mean_teacher_gap',
+            'rank_positives', 'rank_hard_negatives', 'rank_random_negatives',
+            'rank_candidates',
+            # v2 scope/scale diagnostics: whether the loss is aimed where it
+            # was corrected to aim, independent of whether that helped.
+            'rank_effective_margin', 'rank_topk_spread', 'rank_pairs_inside_topk',
+            'rank_fraction_inside_topk', 'rank_loss_inside_topk',
+            'rank_loss_outside_topk', 'rank_loss_share_inside',
+            'rank_gap_inside_topk', 'rank_gap_outside_topk',
+            'topk_score_mean', 'topk_score_std', 'top1_minus_top10', 'top1_minus_top2',
+            'score_range', 'weight_entropy', 'normalized_weight_entropy', 'effective_k',
+            'max_weight', 'min_weight', 'max_min_weight_ratio',
+            'embedding_pairwise_cosine_mean', 'embedding_pairwise_cosine_std',
+            'embedding_variance', 'embedding_dimension_std_mean',
+            'embedding_effective_rank', 'embedding_effective_rank_ratio',
+            'embedding_dead_dimension_fraction',
+        ):
+            if name in debug:
+                metrics[name] = debug[name].detach()
         if 'alpha_entropy' in metrics:
             denom = math.log(max(int(self.args.top_k), 2))
             metrics['alpha_entropy_norm'] = (metrics['alpha_entropy'] / denom).detach()
@@ -833,6 +933,13 @@ class Exp_Stage2_Relation(Exp_Basic):
             kl = debug['retrieval_kl_per_query'][valid_query]
             if kl.numel() and torch.isfinite(kl).all():
                 loss = loss + kl_weight * kl.mean()
+        # L = L_forecast + alpha * L_rank. The ranking term supplements the
+        # forecast objective; it never replaces it.
+        rank_weight = float(getattr(self.args, 'stage2_rank_weight', 0.0))
+        if rank_weight != 0.0 and 'rank_loss_term' in debug:
+            rank_term = debug['rank_loss_term']
+            if torch.isfinite(rank_term):
+                loss = loss + rank_weight * rank_term
         return loss
 
     def _init_csv_accumulators(self):
@@ -1315,6 +1422,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                 cand_mask, counts = self._candidate_mask(batch_start_idx)
                 valid_query = counts.to(batch_x.device) > 0
             retrieval_cache = self._cached_retrieval_for_batch(split, batch_start_idx)
+            e2e_extras = self._e2e_extras(split, batch_start_idx)
             if valid_query.sum() == 0:
                 avg.update({
                     'skipped_batches': 1.0,
@@ -1334,13 +1442,18 @@ class Exp_Stage2_Relation(Exp_Basic):
                     retrieval_cache=retrieval_cache,
                     target_y=batch_y,
                     teacher_key_bank=getattr(self, 'teacher_key_bank', None),
+                    **e2e_extras,
                 )
                 loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
                 loss.backward()
+                grad_metrics = self._gradient_norms()
+                if grad_metrics:
+                    avg.update(grad_metrics)
                 optimizer.step()
                 if self._uses_ema_retrieval_teacher():
-                    model = self.model.module if hasattr(self.model, 'module') else self.model
-                    model.update_ema_teacher(self._ema_momentum())
+                    if self._ema_enabled():
+                        model = self.model.module if hasattr(self.model, 'module') else self.model
+                        model.update_ema_teacher(self._ema_momentum())
                     self.global_update_step = getattr(self, 'global_update_step', 0) + 1
             else:
                 with torch.no_grad():
@@ -1351,6 +1464,7 @@ class Exp_Stage2_Relation(Exp_Basic):
                         key_bank=self.key_bank,
                         memory_x_last=self.memory_x_last,
                         retrieval_cache=retrieval_cache,
+                        **e2e_extras,
                     )
                     loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
 

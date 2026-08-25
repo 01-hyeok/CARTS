@@ -1,4 +1,6 @@
+import json
 import os
+from pathlib import Path
 import time
 import math
 
@@ -15,6 +17,20 @@ from utils.relation_graph import load_or_build_relation_graph
 from utils.stage1_metrics import MetricAverager, format_metrics
 from utils.tensorboard_logger import build_summary_writer, write_metric_scalars
 from utils.tools import adjust_learning_rate
+
+
+TINY_STEP_METRIC_KEYS = [
+    'topk_coverage_loss',
+    'student_oracle_recall_at_1',
+    'student_oracle_recall_at_5',
+    'student_oracle_recall_at_10',
+    'coverage_oracle_student_overlap',
+    'student_retrieval_regret_at_10',
+    'encoder_grad_norm',
+    'student_retrieved_future_mse_at_10',
+    'oracle_future_mse_at_10',
+    'student_oracle_topk_probability_mass_at_10',
+]
 
 
 class _FixedBatchSampler:
@@ -38,6 +54,7 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.key_bank = None
         self.teacher_key_bank = None
         self.memory_y = None
+        self.memory_x = None
         self.memory_x_last = None
         self.memory_x_np = None
         self.memory_y_np = None
@@ -48,6 +65,8 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.val_probe_batch = None
         self.relation_graph = None
         self.bank_collapse_metrics = {}
+        self.writer = None
+        self.tiny_step = 0
 
     def _build_model(self):
         model = self.model_dict[self.args.model].Model(self.args).float()
@@ -87,9 +106,34 @@ class Exp_Stage1_Relation(Exp_Basic):
     def _sync_memory_tensors(self):
         self.memory_y = torch.from_numpy(self.memory_y_np).float().to(self.device)
         self.memory_x_last = torch.from_numpy(self.memory_x_last_np).float().to(self.device)
+        # Candidate histories only reach the device for the modes that re-encode
+        # them during training; the full-bank baseline never needs them.
+        needs_history = self._candidate_subset_enabled() or (
+            self._differentiable_keys_enabled()
+            and self.tiny_candidate_indices is not None
+        )
+        self.memory_x = (
+            torch.from_numpy(self.memory_x_np).float().to(self.device)
+            if needs_history
+            else None
+        )
+        if needs_history:
+            print(
+                f'[stage1] candidate history on device: {tuple(self.memory_x.shape)} '
+                f'({self.memory_x.element_size() * self.memory_x.nelement() / 2**20:.0f} MiB)'
+            )
 
     def _tiny_overfit_enabled(self):
         return int(getattr(self.args, 'stage1_overfit_queries', 0)) > 0
+
+    def _candidate_subset_enabled(self):
+        return getattr(self.args, 'stage1_candidate_subset_mode', 'none') != 'none'
+
+    def _differentiable_keys_enabled(self):
+        return (
+            self._tiny_overfit_enabled()
+            and bool(int(getattr(self.args, 'stage1_overfit_differentiable_keys', 0)))
+        )
 
     def _direct_eval_enabled(self):
         return bool(int(getattr(self.args, 'stage1_direct_eval', 0)))
@@ -219,7 +263,9 @@ class Exp_Stage1_Relation(Exp_Basic):
             '[stage1 tiny-overfit] '
             f'queries={query_count} candidates={candidate_count} steps={steps} '
             f'target={target} self_only={bool(int(self.args.stage1_overfit_self_only))} '
-            f'key_refresh={self.args.stage1_overfit_key_refresh} '
+            f'key_refresh={"differentiable" if self._differentiable_keys_enabled() else self.args.stage1_overfit_key_refresh} '
+            f'input_space={self.args.relation_input_space} '
+            f'teacher_space={self.args.relation_teacher_space} '
             f'oracle_top1_covered={oracle_covered}/{query_count} '
             f'valid_candidates_per_query='
             f'{int(selected_valid_counts.min())}-{int(selected_valid_counts.max())}'
@@ -231,6 +277,134 @@ class Exp_Stage1_Relation(Exp_Basic):
         batch_y = batch_y.float().to(self.device)
         batch_start_idx = batch_start_idx.long()
         return batch_x, batch_y, batch_start_idx
+
+    def _teacher_cache(self, split):
+        """Precomputed teacher pool for a split, loaded once and kept.
+
+        The pool ids are frozen at precomputation time, so every teacher arm in
+        the ablation ranks exactly the same candidates and a difference between
+        arms cannot be a difference in what they were shown.
+        """
+        root = getattr(self.args, 'stage1_teacher_cache', '')
+        if not root:
+            return None
+        if not hasattr(self, '_teacher_caches'):
+            self._teacher_caches = {}
+        if split not in self._teacher_caches:
+            from utils.utility_teacher import load_cache
+
+            path = Path(root) / f'{split}.pt'
+            if not path.exists():
+                raise FileNotFoundError(f'teacher cache missing: {path}')
+            cache = load_cache(path)
+            meta = cache['meta']
+            if meta['dataset'] != self.args.data or meta['pred_len'] != int(self.args.pred_len):
+                raise ValueError(
+                    f'teacher cache {path} was built for {meta["dataset"]}/'
+                    f'{meta["pred_len"]}, not {self.args.data}/{self.args.pred_len}'
+                )
+            self._teacher_caches[split] = cache
+            print(f'[stage1] teacher cache {path}: queries={meta["queries"]} '
+                  f'pool={meta["pool_m"]} reference={meta.get("reference_stage2", "?")}')
+        return self._teacher_caches[split]
+
+    def _teacher_batch(self, split, batch_start_idx):
+        """Pool ids, teacher scores and utilities for this batch, or empty dict."""
+        cache = self._teacher_cache(split)
+        if cache is None:
+            return {}
+        from utils.utility_teacher import rows_for_starts
+
+        rows = rows_for_starts(cache, batch_start_idx)
+        if rows is None:
+            raise KeyError(
+                f'teacher cache for {split} does not cover every window in this batch; '
+                'rebuild it over the full split'
+            )
+        return {
+            'external_pool': cache['pool'].index_select(0, rows).to(self.device),
+            'external_teacher': cache['residual'].index_select(0, rows).to(self.device),
+            'external_utility': cache['utility'].index_select(0, rows).to(self.device),
+        }
+
+    def _residual_cache(self):
+        """Cached base-forecast residuals for the Residual-KL teacher."""
+        root = getattr(self.args, 'stage1_residual_teacher_cache', '')
+        if not root:
+            return None
+        if not hasattr(self, '_residual_cache_value'):
+            from scripts.precompute_residual_teacher import load
+
+            path = Path(root)
+            if path.is_dir():
+                path = path / f'{self.args.data}_pred{self.args.pred_len}.pt'
+            cache = load(path)
+            meta = cache['meta']
+            if meta['dataset'] != self.args.data or meta['pred_len'] != int(self.args.pred_len):
+                raise ValueError(
+                    f'residual cache {path} was built for {meta["dataset"]}/{meta["pred_len"]}'
+                )
+            cache['memory_residual'] = cache['memory_residual'].to(self.device)
+            self._residual_cache_value = cache
+            print(f'[stage1] residual cache {path}: '
+                  f'memory_residual={tuple(cache["memory_residual"].shape)} '
+                  f'reference={meta.get("reference_stage2", "?")}')
+        return self._residual_cache_value
+
+    def _reference_key_bank(self):
+        """Frozen key bank that defines the candidate pool, shared by every arm.
+
+        Built once from a checkpoint that does not move, so the pool cannot drift
+        with the encoder being trained -- which would make each arm's pool its own
+        and destroy the comparison.
+        """
+        path = getattr(self.args, 'stage1_pool_reference_ckpt', '')
+        if not path or int(getattr(self.args, 'stage1_pool_size', 0)) <= 0:
+            return None
+        if not hasattr(self, '_reference_key_bank_value'):
+            import copy
+
+            model = self.model.module if hasattr(self.model, 'module') else self.model
+            reference = copy.deepcopy(model)
+            state = torch.load(path, map_location='cpu')
+            reference.load_state_dict(state.get('model_state_dict', state), strict=False)
+            reference.eval().to(self.device)
+            with torch.no_grad():
+                bank = reference.build_embedding_bank(self.memory_x_np, self.device)
+            self._reference_key_bank_value = bank
+            self._reference_encoder = reference
+            print(f'[stage1] reference pool bank {tuple(bank.shape)} from {path}')
+        return self._reference_key_bank_value
+
+    @torch.no_grad()
+    def _reference_scores(self, batch_x):
+        """Frozen-encoder similarity of each query against the whole bank."""
+        bank = self._reference_key_bank()
+        if bank is None:
+            return None
+        model = self._reference_encoder
+        rows = []
+        for c in model.target_channels():
+            slot = model.source_slot(c, c)
+            z_q = model.encoder(model._relation_tensor(batch_x, c, c))
+            keys = bank[c, slot].to(device=z_q.device, dtype=z_q.dtype)
+            rows.append(torch.matmul(z_q, keys.transpose(0, 1)))
+        return torch.stack(rows, dim=1)
+
+    def _residual_batch(self, split, batch_start_idx):
+        cache = self._residual_cache()
+        if cache is None:
+            return {}
+        part = cache['splits'][split]
+        try:
+            rows = [part['start_to_row'][int(v)] for v in batch_start_idx.cpu().tolist()]
+        except KeyError:
+            raise KeyError(f'residual cache for {split} does not cover this batch')
+        index = torch.tensor(rows, dtype=torch.long)
+        return {
+            'query_residual': part['query_residual'].index_select(0, index).to(self.device),
+            'memory_residual': cache['memory_residual'],
+        }
 
     def _candidate_mask(self, batch_start_idx):
         cand_mask, counts = self.memory_sampler.valid_mask_batch(batch_start_idx.cpu().numpy())
@@ -327,7 +501,53 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.global_update_step += 1
         return momentum
 
-    def _run_loader(self, loader, optimizer=None, compute_detailed_metrics=False):
+    def _checkpoint_score(self, metrics):
+        """Return (score, label); higher is always better.
+
+        Selecting on validation loss picks the checkpoint whose distribution
+        matches the teacher, which is not the same as the checkpoint that
+        retrieves best. When the requested retrieval metric is missing the
+        criterion falls back to loss rather than silently keeping epoch 1.
+        """
+        criterion = getattr(self.args, 'stage1_checkpoint_metric', 'loss')
+        candidates = {
+            'recall10': (
+                ('student_oracle_recall_at_10', 'oracle_recall_at_10'), 1.0
+            ),
+            'retrieval_regret10': (
+                ('student_retrieval_regret_at_10', 'retrieval_regret_at_10'), -1.0
+            ),
+            # Selecting on Future Recall picks the checkpoint that best copies the
+            # Future-MSE Oracle, which the alignment study showed is not the one
+            # that helps the forecast. These select on measured downstream gain.
+            'utility_gap_recovery': (('utility_gap_recovery_at_10',), 1.0),
+            'utility_ndcg': (('utility_ndcg_at_10',), 1.0),
+            'retrieved_utility': (('utility_retrieved_at_10',), 1.0),
+        }
+        if criterion in candidates:
+            keys, sign = candidates[criterion]
+            for key in keys:
+                if key in metrics:
+                    return sign * float(metrics[key]), f'{criterion}({key})'
+            print(
+                f'[stage1] checkpoint metric {criterion} unavailable this epoch; '
+                'falling back to validation loss'
+            )
+        return -float(metrics.get('loss', float('inf'))), 'loss'
+
+    def _log_tiny_step(self, metrics, step):
+        printable = {
+            key: (value.item() if hasattr(value, 'item') else float(value))
+            for key, value in metrics.items()
+            if key in TINY_STEP_METRIC_KEYS
+        }
+        print(format_metrics(f'[tiny-step {step}]', printable))
+        write_metric_scalars(
+            self.writer, 'tiny_step', metrics, step, TINY_STEP_METRIC_KEYS
+        )
+
+    def _run_loader(self, loader, optimizer=None, compute_detailed_metrics=False,
+                    split_name='train'):
         train = optimizer is not None
         self.model.train(train)
         model = self.model.module if hasattr(self.model, 'module') else self.model
@@ -346,17 +566,35 @@ class Exp_Stage1_Relation(Exp_Basic):
                 for start in range(0, len(all_targets), target_chunk_size)
             ]
 
+        differentiable_keys = self._differentiable_keys_enabled()
+        log_every = int(getattr(self.args, 'stage1_overfit_log_every', 0))
+        step_logging = train and self._tiny_overfit_enabled() and log_every > 0
+
         for batch_idx, (batch_x, batch_y, batch_start_idx) in enumerate(loader):
-            if train and self._tiny_overfit_enabled() and self.args.stage1_overfit_key_refresh == 'step':
+            if (
+                train
+                and self._tiny_overfit_enabled()
+                and not differentiable_keys
+                and self.args.stage1_overfit_key_refresh == 'step'
+            ):
                 self._build_key_bank(log=False)
             batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
             cand_mask, counts = self._candidate_mask(batch_start_idx)
+            teacher_batch = self._teacher_batch(split_name, batch_start_idx)
+            teacher_batch.update(self._residual_batch(split_name, batch_start_idx))
+            reference_scores = self._reference_scores(batch_x)
+            if reference_scores is not None:
+                teacher_batch['reference_scores'] = reference_scores
             metrics_extra = {
                 'valid_candidate_count_mean': counts.float().mean().item(),
                 'valid_candidate_count_min': counts.min().item() if counts.numel() else 0.0,
             }
 
             if train:
+                self.tiny_step += 1
+                log_this_step = step_logging and (
+                    self.tiny_step == 1 or self.tiny_step % log_every == 0
+                )
                 optimizer.zero_grad()
                 loss, metrics = self.model(
                     batch_x, batch_y, cand_mask,
@@ -365,9 +603,18 @@ class Exp_Stage1_Relation(Exp_Basic):
                     teacher_key_bank=self.teacher_key_bank,
                     memory_x_last=self.memory_x_last,
                     active_target_channels=target_chunks[batch_idx % len(target_chunks)],
-                    compute_detailed_metrics=False,
+                    compute_detailed_metrics=log_this_step,
                     direct_retrieval=self._direct_eval_enabled(),
+                    candidate_x=self.memory_x,
+                    differentiable_keys=differentiable_keys,
+                    **teacher_batch,
                 )
+                if batch_idx == 0 and self._candidate_subset_enabled():
+                    if not loss.requires_grad:
+                        raise RuntimeError(
+                            'candidate subset training produced a loss detached from '
+                            'the encoder; check the candidate re-encoding path'
+                        )
                 if torch.isfinite(loss) and loss.requires_grad:
                     loss.backward()
                     grad_sq = torch.zeros((), device=self.device)
@@ -383,6 +630,8 @@ class Exp_Stage1_Relation(Exp_Basic):
                     if ema_momentum is not None:
                         metrics = dict(metrics)
                         metrics['ema_momentum'] = ema_momentum
+                if log_this_step:
+                    self._log_tiny_step(metrics, self.tiny_step)
             else:
                 with torch.no_grad():
                     loss, metrics = self.model(
@@ -394,6 +643,9 @@ class Exp_Stage1_Relation(Exp_Basic):
                         active_target_channels=target_chunks[batch_idx % len(target_chunks)],
                         compute_detailed_metrics=compute_detailed_metrics,
                         direct_retrieval=self._direct_eval_enabled(),
+                        candidate_x=self.memory_x,
+                        differentiable_keys=differentiable_keys,
+                        **teacher_batch,
                     )
                     if model.requires_ema_teacher_bank():
                         metrics = dict(metrics)
@@ -523,6 +775,7 @@ class Exp_Stage1_Relation(Exp_Basic):
             vali_loader,
             optimizer=None,
             compute_detailed_metrics=True,
+            split_name='val',
         )
 
     def train(self, setting):
@@ -541,9 +794,12 @@ class Exp_Stage1_Relation(Exp_Basic):
         optimizer = self._select_optimizer()
 
         best_val_loss = float('inf')
+        best_val_score = -float('inf')
         best_path = os.path.join(path, 'checkpoint.pth')
         bad_epochs = 0
         writer = build_summary_writer(self.args, 'stage1', setting)
+        self.writer = writer
+        tiny_eval_history = []
         tb_keys = [
             'loss', 'kl', 'self_kl', 'cross_kl',
             'stage1_loss_total', 'stage1_loss_kl', 'stage1_loss_rank', 'stage1_loss_rank_weighted',
@@ -683,6 +939,10 @@ class Exp_Stage1_Relation(Exp_Basic):
             'oracle_mse_oracle_cos_topk_overlap_at_10',
             'ema_momentum',
             'encoder_grad_norm',
+            'bank_oracle_recall_at_10', 'bank_oracle_recall_at_100',
+            'oracle_count_in_bank_top_m',
+            'oracle_missing_count_before_injection',
+            'candidate_unique_encoded',
             'online_collapse_pairwise_cosine_mean',
             'online_collapse_pairwise_cosine_mean_max',
             'online_collapse_pairwise_cosine_std',
@@ -779,6 +1039,7 @@ class Exp_Stage1_Relation(Exp_Basic):
             initial_metrics = self.vali(vali_data, vali_loader)
             print(format_metrics('Tiny Overfit Initial', initial_metrics))
             write_metric_scalars(writer, 'tiny_eval', initial_metrics, 0, tb_keys)
+            tiny_eval_history.append((0, initial_metrics))
 
         try:
             for epoch in range(self.args.train_epochs):
@@ -820,12 +1081,20 @@ class Exp_Stage1_Relation(Exp_Basic):
                 write_metric_scalars(writer, 'train', train_metrics, epoch + 1, tb_keys)
                 eval_tag = 'tiny_eval' if self._tiny_overfit_enabled() else 'vali'
                 write_metric_scalars(writer, eval_tag, val_metrics, epoch + 1, tb_keys)
+                if self._tiny_overfit_enabled():
+                    tiny_eval_history.append((epoch + 1, val_metrics))
                 self._plot_validation_probe(writer, setting, epoch + 1)
                 adjust_learning_rate(optimizer, epoch + 1, self.args)
 
-                if val_loss < best_val_loss:
+                val_score, score_label = self._checkpoint_score(val_metrics)
+                if val_score > best_val_score:
+                    best_val_score = val_score
                     best_val_loss = val_loss
                     bad_epochs = 0
+                    print(
+                        f'[stage1] new best on {score_label}: {val_score:+.6f} '
+                        f'(epoch {epoch + 1})'
+                    )
                     torch.save({
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
@@ -841,12 +1110,95 @@ class Exp_Stage1_Relation(Exp_Basic):
                         print('Early stopping')
                         break
         finally:
+            if self._tiny_overfit_enabled():
+                self._report_tiny_overfit_summary(setting, tiny_eval_history)
             if writer is not None:
                 writer.close()
+            self.writer = None
 
         if getattr(self.args, 'build_memory_index', False):
             build_memory_index(self.model, train_data, self.args)
         return self.model
+
+    def _report_tiny_overfit_summary(self, setting, history):
+        """Print, and optionally persist, the tiny-set train Recall@1/5/10."""
+        if not history:
+            return
+
+        def recall(metrics, k):
+            for key in (f'student_oracle_recall_at_{k}', f'oracle_recall_at_{k}'):
+                if key in metrics:
+                    return float(metrics[key])
+            return float('nan')
+
+        final_epoch, final_metrics = history[-1]
+        best_epoch, best_metrics = max(history, key=lambda item: recall(item[1], 10))
+        condition = {
+            'setting': setting,
+            'relation_input_space': self.args.relation_input_space,
+            'relation_teacher_space': self.args.relation_teacher_space,
+            'retrieval_similarity': getattr(self.args, 'retrieval_similarity', 'cosine'),
+            'stage1_loss_mode': self.args.stage1_loss_mode,
+            'candidate_mode': (
+                'differentiable'
+                if self._differentiable_keys_enabled()
+                else f'key_bank_{self.args.stage1_overfit_key_refresh}_refresh'
+            ),
+            'queries': int(self.args.stage1_overfit_queries),
+            'candidates': int(self.args.stage1_overfit_candidates),
+            'coverage_top_k': int(self.args.stage1_coverage_top_k)
+            if int(self.args.stage1_coverage_top_k) > 0
+            else int(self.args.top_k),
+            'target_channel': self.args.target_channel,
+            'self_only': bool(int(self.args.stage1_overfit_self_only)),
+            'seed': int(self.args.seed),
+            'final_epoch': int(final_epoch),
+            'best_epoch': int(best_epoch),
+            'topk_coverage_loss': float(
+                final_metrics.get('topk_coverage_loss', float('nan'))
+            ),
+        }
+        for k in (1, 5, 10):
+            condition[f'final_train_recall_at_{k}'] = recall(final_metrics, k)
+            condition[f'best_train_recall_at_{k}'] = recall(best_metrics, k)
+        for key in (
+            'coverage_oracle_student_overlap',
+            'student_retrieval_regret_at_10',
+            'student_retrieved_future_mse_at_10',
+            'oracle_future_mse_at_10',
+            'student_oracle_topk_probability_mass_at_10',
+        ):
+            if key in final_metrics:
+                condition[f'final_{key}'] = float(final_metrics[key])
+
+        print('=' * 100)
+        print('[stage1 tiny-overfit summary]')
+        print(
+            '  condition: input_space={relation_input_space} candidates={candidate_mode} '
+            'teacher_space={relation_teacher_space} similarity={retrieval_similarity} '
+            'K={coverage_top_k} Q={queries} N={candidates} seed={seed}'.format(**condition)
+        )
+        print(
+            '  final  (epoch {final_epoch}): Recall@1={final_train_recall_at_1:.4f} '
+            'Recall@5={final_train_recall_at_5:.4f} '
+            'Recall@10={final_train_recall_at_10:.4f}'.format(**condition)
+        )
+        print(
+            '  best   (epoch {best_epoch}): Recall@1={best_train_recall_at_1:.4f} '
+            'Recall@5={best_train_recall_at_5:.4f} '
+            'Recall@10={best_train_recall_at_10:.4f}'.format(**condition)
+        )
+        target = condition['best_train_recall_at_10']
+        verdict = 'PASS' if target >= 0.95 else 'FAIL'
+        print(f'  success criterion train Recall@10 >= 0.95: {verdict} ({target:.4f})')
+        print('=' * 100)
+
+        summary_path = getattr(self.args, 'stage1_overfit_summary_path', '')
+        if summary_path:
+            os.makedirs(os.path.dirname(os.path.abspath(summary_path)), exist_ok=True)
+            with open(summary_path, 'w') as handle:
+                json.dump(condition, handle, indent=2)
+            print(f'[stage1 tiny-overfit] wrote summary to {summary_path}')
 
     def test(self, setting, test=0):
         self._ensure_memory()
@@ -876,6 +1228,7 @@ class Exp_Stage1_Relation(Exp_Basic):
             test_loader,
             optimizer=None,
             compute_detailed_metrics=True,
+            split_name='test',
         )
         print(format_metrics('Stage1 Test', metrics))
         return metrics

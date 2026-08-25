@@ -178,6 +178,67 @@ if __name__ == '__main__':
                         help='Diagnostic mode: rebuild the relation key bank per epoch or optimizer step')
     parser.add_argument('--stage1_overfit_self_only', type=int, default=0,
                         help='Diagnostic mode: restrict every target to its self-relation branch')
+    parser.add_argument('--stage1_overfit_differentiable_keys', type=int, default=0,
+                        help=('Diagnostic mode: re-encode every tiny-set candidate with the current '
+                              'encoder inside the graph instead of reading the key bank, so query '
+                              'and key embeddings both carry gradient'))
+    parser.add_argument('--stage1_overfit_log_every', type=int, default=0,
+                        help='Diagnostic mode: log tiny-set retrieval metrics every N optimizer steps; 0 disables')
+    parser.add_argument('--stage1_overfit_summary_path', type=str, default='',
+                        help='Diagnostic mode: write the final tiny-set Recall@1/5/10 summary to this JSON path')
+    parser.add_argument('--stage1_candidate_subset_mode', type=str, default='none',
+                        choices=['none', 'selected_detached', 'selected_reencode'],
+                        help=('Training-only Stage-1 candidate subset. none keeps the full-bank KL. '
+                              'selected_detached mines Bank Top-M (Oracle Top-K injected) but scores '
+                              'them with detached bank embeddings. selected_reencode re-encodes the '
+                              'same candidates with the current encoder so candidate-side gradient flows. '
+                              'Validation and test always score the full bank without Oracle injection'))
+    parser.add_argument('--stage1_candidate_mine_top_m', type=int, default=100,
+                        help='Candidates mined per query from the memory bank by cosine similarity')
+    parser.add_argument('--stage1_candidate_oracle_inject_k', type=int, default=-1,
+                        help='Global Oracle Top-K guaranteed inside the mined set; <=0 reuses --top_k')
+    parser.add_argument('--stage1_checkpoint_metric', type=str, default='loss',
+                        choices=['loss', 'recall10', 'retrieval_regret10',
+                                 'utility_gap_recovery', 'utility_ndcg', 'retrieved_utility'],
+                        help=('Stage-1 best-checkpoint criterion on the validation split. '
+                              'recall10 maximizes Oracle Recall@10, retrieval_regret10 minimizes '
+                              'Retrieval Regret@10, and the utility_* options select on measured '
+                              'downstream forecast gain; all fall back to loss when absent'))
+    parser.add_argument('--stage1_teacher_cache', type=str, default='',
+                        help=('Directory of precomputed teacher tensors (train/val/test.pt) from '
+                              'scripts/precompute_utility_teacher.py. Supplying it pins Stage-1 '
+                              'training to that fixed candidate pool'))
+    parser.add_argument('--stage1_teacher_target', type=str, default='future',
+                        choices=['future', 'residual', 'utility'],
+                        help=('Which measured target supervises retrieval. future keeps the '
+                              'existing Future-MSE teacher; utility uses the actual Stage-2 '
+                              'forecast gain of each candidate'))
+    parser.add_argument('--stage1_teacher_loss', type=str, default='kl',
+                        choices=['kl', 'expected_utility'],
+                        help=('kl matches the teacher distribution; expected_utility directly '
+                              'maximizes the gain the student distribution would collect'))
+    parser.add_argument('--stage1_teacher_normalize', type=str, default='per_query_scale',
+                        choices=['none', 'per_query_scale'],
+                        help=('Divide teacher scores by their per-query scale so one tau means '
+                              'the same sharpness across targets'))
+    parser.add_argument('--stage1_teacher_tau', type=float, default=0.05,
+                        help='Temperature of the external teacher distribution')
+    parser.add_argument('--stage1_residual_teacher', type=int, default=0,
+                        help=('Supervise retrieval with residual similarity computed inline '
+                              'from cached base forecasts, which scales to the full bank'))
+    parser.add_argument('--stage1_residual_teacher_cache', type=str, default='',
+                        help='Residual cache from scripts/precompute_residual_teacher.py')
+    parser.add_argument('--stage1_pool_size', type=int, default=0,
+                        help=('Restrict the loss to the frozen reference encoder\'s Top-M '
+                              'candidates; 0 keeps the full memory bank'))
+    parser.add_argument('--stage1_pool_reference_ckpt', type=str, default='',
+                        help=('Stage-1 checkpoint whose frozen scores define the candidate '
+                              'pool, so every teacher arm ranks the same candidates'))
+    parser.add_argument('--stage1_null_mode', type=str, default='off',
+                        choices=['off', 'fixed', 'query'],
+                        help=('Explicit no-retrieval action. fixed pins its score at zero; query '
+                              'learns it from the query embedding so abstention can be decided '
+                              'per query'))
     parser.add_argument('--stage1_direct_eval', type=int, default=0,
                         help='Evaluate encoder-free Diff1 Direct retrieval with the Stage-1 metrics')
     parser.add_argument('--candidate_mask', type=str, default='raft',
@@ -282,6 +343,49 @@ if __name__ == '__main__':
                         help='Per-query future-MSE normalization for expected loss')
     parser.add_argument('--build_memory_index', action='store_true',
                         help='Optional Stage-2 TODO hook for memory embedding cache')
+    parser.add_argument('--stage2_e2e', type=int, default=0,
+                        help=('End-to-end retrieval: re-encode the selected Top-K candidates '
+                              'with the live encoder so the forecast loss reaches the Stage-1 '
+                              'encoder through the Top-K weights. Selection and the retrieval '
+                              'universe are unchanged -- still the full bank'))
+    parser.add_argument('--stage2_rank_loss', type=str, default='none',
+                        choices=['none', 'ranknet', 'weighted_ranknet', 'margin', 'adaptive_margin'],
+                        help=('Auxiliary pairwise loss on retrieval scores. margin and '
+                              'adaptive_margin target absolute score separation, which is what '
+                              'survives the division by tau_topk that flattens Stage-2 weights'))
+    parser.add_argument('--stage2_rank_weight', type=float, default=0.0,
+                        help='alpha in L = L_forecast + alpha * L_rank')
+    parser.add_argument('--stage2_rank_margin', type=float, default=0.05,
+                        help='Required student score gap for the margin losses')
+    parser.add_argument('--stage2_rank_top_p', type=int, default=10,
+                        help='Teacher-best candidates used as ranking positives')
+    parser.add_argument('--stage2_rank_hard_negatives', type=int, default=30,
+                        help='Candidates the student ranks highly but the teacher does not')
+    parser.add_argument('--stage2_rank_random_negatives', type=int, default=10,
+                        help='Random valid candidates, as a background for the pair geometry')
+    parser.add_argument('--stage2_rank_topk_gamma', type=float, default=-1.0,
+                        help=('Share of the ranking loss taken from pairs inside the Top-K, '
+                              'normalized separately from the rest. Negative keeps the v1 '
+                              'behaviour of one mean over all pairs, where the Top-K carried '
+                              'under 2 percent'))
+    parser.add_argument('--stage2_rank_margin_mode', type=str, default='absolute',
+                        choices=['absolute', 'topk_relative'],
+                        help=('topk_relative asks for the margin times the current Top-K score '
+                              'spread rather than an absolute number, so the demand matches the '
+                              'scale of the gaps it is meant to widen'))
+    parser.add_argument('--stage2_rank_margin_cap', type=float, default=0.2,
+                        help='Upper bound on a relative margin, so the demand cannot run away')
+    parser.add_argument('--stage2_rank_sigma_mode', type=str, default='fixed',
+                        choices=['fixed', 'topk_relative'],
+                        help=('topk_relative divides the RankNet logit by the Top-K spread; '
+                              'without it sigmoid sits at 0.50 for gaps 24x apart'))
+    parser.add_argument('--stage2_residual_cache', type=str, default='',
+                        help=('Residual cache from scripts/precompute_residual_teacher.py, '
+                              'used as the ranking teacher'))
+    parser.add_argument('--use_ema_teacher', type=int, default=1,
+                        help=('0 disables the EMA teacher encoder and its updates. The '
+                              'end-to-end arms run without it; the flag keeps the original '
+                              'baseline reproducible'))
     parser.add_argument('--stage1_ckpt_path', type=str, default='',
                         help='Stage-1 relation checkpoint used to initialize Stage-2 encoder')
     parser.add_argument('--stage1_encoder_init', type=str, default='checkpoint',
@@ -515,6 +619,18 @@ if __name__ == '__main__':
             f'--relation_pooling last is only supported by the tcn relation encoder, '
             f'got --relation_encoder_type {args.relation_encoder_type}'
         )
+    if bool(int(args.stage1_overfit_differentiable_keys)):
+        if int(args.stage1_overfit_queries) <= 0:
+            raise ValueError(
+                '--stage1_overfit_differentiable_keys requires the tiny-set overfit mode '
+                '(--stage1_overfit_queries > 0); re-encoding every candidate per step is '
+                'only tractable on a small fixed candidate set'
+            )
+        if bool(int(args.stage1_direct_eval)):
+            raise ValueError(
+                '--stage1_overfit_differentiable_keys is incompatible with '
+                '--stage1_direct_eval, which is encoder-free'
+            )
     if bool(int(args.stage1_direct_eval)):
         if args.task_name != 'stage1_relation':
             raise ValueError('--stage1_direct_eval requires --task_name stage1_relation')

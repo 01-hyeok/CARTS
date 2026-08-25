@@ -81,3 +81,49 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
         'top_k_effective': eff,
     }
     return retrieved, alpha, top_idx, top_scores, debug
+
+
+def reweight_selected_candidates(z_q, z_k_sel, values, top_valid, tau_topk,
+                                 similarity='cosine'):
+    """Recompute Top-K scores and weights with both sides differentiable.
+
+    `retrieve_relation_future` scores the query against a precomputed key bank,
+    so a forecast loss can only reach the query encoder. Re-encoding the selected
+    candidates with the live encoder and rescoring here puts the candidate side on
+    the gradient path too, without touching which candidates were selected --
+    Top-K stays exactly as chosen, and the retrieval universe stays the full bank.
+
+    Args:
+        z_q: [B, D] query embeddings, gradient on.
+        z_k_sel: [B, K, D] embeddings of the already-selected candidates.
+        values: [B, K, H] their target-channel futures.
+        top_valid: [B, K] which selected slots are real.
+    Returns (retrieved [B, H], alpha [B, K], top_scores [B, K]).
+    """
+    if z_k_sel.dim() != 3 or z_k_sel.size(0) != z_q.size(0):
+        raise ValueError(
+            f'z_k_sel must be [B, K, D] with B={z_q.size(0)}, got {tuple(z_k_sel.shape)}'
+        )
+    if values.shape[:2] != z_k_sel.shape[:2]:
+        raise ValueError(
+            f'values {tuple(values.shape)} and z_k_sel {tuple(z_k_sel.shape)} disagree on [B, K]'
+        )
+    masked_fill = torch.finfo(z_q.dtype).min / 4
+    z_k_sel = z_k_sel.to(z_q.dtype)
+    if similarity == 'cosine':
+        top_scores = (z_q.unsqueeze(1) * z_k_sel).sum(dim=-1)
+    elif similarity == 'l2':
+        dim = float(z_q.size(-1))
+        top_scores = -(
+            z_q.float().pow(2).sum(-1, keepdim=True)
+            + z_k_sel.float().pow(2).sum(-1)
+            - 2.0 * (z_q.float().unsqueeze(1) * z_k_sel.float()).sum(-1)
+        ) / dim
+    else:
+        raise ValueError(f'Unsupported retrieval similarity: {similarity}')
+
+    scaled = (top_scores / float(tau_topk)).masked_fill(~top_valid, masked_fill)
+    alpha = F.softmax(scaled, dim=-1) * top_valid.float()
+    alpha = alpha / alpha.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+    retrieved = (alpha.unsqueeze(-1) * values.to(alpha.dtype)).sum(dim=1)
+    return retrieved, alpha, top_scores
