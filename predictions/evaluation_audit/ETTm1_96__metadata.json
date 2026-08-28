@@ -1,0 +1,33 @@
+{
+  "dataset": "ETTm1",
+  "seq_len": 96,
+  "pred_len": 96,
+  "split": "test",
+  "channels": 7,
+  "n_samples": 11425,
+  "space": "normalized (no inverse_transform)",
+  "target_channels": "all",
+  "reduction": "global mean over sample/horizon/channel",
+  "sample_indices_sha256_16": "b71055ebdcd9a59f",
+  "stage2_checkpoint": "checkpoints/stage2/ETTm1/seq96_pred96/stage2_carts_s2_full_bank_kl_ETTm1_96_RelationStage2_ETTm1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_s2_full_bank_kl_ETTm1_sl96_pl96_0/checkpoint.pth",
+  "selector_checkpoint": "metrics/utility_candidate_selection/models/ETTm1_96_residual_selector.pt",
+  "original_evaluator_mse": 0.3209307474015317,
+  "canonical_evaluator_mse": 0.32093068957328796,
+  "reproduces_original": true,
+  "reduction_breakdown": {
+    "global_mean": 0.32093068957328796,
+    "mean_over_horizon_then_all": 0.32093071937561035,
+    "mean_over_channel_then_all": 0.32093071937561035,
+    "mean_over_sample_then_all": 0.32093071937561035,
+    "target_channel_only_OT": 0.03917999938130379
+  },
+  "methods": [
+    "original_carts_stage2",
+    "resdirect",
+    "residual_diagnostic_basehead",
+    "ressel",
+    "stage2_alpha1_pure",
+    "stage2_base_head",
+    "stage2_gate0"
+  ]
+}

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 
 def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_topk,
-                             similarity='cosine', soft_all=False):
+                             similarity='cosine', soft_all=False, score_fn=None):
     """Retrieve target-channel futures by similarity over the candidate bank.
 
     Args:
@@ -35,7 +35,17 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
         raise ValueError('top_k must be positive and memory bank must be non-empty')
 
     masked_fill = torch.finfo(z_q.dtype).min / 4
-    if similarity == 'cosine':
+    if score_fn is not None:
+        # A learned comparison in place of the fixed dot product. Stage-1 can be
+        # trained with one, and without this the retriever it produced would be
+        # read back through cosine at retrieval time -- scoring the embeddings
+        # with a different function than the one they were shaped for.
+        scores = score_fn(z_q, z_mem)
+        if scores.shape != valid_mask.shape:
+            raise ValueError(
+                f'score_fn returned {tuple(scores.shape)}, expected {tuple(valid_mask.shape)}'
+            )
+    elif similarity == 'cosine':
         scores = torch.matmul(z_q, z_mem.transpose(0, 1))
     elif similarity == 'l2':
         # Un-normalised keys are stored in half for the Chronos bank; squaring
@@ -84,7 +94,7 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
 
 
 def reweight_selected_candidates(z_q, z_k_sel, values, top_valid, tau_topk,
-                                 similarity='cosine'):
+                                 similarity='cosine', score_fn=None):
     """Recompute Top-K scores and weights with both sides differentiable.
 
     `retrieve_relation_future` scores the query against a precomputed key bank,
@@ -110,7 +120,15 @@ def reweight_selected_candidates(z_q, z_k_sel, values, top_valid, tau_topk,
         )
     masked_fill = torch.finfo(z_q.dtype).min / 4
     z_k_sel = z_k_sel.to(z_q.dtype)
-    if similarity == 'cosine':
+    if score_fn is not None:
+        # Same learned comparison as selection used, so the end-to-end gradient
+        # reshapes the weights under the function that chose them.
+        top_scores = score_fn(z_q, z_k_sel)
+        if top_scores.shape != top_valid.shape:
+            raise ValueError(
+                f'score_fn returned {tuple(top_scores.shape)}, expected {tuple(top_valid.shape)}'
+            )
+    elif similarity == 'cosine':
         top_scores = (z_q.unsqueeze(1) * z_k_sel).sum(dim=-1)
     elif similarity == 'l2':
         dim = float(z_q.size(-1))

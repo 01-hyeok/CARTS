@@ -182,6 +182,11 @@ if __name__ == '__main__':
                         help=('Diagnostic mode: re-encode every tiny-set candidate with the current '
                               'encoder inside the graph instead of reading the key bank, so query '
                               'and key embeddings both carry gradient'))
+    parser.add_argument('--stage1_overfit_holdout_val', type=int, default=0,
+                        help=('Tiny-overfit only: validate on held-out val queries against the '
+                              'same tiny candidate set instead of reusing the training queries. '
+                              'Off by default so existing memorization runs are unchanged; on, it '
+                              'separates "memorised these queries" from "transfers to new ones"'))
     parser.add_argument('--stage1_overfit_log_every', type=int, default=0,
                         help='Diagnostic mode: log tiny-set retrieval metrics every N optimizer steps; 0 disables')
     parser.add_argument('--stage1_overfit_summary_path', type=str, default='',
@@ -198,12 +203,14 @@ if __name__ == '__main__':
     parser.add_argument('--stage1_candidate_oracle_inject_k', type=int, default=-1,
                         help='Global Oracle Top-K guaranteed inside the mined set; <=0 reuses --top_k')
     parser.add_argument('--stage1_checkpoint_metric', type=str, default='loss',
-                        choices=['loss', 'recall10', 'retrieval_regret10',
+                        choices=['loss', 'recall10', 'retrieved_mse10', 'retrieval_regret10',
                                  'utility_gap_recovery', 'utility_ndcg', 'retrieved_utility'],
                         help=('Stage-1 best-checkpoint criterion on the validation split. '
-                              'recall10 maximizes Oracle Recall@10, retrieval_regret10 minimizes '
-                              'Retrieval Regret@10, and the utility_* options select on measured '
-                              'downstream forecast gain; all fall back to loss when absent'))
+                              'retrieved_mse10 minimizes the future-MSE of the model own Top-10, '
+                              'which is what Stage-2 consumes; recall10 maximizes Oracle Recall@10 '
+                              'and retrieval_regret10 minimizes Retrieval Regret@10, both scored '
+                              'against the Future-MSE Oracle; the utility_* options select on '
+                              'measured downstream forecast gain; all fall back to loss when absent'))
     parser.add_argument('--stage1_teacher_cache', type=str, default='',
                         help=('Directory of precomputed teacher tensors (train/val/test.pt) from '
                               'scripts/precompute_utility_teacher.py. Supplying it pins Stage-1 '
@@ -223,6 +230,60 @@ if __name__ == '__main__':
                               'the same sharpness across targets'))
     parser.add_argument('--stage1_teacher_tau', type=float, default=0.05,
                         help='Temperature of the external teacher distribution')
+    parser.add_argument('--stage1_retrieval_metric', type=str, default='cosine',
+                        choices=['cosine', 'mahalanobis', 'asymmetric', 'bilinear'],
+                        help=('Learnable but still indexable retrieval score, so training can use '
+                              'the same candidate support as evaluation. Nested by expressiveness: '
+                              'cosine (W = I) < mahalanobis (one shared L, W = L^T L symmetric PSD) '
+                              '< asymmetric (separate query and key spaces, W free). bilinear spans '
+                              'the same functions as asymmetric and is kept only for earlier runs'))
+    parser.add_argument('--stage1_metric_scaled_dot', type=int, default=1,
+                        help='Divide the dot product by sqrt(D) so a cosine-tuned tau still applies')
+    parser.add_argument('--stage1_metric_layer_norm', type=int, default=1,
+                        help='LayerNorm on the projected embeddings')
+    parser.add_argument('--stage1_metric_output', type=str, default='dot',
+                        choices=['dot', 'cosine'],
+                        help=('cosine renormalises after projecting, so every kind scores in '
+                              '[-1, 1], one temperature means the same sharpness for all of them, '
+                              'and identity init reproduces the incumbent exactly -- use it when '
+                              'comparing kinds. dot leaves the projections unnormalised, which '
+                              'ranks differently from cosine at step 0 and lets the score scale '
+                              'drift per kind'))
+    parser.add_argument('--stage1_full_memory_gradient_mode', type=str, default='bank',
+                        choices=['bank', 'selected_reencode', 'full_online'],
+                        help=('How the candidate branch receives gradient while the softmax '
+                              'denominator stays the whole memory. bank trains only the query '
+                              'side; selected_reencode re-encodes Oracle + hard + random '
+                              'negatives and scatters their scores back into the full logits'))
+    parser.add_argument('--stage1_full_memory_hard_negatives', type=int, default=100,
+                        help='Model-top candidates outside the Oracle set that get gradient')
+    parser.add_argument('--stage1_full_memory_random_negatives', type=int, default=128,
+                        help='Uniformly sampled candidates that get gradient')
+    parser.add_argument('--stage1_candidate_random_negatives', type=int, default=0,
+                        help=('Uniformly sampled candidates appended to the mined training set. '
+                              'A fixed score like cosine extrapolates to unseen pairs by '
+                              'construction; a learned scorer does not, and mining alone leaves '
+                              'it unconstrained on the rest of the bank that evaluation ranks'))
+    parser.add_argument('--stage1_mining_score', type=str, default='self',
+                        choices=['self', 'reference'],
+                        help=('Which score picks the training candidates. self lets each arm '
+                              'mine with its own score, which confounds "better score function" '
+                              'with "different candidates seen". reference mines with a frozen '
+                              'checkpoint (--stage1_pool_reference_ckpt) so every arm trains on '
+                              'the same candidate ids'))
+    parser.add_argument('--stage1_retrieval_score', type=str, default='cosine',
+                        choices=['cosine', 'pairwise_mlp'],
+                        help=('Retrieval score function. cosine is the incumbent fixed dot '
+                              'product; pairwise_mlp learns a score per (query, candidate) '
+                              'pair and requires --stage1_candidate_subset_mode selected_reencode '
+                              'so the candidate side stays in the graph'))
+    parser.add_argument('--stage1_pairwise_feature', type=str, default='pair4',
+                        choices=['pair2', 'pair4'],
+                        help=('pair2 feeds [z_q, z_k]; pair4 adds the difference and its '
+                              'magnitude, which the scorer would otherwise have to learn'))
+    parser.add_argument('--stage1_pairwise_hidden', type=int, default=256)
+    parser.add_argument('--stage1_pairwise_hidden2', type=int, default=128)
+    parser.add_argument('--stage1_pairwise_dropout', type=float, default=0.1)
     parser.add_argument('--stage1_residual_teacher', type=int, default=0,
                         help=('Supervise retrieval with residual similarity computed inline '
                               'from cached base forecasts, which scales to the full bank'))
@@ -310,7 +371,8 @@ if __name__ == '__main__':
     parser.add_argument('--stage1_use_rank_loss', type=int, default=0,
                         help='Add future-aware top-k pairwise ranking loss to Stage-1')
     parser.add_argument('--stage1_loss_mode', type=str, default='kl',
-                        choices=['kl', 'kl_infonce', 'kl_rank', 'rnc', 'kl_expected_mse', 'topk_coverage'],
+                        choices=['kl', 'kl_infonce', 'kl_rank', 'rnc', 'kl_expected_mse',
+                                 'topk_coverage', 'weighted_topk_ce'],
                         help='Stage-1 objective; legacy stage1_use_rank_loss=1 maps kl to kl_rank')
     parser.add_argument('--stage1_infonce_weight', type=float, default=0.5,
                         help='InfoNCE mixture weight for kl_infonce; KL uses one minus this value')
@@ -348,6 +410,12 @@ if __name__ == '__main__':
                               'with the live encoder so the forecast loss reaches the Stage-1 '
                               'encoder through the Top-K weights. Selection and the retrieval '
                               'universe are unchanged -- still the full bank'))
+    parser.add_argument('--stage2_e2e_full_online', type=int, default=0,
+                        help=('Joint training only: re-encode the whole memory each step for '
+                              'candidate selection instead of reading the epoch key bank. The '
+                              'bank goes stale as the encoder moves, so selection would use '
+                              'embeddings the encoder has left behind while only the chosen '
+                              'Top-K are re-encoded live. Serving still uses an index'))
     parser.add_argument('--stage2_rank_loss', type=str, default='none',
                         choices=['none', 'ranknet', 'weighted_ranknet', 'margin', 'adaptive_margin'],
                         help=('Auxiliary pairwise loss on retrieval scores. margin and '

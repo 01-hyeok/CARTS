@@ -10,6 +10,16 @@ from layers.relation_patch_embed import RelationPatchEmbedding
 from layers.relation_tcn import RelationTCN
 
 
+from layers.pairwise_scorer import PairwiseScorer, build_pair_features  # noqa: E402
+from layers.retrieval_metric import (  # noqa: E402
+    METRICS as RETRIEVAL_METRICS,
+    RetrievalMetric,
+    cosine_init_deviation,
+    oracle_rank_statistics,
+    score_separation_metrics,
+)
+
+
 def stable_topk_indices(values, k, dim=-1, largest=True):
     """Top-k indices with ties broken by candidate index.
 
@@ -34,20 +44,35 @@ def stable_argsort(values, dim=-1):
 
 
 @torch.no_grad()
-def select_training_candidates(bank_scores, future_mse, valid_mask, top_m, oracle_k):
-    """Mine Bank Top-M by cosine, guaranteeing the global Oracle Top-K inside.
+def select_training_candidates(bank_scores, future_mse, valid_mask, top_m, oracle_k,
+                              random_negatives=0, generator=None):
+    """Mine Bank Top-M by the model's own score, guaranteeing the Oracle Top-K.
+
+    `bank_scores` is whatever score function the arm uses -- cosine for the
+    incumbent, the pair scorer for the learnable arms -- so the training pool is
+    self-selected and differs between arms. Arms share the mining *rule*
+    (Top-M plus Oracle injection), not the candidate ids. Evaluation is separate
+    and always runs over the full memory.
 
     The memory bank keeps its job of searching the whole candidate pool; this
     only decides *which* candidates the loss will be computed over. Injection is
     training-only supervision: a fresh encoder can rank every good candidate
     outside its Top-M, and then the loss never sees a positive at all.
 
+    `random_negatives` appends uniformly sampled valid candidates. A fixed score
+    like cosine extrapolates to pairs it never trained on by construction; a
+    learned scorer does not, and a pool made only of Top-M neighbours leaves it
+    unconstrained on the rest of the bank -- which is exactly where evaluation
+    then asks it to rank. Measured on a one-epoch run without them, the pair
+    scorer came out *anti*-correlated with future MSE over the full bank
+    (Spearman -0.46) despite training cleanly on its 100 mined candidates.
+
     Returns
     -------
-    selected : [B, M] long
-        Distinct candidate indices, best bank rank first. Oracle candidates that
-        were missing from Bank Top-M replace the worst-ranked non-Oracle slots,
-        so the count stays exactly M.
+    selected : [B, M + random_negatives] long
+        Candidate indices, best bank rank first, then the sampled negatives.
+        Oracle candidates missing from Bank Top-M replace the worst-ranked
+        non-Oracle slots, so the mined part stays exactly M.
     stats : dict
         Mining diagnostics measured *before* injection.
     """
@@ -90,7 +115,8 @@ def select_training_candidates(bank_scores, future_mse, valid_mask, top_m, oracl
 
     if int(missing_per_row.max()) == 0:
         stats['oracle_missing_count_before_injection'] = missing_per_row.float()
-        return bank_top, stats
+        return _append_random_negatives(
+            bank_top, valid_mask, random_negatives, generator, stats), stats
 
     # Missing Oracle candidates first, each group keeping its Oracle rank order.
     order = stable_argsort(in_bank.int(), dim=1)
@@ -110,7 +136,32 @@ def select_training_candidates(bank_scores, future_mse, valid_mask, top_m, oracl
     selected = bank_reversed.index_select(1, reverse)
 
     stats['oracle_missing_count_before_injection'] = missing_per_row.float()
-    return selected, stats
+    return _append_random_negatives(
+        selected, valid_mask, random_negatives, generator, stats), stats
+
+
+def _append_random_negatives(selected, valid_mask, count, generator, stats):
+    """Add uniformly sampled valid candidates the mining never reaches.
+
+    Sampled without replacement so a duplicate cannot be counted twice in the
+    student's softmax denominator. Already-selected columns are given zero
+    weight; a row whose valid pool is exhausted falls back to sampling from all
+    valid candidates.
+    """
+    count = int(count)
+    stats['random_negative_count'] = selected.new_zeros(
+        selected.size(0), dtype=torch.float32) + float(max(count, 0))
+    if count <= 0:
+        return selected
+    weights = valid_mask.float().scatter(1, selected, 0.0)
+    exhausted = weights.sum(dim=-1, keepdim=True) < count
+    weights = torch.where(exhausted, valid_mask.float(), weights)
+    if int(weights.sum(dim=-1).min()) < count:
+        raise ValueError(
+            f'cannot draw {count} random negatives; some query has too few valid candidates'
+        )
+    sampled = torch.multinomial(weights, count, replacement=False, generator=generator)
+    return torch.cat([selected, sampled], dim=-1)
 
 
 def future_aware_topk_ranking_loss(
@@ -390,6 +441,75 @@ def topk_coverage_loss(student_log_prob, targets):
         'oracle_positive_probability_min': active_mean(probability_min),
         'coverage_effective_k': active_mean(effective_k.float()),
         'coverage_oracle_student_overlap': active_mean(overlap),
+    }
+    return loss, metrics
+
+
+def weighted_topk_listwise_ce(student_log_prob, targets, tau_teacher, eps=1e-8):
+    """Cross-entropy over the Oracle Top-K, weighted by how good each member is.
+
+    `topk_coverage_loss` spreads its target uniformly over the Oracle Top-K, which
+    treats the 1st and 10th best candidate as equally worth retrieving. The
+    near-tie measurement says that is close to true -- the 10th and 11th differ by
+    1.4% -- but not exactly, and the ordering inside the set is what Stage-2's
+    weighting would read if it could.
+
+    This keeps the Oracle Top-K as the only positives, and grades them:
+
+        w_i = softmax(-d_i / tau_T) over the Oracle set
+        L   = -sum_i w_i * log p_S(i | q)
+
+    The student's softmax still runs over the *whole* candidate set, so a
+    negative scoring too highly still costs, even though its target weight is
+    zero. That is the difference from a loss defined only on the positives.
+    """
+    if student_log_prob.dim() != 2:
+        raise ValueError(
+            f'student_log_prob must be [B, N], got {tuple(student_log_prob.shape)}')
+    required = {'oracle_indices', 'oracle_mse', 'oracle_valid', 'active_query'}
+    missing = required.difference(targets)
+    if missing:
+        raise ValueError(f'weighted topk targets missing keys: {sorted(missing)}')
+    if float(tau_teacher) <= 0.0:
+        raise ValueError('tau_teacher must be positive')
+
+    oracle_indices = targets['oracle_indices']
+    oracle_valid = targets['oracle_valid'].bool()
+    active_query = targets['active_query'].bool()
+    if oracle_indices.size(0) != student_log_prob.size(0):
+        raise ValueError('target batch size does not match student_log_prob')
+
+    zero = student_log_prob.sum() * 0.0
+    if oracle_indices.size(1) == 0 or not active_query.any():
+        return zero, {'weighted_topk_ce_loss': zero.detach()}
+
+    # Weights over the Oracle set only. Centring on the best member keeps exp()
+    # finite when the distances are large relative to tau.
+    distances = targets['oracle_mse'].detach().float()
+    logits = (-distances / float(tau_teacher)).masked_fill(~oracle_valid, float('-inf'))
+    logits = logits - logits.max(dim=-1, keepdim=True).values
+    weights = logits.exp() * oracle_valid.float()
+    weights = weights / weights.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+    gathered = student_log_prob.gather(1, oracle_indices).float()
+    if not torch.isfinite(gathered[oracle_valid]).all():
+        raise ValueError('student_log_prob contains NaN or Inf at an Oracle positive')
+    per_query = -(gathered * weights).sum(dim=-1)
+    loss = per_query[active_query].mean().to(student_log_prob.dtype)
+    if not torch.isfinite(loss):
+        raise ValueError('weighted_topk_listwise_ce is NaN or Inf')
+
+    positive_probability = gathered.exp() * oracle_valid.float()
+    # Bound once and reused: writing the effective count inline as
+    # `-(...).sum().exp()` negates the exponential rather than the entropy.
+    weight_entropy = -(weights * (weights + eps).log()).sum(dim=-1)
+    metrics = {
+        'weighted_topk_ce_loss': loss.detach(),
+        'weighted_topk_oracle_mass': positive_probability.sum(dim=-1)[active_query].mean().detach(),
+        'weighted_topk_weight_entropy': weight_entropy[active_query].mean().detach(),
+        'weighted_topk_top1_weight': weights.max(dim=-1).values[active_query].mean().detach(),
+        'weighted_topk_effective_positives': (
+            weight_entropy.exp()[active_query].mean().detach()),
     }
     return loss, metrics
 
@@ -2118,11 +2238,100 @@ class Model(nn.Module):
         self.target_mode = configs.target_mode
         self.target_channel = configs.target_channel
         self.key_chunk_size = int(getattr(configs, 'stage1_key_chunk_size', 1024))
+        # Learnable pair score. Cosine correlates with future-MSE at rho 0.61 over
+        # the whole bank and 0.03 inside the model's own Top-100 -- coarse
+        # retrieval works, fine ordering has no signal left in that space. A
+        # pair-conditioned score tests whether that is the score function's limit.
+        # Learnable but still indexable retrieval metric. Unlike a pair MLP these
+        # stay bilinear in the two embeddings, so a whole bank scores as one
+        # matmul and training can use the same candidate support as evaluation.
+        self.retrieval_metric_kind = getattr(configs, 'stage1_retrieval_metric', 'cosine')
+        if self.retrieval_metric_kind not in RETRIEVAL_METRICS:
+            raise ValueError(
+                f'Unsupported stage1_retrieval_metric: {self.retrieval_metric_kind}')
+        self.retrieval_metric = (
+            RetrievalMetric(
+                kind=self.retrieval_metric_kind,
+                dim=int(configs.d_model),
+                scaled_dot=bool(int(getattr(configs, 'stage1_metric_scaled_dot', 1))),
+                layer_norm=bool(int(getattr(configs, 'stage1_metric_layer_norm', 1))),
+                output=getattr(configs, 'stage1_metric_output', 'dot'),
+            )
+            if self.retrieval_metric_kind != 'cosine' else None
+        )
+        # A learned kind is only comparable to the cosine baseline if it *starts*
+        # there; otherwise an epoch-1 difference is the initialisation, not the
+        # learning. The projections initialise to identity, but that alone is not
+        # enough -- an unnormalised output or an affine LayerNorm in the path
+        # still changes the ranking at step 0 -- so measure it rather than assume
+        # it. Reported, not enforced: `output='dot'` runs are deliberate.
+        if self.retrieval_metric is not None:
+            deviation = cosine_init_deviation(self.retrieval_metric)
+            self.metric_cosine_init_deviation = deviation
+            note = 'matches cosine' if deviation < 1e-5 else (
+                'DOES NOT match cosine at init -- arms differ before training')
+            print(f'[stage1][metric] kind={self.retrieval_metric_kind} '
+                  f'cosine_init_deviation={deviation:.3e} ({note})')
+        else:
+            self.metric_cosine_init_deviation = 0.0
+        # How the candidate side receives gradient while the denominator stays
+        # the full memory. 'bank' scores everything from the detached bank, so
+        # only the query branch trains; 'selected_reencode' re-encodes a chosen
+        # subset and scatters those scores back into the full logits.
+        self.full_memory_gradient_mode = getattr(
+            configs, 'stage1_full_memory_gradient_mode', 'bank')
+        if self.full_memory_gradient_mode not in ('bank', 'selected_reencode', 'full_online'):
+            raise ValueError(
+                'stage1_full_memory_gradient_mode must be bank, selected_reencode '
+                f'or full_online; got {self.full_memory_gradient_mode}')
+        self.full_memory_hard_negatives = int(
+            getattr(configs, 'stage1_full_memory_hard_negatives', 100))
+        self.full_memory_random_negatives = int(
+            getattr(configs, 'stage1_full_memory_random_negatives', 128))
+        self.retrieval_score = getattr(configs, 'stage1_retrieval_score', 'cosine')
+        if self.retrieval_score not in ('cosine', 'pairwise_mlp'):
+            raise ValueError(
+                f'Unsupported stage1_retrieval_score: {self.retrieval_score}')
+        self.pairwise_feature = getattr(configs, 'stage1_pairwise_feature', 'pair4')
+        if self.retrieval_score == 'pairwise_mlp':
+            subset_mode = getattr(configs, 'stage1_candidate_subset_mode', 'none')
+            # A pair scorer needs candidate embeddings in the graph. Reading them
+            # from the detached bank would train the scorer against a candidate
+            # side that never receives gradient, which is the exact failure this
+            # experiment is meant to remove. Two ways to get that: mine a subset
+            # and re-encode it, or re-encode the whole memory.
+            #
+            # Mining used to be the only option here because materialising every
+            # pair looked prohibitive -- a pair feature is 2-4x the embedding
+            # width and cannot be folded into a matmul. That was an estimate, not
+            # a measurement: at N=8449 it is ~2.4 GiB per target channel, which
+            # the card has. Requiring mining is what forced the earlier runs to
+            # train on 228 candidates and be evaluated over 8449, so a loss there
+            # could not be told apart from the support mismatch causing it.
+            if subset_mode != 'selected_reencode' and (
+                    self.full_memory_gradient_mode != 'full_online'):
+                raise ValueError(
+                    'stage1_retrieval_score=pairwise_mlp needs the candidate side '
+                    'in the graph: use --stage1_candidate_subset_mode '
+                    'selected_reencode, or --stage1_full_memory_gradient_mode '
+                    f'full_online to score the whole memory; got subset_mode='
+                    f'{subset_mode} and full_memory_gradient_mode='
+                    f'{self.full_memory_gradient_mode}'
+                )
+        self.pairwise_scorer = None
+        if self.retrieval_score == 'pairwise_mlp':
+            self.pairwise_scorer = PairwiseScorer(
+                embedding_dim=int(configs.d_model),
+                feature_type=self.pairwise_feature,
+                hidden_dim=int(getattr(configs, 'stage1_pairwise_hidden', 256)),
+                hidden_dim2=int(getattr(configs, 'stage1_pairwise_hidden2', 128)),
+                dropout=float(getattr(configs, 'stage1_pairwise_dropout', 0.1)),
+            )
         requested_loss_mode = getattr(configs, 'stage1_loss_mode', 'kl')
         legacy_use_rank_loss = bool(int(getattr(configs, 'stage1_use_rank_loss', 0)))
         if requested_loss_mode not in (
             'kl', 'kl_infonce', 'kl_rank', 'rnc', 'kl_expected_mse',
-            'topk_coverage'
+            'topk_coverage', 'weighted_topk_ce'
         ):
             raise ValueError(f'Unsupported stage1_loss_mode: {requested_loss_mode}')
         # Preserve old rank scripts, which only set stage1_use_rank_loss=1.
@@ -2270,6 +2479,14 @@ class Model(nn.Module):
         self.candidate_mine_top_m = int(
             getattr(configs, 'stage1_candidate_mine_top_m', 100)
         )
+        # Random negatives drawn from the whole bank. A learned score is only
+        # constrained where it has seen pairs, and evaluation ranks the full
+        # memory; without them the scorer is unconstrained on 99% of it.
+        self.candidate_random_negatives = int(
+            getattr(configs, 'stage1_candidate_random_negatives', 0)
+        )
+        if self.candidate_random_negatives < 0:
+            raise ValueError('stage1_candidate_random_negatives must be non-negative')
         requested_inject_k = int(
             getattr(configs, 'stage1_candidate_oracle_inject_k', -1)
         )
@@ -2290,10 +2507,10 @@ class Model(nn.Module):
             # objective is pinned to one of the two future-supervised losses:
             # the KL distillation the pipeline ships with, or the explicit
             # Oracle Top-K coverage loss the tiny-overfit diagnostic used.
-            if self.loss_mode not in ('kl', 'topk_coverage'):
+            if self.loss_mode not in ('kl', 'topk_coverage', 'weighted_topk_ce'):
                 raise ValueError(
-                    'stage1_candidate_subset_mode requires --stage1_loss_mode kl '
-                    f'or topk_coverage; got {self.loss_mode}'
+                    'stage1_candidate_subset_mode requires --stage1_loss_mode kl, '
+                    f'topk_coverage or weighted_topk_ce; got {self.loss_mode}'
                 )
             if self.loss_mode == 'kl' and self.teacher_mode != 'mse':
                 raise ValueError(
@@ -2353,7 +2570,7 @@ class Model(nn.Module):
         return self.relation_sources is not None
 
     def requires_ema_teacher_bank(self):
-        if self.loss_mode == 'topk_coverage':
+        if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
             return False
         if self.teacher_mode not in ('ema_target', 'ema_input'):
             return False
@@ -2699,6 +2916,127 @@ class Model(nn.Module):
         ].mean()
         return metrics
 
+    def _full_memory_gradient_indices(self, student_scores, future_mse, cand_mask,
+                                      oracle_k, generator=None):
+        """Which candidates get their score recomputed with gradient.
+
+        The denominator stays the whole memory either way; this only decides
+        where the candidate branch contributes to the encoder's gradient.
+
+          Oracle Top-K    what the loss wants promoted
+          hard negatives  what the model currently ranks highly and should not --
+                          the false positives full-memory evaluation surfaces
+          random          background, so the encoder is not shaped only by the
+                          extremes
+        """
+        floor = torch.finfo(student_scores.dtype).min
+        scores = student_scores.detach().float().masked_fill(~cand_mask, floor)
+        distances = future_mse.detach().float().masked_fill(~cand_mask, float('inf'))
+        num_cand = scores.size(-1)
+
+        oracle_k = min(int(oracle_k), num_cand)
+        oracle = torch.topk(distances, k=oracle_k, dim=-1, largest=False).indices
+        picked = torch.zeros_like(cand_mask)
+        picked.scatter_(1, oracle, True)
+
+        parts = [oracle]
+        hard_width = min(int(self.full_memory_hard_negatives), num_cand)
+        if hard_width > 0:
+            hard = scores.masked_fill(picked, floor).topk(hard_width, dim=-1).indices
+            picked.scatter_(1, hard, True)
+            parts.append(hard)
+        random_width = min(int(self.full_memory_random_negatives), num_cand)
+        if random_width > 0:
+            weights = (cand_mask & ~picked).float()
+            weights = torch.where(
+                weights.sum(-1, keepdim=True) >= random_width, weights, cand_mask.float())
+            if int(weights.sum(-1).min()) >= random_width:
+                parts.append(torch.multinomial(
+                    weights, random_width, replacement=False, generator=generator))
+        return torch.cat(parts, dim=-1)
+
+    def _full_online_replaces_scores(self, external_pool):
+        """True when `_apply_full_memory_gradient` will discard the bank scores.
+
+        full_online rescores every candidate from the live encoder and returns
+        that instead of merging into what came before, so whatever the bank pass
+        produced is thrown away. Worth knowing before building a graph over it.
+        """
+        return (
+            self.full_memory_gradient_mode == 'full_online'
+            and not self.candidate_subset_active()
+            and external_pool is None
+            and self.training
+        )
+
+    def _apply_full_memory_gradient(self, student_scores, z_q, candidate_x, future_mse,
+                                    cand_mask, target_channel, source_channel):
+        """Put the candidate branch back in the graph without shrinking the support.
+
+        The bank is detached, so scoring against it trains only the query side.
+        Re-encoding a chosen subset and scattering those scores into the full
+        [B, N] logits keeps every candidate in the softmax denominator while the
+        encoder still receives gradient from the candidate side -- for the
+        candidates that matter. Positions outside the subset keep their bank
+        score and contribute no candidate-side gradient; that is the
+        approximation this mode makes, and it is stated rather than hidden.
+        """
+        if self.full_memory_gradient_mode == 'bank':
+            return student_scores, {}
+        if candidate_x is None:
+            raise ValueError(
+                'stage1_full_memory_gradient_mode needs candidate_x [N, L, C]')
+
+        if self.full_memory_gradient_mode == 'full_online':
+            z_all = self.encoder(
+                self._relation_tensor(candidate_x, target_channel, source_channel))
+            if self.pairwise_scorer is not None:
+                # The pair scorer over the whole memory. Mining existed because a
+                # pair feature is 2-4x the embedding width and cannot be folded
+                # into a matmul, so the earlier runs trained on a mined subset and
+                # were evaluated over the full bank -- the support mismatch that
+                # made those results unreadable. Materialising every pair costs
+                # ~2.4 GiB per target channel at N=8449, which the card has, so
+                # the subset is not actually necessary and training scores the
+                # same candidate set evaluation does.
+                online = self._pairwise_bank_scores(z_q, z_all)
+            elif self.retrieval_metric is not None:
+                online = self.retrieval_metric.score(z_q, z_all)
+            else:
+                online = torch.matmul(z_q, z_all.transpose(0, 1))
+            return online, {'full_memory_reencoded': z_q.new_tensor(float(z_all.size(0)))}
+
+        selected = self._full_memory_gradient_indices(
+            student_scores, future_mse, cand_mask, self.coverage_top_k)
+        z_sel, unique_count = self._reencode_selected_candidates(
+            candidate_x, selected, target_channel, source_channel)
+        online = (
+            self.retrieval_metric.score(z_q, z_sel.to(dtype=z_q.dtype))
+            if self.retrieval_metric is not None
+            else (z_q.unsqueeze(1) * z_sel.to(dtype=z_q.dtype)).sum(-1)
+        )
+        merged = student_scores.scatter(1, selected, online)
+        return merged, {
+            'full_memory_reencoded': z_q.new_tensor(float(unique_count)),
+            'full_memory_grad_candidates': z_q.new_tensor(float(selected.size(-1))),
+        }
+
+    def _pairwise_bank_scores(self, z_q, z_bank, chunk_size=None):
+        """Score a query batch against a whole key bank with the pair scorer.
+
+        Returns [B, N]. Kept in the graph when the scorer is training, because
+        the query side still carries gradient even where the bank does not.
+        """
+        if self.pairwise_scorer is None:
+            raise RuntimeError('no pairwise scorer configured')
+        chunk = int(chunk_size or self.key_chunk_size)
+        scores = []
+        for start in range(0, z_bank.size(0), chunk):
+            block = z_bank[start:start + chunk].to(z_q.device, z_q.dtype)
+            scores.append(self.pairwise_scorer(
+                z_q, block.unsqueeze(0).expand(z_q.size(0), -1, -1)))
+        return torch.cat(scores, dim=-1)
+
     def _reencode_selected_candidates(
         self, candidate_x, selected_indices, target_channel, source_channel
     ):
@@ -2863,8 +3201,30 @@ class Model(nn.Module):
         query_residual=None,
         memory_residual=None,
         reference_scores=None,
+        mining_scores=None,
     ):
         bsz, num_cand = cand_mask.shape
+        if mining_scores is not None:
+            # [B, C, N] frozen scores that pick the training candidates. Kept
+            # separate from the student's own scores so "which candidates the
+            # loss saw" can be held fixed while the score function changes.
+            if mining_scores.dim() != 3 or mining_scores.shape[0] != bsz:
+                raise ValueError(
+                    f'mining_scores must be [B, C, N] with B={bsz}, '
+                    f'got {tuple(mining_scores.shape)}'
+                )
+            if mining_scores.shape[-1] != num_cand:
+                raise ValueError(
+                    f'mining_scores covers {mining_scores.shape[-1]} candidates, '
+                    f'mask covers {num_cand}'
+                )
+            if self.candidate_subset_mode == 'none':
+                raise ValueError(
+                    'mining_scores only applies to the candidate-subset training '
+                    'path; enable stage1_candidate_subset_mode'
+                )
+            # Evaluation scores the full memory and has no mining step, so the
+            # scores are simply unused there rather than an error.
         if self.residual_teacher_active and (query_residual is None or memory_residual is None):
             raise ValueError(
                 'stage1_residual_teacher needs the cached query and memory residuals'
@@ -3003,7 +3363,7 @@ class Model(nn.Module):
                             cand_mask,
                             tie_epsilon=self.rnc_tie_epsilon,
                         )
-                elif self.loss_mode == 'topk_coverage':
+                elif self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
                     coverage_targets = prepare_topk_coverage_targets(
                         future_mse,
                         cand_mask,
@@ -3110,8 +3470,48 @@ class Model(nn.Module):
                         + k_l2.pow(2).sum(dim=-1).unsqueeze(0)
                         - 2.0 * torch.matmul(q_l2, k_l2.transpose(0, 1))
                     ) / float(q_l2.size(-1))
+                elif self.retrieval_metric is not None:
+                    # One matmul over the whole bank, exactly as cosine was.
+                    student_scores = self.retrieval_metric.score(z_q, z_k)
+                elif self.pairwise_scorer is not None:
+                    # Full-bank scoring. The key bank is rebuilt from the current
+                    # encoder immediately before validation, so these embeddings
+                    # are not stale -- only the pair comparison changes. Chunked
+                    # because a pair feature is 2-4x wider than the embedding and
+                    # the bank has thousands of rows.
+                    if self.candidate_subset_active() or self._full_online_replaces_scores(
+                            external_pool):
+                        # Training: this result is discarded -- either it only
+                        # mines which candidates the loss runs over, or
+                        # full_online is about to rescore the whole bank from the
+                        # live encoder. Selection is discrete anyway, so building
+                        # a graph over all N candidates would cost a large
+                        # transient allocation for a tensor nothing
+                        # backpropagates through.
+                        with torch.no_grad():
+                            student_scores = self._pairwise_bank_scores(z_q.detach(), z_k)
+                    else:
+                        student_scores = self._pairwise_bank_scores(z_q, z_k)
                 else:
                     student_scores = torch.matmul(z_q, z_k.transpose(0, 1))
+
+                # Full-memory gradient path: the denominator stays [B, N] and the
+                # candidate side re-enters the graph for the candidates that matter.
+                full_memory_metrics = {}
+                if (
+                    self.full_memory_gradient_mode != 'bank'
+                    and not self.candidate_subset_active()
+                    and external_pool is None
+                    and self.training
+                ):
+                    student_scores, full_memory_metrics = self._apply_full_memory_gradient(
+                        student_scores, z_q, candidate_x, future_mse, cand_mask, c, r
+                    )
+                # Reported for every loss mode, not just the coverage branch that
+                # happened to merge it first. A blank `full_memory_reencoded` on a
+                # full_online run reads as "this arm did not re-encode", which is
+                # the opposite of true and would make a loss comparison across
+                # modes look like a gradient-mode comparison.
 
                 subset_metrics = {}
                 selected_indices = None
@@ -3131,7 +3531,7 @@ class Model(nn.Module):
                     subset_metrics = external_pool_utility_metrics(
                         student_scores.detach(), external_utility_c, cand_mask
                     )
-                    if self.loss_mode == 'topk_coverage':
+                    if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
                         coverage_targets = prepare_topk_coverage_targets(
                             future_mse, cand_mask, self.coverage_top_k
                         )
@@ -3148,7 +3548,7 @@ class Model(nn.Module):
                             future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
                             / cand_mask.sum(dim=-1).clamp_min(1)
                         ).detach()
-                        if self.loss_mode != 'topk_coverage':
+                        if self.loss_mode not in ('topk_coverage', 'weighted_topk_ce'):
                             teacher_entropy = -(
                                 teacher_prob * torch.log(teacher_prob + self.eps)
                             ).sum(dim=-1)
@@ -3159,12 +3559,19 @@ class Model(nn.Module):
                             'stage1_candidate_subset_mode requires candidate_x '
                             '[N, L, C] so selected candidates can be re-encoded'
                         )
+                    # Common mining keeps the candidate ids identical across
+                    # arms; self mining lets each arm pick its own, which is a
+                    # final-system question rather than a score-function one.
+                    bank_scores_for_mining = (
+                        mining_scores[:, c] if mining_scores is not None else student_scores
+                    )
                     selected, mining_stats = select_training_candidates(
-                        student_scores,
+                        bank_scores_for_mining,
                         future_mse,
                         cand_mask,
                         top_m=self.candidate_mine_top_m,
                         oracle_k=self.candidate_oracle_inject_k,
+                        random_negatives=self.candidate_random_negatives,
                     )
                     subset_metrics = self._candidate_mining_metrics(
                         student_scores, future_mse, cand_mask, mining_stats
@@ -3183,6 +3590,18 @@ class Model(nn.Module):
                                 + z_k_sel.float().pow(2).sum(dim=-1)
                                 - 2.0 * (z_q.float().unsqueeze(1) * z_k_sel.float()).sum(dim=-1)
                             ) / float(z_q.size(-1))
+                        elif self.retrieval_metric is not None:
+                            # Same bilinear form as the full-bank path, now with
+                            # both sides in the graph.
+                            student_scores = self.retrieval_metric.score(
+                                z_q, z_k_sel.to(dtype=z_q.dtype))
+                        elif self.pairwise_scorer is not None:
+                            # Both sides are in the graph here: z_q from the query
+                            # forward and z_k_sel from re-encoding the selected
+                            # candidates, so the shared encoder gets gradient
+                            # through the candidate branch as well as the query.
+                            student_scores = self.pairwise_scorer(
+                                z_q, z_k_sel.to(dtype=z_q.dtype))
                         else:
                             student_scores = (
                                 z_q.unsqueeze(1) * z_k_sel.to(dtype=z_q.dtype)
@@ -3205,7 +3624,14 @@ class Model(nn.Module):
                     else:
                         # Control arm: identical candidate set, but the scores keep
                         # coming from the detached bank embeddings.
-                        student_scores = student_scores.gather(1, selected)
+                        if self.pairwise_scorer is not None:
+                            # student_scores here were produced by the full-bank
+                            # pairwise path, so gathering is correct -- but the
+                            # candidate side is detached, which is the control this
+                            # mode exists for. Flagged rather than silently mixed.
+                            student_scores = student_scores.gather(1, selected)
+                        else:
+                            student_scores = student_scores.gather(1, selected)
                         if not self._subset_logged:
                             print(
                                 '[stage1 candidate-subset] mode=selected_detached '
@@ -3220,7 +3646,7 @@ class Model(nn.Module):
                     future_mse = future_mse.gather(1, selected)
                     cand_mask = cand_mask.gather(1, selected)
                     valid_query = cand_mask.sum(dim=1) > 0
-                    if self.loss_mode == 'topk_coverage':
+                    if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
                         # The Oracle positives were prepared over the full pool,
                         # so their indices mean nothing on the selected columns.
                         # Injection guarantees the global Oracle Top-K survived
@@ -3242,7 +3668,7 @@ class Model(nn.Module):
                             future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
                             / cand_mask.sum(dim=-1).clamp_min(1)
                         ).detach()
-                        if self.loss_mode != 'topk_coverage':
+                        if self.loss_mode not in ('topk_coverage', 'weighted_topk_ce'):
                             teacher_entropy = -(
                                 teacher_prob * torch.log(teacher_prob + self.eps)
                             ).sum(dim=-1)
@@ -3404,7 +3830,7 @@ class Model(nn.Module):
                     (self_rows if c == r else cross_rows).append(row)
                     continue
 
-                if self.loss_mode == 'topk_coverage':
+                if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
                     valid_student_scores = student_scores[cand_mask]
                     if (
                         valid_student_scores.numel() == 0
@@ -3416,10 +3842,18 @@ class Model(nn.Module):
                     )
                     student_log_prob = torch.log_softmax(student_logits, dim=-1)
                     student_prob = student_log_prob.exp()
-                    coverage_loss, coverage_metrics = topk_coverage_loss(
-                        student_log_prob,
-                        coverage_targets,
-                    )
+                    if self.loss_mode == 'weighted_topk_ce':
+                        # Same Oracle Top-K positives as the coverage loss, but
+                        # graded by future quality instead of spread uniformly.
+                        coverage_loss, coverage_metrics = weighted_topk_listwise_ce(
+                            student_log_prob, coverage_targets, self.tau_teacher,
+                            eps=self.eps,
+                        )
+                    else:
+                        coverage_loss, coverage_metrics = topk_coverage_loss(
+                            student_log_prob,
+                            coverage_targets,
+                        )
                     if not torch.isfinite(coverage_loss):
                         continue
 
@@ -3445,6 +3879,16 @@ class Model(nn.Module):
                         'embedding_std_mean': embedding_std_mean.detach(),
                     }
                     row.update(coverage_metrics)
+                    row.update(full_memory_metrics)
+                    if compute_detailed_metrics and coverage_targets['oracle_indices'].numel():
+                        # Where the Oracle sits in the model's own ranking. Recall@10
+                        # stays near zero while a candidate moves from rank 4000 to
+                        # rank 40; mean rank shows that movement directly.
+                        row.update(oracle_rank_statistics(
+                            student_scores, coverage_targets['oracle_indices'],
+                            cand_mask, coverage_targets['oracle_valid']))
+                        row.update(score_separation_metrics(
+                            student_scores, coverage_targets['oracle_indices'], cand_mask))
                     if compute_detailed_metrics:
                         random_mse = (
                             future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
@@ -3617,6 +4061,7 @@ class Model(nn.Module):
                 row.update(expected_mse_metrics)
                 row.update(infonce_metrics)
                 row.update(subset_metrics)
+                row.update(full_memory_metrics)
                 if compute_detailed_metrics:
                     retrieval_metrics = _student_retrieval_metrics(
                         student_scores, student_prob, future_mse, cand_mask, eps=self.eps

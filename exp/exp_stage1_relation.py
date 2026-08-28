@@ -108,9 +108,15 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.memory_x_last = torch.from_numpy(self.memory_x_last_np).float().to(self.device)
         # Candidate histories only reach the device for the modes that re-encode
         # them during training; the full-bank baseline never needs them.
-        needs_history = self._candidate_subset_enabled() or (
-            self._differentiable_keys_enabled()
-            and self.tiny_candidate_indices is not None
+        needs_history = (
+            self._candidate_subset_enabled()
+            or (
+                self._differentiable_keys_enabled()
+                and self.tiny_candidate_indices is not None
+            )
+            # Full-memory gradient modes re-encode candidates from raw input too,
+            # so they need the histories on device even without a mined subset.
+            or getattr(self.args, 'stage1_full_memory_gradient_mode', 'bank') != 'bank'
         )
         self.memory_x = (
             torch.from_numpy(self.memory_x_np).float().to(self.device)
@@ -201,7 +207,18 @@ class Exp_Stage1_Relation(Exp_Basic):
         ranked_candidates = torch.argsort(future_mse, dim=1)
         selected_candidates = []
         selected_set = set()
-        oracle_depth = min(max(oracle_per_query, 1), ranked_candidates.size(1))
+        # 0 means no Oracle injection at all: the pool is drawn at random.
+        #
+        # Injection fills the pool round-robin from each query's best candidates,
+        # which is what makes a 16-query tiny set solvable. With many queries it
+        # does the opposite -- the first few hundred queries consume every slot, so
+        # later queries and every held-out query face a pool that excludes their
+        # own answers. A pool that is random is the same pool for every query, and
+        # that is what a generalization reading needs.
+        oracle_depth = (
+            0 if oracle_per_query == 0
+            else min(oracle_per_query, ranked_candidates.size(1))
+        )
         for rank in range(oracle_depth):
             for row in range(ranked_candidates.size(0)):
                 candidate_index = int(ranked_candidates[row, rank])
@@ -359,7 +376,11 @@ class Exp_Stage1_Relation(Exp_Basic):
         and destroy the comparison.
         """
         path = getattr(self.args, 'stage1_pool_reference_ckpt', '')
-        if not path or int(getattr(self.args, 'stage1_pool_size', 0)) <= 0:
+        wanted = (
+            int(getattr(self.args, 'stage1_pool_size', 0)) > 0
+            or getattr(self.args, 'stage1_mining_score', 'self') == 'reference'
+        )
+        if not path or not wanted:
             return None
         if not hasattr(self, '_reference_key_bank_value'):
             import copy
@@ -501,6 +522,54 @@ class Exp_Stage1_Relation(Exp_Basic):
         self.global_update_step += 1
         return momentum
 
+    # Retrieval quality has several defensible readings and they disagree.
+    # Recall@10 asks for exact identity inside an Oracle set whose 10th and 11th
+    # members differ by 1.4%, while retrieved future MSE asks whether the
+    # candidates actually picked were any good. Selecting on one and reporting
+    # the others would hide an arm whose advantage is on a different axis, so
+    # each criterion keeps its own checkpoint. Early stopping still follows the
+    # single configured criterion, so training length is unchanged.
+    SIDE_CHECKPOINT_METRICS = {
+        'recall10': (('student_oracle_recall_at_10', 'oracle_recall_at_10'), 1.0),
+        'ndcg10': (('student_ndcg_at_10', 'ndcg_at_10'), 1.0),
+        'retrieved_mse10': (
+            ('student_retrieved_future_mse_at_10', 'retrieved_future_mse_at_10'), -1.0),
+    }
+
+    def _side_checkpoint_scores(self, metrics):
+        """Score each side criterion, skipping any the epoch did not report."""
+        out = {}
+        for name, (keys, sign) in self.SIDE_CHECKPOINT_METRICS.items():
+            for key in keys:
+                if key in metrics:
+                    out[name] = sign * float(metrics[key])
+                    break
+        return out
+
+    def _save_side_checkpoints(self, best_path, val_metrics, optimizer, epoch):
+        """Keep one checkpoint per retrieval criterion alongside the main one."""
+        from pathlib import Path as _Path
+
+        best_path = _Path(best_path)
+        if not hasattr(self, '_side_best'):
+            self._side_best = {}
+        payload = None
+        for name, score in self._side_checkpoint_scores(val_metrics).items():
+            if name in self._side_best and score <= self._side_best[name]:
+                continue
+            self._side_best[name] = score
+            if payload is None:
+                payload = {
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'args': vars(self.args),
+                    'relation_graph': self.relation_graph,
+                }
+            target = best_path.with_name(f'checkpoint_best_{name}.pth')
+            torch.save({**payload, 'epoch': epoch, 'selection_metric': name,
+                        'selection_score': score}, target)
+            print(f'[stage1] new best on {name}: {score:+.6f} (epoch {epoch}) -> {target.name}')
+
     def _checkpoint_score(self, metrics):
         """Return (score, label); higher is always better.
 
@@ -516,6 +585,13 @@ class Exp_Stage1_Relation(Exp_Basic):
             ),
             'retrieval_regret10': (
                 ('student_retrieval_regret_at_10', 'retrieval_regret_at_10'), -1.0
+            ),
+            # The quantity Stage-2 actually consumes: how good the futures in the
+            # model's own Top-10 are. Recall and NDCG both score the ranking
+            # against the Future-MSE Oracle, which is one step further from the
+            # forecast than this is.
+            'retrieved_mse10': (
+                ('student_retrieved_future_mse_at_10', 'retrieved_future_mse_at_10'), -1.0
             ),
             # Selecting on Future Recall picks the checkpoint that best copies the
             # Future-MSE Oracle, which the alignment study showed is not the one
@@ -585,6 +661,11 @@ class Exp_Stage1_Relation(Exp_Basic):
             reference_scores = self._reference_scores(batch_x)
             if reference_scores is not None:
                 teacher_batch['reference_scores'] = reference_scores
+                if getattr(self.args, 'stage1_mining_score', 'self') == 'reference':
+                    # Common mining: every arm's loss runs over the *same*
+                    # candidate ids, so a difference between arms is a difference
+                    # in score function or objective, not in what they were shown.
+                    teacher_batch['mining_scores'] = reference_scores
             metrics_extra = {
                 'valid_candidate_count_mean': counts.float().mean().item(),
                 'valid_candidate_count_min': counts.min().item() if counts.numel() else 0.0,
@@ -782,8 +863,19 @@ class Exp_Stage1_Relation(Exp_Basic):
         self._ensure_memory()
         train_data, train_loader = self._get_data(flag='train', shuffle=True)
         if self._tiny_overfit_enabled():
-            train_loader, vali_loader = self._configure_tiny_overfit(train_data)
-            vali_data = train_data
+            train_loader, tiny_vali_loader = self._configure_tiny_overfit(train_data)
+            if int(getattr(self.args, 'stage1_overfit_holdout_val', 0)):
+                # Held-out queries against the same tiny candidate set. The mask is
+                # built per batch from the full memory and then indexed down to the
+                # tiny candidates, so val queries get a correct mask for free.
+                #
+                # Without this, tiny-overfit reports val = train and a Recall@10 of
+                # 1.0 says only that the encoder memorised its sixteen queries -- it
+                # cannot say whether anything transfers to a query it never saw.
+                vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
+            else:
+                vali_loader = tiny_vali_loader
+                vali_data = train_data
         else:
             vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
         self._set_validation_probe(vali_loader)
@@ -1086,6 +1178,7 @@ class Exp_Stage1_Relation(Exp_Basic):
                 self._plot_validation_probe(writer, setting, epoch + 1)
                 adjust_learning_rate(optimizer, epoch + 1, self.args)
 
+                self._save_side_checkpoints(best_path, val_metrics, optimizer, epoch + 1)
                 val_score, score_label = self._checkpoint_score(val_metrics)
                 if val_score > best_val_score:
                     best_val_score = val_score
@@ -1158,9 +1251,18 @@ class Exp_Stage1_Relation(Exp_Basic):
                 final_metrics.get('topk_coverage_loss', float('nan'))
             ),
         }
+        # These come from the validation loader, which in the original tiny-overfit
+        # is the training set itself -- hence the name. With
+        # --stage1_overfit_holdout_val the loader holds unseen queries, so the same
+        # numbers would be validation wearing a training label. Record which split
+        # produced them and publish them under a matching name.
+        holdout = bool(int(getattr(self.args, 'stage1_overfit_holdout_val', 0)))
+        split_name = 'val' if holdout else 'train'
+        condition['eval_split'] = split_name
+        condition['holdout_val'] = holdout
         for k in (1, 5, 10):
-            condition[f'final_train_recall_at_{k}'] = recall(final_metrics, k)
-            condition[f'best_train_recall_at_{k}'] = recall(best_metrics, k)
+            condition[f'final_{split_name}_recall_at_{k}'] = recall(final_metrics, k)
+            condition[f'best_{split_name}_recall_at_{k}'] = recall(best_metrics, k)
         for key in (
             'coverage_oracle_student_overlap',
             'student_retrieval_regret_at_10',
@@ -1179,18 +1281,31 @@ class Exp_Stage1_Relation(Exp_Basic):
             'K={coverage_top_k} Q={queries} N={candidates} seed={seed}'.format(**condition)
         )
         print(
-            '  final  (epoch {final_epoch}): Recall@1={final_train_recall_at_1:.4f} '
-            'Recall@5={final_train_recall_at_5:.4f} '
-            'Recall@10={final_train_recall_at_10:.4f}'.format(**condition)
+            '  final  (epoch {final_epoch}) [{eval_split}]: '
+            'Recall@1={final_recall_1:.4f} Recall@5={final_recall_5:.4f} '
+            'Recall@10={final_recall_10:.4f}'.format(
+                final_recall_1=condition[f'final_{split_name}_recall_at_1'],
+                final_recall_5=condition[f'final_{split_name}_recall_at_5'],
+                final_recall_10=condition[f'final_{split_name}_recall_at_10'],
+                **condition)
         )
         print(
-            '  best   (epoch {best_epoch}): Recall@1={best_train_recall_at_1:.4f} '
-            'Recall@5={best_train_recall_at_5:.4f} '
-            'Recall@10={best_train_recall_at_10:.4f}'.format(**condition)
+            '  best   (epoch {best_epoch}) [{eval_split}]: '
+            'Recall@1={best_recall_1:.4f} Recall@5={best_recall_5:.4f} '
+            'Recall@10={best_recall_10:.4f}'.format(
+                best_recall_1=condition[f'best_{split_name}_recall_at_1'],
+                best_recall_5=condition[f'best_{split_name}_recall_at_5'],
+                best_recall_10=condition[f'best_{split_name}_recall_at_10'],
+                **condition)
         )
-        target = condition['best_train_recall_at_10']
+        target = condition[f'best_{split_name}_recall_at_10']
+        # The 0.95 bar was set for memorisation. On held-out queries it is not the
+        # right bar, so say which question the verdict answers.
+        question = ('transfers to unseen queries' if holdout
+                    else 'memorises its own training queries')
         verdict = 'PASS' if target >= 0.95 else 'FAIL'
-        print(f'  success criterion train Recall@10 >= 0.95: {verdict} ({target:.4f})')
+        print(f'  criterion {split_name} Recall@10 >= 0.95 ({question}): '
+              f'{verdict} ({target:.4f})')
         print('=' * 100)
 
         summary_path = getattr(self.args, 'stage1_overfit_summary_path', '')

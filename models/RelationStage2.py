@@ -5,7 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from layers.relation_mixer import RelationMixer
+from layers.pairwise_scorer import PairwiseScorer
 from layers.retrieval_gate import RetrievalGate
+from layers.retrieval_metric import METRICS as RETRIEVAL_METRICS, RetrievalMetric
 from models.ChronosRelationEncoder import ChronosRelationEncoder
 from models.RelationStage1 import (
     RelationEncoder,
@@ -150,6 +152,47 @@ class Model(nn.Module):
             raise ValueError(
                 f'Unsupported retrieval_similarity: {self.retrieval_similarity}'
             )
+        # The comparison Stage-1 was trained with. Without these Stage-2 reads the
+        # embeddings back through a plain dot product, which is a different
+        # function from the one they were shaped for -- a Stage-1 arm that learned
+        # an asymmetric metric would have that metric silently discarded at
+        # retrieval time, and its encoder judged by cosine.
+        # Re-encode the whole memory every step instead of reading the epoch bank.
+        # Only meaningful while the encoder trains, so callers gate it on e2e.
+        self.e2e_full_online = bool(int(getattr(configs, 'stage2_e2e_full_online', 0)))
+
+        self.retrieval_metric_kind = getattr(configs, 'stage1_retrieval_metric', 'cosine')
+        if self.retrieval_metric_kind not in RETRIEVAL_METRICS:
+            raise ValueError(
+                f'Unsupported stage1_retrieval_metric: {self.retrieval_metric_kind}')
+        self.retrieval_metric = (
+            RetrievalMetric(
+                kind=self.retrieval_metric_kind,
+                dim=int(configs.d_model),
+                scaled_dot=bool(int(getattr(configs, 'stage1_metric_scaled_dot', 1))),
+                layer_norm=bool(int(getattr(configs, 'stage1_metric_layer_norm', 1))),
+                output=getattr(configs, 'stage1_metric_output', 'dot'),
+            )
+            if self.retrieval_metric_kind != 'cosine' else None
+        )
+        self.retrieval_score = getattr(configs, 'stage1_retrieval_score', 'cosine')
+        if self.retrieval_score not in ('cosine', 'pairwise_mlp'):
+            raise ValueError(f'Unsupported stage1_retrieval_score: {self.retrieval_score}')
+        self.pairwise_scorer = (
+            PairwiseScorer(
+                embedding_dim=int(configs.d_model),
+                feature_type=getattr(configs, 'stage1_pairwise_feature', 'pair4'),
+                hidden_dim=int(getattr(configs, 'stage1_pairwise_hidden', 256)),
+                hidden_dim2=int(getattr(configs, 'stage1_pairwise_hidden2', 128)),
+                dropout=float(getattr(configs, 'stage1_pairwise_dropout', 0.1)),
+            )
+            if self.retrieval_score == 'pairwise_mlp' else None
+        )
+        if self.retrieval_metric is not None and self.pairwise_scorer is not None:
+            raise ValueError(
+                'stage1_retrieval_metric and stage1_retrieval_score=pairwise_mlp are two '
+                'different comparisons; pick one')
+
         # End-to-end retrieval supervision: lambda * KL(future-MSE teacher || cosine student).
         # Zero keeps the pure forecasting objective, i.e. the current behaviour.
         self.retrieval_kl_weight = float(getattr(configs, 'retrieval_kl_weight', 0.0))
@@ -432,6 +475,28 @@ class Model(nn.Module):
             self._relation_tensor(x, target_channel, source_channel)
         )
 
+    def _retrieval_score_fn(self):
+        """The comparison to score candidates with, or None for the dot product.
+
+        Returned as a callable so the shared retrieval ops stay unaware of which
+        module produced it; they fall back to their own similarity when it is
+        None, which is what every pre-existing arm does.
+        """
+        if self.pairwise_scorer is not None:
+            def pair_score(z_q, z_k):
+                if z_k.dim() == 2:
+                    # [N, D] bank: score in chunks, a pair feature is 2-4x wider
+                    # than the embedding and the bank has thousands of rows.
+                    if self.training and self.e2e_retrieval:
+                        return self.pairwise_scorer(
+                            z_q, z_k.unsqueeze(0).expand(z_q.size(0), -1, -1))
+                    return self.pairwise_scorer.score_bank_in_chunks(z_q, z_k)
+                return self.pairwise_scorer(z_q, z_k)
+            return pair_score
+        if self.retrieval_metric is not None:
+            return lambda z_q, z_k: self.retrieval_metric.score(z_q, z_k)
+        return None
+
     def _maybe_normalize(self, z):
         """L2-normalise for cosine scoring; leave the norm alone for l2."""
         if self.retrieval_similarity == 'l2':
@@ -548,6 +613,26 @@ class Model(nn.Module):
                 f'No Stage-1 {self.stage2_retrieval_encoder} shared_cross_projection weights found in checkpoint: {ckpt_path}. '
                 'This Stage-2 implementation requires a Stage-1 checkpoint trained with shared_cross_projection.'
             )
+        # The learned comparison travels with the encoder. Loading one without the
+        # other leaves a randomly initialised metric scoring trained embeddings,
+        # which is worse than either alone and fails silently.
+        for attr, prefix in (('retrieval_metric', 'retrieval_metric.'),
+                             ('pairwise_scorer', 'pairwise_scorer.')):
+            module = getattr(self, attr, None)
+            if module is None:
+                continue
+            sub = {k[len(prefix):]: v for k, v in
+                   ((key[7:] if key.startswith('module.') else key, value)
+                    for key, value in state.items())
+                   if k.startswith(prefix)}
+            if not sub:
+                raise RuntimeError(
+                    f'{attr} is configured but the Stage-1 checkpoint has no {prefix}* '
+                    f'weights: {ckpt_path}. Stage-1 must have been trained with the same '
+                    'comparison.')
+            module.load_state_dict(sub, strict=True)
+            module.eval()
+
         missing, unexpected = self.stage1_encoder.load_state_dict(encoder_state, strict=strict)
         proj_missing, proj_unexpected = [], []
         if self.shared_cross_projection is not None:
@@ -1110,6 +1195,7 @@ class Model(nn.Module):
                         tau_topk=self.tau_topk,
                         similarity=self.retrieval_similarity,
                         soft_all=self.retrieval_soft_all,
+                        score_fn=self._retrieval_score_fn(),
                     )
                     relation_outputs_all[:, c, source_slot] = r_cr
                     if student_oracle_recall_sc is not None:
@@ -1336,6 +1422,23 @@ class Model(nn.Module):
             raise RuntimeError('end-to-end re-encoding requires the Stage-1 backbone')
         relation = self._relation_tensor(candidate_x, target_channel, source_channel)
         return self.stage1_encoder(relation)
+
+    def _reencode_all_candidates(self, candidate_x, target_channel, source_channel):
+        """Embed the whole memory with the *current* encoder, in the graph.
+
+        The key bank is built once per epoch. Under joint training the encoder
+        keeps moving inside that epoch, so selection reads embeddings the encoder
+        has already left behind while only the chosen Top-K get re-encoded live --
+        the candidate that would now rank first may never be looked at. Stage-1
+        measured what that costs: removing the same staleness raised Recall@10 by
+        5.6-41.9%.
+
+        Serving still uses an index; this only changes how the same function is
+        computed during training, so there is no train/serve mismatch.
+        """
+        return self.encode_candidate_histories(
+            candidate_x, target_channel, source_channel
+        )
 
     def _reencode_indices(self, candidate_x, indices, target_channel, source_channel):
         """Embeddings for [B, K] candidate ids, shaped [B, K, D]."""
@@ -1580,9 +1683,16 @@ class Model(nn.Module):
                         z_q = self._branch_embedding(
                             batch_x, c, r, channel_embeddings=query_channel_embeddings
                         )
-                    z_mem = self._branch_memory(
-                        key_bank, c, source_slot, r, z_q.dtype, batch_x.device
-                    )
+                    if self.e2e_full_online and self.training:
+                        if candidate_x is None:
+                            raise ValueError(
+                                'stage2_e2e_full_online=1 needs candidate_x [N, L, C]')
+                        z_mem = self._reencode_all_candidates(
+                            candidate_x, c, r).to(z_q.dtype)
+                    else:
+                        z_mem = self._branch_memory(
+                            key_bank, c, source_slot, r, z_q.dtype, batch_x.device
+                        )
                     if self.retrieval_backbone == 'chronos':
                         if self.chronos_finetune:
                             # Keep the differentiable query in full precision and
@@ -1613,6 +1723,7 @@ class Model(nn.Module):
                             z_q=z_q, z_k_sel=z_k_sel, values=ret_debug['v_top'],
                             top_valid=ret_debug['top_valid'], tau_topk=self.tau_topk,
                             similarity=self.retrieval_similarity,
+                            score_fn=self._retrieval_score_fn(),
                         )
                         ret_debug['top_scores'] = top_scores
                         ret_debug['alpha'] = alpha
