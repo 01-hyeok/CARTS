@@ -212,6 +212,111 @@ class Dataset_ETT_minute(Dataset):
         return self.scaler.inverse_transform(data)
 
 
+class Dataset_Solar(Dataset):
+    """Solar-Energy (solar_AL.txt): 137 PV plants, 10-minute sampling, 2006.
+
+    The file is a headerless matrix of comma-separated floats with no date
+    column, so it needs its own reader rather than Dataset_Custom's. The split
+    and scaling follow what the forecasting literature uses for this dataset --
+    70/10/20 chronological, StandardScaler fit on the training rows only -- so
+    numbers stay comparable with published results.
+
+    There are no timestamps to encode. The marks are returned as zeros, which is
+    the same choice the reference implementations make; nothing downstream reads
+    them here, and the retrieval candidate mask works off row indices rather
+    than dates, so this costs nothing. Inventing a date index would be the
+    riskier option, since a synthetic one can later be mistaken for real.
+    """
+
+    def __init__(self, args, root_path, flag='train', size=None,
+                 features='M', data_path='solar_AL.txt',
+                 target='OT', scale=True, timeenc=0, freq='t',
+                 seasonal_patterns=None):
+        self.args = args
+        if size is None:
+            self.seq_len = 24 * 4 * 4
+            self.label_len = 24 * 4
+            self.pred_len = 24 * 4
+        else:
+            self.seq_len, self.label_len, self.pred_len = size
+        assert flag in ['train', 'test', 'val']
+        self.set_type = {'train': 0, 'val': 1, 'test': 2}[flag]
+
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.timeenc = timeenc
+        self.freq = freq
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        path = os.path.join(self.root_path, self.data_path)
+        # genfromtxt reads the whole matrix in one pass; the file is ~180MB and
+        # a Python-level loop over 52k lines is the slow part of startup.
+        raw = np.genfromtxt(path, delimiter=',', dtype=np.float32)
+        if raw.ndim != 2:
+            raise ValueError(f'{path}: expected a 2-D matrix, got shape {raw.shape}')
+        if not np.isfinite(raw).all():
+            raise ValueError(f'{path}: contains NaN or Inf, so a trailing '
+                             f'delimiter or a short row is likely')
+
+        num_rows = len(raw)
+        num_train = int(num_rows * 0.7)
+        num_test = int(num_rows * 0.2)
+        num_vali = num_rows - num_train - num_test
+        border1s = [0, num_train - self.seq_len, num_rows - num_test - self.seq_len]
+        border2s = [num_train, num_train + num_vali, num_rows]
+        border1 = border1s[self.set_type]
+        border2 = border2s[self.set_type]
+        self.border1 = border1
+
+        if self.features == 'S':
+            # No named target column exists; the last series is the convention.
+            df_data = raw[:, -1:]
+            self.channel_names = [str(raw.shape[1] - 1)]
+        else:
+            df_data = raw
+            self.channel_names = [str(i) for i in range(raw.shape[1])]
+
+        if self.scale:
+            self.scaler.fit(df_data[border1s[0]:border2s[0]])
+            data = self.scaler.transform(df_data)
+        else:
+            data = df_data
+        data = data.astype(np.float32, copy=False)
+
+        self.data_x = data[border1:border2]
+        self.data_y = data[border1:border2]
+
+        if self.set_type == 0 and self.args.augmentation_ratio > 0:
+            self.data_x, self.data_y, _ = run_augmentation_single(
+                self.data_x, self.data_y, self.args)
+
+        self.data_stamp = np.zeros((len(self.data_x), 1), dtype=np.float32)
+
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return index, seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return len(self.data_x) - self.seq_len - self.pred_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
+
 class Dataset_Custom(Dataset):
     def __init__(self, args, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',

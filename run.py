@@ -162,6 +162,76 @@ if __name__ == '__main__':
                             'from 2L to L before a shared L->d_ff MLP'
                         ))
     parser.add_argument('--tau_student', type=float, default=0.1, help='Stage-1 student softmax temperature')
+    parser.add_argument('--rank_loss_weight', type=float, default=0.0,
+                        help=('Weight on the boundary hard-pair ranking loss. At 0 the mining is '
+                              'skipped and Stage-1 is the plain cross-entropy baseline. The two '
+                              'terms disagree by design on a candidate that beats a selected one '
+                              'without entering the global Oracle Top-K, so this sets which wins'))
+    parser.add_argument('--rank_margin', type=float, default=0.01,
+                        help=('Score margin the better candidate must clear. Cosine scores occupy a '
+                              'far narrower band than [-1, 1], so measure the real rank-10 to '
+                              'rank-100 gap before setting this; too large and the hinge is open on '
+                              'every pair, which rank_loss_active_fraction will show'))
+    parser.add_argument('--rank_gap_threshold', type=float, default=0.0,
+                        help='Minimum future-MSE gap for a pair to count, so near-ties are not ranked')
+    parser.add_argument('--rank_pairs_per_query', type=int, default=32,
+                        help='Hardest pairs kept per query, ordered by future-MSE gap')
+    parser.add_argument('--rank_pool_end', type=int, default=100,
+                        help=('End of the mining range (ranks top_k+1..this). A mining range only: '
+                              'retrieval still scores the full memory'))
+    parser.add_argument('--stage1_global_anchor_weight', type=float, default=0.0,
+                        help=('Weight on KL(frozen-cosine ranking || current ranking) over the '
+                              'full memory. The ranking loss supervises a hundred candidates '
+                              'but the scorer weights move all of them, so this holds the '
+                              'thousands it never looks at to the ranking the encoder already '
+                              'produced. 0 reproduces the rank-only scorer exactly'))
+    parser.add_argument('--stage1_global_anchor_tau', type=float, default=-1.0,
+                        help='Temperature for the anchor; below 0 reuses --tau_student')
+    parser.add_argument('--stage1_imitation_target', type=str, default='individual',
+                        choices=['individual', 'set'],
+                        help=('Which oracle the scorer is taught to reproduce. The two differ '
+                              'only in how the K members were chosen, so the pair isolates '
+                              'whether a per-candidate score can express a set picked for how '
+                              'its members combine'))
+    parser.add_argument('--stage1_imitation_pool', type=int, default=100,
+                        help='Shared candidate pool the imitation ranks within')
+    parser.add_argument('--stage1_freeze_encoder', type=int, default=0,
+                        help=('Hold the Stage-1 encoder fixed and train only the retrieval '
+                              'metric. Rank-only fine-tuning collapses the representation '
+                              'within ten steps, so this separates whether the ranking '
+                              'supervision is unusable from whether updating the encoder with '
+                              'it was'))
+    parser.add_argument('--rank_mining_mode', type=str, default='pair',
+                        choices=['pair', 'candidate', 'persistent'],
+                        help=('pair takes the largest future-MSE gaps, which lets one strong '
+                              'candidate consume the budget through near-duplicate pairs. '
+                              'candidate takes one pair per distinct candidate that beats a '
+                              'selected one. persistent fixes that set once and never '
+                              're-mines: dynamic mining releases a pair the moment its '
+                              'positive enters the Top-K, which is exactly when the gap '
+                              'has only just crossed zero and no margin exists yet'))
+    parser.add_argument('--rank_gap_weighted', type=int, default=1,
+                        help='Weight each pair by its future-MSE gap rather than treating all alike')
+    parser.add_argument('--stage1_expected_mse_lambda', type=float, default=1.0,
+                        help=('Additive weight on the expected-future-MSE term for '
+                              'wce_expected_mse. Separate from --expected_mse_weight, which '
+                              'kl_expected_mse mixes convexly and so caps at 1'))
+    parser.add_argument('--stage1_set_mse_weight', type=float, default=0.0,
+                        help=('lambda on the set-level term. The cross-entropy sits near 7 and the '
+                              'normalised set MSE near 0.2, so parity needs roughly 30-40, not 0.5'))
+    parser.add_argument('--stage1_set_tau', type=float, default=0.015,
+                        help=('Temperature of the full-memory softmax the set loss aggregates over. '
+                              'It decides how many candidates form one set: on ETTh1/336 this gives '
+                              'effective support ~32 with ~69%% of the mass on the Top-10'))
+    parser.add_argument('--stage1_set_mse_normalization', type=str, default='mean',
+                        choices=['none', 'mean', 'median'],
+                        help='Per-query scale the set MSE is divided by, as the expected-MSE loss does')
+    parser.add_argument('--stage1_set_support_k', type=int, default=0,
+                        help=('Target effective support for the one-sided entropy hinge; 0 disables '
+                              'it. Only a support wider than the target is penalised, so it cannot '
+                              'undo the concentration the cross-entropy is building'))
+    parser.add_argument('--stage1_set_support_weight', type=float, default=0.0,
+                        help='Weight on the support hinge; 0 disables it')
     parser.add_argument('--tau_teacher', type=float, default=0.1, help='Stage-1 teacher softmax temperature')
     parser.add_argument('--stage1_key_chunk_size', type=int, default=1024,
                         help='Stage-1 key encoder chunk size for memory-safe full candidate training')
@@ -203,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('--stage1_candidate_oracle_inject_k', type=int, default=-1,
                         help='Global Oracle Top-K guaranteed inside the mined set; <=0 reuses --top_k')
     parser.add_argument('--stage1_checkpoint_metric', type=str, default='loss',
-                        choices=['loss', 'recall10', 'retrieved_mse10', 'retrieval_regret10',
+                        choices=['loss', 'recall10', 'retrieved_mse10', 'hard_aggregate_mse10', 'retrieval_regret10',
                                  'utility_gap_recovery', 'utility_ndcg', 'retrieved_utility'],
                         help=('Stage-1 best-checkpoint criterion on the validation split. '
                               'retrieved_mse10 minimizes the future-MSE of the model own Top-10, '
@@ -372,7 +442,9 @@ if __name__ == '__main__':
                         help='Add future-aware top-k pairwise ranking loss to Stage-1')
     parser.add_argument('--stage1_loss_mode', type=str, default='kl',
                         choices=['kl', 'kl_infonce', 'kl_rank', 'rnc', 'kl_expected_mse',
-                                 'topk_coverage', 'weighted_topk_ce'],
+                                 'topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse',
+                                 'expected_mse', 'wce_expected_mse', 'rank_only',
+                                 'oracle_imitation'],
                         help='Stage-1 objective; legacy stage1_use_rank_loss=1 maps kl to kl_rank')
     parser.add_argument('--stage1_infonce_weight', type=float, default=0.5,
                         help='InfoNCE mixture weight for kl_infonce; KL uses one minus this value')
@@ -574,6 +646,12 @@ if __name__ == '__main__':
                         help='Stage-2 retrieval gate hidden size')
     parser.add_argument('--fixed_lambda', type=float, default=-1.0,
                         help='Use fixed Stage-2 retrieval gate lambda when >= 0; negative keeps trainable gate')
+    parser.add_argument('--stage2_retrieval_off', type=int, default=0,
+                        help=('Inference-time counterfactual: keep every trained weight but feed '
+                              'the fusion a neutral retrieval signal. Pairs with a normal run on '
+                              'the same checkpoint to measure what retrieval actually contributed, '
+                              'which disable_retrieval cannot do -- that one builds a different '
+                              'model and trains a base-only forecaster'))
     parser.add_argument('--disable_retrieval', type=int, default=0,
                         help='Disable Stage-2 memory retrieval and train/evaluate the base forecast head only')
     parser.add_argument('--base_head_mode', type=str, default='shared_target_linear',

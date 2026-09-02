@@ -1,3 +1,4 @@
+import os
 import copy
 import math
 
@@ -441,6 +442,806 @@ def topk_coverage_loss(student_log_prob, targets):
         'oracle_positive_probability_min': active_mean(probability_min),
         'coverage_effective_k': active_mean(effective_k.float()),
         'coverage_oracle_student_overlap': active_mean(overlap),
+    }
+    return loss, metrics
+
+
+def hard_aggregate_metrics(student_scores, cand_mask, query_future,
+                           candidate_future, top_k, tau_topk, eps=1e-8):
+    """What Stage-2 actually consumes, measured on Stage-1's scores.
+
+    Stage-2 takes the score Top-K and averages those futures with
+    softmax(s/tau_topk), so the quantity that reaches the forecaster is the error
+    of that one aggregate -- not the mean of the candidates' individual errors,
+    which is what the retrieval losses grade. The two differ by exactly the
+    spread among the selected candidates:
+
+        sum_i a_i ||y_i - y_q||^2 = ||sum_i a_i y_i - y_q||^2 + sum_i a_i ||y_i - ybar||^2
+
+    All three terms are returned so the identity can be checked and so a change
+    in the aggregate can be attributed to individual quality or to spread. The
+    uniform variant isolates whether the *set* improved from whether the
+    *weighting* did.
+    """
+    masked_fill = torch.finfo(student_scores.dtype).min / 4
+    scores = student_scores.masked_fill(~cand_mask, masked_fill)
+    k = min(int(top_k), scores.size(-1))
+    top_scores, top_idx = torch.topk(scores, k=k, dim=-1)
+    top_valid = top_scores > masked_fill / 2
+    values = candidate_future[top_idx].float()             # [B, k, D]
+    query = query_future.float().unsqueeze(1)              # [B, 1, D]
+
+    alpha = F.softmax(
+        (top_scores / float(tau_topk)).masked_fill(~top_valid, masked_fill), dim=-1
+    ) * top_valid.float()
+    alpha = alpha / alpha.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+    weighted = (alpha.unsqueeze(-1) * values).sum(dim=1)   # [B, D]
+    per_candidate = ((values - query) ** 2).mean(dim=-1)   # [B, k]
+    centred = ((values - weighted.unsqueeze(1)) ** 2).mean(dim=-1)
+    uniform = (values * top_valid.unsqueeze(-1).float()).sum(1) / (
+        top_valid.float().sum(-1, keepdim=True).clamp_min(1.0)
+    )
+    return {
+        'hard_aggregate_mse10': ((weighted - query.squeeze(1)) ** 2).mean(-1).mean().detach(),
+        'uniform_aggregate_mse10': ((uniform - query.squeeze(1)) ** 2).mean(-1).mean().detach(),
+        'weighted_individual_mse10': (alpha * per_candidate).sum(-1).mean().detach(),
+        'weighted_candidate_variance10': (alpha * centred).sum(-1).mean().detach(),
+    }
+
+
+def soft_set_mse(student_scores, cand_mask, query_future, candidate_future,
+                 tau_set, normalization='mean', support_k=0, eps=1e-8):
+    """Set-level loss: the error of the softmax-weighted aggregate over all memory.
+
+    The retrieval losses grade candidates one at a time, so a candidate's value
+    never depends on what it is selected alongside. Stage-2 averages ten of them,
+    where errors that point opposite ways cancel. Moving the sum inside the norm
+
+        sum_i p_i ||y_i - y_q||^2   ->   || sum_i p_i y_i - y_q ||^2
+
+    makes the objective the thing Stage-2 experiences, and makes a candidate's
+    usefulness conditional on the rest of the set.
+
+    The softmax runs over the whole valid memory rather than a shortlist: the
+    point of the method is that the learned score organises all of memory, so
+    every candidate has to stay on the gradient path. tau_set then sets how many
+    candidates meaningfully take part; the Step-0 sweep picks it. Support
+    diagnostics are returned because a temperature loose enough to reach every
+    candidate can also degenerate into averaging thousands of them, which would
+    reconstruct the target rather than retrieve for it.
+    """
+    masked_fill = torch.finfo(student_scores.dtype).min / 4
+    logits = (student_scores / float(tau_set)).masked_fill(~cand_mask, masked_fill)
+    prob = F.softmax(logits, dim=-1) * cand_mask.float()
+    prob = prob / prob.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+    aggregate = prob @ candidate_future.float()            # [B, D]
+    per_query = ((aggregate - query_future.float()) ** 2).mean(dim=-1)
+    raw = per_query.mean()
+
+    if normalization == 'none':
+        normalized = raw
+    else:
+        # Same per-query future-MSE scale the expected-MSE loss normalises by, so
+        # the set term is comparable across queries and horizons.
+        distance = ((candidate_future.float().unsqueeze(0)
+                     - query_future.float().unsqueeze(1)) ** 2).mean(dim=-1)
+        distance = distance.masked_fill(~cand_mask, 0.0)
+        count = cand_mask.float().sum(dim=-1).clamp_min(1.0)
+        if normalization == 'median':
+            scale = torch.stack([
+                row[mask].median() if bool(mask.any()) else row.new_tensor(1.0)
+                for row, mask in zip(distance, cand_mask)
+            ])
+        else:
+            scale = distance.sum(dim=-1) / count
+        normalized = (per_query / (scale.detach() + float(eps))).mean()
+
+    entropy = -(prob * (prob + eps).log()).sum(dim=-1)
+    n_valid = cand_mask.float().sum(dim=-1).clamp_min(2.0)
+    order = student_scores.masked_fill(~cand_mask, masked_fill).argsort(dim=-1, descending=True)
+    metrics = {
+        'set_soft_mse_raw': raw.detach(),
+        'set_soft_mse_normalized': normalized.detach(),
+        'set_soft_entropy': entropy.mean().detach(),
+        'set_soft_entropy_norm': (entropy / n_valid.log()).mean().detach(),
+        'set_soft_effective_candidates': entropy.exp().mean().detach(),
+        'set_soft_top10_mass': prob.gather(1, order[:, :10]).sum(-1).mean().detach(),
+        'set_soft_top100_mass': prob.gather(1, order[:, :100]).sum(-1).mean().detach(),
+    }
+
+    support = student_scores.sum() * 0.0
+    if support_k > 0:
+        # One-sided: only a support wider than the target is penalised. A
+        # two-sided entropy match would pull probability back out of the good
+        # candidates that the cross-entropy term is trying to concentrate on.
+        target = torch.log(entropy.new_tensor(float(support_k)))
+        support = (entropy - target).clamp_min(0.0).pow(2).mean()
+    metrics['set_support_loss'] = support.detach()
+    return normalized, support, metrics
+
+
+def build_frozen_rank_pairs(scores, future_mse, valid_mask, query_ids,
+                            top_k=10, pool_end=100, per_query=4,
+                            mining_mode='pair'):
+    """Freeze a pair set once, so later epochs measure the same orderings.
+
+    Mining is redone every step, so a rising hard-pair score gap can mean the
+    gaps got worse or simply that harder pairs got mined. Pairs chosen once from
+    the baseline checkpoint remove that ambiguity: the same (query, i, j)
+    triples are re-scored each epoch and nothing about them moves except the
+    encoder.
+    """
+    neg = torch.finfo(scores.dtype).min / 4
+    ranked = scores.detach().masked_fill(~valid_mask, neg)
+    order = ranked.argsort(dim=-1, descending=True)
+    k = min(int(top_k), order.size(-1))
+    end = min(int(pool_end), order.size(-1))
+    sel_idx, pool_idx = order[:, :k], order[:, k:end]
+    if pool_idx.size(1) == 0:
+        return []
+    d = future_mse.detach()
+    gap = d.gather(1, sel_idx).unsqueeze(2) - d.gather(1, pool_idx).unsqueeze(1)
+    usable = (gap > 0) & valid_mask.gather(1, sel_idx).unsqueeze(2) \
+        & valid_mask.gather(1, pool_idx).unsqueeze(1)
+    width = pool_idx.size(1)
+    if mining_mode == 'candidate':
+        # One pair per distinct positive, so a persistent set covers as many
+        # different candidates as the budget allows instead of repeating one.
+        best_gap, best_i = gap.masked_fill(~usable, float('-inf')).max(dim=1)
+        take = min(int(per_query), best_gap.size(1))
+        top_gap, j_sel = best_gap.topk(take, dim=-1)
+        pos = best_i.gather(1, j_sel) * width + j_sel
+    else:
+        flat = gap.masked_fill(~usable, float('-inf')).reshape(scores.size(0), -1)
+        take = min(int(per_query), flat.size(1))
+        top_gap, pos = flat.topk(take, dim=-1)
+    out = []
+    ids = torch.as_tensor(query_ids).reshape(-1)
+    if ids.numel() != scores.size(0):
+        # A pair is only reusable if it can be found again by query id, so a
+        # batch whose ids do not line up with its scores is skipped rather than
+        # keyed by a guessed row.
+        if os.environ.get('CARTS_FROZEN_DEBUG') == '1':
+            print(f'[frozen] id/score mismatch: ids={tuple(ids.shape)} '
+                  f'scores={tuple(scores.shape)}')
+        return []
+    for row in range(scores.size(0)):
+        for col in range(take):
+            if not torch.isfinite(top_gap[row, col]):
+                continue
+            i_pos = int(pos[row, col]) // width
+            j_pos = int(pos[row, col]) % width
+            out.append((int(ids[row]),
+                        int(sel_idx[row, i_pos]),
+                        int(pool_idx[row, j_pos]),
+                        float(top_gap[row, col])))
+    return out
+
+
+def frozen_pair_metrics(scores, query_ids, pairs, margin=0.01):
+    """Re-score a frozen pair set: is the ordering the loss asked for holding?"""
+    ids = torch.as_tensor(query_ids).reshape(-1)
+    if ids.numel() != scores.size(0):
+        return {}
+    lookup = {int(q): row for row, q in enumerate(ids)}
+    gaps = []
+    for query, i_id, j_id, _ in pairs:
+        row = lookup.get(int(query))
+        if row is None:
+            continue
+        # s_j - s_i: rises exactly when the ordering the loss asks for appears.
+        gaps.append(float(scores[row, j_id]) - float(scores[row, i_id]))
+    if not gaps:
+        return {}
+    # Signed as s_j - s_i, so the number rises exactly when the ordering the loss
+    # asks for is being produced. Reporting s_i - s_j instead inverts the sense
+    # of "improving" and makes the trend easy to misread.
+    tensor = torch.tensor(gaps)
+    q = torch.quantile(tensor.float(), torch.tensor([0.25, 0.5, 0.75]))
+    return {
+        'frozen_signed_gap_mean': tensor.mean(),
+        'frozen_signed_gap_p25': q[0],
+        'frozen_signed_gap_p50': q[1],
+        'frozen_signed_gap_p75': q[2],
+        'frozen_pair_correct_order_frac': (tensor > 0).float().mean(),
+        # Ordering flipped is not the same as ordering separated: a pair can sit
+        # a hair above zero and still satisfy "correct" while the margin the loss
+        # asks for is nowhere near met.
+        'frozen_margin_satisfied_frac': (tensor >= float(margin)).float().mean(),
+        'frozen_pair_count': torch.tensor(float(len(gaps))),
+    }
+
+
+def score_gradient_conflict(wce_loss, rank_loss, scores, future_mse, valid_mask,
+                           rank_weight, top_k=10, pool_end=100, eps=1e-8):
+    """Which objective actually moves a mined candidate's score, and which way.
+
+    A cosine between parameter-space gradients can look near-orthogonal while
+    the two terms still fight over the individual scores that decide retrieval,
+    so this differentiates each loss with respect to the scores themselves.
+    Under gradient descent dL/ds_j < 0 raises s_j, so the sign is the direction.
+
+    The split by Oracle membership is the point: for a candidate outside the
+    global Oracle Top-K the cross-entropy is a negative and pushes it down while
+    the ranking loss pushes it up, and the total tells which one won. Note that
+    an Oracle member already scored above its teacher weight is also pushed
+    down, so the inside-Oracle column is not purely one-directional.
+    """
+    neg = torch.finfo(scores.dtype).min / 4
+    ranked = scores.detach().masked_fill(~valid_mask, neg)
+    order = ranked.argsort(dim=-1, descending=True)
+    k = min(int(top_k), order.size(-1))
+    end = min(int(pool_end), order.size(-1))
+    sel_idx, pool_idx = order[:, :k], order[:, k:end]
+    if pool_idx.size(1) == 0:
+        return {}
+
+    d = future_mse.detach()
+    d_sel = d.gather(1, sel_idx)
+    worst = d_sel.max(dim=-1, keepdim=True).values
+    d_pool = d.gather(1, pool_idx)
+    positive = (d_pool < worst) & valid_mask.gather(1, pool_idx)
+    if not bool(positive.any()):
+        return {}
+
+    g_wce = torch.autograd.grad(wce_loss, scores, retain_graph=True)[0]
+    g_rank = torch.autograd.grad(rank_loss, scores, retain_graph=True)[0]
+    g_total = g_wce + float(rank_weight) * g_rank
+
+    oracle_idx = d.masked_fill(~valid_mask, float('inf')).topk(
+        k, dim=-1, largest=False).indices
+    in_oracle = (pool_idx.unsqueeze(-1) == oracle_idx.unsqueeze(1)).any(-1)
+
+    def pick(g):
+        return g.gather(1, pool_idx)
+
+    out = {}
+    n_pos = positive.float().sum().clamp_min(1.0)
+    for tag, g in (('wce', g_wce), ('rank', float(rank_weight) * g_rank),
+                   ('total', g_total)):
+        vals = pick(g)
+        out[f'{tag}_score_grad_on_rank_positive_mean'] = (
+            vals * positive.float()).sum().div(n_pos).detach()
+    # Direction read from the gradient itself. Oracle membership only predicts
+    # it for candidates outside the set, where q = 0 forces a push down; inside
+    # the set a candidate already scored above its teacher weight is pushed down
+    # too, since dL/ds = (p - q)/tau. So membership is a subgroup split here, not
+    # the test.
+    for tag, g in (('wce', g_wce), ('rank', float(rank_weight) * g_rank),
+                   ('total', g_total)):
+        vals = pick(g)
+        out[f'{tag}_score_push_up_frac'] = (
+            (vals < 0) & positive).float().sum().div(n_pos).detach()
+        out[f'{tag}_score_push_down_frac'] = (
+            (vals > 0) & positive).float().sum().div(n_pos).detach()
+    gw, gr = pick(g_wce), pick(g_rank)
+    conflict = positive & (gw * gr < 0)
+    out['wce_rank_score_conflict_frac'] = conflict.float().sum().div(n_pos).detach()
+    out['total_score_push_up_frac'] = out['total_score_push_up_frac']
+
+    out['rank_positive_score_raise_frac'] = (
+        (pick(g_total) < 0) & positive).float().sum().div(n_pos).detach()
+    # Mining keeps only the hardest pairs_per_query pairs, so most candidates
+    # that beat a selected one may receive no ranking gradient at all. Without
+    # this the other fractions read as if the loss acted on every one of them.
+    touched = (pick(g_rank) != 0) & positive
+    out['rank_positive_covered_frac'] = touched.float().sum().div(n_pos).detach()
+
+    for name, sub in (('inside', positive & in_oracle),
+                      ('outside', positive & ~in_oracle)):
+        n = sub.float().sum().clamp_min(1.0)
+        out[f'rank_positive_{name}_oracle_frac'] = sub.float().sum().div(n_pos).detach()
+        out[f'score_raise_frac_{name}_oracle'] = (
+            (pick(g_total) < 0) & sub).float().sum().div(n).detach()
+        if name == 'outside':
+            out['outside_oracle_wce_push_down_frac'] = (
+                (pick(g_wce) > 0) & sub).float().sum().div(n).detach()
+            out['outside_oracle_rank_push_up_frac'] = (
+                (pick(g_rank) < 0) & sub).float().sum().div(n).detach()
+            out['outside_oracle_total_push_up_frac'] = (
+                (pick(g_total) < 0) & sub).float().sum().div(n).detach()
+    return out
+
+
+def ranking_diagnostics(student_scores, future_mse, valid_mask,
+                        top_k=10, pool_end=100, eps=1e-8):
+    """How badly is the ordering wrong, and where does the score put the good ones?
+
+    Deliberately does *not* compute a cross-boundary inversion rate. Splitting
+    the pools by model rank makes s_j < s_i true by construction, so that ratio
+    is identically 1 and cannot move during training. What can move is how many
+    better candidates are left outside the Top-K, how far down the Oracle's
+    candidates sit, and whether the ordering is right among pairs that were not
+    pre-separated by score -- so those are what this returns.
+    """
+    bsz = student_scores.size(0)
+    neg = torch.finfo(student_scores.dtype).min / 4
+    ranked = student_scores.detach().masked_fill(~valid_mask, neg)
+    order = ranked.argsort(dim=-1, descending=True)
+    k = min(int(top_k), order.size(-1))
+    end = min(int(pool_end), order.size(-1))
+    d = future_mse.detach()
+    out = {}
+
+    sel_idx, pool_idx = order[:, :k], order[:, k:end]
+    d_sel = d.gather(1, sel_idx)
+    worst = d_sel.max(dim=-1, keepdim=True).values
+    if pool_idx.size(1) > 0:
+        d_pool = d.gather(1, pool_idx)
+        better = (d_pool < worst) & valid_mask.gather(1, pool_idx)
+        count = better.float().sum(-1)
+        out['missed_better_100_mean'] = count.mean()
+        out['missed_better_100_median'] = count.median()
+        out['missed_better_100_nonzero_frac'] = (count > 0).float().mean()
+        gaps = (worst - d_pool).masked_fill(~better, 0.0)
+        out['missed_better_gap_mean'] = gaps.sum().div(better.float().sum().clamp_min(1.0))
+        out['missed_better_gap_max'] = gaps.max()
+
+    # Where the Oracle's candidates land in the model's ordering.
+    rank_of = torch.empty_like(order)
+    ar = torch.arange(order.size(-1), device=order.device).expand_as(order)
+    rank_of.scatter_(1, order, ar)
+    oracle_k = min(k, d.size(-1))
+    oracle_idx = d.masked_fill(~valid_mask, float('inf')).topk(
+        oracle_k, dim=-1, largest=False).indices
+    oranks = rank_of.gather(1, oracle_idx).float()
+    out['oracle_model_rank_mean'] = oranks.mean()
+    out['oracle_model_rank_median'] = oranks.median()
+    out['oracle_model_rank_p90'] = torch.quantile(oranks.flatten().float(), 0.9)
+    out['oracle_in_model_top10_frac'] = (oranks < k).float().mean()
+    out['oracle_in_model_top100_frac'] = (oranks < end).float().mean()
+
+    # Ordering accuracy among the model's Top-100, over pairs that were not
+    # pre-split by score. Lower future MSE should carry the higher score.
+    head = order[:, :end]
+    ds = d.gather(1, head)
+    ss = ranked.gather(1, head)
+    dd = ds.unsqueeze(2) - ds.unsqueeze(1)
+    sd = ss.unsqueeze(2) - ss.unsqueeze(1)
+    tri = torch.triu(torch.ones(head.size(1), head.size(1),
+                                dtype=torch.bool, device=d.device), diagonal=1)
+    live = tri.unsqueeze(0) & (dd != 0) & (sd != 0)
+    concordant = ((dd * sd) < 0) & live
+    out['pair_acc_top100_all'] = concordant.float().sum().div(
+        live.float().sum().clamp_min(1.0))
+    out['pair_order_accuracy_top100'] = out['pair_acc_top100_all']
+    # An ordering that is wrong only between candidates whose futures are
+    # equally good is not the failure worth chasing. Restricting to the pairs
+    # with a real utility gap separates "cannot rank at all" from "cannot split
+    # near-ties", which the all-pairs number alone cannot.
+    gap = dd.abs()[live]
+    if gap.numel():
+        for tag, q in (('gap_p50', 0.5), ('gap_p75', 0.75)):
+            thresh = torch.quantile(gap.float(), q)
+            sel = live & (dd.abs() > thresh)
+            out[f'pair_acc_top100_{tag}'] = (concordant & sel).float().sum().div(
+                sel.float().sum().clamp_min(1.0))
+    return {key: value.detach() for key, value in out.items()}
+
+
+def score_geometry(student_scores, valid_mask, top_k=10, pool_end=100):
+    """The raw spread of the scores a margin has to be chosen against.
+
+    Cosine spans [-1, 1] in theory; in practice the learned scores sit in a very
+    narrow band, so a conventional margin like 0.1 can exceed the entire gap it
+    is meant to grade and leave the hinge open on every pair. Measured before
+    any margin is picked.
+    """
+    neg = torch.finfo(student_scores.dtype).min / 4
+    ranked = student_scores.detach().masked_fill(~valid_mask, neg)
+    sorted_scores, _ = ranked.sort(dim=-1, descending=True)
+    n = sorted_scores.size(-1)
+    pick = lambda r: sorted_scores[:, min(r, n - 1)]
+    k, end = min(top_k, n), min(pool_end, n)
+    out = {
+        'score_rank1_mean': pick(0).mean(),
+        'score_rank10_mean': pick(k - 1).mean(),
+        'score_rank11_mean': pick(k).mean(),
+        'score_rank100_mean': pick(end - 1).mean(),
+        'rank10_rank11_score_gap_mean': (pick(k - 1) - pick(k)).mean(),
+        'rank10_rank100_score_gap_mean': (pick(k - 1) - pick(end - 1)).mean(),
+    }
+    band = (sorted_scores[:, :k].unsqueeze(2)
+            - sorted_scores[:, k:end].unsqueeze(1)).flatten()
+    if band.numel():
+        q = torch.quantile(band.float(), torch.tensor([0.25, 0.5, 0.75], device=band.device))
+        out['hard_pair_score_gap_mean'] = band.mean()
+        out['hard_pair_score_gap_p25'] = q[0]
+        out['hard_pair_score_gap_p50'] = q[1]
+        out['hard_pair_score_gap_p75'] = q[2]
+    return {key: value.detach() for key, value in out.items()}
+
+
+def greedy_set_stability(futures, query_future, k, restarts=3, eps=1e-12):
+    """How much does the greedy set depend on where it started?
+
+    The Set Oracle target comes from a greedy procedure, not a sort, so two
+    nearly identical queries can receive quite different sets. That makes an
+    imitation arm harder for a reason unrelated to whether a pointwise scorer
+    can express complementarity, and the two must not be confused. Restarting
+    from the 2nd, 3rd ... best individual candidate gives sets of almost the same
+    aggregate error when many near-equivalent sets exist; the overlap between
+    them is then the noise floor the imitation target carries.
+    """
+    bsz, pool, dim = futures.shape
+    y = futures.float()
+    q = query_future.float()
+    d = ((y - q.unsqueeze(1)) ** 2).mean(-1)
+    seeds = d.argsort(dim=-1)[:, :max(1, min(restarts, pool))]
+
+    sets, errs = [], []
+    for col in range(seeds.size(1)):
+        taken = torch.zeros(bsz, pool, dtype=torch.bool, device=y.device)
+        first = seeds[:, col:col + 1]
+        taken.scatter_(1, first, True)
+        running = torch.gather(
+            y, 1, first.unsqueeze(-1).expand(-1, -1, dim)).squeeze(1)
+        picks = [first]
+        for t in range(1, min(k, pool)):
+            cand_mean = (running.unsqueeze(1) + y) / float(t + 1)
+            err = ((cand_mean - q.unsqueeze(1)) ** 2).mean(-1).masked_fill(
+                taken, float('inf'))
+            nxt = err.argmin(dim=-1, keepdim=True)
+            taken.scatter_(1, nxt, True)
+            picks.append(nxt)
+            running = running + torch.gather(
+                y, 1, nxt.unsqueeze(-1).expand(-1, -1, dim)).squeeze(1)
+        idx = torch.cat(picks, dim=-1)
+        sets.append(idx)
+        errs.append(((running / float(idx.size(1)) - q) ** 2).mean(-1))
+
+    base = sets[0]
+    overlaps, gaps = [], []
+    for col in range(1, len(sets)):
+        hit = (base.unsqueeze(-1) == sets[col].unsqueeze(-2)).any(-1).float()
+        overlaps.append(hit.mean(-1))
+        gaps.append((errs[col] - errs[0]).abs() / errs[0].clamp_min(eps))
+    if not overlaps:
+        return {}
+    return {
+        'greedy_restart_overlap_mean': torch.stack(overlaps).mean().detach(),
+        'greedy_restart_overlap_min': torch.stack(overlaps).min().detach(),
+        'greedy_restart_rel_gap_mean': torch.stack(gaps).mean().detach(),
+        'greedy_restart_rel_gap_p90': torch.quantile(
+            torch.stack(gaps).flatten().float(), 0.9).detach(),
+    }
+
+
+def oracle_imitation_loss(student_scores, pool_idx, target_local, tau, eps=1e-8):
+    """Teach the scorer one oracle's Top-K membership, over the shared pool.
+
+    The future decides which candidates are the target and nothing else; the
+    student sees only the pasts. Individual and Set targets differ solely in how
+    the K members were chosen, so the two arms isolate whether a score that reads
+    one candidate at a time can reproduce a set chosen for how its members work
+    together.
+    """
+    scores = student_scores.gather(1, pool_idx)
+    log_p = torch.log_softmax(scores / float(tau), dim=-1)
+    picked = log_p.gather(1, target_local)
+    loss = -picked.mean()
+    if not torch.isfinite(loss):
+        raise ValueError('oracle imitation loss is NaN or Inf')
+    with torch.no_grad():
+        top = scores.topk(target_local.size(1), dim=-1).indices
+        hit = (target_local.unsqueeze(-1) == top.unsqueeze(-2)).any(-1).float()
+        metrics = {
+            'imitation_loss': loss.detach(),
+            'teacher_set_recall_at_k': hit.mean().detach(),
+        }
+    return loss, metrics
+
+
+def set_utility_metrics(futures, query_future, eps=1e-8):
+    """I, A and V for one selected set, and the identity that ties them.
+
+        mean_i ||y_i - y_q||^2  =  ||mean_i y_i - y_q||^2  +  mean_i ||y_i - ybar||^2
+
+    Individual quality, the error of the aggregate the forecaster receives, and
+    the spread that separates them. A selection can lower every candidate's own
+    error while raising the middle term, which is the case this diagnostic
+    exists to detect, so the residual is returned and checked rather than
+    assumed.
+
+    futures is [B, K, D]; query_future is [B, D].
+    """
+    y = futures.float()
+    q = query_future.float().unsqueeze(1)
+    mean = y.mean(dim=1)
+    individual = ((y - q) ** 2).mean(-1).mean(-1)
+    aggregate = ((mean - query_future.float()) ** 2).mean(-1)
+    variance = ((y - mean.unsqueeze(1)) ** 2).mean(-1).mean(-1)
+    return individual, aggregate, variance, individual - aggregate - variance
+
+
+def select_individual_oracle(d_pool, k):
+    """The k candidates with the lowest future error, each judged alone."""
+    return d_pool.topk(min(k, d_pool.size(-1)), dim=-1, largest=False).indices
+
+
+def select_good_diverse(futures, d_pool, k, good_n=30):
+    """Diversity among candidates that are already individually good.
+
+    The control for the set arm. Picking the most distant candidate outright
+    just finds outliers, which lose on every metric and settle nothing; keeping
+    quality first asks the sharper question -- whether spread among good
+    candidates is enough, or whether the target has to be consulted.
+    """
+    bsz, pool, _ = futures.shape
+    good_n = min(good_n, pool)
+    good = d_pool.topk(good_n, dim=-1, largest=False).indices          # [B, G]
+    y = torch.gather(futures, 1, good.unsqueeze(-1).expand(-1, -1, futures.size(-1)))
+    d = torch.gather(d_pool, 1, good)
+    chosen = d.argmin(dim=-1, keepdim=True)                            # start at the best
+    taken = torch.zeros(bsz, good_n, dtype=torch.bool, device=futures.device)
+    taken.scatter_(1, chosen, True)
+    for _ in range(min(k, good_n) - 1):
+        sel = y * taken.unsqueeze(-1).float()
+        count = taken.float().sum(-1, keepdim=True).clamp_min(1.0)
+        # Mean squared distance from each candidate to the ones already taken.
+        dist = (((y.unsqueeze(2) - sel.unsqueeze(1)) ** 2).mean(-1)
+                * taken.unsqueeze(1).float()).sum(-1) / count
+        dist = dist.masked_fill(taken, float('-inf'))
+        nxt = dist.argmax(dim=-1, keepdim=True)
+        taken.scatter_(1, nxt, True)
+        chosen = torch.cat([chosen, nxt], dim=-1)
+    return torch.gather(good, 1, chosen)
+
+
+def select_greedy_set(futures, query_future, k):
+    """Add whichever candidate most reduces the error of the running mean.
+
+    The first pick is the individually best candidate, since with one member the
+    aggregate is that candidate. Every pick after that can prefer a candidate
+    whose own error is larger, if it offsets the error already accumulated --
+    which is the difference this arm is built to expose.
+    """
+    bsz, pool, dim = futures.shape
+    y = futures.float()
+    q = query_future.float()
+    taken = torch.zeros(bsz, pool, dtype=torch.bool, device=y.device)
+    running = torch.zeros(bsz, dim, device=y.device)
+    picks = []
+    for t in range(min(k, pool)):
+        cand_mean = (running.unsqueeze(1) + y) / float(t + 1)
+        err = ((cand_mean - q.unsqueeze(1)) ** 2).mean(-1)
+        err = err.masked_fill(taken, float('inf'))
+        nxt = err.argmin(dim=-1, keepdim=True)
+        taken.scatter_(1, nxt, True)
+        picks.append(nxt)
+        running = running + torch.gather(
+            y, 1, nxt.unsqueeze(-1).expand(-1, -1, dim)).squeeze(1)
+    return torch.cat(picks, dim=-1)
+
+
+def global_anchor_kl(base_scores, new_scores, valid_mask, tau, top_k=10,
+                     pool_end=100, eps=1e-8):
+    """Keep the ranking the frozen encoder already produced, outside the part
+    the local objective is allowed to change.
+
+    The ranking loss supervises a hundred candidates but the scorer's weights
+    move all of them, so the eight thousand it never looks at can drift. This
+    holds the whole distribution to the one the frozen cosine gives, in the
+    forward direction -- KL(base || new) charges the new scores for abandoning
+    mass the baseline placed, which is what preservation means here; the reverse
+    would let them concentrate anywhere inside the baseline's support.
+
+    Identity initialisation makes the two score sets equal at step 0, so this
+    starts at zero and only grows as the scorer departs. Retention statistics
+    come back with it, because a KL value alone does not say whether the
+    candidates the baseline ranked highest are still ranked highest.
+    """
+    neg = torch.finfo(new_scores.dtype).min / 4
+    base = base_scores.detach().float().masked_fill(~valid_mask, neg)
+    new = new_scores.float().masked_fill(~valid_mask, neg)
+    # Mask after scaling: dividing the fill value by a small temperature drives
+    # it to -inf, and the difference of two -inf log-probabilities is NaN even
+    # where the probability weighting it is about to be multiplied by is zero.
+    log_p = torch.log_softmax((base / float(tau)).masked_fill(~valid_mask, neg), dim=-1)
+    log_q = torch.log_softmax((new / float(tau)).masked_fill(~valid_mask, neg), dim=-1)
+    zero = torch.zeros((), dtype=log_p.dtype, device=log_p.device)
+    diff = torch.where(valid_mask, log_p - log_q, zero)
+    p = torch.where(valid_mask, log_p.exp(), zero)
+    loss = (p * diff).sum(dim=-1).mean()
+    if not torch.isfinite(loss):
+        raise ValueError('global anchor KL is NaN or Inf')
+
+    with torch.no_grad():
+        k = min(int(top_k), base.size(-1))
+        end = min(int(pool_end), base.size(-1))
+        b_order = base.argsort(dim=-1, descending=True)
+        n_order = new.detach().argsort(dim=-1, descending=True)
+
+        def retention(width):
+            b, n = b_order[:, :width], n_order[:, :width]
+            hit = (b.unsqueeze(-1) == n.unsqueeze(-2)).any(-1).float()
+            return hit.mean()
+
+        rank_b = torch.empty_like(b_order, dtype=torch.float)
+        rank_n = torch.empty_like(n_order, dtype=torch.float)
+        ar = torch.arange(base.size(-1), device=base.device).float().expand_as(rank_b)
+        rank_b.scatter_(1, b_order, ar)
+        rank_n.scatter_(1, n_order, ar)
+        rb = rank_b - rank_b.mean(-1, keepdim=True)
+        rn = rank_n - rank_n.mean(-1, keepdim=True)
+        spearman = ((rb * rn).sum(-1)
+                    / (rb.norm(dim=-1) * rn.norm(dim=-1)).clamp_min(eps)).mean()
+        metrics = {
+            'global_anchor_kl': loss.detach(),
+            'baseline_top10_retention': retention(k).detach(),
+            'baseline_top100_retention': retention(end).detach(),
+            'baseline_vs_new_score_spearman': spearman.detach(),
+        }
+    return loss, metrics
+
+
+def boundary_hard_rank_loss(student_scores, future_mse, valid_mask,
+                            top_k=10, pool_end=100, gap_threshold=0.0,
+                            margin=0.01, pairs_per_query=32,
+                            gap_weighted=True, mining_mode='pair',
+                            persistent=None, eps=1e-8):
+    """Fix the orderings the retriever gets wrong right at the Top-K boundary.
+
+    The cross-entropy grades membership of the global Oracle Top-K, so a
+    candidate that is better than one currently selected -- but not among the
+    ten globally best -- is a negative to it and gets pushed *down*. The
+    replacement diagnostic found such candidates sitting at ranks 11-100 in 19
+    of 20 arms, which is what this supervises instead: for each pair where the
+    model ranks i above j while j's future is closer, require j to outscore i.
+
+    The two objectives therefore pull on the same candidate in opposite
+    directions, and rank_loss_weight sets who wins; active_fraction and the pair
+    counts are returned so that tug-of-war stays visible.
+
+    Ranks 11-100 are a mining range, not a shortlist: only the pairs are drawn
+    from it, and retrieval still scores the whole memory. Indices come from a
+    detached sort because a rank is not differentiable, but the scores fed to
+    the hinge are the live ones -- taking them from a detached tensor would
+    leave the encoder with no gradient and nothing would report it.
+    """
+    bsz = student_scores.size(0)
+    neg = torch.finfo(student_scores.dtype).min / 4
+    ranked = student_scores.detach().masked_fill(~valid_mask, neg)
+    order = ranked.argsort(dim=-1, descending=True)
+    k = min(int(top_k), order.size(-1))
+    end = min(int(pool_end), order.size(-1))
+    sel_idx = order[:, :k]
+    pool_idx = order[:, k:end]
+    zero = student_scores.sum() * 0.0
+    metrics = {
+        'rank_loss_raw': zero.detach(),
+        'num_valid_rank_pairs': zero.detach(),
+        'mean_rank_future_gap': zero.detach(),
+        'rank_loss_active_fraction': zero.detach(),
+    }
+    if persistent is not None:
+        # Pairs fixed once, addressed by global candidate index rather than by
+        # rank. Dynamic mining drops a pair the moment j overtakes the tenth
+        # candidate -- exactly when s_j - s_i has just crossed zero -- so the
+        # ordering flips and supervision stops before any margin can form.
+        # Holding the pair keeps the gradient on until the margin is actually met.
+        i_glob, j_glob, pair_gap, keep = persistent
+        s_i = student_scores.gather(1, i_glob)
+        s_j = student_scores.gather(1, j_glob)
+        violation = (float(margin) - s_j + s_i).clamp_min(0.0)
+        weight = keep.float()
+        if gap_weighted:
+            g = pair_gap.masked_fill(~keep, 0.0)
+            weight = weight * (g / (g.sum() / keep.float().sum().clamp_min(1.0) + eps))
+        loss = (weight * violation).sum() / weight.sum().clamp_min(eps)
+        n_keep = keep.float().sum().clamp_min(1.0)
+        return loss, {
+            'rank_loss_raw': loss.detach(),
+            'num_valid_rank_pairs': keep.float().sum().detach(),
+            'mean_valid_rank_pairs_per_query': (keep.float().sum() / bsz).detach(),
+            'mean_rank_future_gap': (pair_gap.masked_fill(~keep, 0.0).sum()
+                                     / n_keep).detach(),
+            'rank_loss_active_fraction': ((violation > 0).float()
+                                          * keep.float()).sum().div(n_keep).detach(),
+            'hard_pair_score_gap_mean': ((s_i - s_j).detach()
+                                         * keep.float()).sum().div(n_keep),
+        }
+
+    if pool_idx.size(1) == 0:
+        return zero, metrics
+
+    d_sel = future_mse.detach().gather(1, sel_idx)             # [B, k]
+    d_pool = future_mse.detach().gather(1, pool_idx)           # [B, P]
+    ok_sel = valid_mask.gather(1, sel_idx)
+    ok_pool = valid_mask.gather(1, pool_idx)
+    gap = d_sel.unsqueeze(2) - d_pool.unsqueeze(1)             # [B, k, P] = d_i - d_j
+    usable = (gap > float(gap_threshold)) & ok_sel.unsqueeze(2) & ok_pool.unsqueeze(1)
+    if not bool(usable.any()):
+        return zero, metrics
+
+    rows = torch.arange(bsz, device=student_scores.device).unsqueeze(1)
+    # A candidate worth supervising is one that beats at least one currently
+    # selected candidate; how many of those distinct candidates the loss reaches
+    # is the coverage the pair budget actually buys.
+    positive_j = usable.any(dim=1)                              # [B, P]
+    n_positive = positive_j.float().sum(-1)
+
+    if mining_mode == 'candidate':
+        # One pair per distinct positive candidate, matched to the selected
+        # candidate it beats by the most. Ranking by gap alone lets a single
+        # strong j take the whole budget through ten near-duplicate pairs, which
+        # spends the budget without supervising anything new.
+        best_gap, best_i = gap.masked_fill(~usable, float('-inf')).max(dim=1)
+        best_gap = best_gap.masked_fill(~positive_j, float('-inf'))
+        take = min(int(pairs_per_query), best_gap.size(1))
+        top_gap, j_pos = best_gap.topk(take, dim=-1)
+        keep = torch.isfinite(top_gap)
+        i_pos = best_i.gather(1, j_pos)
+    else:
+        # Hardest pairs first, taken deterministically so the selection is
+        # reproducible where sampling would not be.
+        flat = gap.masked_fill(~usable, float('-inf')).reshape(bsz, -1)
+        take = min(int(pairs_per_query), flat.size(1))
+        top_gap, flat_pos = flat.topk(take, dim=-1)
+        keep = torch.isfinite(top_gap)
+        i_pos = torch.div(flat_pos, pool_idx.size(1), rounding_mode='floor')
+        j_pos = flat_pos % pool_idx.size(1)
+    if not bool(keep.any()):
+        return zero, metrics
+    s_i = student_scores[rows, sel_idx.gather(1, i_pos)]
+    s_j = student_scores[rows, pool_idx.gather(1, j_pos)]
+
+    violation = (float(margin) - s_j + s_i).clamp_min(0.0)
+    weight = keep.float()
+    if gap_weighted:
+        g = top_gap.masked_fill(~keep, 0.0)
+        weight = weight * (g / (g.sum() / keep.float().sum().clamp_min(1.0) + eps))
+    loss = (weight * violation).sum() / weight.sum().clamp_min(eps)
+    if not torch.isfinite(loss):
+        raise ValueError('boundary hard rank loss is NaN or Inf')
+
+    # How often the two objectives disagree. A mined j that is not in the global
+    # Oracle Top-K is a negative to the cross-entropy, which pushes it down,
+    # while this loss pushes it up. That fraction is the size of the tug-of-war
+    # rank_loss_weight arbitrates, and reading it needs no extra experiment.
+    oracle_k = min(int(top_k), future_mse.size(-1))
+    oracle_idx = future_mse.detach().masked_fill(
+        ~valid_mask, float('inf')).topk(oracle_k, dim=-1, largest=False).indices
+    j_global = pool_idx.gather(1, j_pos)
+    in_oracle = (j_global.unsqueeze(-1) == oracle_idx.unsqueeze(1)).any(-1)
+    outside = ((~in_oracle) & keep).float().sum()
+
+    # Distinct positives actually supervised, per query, so coverage is not read
+    # off a pair count that may name the same candidate repeatedly.
+    width = pool_idx.size(1)
+    onehot = torch.zeros(bsz, width, device=student_scores.device)
+    onehot.scatter_(1, j_pos, keep.float())
+    unique_selected = onehot.sum(-1)
+    per_query_cov = unique_selected / n_positive.clamp_min(1.0)
+    cov_valid = n_positive > 0
+
+    n_keep = keep.float().sum()
+    metrics = {
+        'rank_positive_total_count': n_positive.mean().detach(),
+        'rank_positive_selected_count': keep.float().sum(-1).mean().detach(),
+        'rank_positive_unique_selected_count': unique_selected.mean().detach(),
+        'rank_positive_unique_covered_frac': (
+            per_query_cov[cov_valid].mean().detach() if bool(cov_valid.any())
+            else zero.detach()),
+        'coverage_p25': (torch.quantile(per_query_cov[cov_valid].float(), 0.25).detach()
+                         if bool(cov_valid.any()) else zero.detach()),
+        'coverage_p50': (torch.quantile(per_query_cov[cov_valid].float(), 0.50).detach()
+                         if bool(cov_valid.any()) else zero.detach()),
+        'coverage_p75': (torch.quantile(per_query_cov[cov_valid].float(), 0.75).detach()
+                         if bool(cov_valid.any()) else zero.detach()),
+        'rank_positive_outside_oracle_frac': outside.div(n_keep.clamp_min(1.0)).detach(),
+        'rank_loss_raw': loss.detach(),
+        'num_valid_rank_pairs': usable.float().sum().detach(),
+        'mean_valid_rank_pairs_per_query': (usable.float().sum() / bsz).detach(),
+        'mean_rank_future_gap': (top_gap.masked_fill(~keep, 0.0).sum()
+                                 / n_keep.clamp_min(1.0)).detach(),
+        'rank_future_gap_p50': top_gap[keep].median().detach() if bool(keep.any()) else zero.detach(),
+        'rank_loss_active_fraction': ((violation > 0).float() * keep.float()).sum().div(
+            n_keep.clamp_min(1.0)).detach(),
+        'hard_pair_score_gap_mean': ((s_i - s_j).detach() * keep.float()).sum().div(
+            n_keep.clamp_min(1.0)),
     }
     return loss, metrics
 
@@ -1726,6 +2527,77 @@ def _ranking_source_topk_metrics(
 
 
 @torch.no_grad()
+def collapse_geometry(z_query, z_cand, eps=1e-8):
+    """Representation and score geometry on one fixed subset.
+
+    Effective rank is taken over the candidate embeddings with candidates as the
+    sample axis and the embedding dimension as the feature axis, which the shape
+    assertion pins: computing it the other way round would report a small number
+    for a perfectly healthy encoder and send the whole diagnosis the wrong way.
+
+    Scores here are cosine similarities between the fixed queries and the fixed
+    candidates, so their spread is directly comparable across steps and arms --
+    the point being to see when the spread closes, not merely that it has.
+    """
+    if z_cand.dim() != 2 or z_query.dim() != 2:
+        raise ValueError(f'expected [N, D] embeddings, got cand={tuple(z_cand.shape)} '
+                         f'query={tuple(z_query.shape)}')
+    if z_cand.size(1) != z_query.size(1):
+        raise ValueError('query and candidate embedding dimensions differ')
+    cand = z_cand.detach().float()
+    query = z_query.detach().float()
+    out = {'effective_rank_input_n': float(cand.size(0)),
+           'effective_rank_input_d': float(cand.size(1))}
+
+    centered = cand - cand.mean(dim=0, keepdim=True)
+    sv = torch.linalg.svdvals(centered)
+    energy = sv.square()
+    total = energy.sum().clamp_min(eps)
+    p = energy / total
+    out['effective_rank'] = float(torch.exp(-(p * (p + eps).log()).sum()))
+    out['sv1_fraction'] = float(p[0])
+    out['sv1_to_sv2_ratio'] = float(sv[0] / sv[1].clamp_min(eps)) if sv.numel() > 1 else float('nan')
+
+    out['embedding_norm_mean'] = float(cand.norm(dim=-1).mean())
+    out['embedding_norm_std'] = float(cand.norm(dim=-1).std())
+    feature_std = cand.std(dim=0)
+    out['embedding_feature_std_mean'] = float(feature_std.mean())
+    out['embedding_feature_std_min'] = float(feature_std.min())
+    out['embedding_feature_std_max'] = float(feature_std.max())
+
+    unit = F.normalize(cand, dim=-1, eps=eps)
+    pair = (unit @ unit.t())
+    off = pair[~torch.eye(pair.size(0), dtype=torch.bool, device=pair.device)]
+    qp = torch.tensor([0.5, 0.9, 0.99], device=off.device)
+    pq = torch.quantile(off, qp)
+    out['candidate_pairwise_cosine_mean'] = float(off.mean())
+    out['candidate_pairwise_cosine_std'] = float(off.std())
+    out['candidate_pairwise_cosine_p50'] = float(pq[0])
+    out['candidate_pairwise_cosine_p90'] = float(pq[1])
+    out['candidate_pairwise_cosine_p99'] = float(pq[2])
+
+    scores = F.normalize(query, dim=-1, eps=eps) @ unit.t()          # [Q, N]
+    flat = scores.reshape(-1)
+    sq = torch.quantile(flat, torch.tensor([0.10, 0.50, 0.90, 0.99], device=flat.device))
+    out.update({
+        'score_mean': float(flat.mean()), 'score_std': float(flat.std()),
+        'score_min': float(flat.min()), 'score_max': float(flat.max()),
+        'score_p10': float(sq[0]), 'score_p50': float(sq[1]),
+        'score_p90': float(sq[2]), 'score_p99': float(sq[3]),
+    })
+    ranked, _ = scores.sort(dim=-1, descending=True)
+    n = ranked.size(-1)
+    pick = lambda r: ranked[:, min(r, n - 1)].mean()
+    out['score_rank1_mean'] = float(pick(0))
+    out['score_rank10_mean'] = float(pick(9))
+    out['score_rank11_mean'] = float(pick(10))
+    out['score_rank100_mean'] = float(pick(99))
+    out['rank1_minus_rank10'] = out['score_rank1_mean'] - out['score_rank10_mean']
+    out['rank10_minus_rank11'] = out['score_rank10_mean'] - out['score_rank11_mean']
+    out['rank10_minus_rank100'] = out['score_rank10_mean'] - out['score_rank100_mean']
+    return out
+
+
 def relation_bank_collapse_metrics(
     key_bank,
     sample_size=256,
@@ -2331,7 +3203,8 @@ class Model(nn.Module):
         legacy_use_rank_loss = bool(int(getattr(configs, 'stage1_use_rank_loss', 0)))
         if requested_loss_mode not in (
             'kl', 'kl_infonce', 'kl_rank', 'rnc', 'kl_expected_mse',
-            'topk_coverage', 'weighted_topk_ce'
+            'topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse',
+            'expected_mse', 'wce_expected_mse', 'rank_only', 'oracle_imitation'
         ):
             raise ValueError(f'Unsupported stage1_loss_mode: {requested_loss_mode}')
         # Preserve old rank scripts, which only set stage1_use_rank_loss=1.
@@ -2388,6 +3261,38 @@ class Model(nn.Module):
         self.rnc_temperature = float(getattr(configs, 'rnc_temperature', 0.2))
         self.rnc_tie_epsilon = float(getattr(configs, 'rnc_tie_epsilon', 0.0))
         self.rnc_quality_source = getattr(configs, 'rnc_quality_source', 'future_mse')
+        # Additive, unlike expected_mse_weight, which kl_expected_mse uses as a
+        # convex mixing coefficient and so bounds to [0, 1]. The cross-entropy
+        # sits near 7.6 and the normalised expected MSE near 0.62, so parity
+        # needs about 12 -- a value the convex form cannot express.
+        self.rank_loss_weight = float(getattr(configs, 'rank_loss_weight', 0.0))
+        self.rank_margin = float(getattr(configs, 'rank_margin', 0.01))
+        self.rank_gap_threshold = float(getattr(configs, 'rank_gap_threshold', 0.0))
+        self.rank_pairs_per_query = int(getattr(configs, 'rank_pairs_per_query', 32))
+        self.rank_pool_end = int(getattr(configs, 'rank_pool_end', 100))
+        self.rank_gap_weighted = bool(int(getattr(configs, 'rank_gap_weighted', 1)))
+        self.rank_mining_mode = getattr(configs, 'rank_mining_mode', 'pair')
+        self.imitation_target = getattr(configs, 'stage1_imitation_target', 'individual')
+        self.imitation_pool = int(getattr(configs, 'stage1_imitation_pool', 100))
+        self.global_anchor_weight = float(
+            getattr(configs, 'stage1_global_anchor_weight', 0.0))
+        self.global_anchor_tau = float(
+            getattr(configs, 'stage1_global_anchor_tau', -1.0))
+        if self.global_anchor_tau <= 0.0:
+            self.global_anchor_tau = float(getattr(configs, 'tau_student', 0.1))
+        self.expected_mse_lambda = float(getattr(configs, 'stage1_expected_mse_lambda', 1.0))
+        self.set_mse_weight = float(getattr(configs, 'stage1_set_mse_weight', 0.0))
+        # Evaluation always scores the deployment aggregation, whatever the
+        # training relaxation was, so this mirrors Stage-2's tau_topk.
+        self.set_eval_tau_topk = float(getattr(configs, 'tau_topk', 0.1))
+        self.set_tau = float(getattr(configs, 'stage1_set_tau', 0.015))
+        self.set_mse_normalization = getattr(configs, 'stage1_set_mse_normalization', 'mean')
+        self.set_support_k = int(getattr(configs, 'stage1_set_support_k', 0))
+        self.set_support_weight = float(getattr(configs, 'stage1_set_support_weight', 0.0))
+        if self.set_tau <= 0.0:
+            raise ValueError('stage1_set_tau must be positive')
+        if self.set_mse_normalization not in ('none', 'mean', 'median'):
+            raise ValueError('stage1_set_mse_normalization must be none, mean or median')
         self.expected_mse_weight = float(getattr(configs, 'expected_mse_weight', 0.1))
         self.expected_mse_normalization = getattr(
             configs, 'expected_mse_normalization', 'mean'
@@ -2507,10 +3412,12 @@ class Model(nn.Module):
             # objective is pinned to one of the two future-supervised losses:
             # the KL distillation the pipeline ships with, or the explicit
             # Oracle Top-K coverage loss the tiny-overfit diagnostic used.
-            if self.loss_mode not in ('kl', 'topk_coverage', 'weighted_topk_ce'):
+            if self.loss_mode not in ('kl', 'topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse',
+                                    'expected_mse', 'wce_expected_mse', 'rank_only',
+                                    'oracle_imitation'):
                 raise ValueError(
                     'stage1_candidate_subset_mode requires --stage1_loss_mode kl, '
-                    f'topk_coverage or weighted_topk_ce; got {self.loss_mode}'
+                    f'topk_coverage, weighted_topk_ce or wce_soft_set_mse; got {self.loss_mode}'
                 )
             if self.loss_mode == 'kl' and self.teacher_mode != 'mse':
                 raise ValueError(
@@ -2523,6 +3430,28 @@ class Model(nn.Module):
         self.shared_cross_projection = nn.Linear(
             2 * self.relation_seq_len, self.relation_seq_len
         )
+
+
+        if bool(int(getattr(configs, 'stage1_freeze_encoder', 0))):
+            # Isolates the ranking objective from the representation. Rank-only
+            # fine-tuning drove effective rank from 16 to 1 within ten steps, so
+            # with the encoder held fixed a change in ordering can only come from
+            # the scorer. The optimiser is built from requires_grad, so clearing
+            # it here is what keeps these parameters out of it.
+            for module in (self.encoder, self.shared_cross_projection):
+                if module is not None:
+                    for param in module.parameters():
+                        param.requires_grad = False
+            scorers = [m for m in (self.retrieval_metric,
+                                   getattr(self, 'pairwise_scorer', None))
+                       if m is not None]
+            trainable = [p for m in scorers for p in m.parameters()
+                         if p.requires_grad]
+            if not trainable:
+                raise ValueError(
+                    'stage1_freeze_encoder needs a learnable scorer to train; '
+                    'with plain cosine the run would update nothing that '
+                    'affects retrieval')
         if self.teacher_mode not in ('mse', 'pearson', 'ema_target', 'ema_input'):
             raise ValueError(f'Unsupported stage1_teacher_mode: {self.teacher_mode}')
         if self.relation_teacher_space == 'delta_last' and self.teacher_mse_space == 'raw':
@@ -2570,7 +3499,9 @@ class Model(nn.Module):
         return self.relation_sources is not None
 
     def requires_ema_teacher_bank(self):
-        if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
+        if self.loss_mode in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
             return False
         if self.teacher_mode not in ('ema_target', 'ema_input'):
             return False
@@ -2627,6 +3558,88 @@ class Model(nn.Module):
             q = q - query_x[:, -1:, target_channel].detach()
             k = k - memory_x_last[:, target_channel].to(q.device).unsqueeze(-1)
         return q, k
+
+
+    def _persistent_batch(self, key, starts, scores, future_mse, valid_mask):
+        """Pairs fixed once per query, addressed by candidate index.
+
+        Built on a pass over the training queries before any update, so every
+        pair comes from the checkpoint training starts at. Nothing re-mines
+        them: a candidate that climbs into the Top-10 keeps its pair, which is
+        the whole point -- dynamic mining releases it there, with the score gap
+        barely past zero.
+        """
+        store = getattr(self, '_persistent_store', None)
+        if store is None:
+            store = self._persistent_store = {}
+        table = store.setdefault(key, {})
+        ids = [int(q) for q in torch.as_tensor(starts).reshape(-1)]
+        missing = [n for n, q in enumerate(ids) if q not in table]
+        if missing:
+            fresh = build_frozen_rank_pairs(
+                scores.detach(), future_mse, valid_mask, starts,
+                top_k=self.coverage_top_k, pool_end=self.rank_pool_end,
+                per_query=self.rank_pairs_per_query, mining_mode='candidate')
+            grouped = {}
+            for query, i_id, j_id, gap in fresh:
+                grouped.setdefault(int(query), []).append((i_id, j_id, gap))
+            for n in missing:
+                table[ids[n]] = grouped.get(ids[n], [])
+
+        width = max((len(table[q]) for q in ids), default=0)
+        if width == 0:
+            return None
+        device = scores.device
+        i_glob = torch.zeros(len(ids), width, dtype=torch.long, device=device)
+        j_glob = torch.zeros(len(ids), width, dtype=torch.long, device=device)
+        gap = torch.zeros(len(ids), width, device=device)
+        keep = torch.zeros(len(ids), width, dtype=torch.bool, device=device)
+        for n, q in enumerate(ids):
+            for col, (i_id, j_id, g) in enumerate(table[q]):
+                i_glob[n, col], j_glob[n, col] = i_id, j_id
+                gap[n, col], keep[n, col] = g, True
+        return i_glob, j_glob, gap, keep
+
+    @torch.no_grad()
+    def _pair_survival(self, pairs, starts, scores, valid_mask):
+        """Would dynamic mining still be supervising the pairs it started with?
+
+        A pair leaves the mining range when its positive climbs into the Top-10
+        or its negative drops out of it, and that is the moment the ordering has
+        only just flipped. These fractions say how much of the original
+        supervision the dynamic rule has already released.
+        """
+        neg = torch.finfo(scores.dtype).min / 4
+        ranked = scores.detach().masked_fill(~valid_mask, neg)
+        order = ranked.argsort(dim=-1, descending=True)
+        rank_of = torch.empty_like(order)
+        ar = torch.arange(order.size(-1), device=order.device).expand_as(order)
+        rank_of.scatter_(1, order, ar)
+        k, end = self.coverage_top_k, self.rank_pool_end
+        lookup = {int(q): n for n, q in enumerate(torch.as_tensor(starts).reshape(-1))}
+        j_in, j_top, i_out, total = 0, 0, 0, 0
+        for query, i_id, j_id, _ in pairs:
+            row = lookup.get(int(query))
+            if row is None:
+                continue
+            total += 1
+            r_i, r_j = int(rank_of[row, i_id]), int(rank_of[row, j_id])
+            j_top += int(r_j < k)
+            j_in += int(k <= r_j < end)
+            i_out += int(r_i >= k)
+        if not total:
+            return {}
+        t = float(total)
+        return {
+            'original_j_still_rank11_100_frac': torch.tensor(j_in / t),
+            'original_j_entered_top10_frac': torch.tensor(j_top / t),
+            'original_i_left_top10_frac': torch.tensor(i_out / t),
+            'original_pair_still_selected_frac': torch.tensor(
+                sum(1 for q, i_id, j_id, _ in pairs
+                    if (lookup.get(int(q)) is not None
+                        and int(rank_of[lookup[int(q)], i_id]) < k
+                        and k <= int(rank_of[lookup[int(q)], j_id]) < end)) / t),
+        }
 
     def _relation_future_distance_inputs(
         self,
@@ -3363,7 +4376,9 @@ class Model(nn.Module):
                             cand_mask,
                             tie_epsilon=self.rnc_tie_epsilon,
                         )
-                elif self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
+                elif self.loss_mode in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
                     coverage_targets = prepare_topk_coverage_targets(
                         future_mse,
                         cand_mask,
@@ -3473,6 +4488,13 @@ class Model(nn.Module):
                 elif self.retrieval_metric is not None:
                     # One matmul over the whole bank, exactly as cosine was.
                     student_scores = self.retrieval_metric.score(z_q, z_k)
+                    if self.global_anchor_weight > 0.0:
+                        # The frozen encoder's own cosine ranking, from the same
+                        # embeddings, so the anchor is exact rather than a cached
+                        # approximation and costs one extra matmul.
+                        anchor_base_scores = torch.matmul(
+                            F.normalize(z_q.float(), dim=-1),
+                            F.normalize(z_k.float(), dim=-1).transpose(0, 1))
                 elif self.pairwise_scorer is not None:
                     # Full-bank scoring. The key bank is rebuilt from the current
                     # encoder immediately before validation, so these embeddings
@@ -3531,7 +4553,9 @@ class Model(nn.Module):
                     subset_metrics = external_pool_utility_metrics(
                         student_scores.detach(), external_utility_c, cand_mask
                     )
-                    if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
+                    if self.loss_mode in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
                         coverage_targets = prepare_topk_coverage_targets(
                             future_mse, cand_mask, self.coverage_top_k
                         )
@@ -3548,7 +4572,9 @@ class Model(nn.Module):
                             future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
                             / cand_mask.sum(dim=-1).clamp_min(1)
                         ).detach()
-                        if self.loss_mode not in ('topk_coverage', 'weighted_topk_ce'):
+                        if self.loss_mode not in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
                             teacher_entropy = -(
                                 teacher_prob * torch.log(teacher_prob + self.eps)
                             ).sum(dim=-1)
@@ -3646,7 +4672,9 @@ class Model(nn.Module):
                     future_mse = future_mse.gather(1, selected)
                     cand_mask = cand_mask.gather(1, selected)
                     valid_query = cand_mask.sum(dim=1) > 0
-                    if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
+                    if self.loss_mode in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
                         # The Oracle positives were prepared over the full pool,
                         # so their indices mean nothing on the selected columns.
                         # Injection guarantees the global Oracle Top-K survived
@@ -3668,7 +4696,9 @@ class Model(nn.Module):
                             future_mse.masked_fill(~cand_mask, 0.0).sum(dim=-1)
                             / cand_mask.sum(dim=-1).clamp_min(1)
                         ).detach()
-                        if self.loss_mode not in ('topk_coverage', 'weighted_topk_ce'):
+                        if self.loss_mode not in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
                             teacher_entropy = -(
                                 teacher_prob * torch.log(teacher_prob + self.eps)
                             ).sum(dim=-1)
@@ -3830,7 +4860,9 @@ class Model(nn.Module):
                     (self_rows if c == r else cross_rows).append(row)
                     continue
 
-                if self.loss_mode in ('topk_coverage', 'weighted_topk_ce'):
+                if self.loss_mode in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
+                                     'wce_expected_mse', 'rank_only',
+                                     'oracle_imitation'):
                     valid_student_scores = student_scores[cand_mask]
                     if (
                         valid_student_scores.numel() == 0
@@ -3842,7 +4874,9 @@ class Model(nn.Module):
                     )
                     student_log_prob = torch.log_softmax(student_logits, dim=-1)
                     student_prob = student_log_prob.exp()
-                    if self.loss_mode == 'weighted_topk_ce':
+                    if self.loss_mode in ('weighted_topk_ce', 'wce_soft_set_mse',
+                                          'expected_mse', 'wce_expected_mse',
+                                          'rank_only', 'oracle_imitation'):
                         # Same Oracle Top-K positives as the coverage loss, but
                         # graded by future quality instead of spread uniformly.
                         coverage_loss, coverage_metrics = weighted_topk_listwise_ce(
@@ -3859,6 +4893,186 @@ class Model(nn.Module):
 
                     zero_metric = coverage_loss.detach() * 0.0
                     total_loss = coverage_loss + regularization_loss
+                    set_metrics = {}
+                    if self.loss_mode == 'oracle_imitation':
+                        from_future = future_mse.detach()
+                        neg = torch.finfo(student_scores.dtype).min / 4
+                        cosine_like = student_scores.detach().masked_fill(~cand_mask, neg)
+                        width = min(self.imitation_pool, cosine_like.size(-1))
+                        pool_idx = cosine_like.topk(width, dim=-1).indices
+                        d_pool = from_future.gather(1, pool_idx)
+                        if self.imitation_target == 'individual':
+                            target_local = d_pool.argsort(dim=-1)[:, :self.coverage_top_k]
+                        else:
+                            _, k_fut = self._relation_future_distance_inputs(
+                                query_x, query_y, memory_y, memory_x_last, c, r)
+                            q_fut, _ = self._relation_future_distance_inputs(
+                                query_x, query_y, memory_y, memory_x_last, c, r)
+                            pool_y = k_fut.float()[pool_idx]
+                            target_local = select_greedy_set(
+                                pool_y, q_fut.float(), self.coverage_top_k)
+                            if compute_detailed_metrics:
+                                set_metrics.update(greedy_set_stability(
+                                    pool_y, q_fut.float(), self.coverage_top_k))
+                        imit_loss, imit_metrics = oracle_imitation_loss(
+                            student_scores, pool_idx, target_local,
+                            tau=self.tau_student, eps=self.eps)
+                        total_loss = imit_loss + regularization_loss
+                        set_metrics.update(imit_metrics)
+                    if self.loss_mode in ('expected_mse', 'wce_expected_mse'):
+                        # sum_i p_i * MSE(y_i, y_q) over the whole valid memory.
+                        # Linear in p, so its minimiser is all the mass on the
+                        # single lowest-error candidate -- the opposite failure
+                        # to the set loss, and the reason this is run as a test
+                        # of whether individual-quality pressure costs spread,
+                        # not as an expected improvement.
+                        exp_loss, exp_metrics = expected_future_mse_loss(
+                            student_prob, future_mse, cand_mask,
+                            normalization=self.expected_mse_normalization,
+                            eps=self.eps,
+                        )
+                        if torch.isfinite(exp_loss):
+                            if self.loss_mode == 'expected_mse':
+                                total_loss = exp_loss + regularization_loss
+                                weighted_exp = exp_loss
+                            else:
+                                weighted_exp = self.expected_mse_lambda * exp_loss
+                                total_loss = total_loss + weighted_exp
+                            set_metrics.update(exp_metrics)
+                            set_metrics['raw_wce_loss'] = coverage_loss.detach()
+                            set_metrics['expected_mse_weighted_term'] = weighted_exp.detach()
+                    if self.rank_loss_weight > 0.0 or self.loss_mode == 'rank_only':
+                        # Skipped entirely at weight 0 so the baseline is not
+                        # just numerically equal but takes the same code path.
+                        rank_loss, rank_metrics = boundary_hard_rank_loss(
+                            student_scores, future_mse, cand_mask,
+                            top_k=self.coverage_top_k,
+                            pool_end=self.rank_pool_end,
+                            gap_threshold=self.rank_gap_threshold,
+                            margin=self.rank_margin,
+                            pairs_per_query=self.rank_pairs_per_query,
+                            gap_weighted=self.rank_gap_weighted,
+                            mining_mode=('candidate'
+                                         if self.rank_mining_mode == 'persistent'
+                                         else self.rank_mining_mode),
+                            persistent=(
+                                self._persistent_batch(
+                                    (int(c), int(r)),
+                                    getattr(self, '_current_starts', None),
+                                    student_scores, future_mse, cand_mask)
+                                if (self.rank_mining_mode == 'persistent'
+                                    and getattr(self, '_current_starts', None) is not None)
+                                else None),
+                            eps=self.eps,
+                        )
+                        weighted_rank = self.rank_loss_weight * rank_loss
+                        anchor_base = locals().get('anchor_base_scores')
+                        if self.global_anchor_weight > 0.0 and anchor_base is not None:
+                            anchor_loss, anchor_metrics = global_anchor_kl(
+                                anchor_base, student_scores, cand_mask,
+                                tau=self.global_anchor_tau,
+                                top_k=self.coverage_top_k,
+                                pool_end=self.rank_pool_end, eps=self.eps)
+                            weighted_rank = weighted_rank + (
+                                self.global_anchor_weight * anchor_loss)
+                            set_metrics.update(anchor_metrics)
+                            set_metrics['global_anchor_weighted'] = (
+                                self.global_anchor_weight * anchor_loss).detach()
+                        if self.loss_mode == 'rank_only':
+                            # A learnability probe, not a method: with the
+                            # cross-entropy removed nothing anchors the global
+                            # geometry, so retrieval quality may drift even when
+                            # the ordering it is asked to fix does improve. The
+                            # frozen-pair numbers are what to read here.
+                            total_loss = weighted_rank + regularization_loss
+                        else:
+                            total_loss = total_loss + weighted_rank
+                        if os.environ.get('CARTS_GRAD_PROBE') == '1':
+                            # Kept live (not detached) so each term can be
+                            # back-propagated on its own and the two encoder
+                            # gradients compared. Loss magnitudes are not a
+                            # usable proxy here: a hinge and a cross-entropy
+                            # over 8k candidates are not on one scale, and what
+                            # decides the balance is what reaches the encoder.
+                            probe = getattr(self, '_probe_terms', None)
+                            if probe is None:
+                                probe = self._probe_terms = {'wce': [], 'rank': []}
+                            probe['wce'].append(coverage_loss)
+                            probe['rank'].append(rank_loss)
+                        set_metrics.update(rank_metrics)
+                        set_metrics['rank_loss_weighted'] = weighted_rank.detach()
+                        set_metrics['raw_wce_loss'] = coverage_loss.detach()
+                        if (os.environ.get('CARTS_SCORE_GRAD_DIAG') == '1'
+                                and student_scores.requires_grad):
+                            set_metrics.update(score_gradient_conflict(
+                                coverage_loss, rank_loss, student_scores,
+                                future_mse, cand_mask, self.rank_loss_weight,
+                                top_k=self.coverage_top_k,
+                                pool_end=self.rank_pool_end, eps=self.eps))
+                    starts = getattr(self, '_current_starts', None)
+                    split = getattr(self, '_frozen_split', None)
+                    if compute_detailed_metrics and starts is not None and split:
+                        # The same (query, i, j) triples every epoch, built once
+                        # from whatever checkpoint training starts at. Mining is
+                        # redone each step, so a moving hard-pair gap cannot say
+                        # whether an ordering improved or a harder pair replaced
+                        # it; only a fixed set can. Train and validation keep
+                        # separate sets, which is what separates learnability
+                        # from generalisation.
+                        store = getattr(self, '_frozen_store', None)
+                        if store is None:
+                            store = self._frozen_store = {}
+                        key = (split, int(c), int(r))
+                        if key not in store:
+                            store[key] = build_frozen_rank_pairs(
+                                student_scores.detach(), future_mse, cand_mask,
+                                starts, top_k=self.coverage_top_k,
+                                pool_end=self.rank_pool_end, per_query=4)
+                        if os.environ.get('CARTS_FROZEN_DEBUG') == '1':
+                            print(f'[frozen] key={key} built={len(store[key])} '
+                                  f'starts={tuple(torch.as_tensor(starts).shape)} '
+                                  f'scores={tuple(student_scores.shape)}')
+                        if store[key]:
+                            set_metrics.update(self._pair_survival(
+                                store[key], starts, student_scores, cand_mask))
+                            set_metrics.update(frozen_pair_metrics(
+                                student_scores.detach(), starts, store[key],
+                                margin=self.rank_margin))
+                    if compute_detailed_metrics:
+                        set_metrics.update(ranking_diagnostics(
+                            student_scores, future_mse, cand_mask,
+                            top_k=self.coverage_top_k, pool_end=self.rank_pool_end,
+                            eps=self.eps))
+                        set_metrics.update(score_geometry(
+                            student_scores, cand_mask,
+                            top_k=self.coverage_top_k, pool_end=self.rank_pool_end))
+                    if self.loss_mode == 'wce_soft_set_mse' or compute_detailed_metrics:
+                        set_q, set_k = self._relation_future_distance_inputs(
+                            query_x, query_y, memory_y, memory_x_last, c, r,
+                        )
+                    if self.loss_mode == 'wce_soft_set_mse':
+                        set_loss, support_loss, set_metrics = soft_set_mse(
+                            student_scores, cand_mask, set_q, set_k,
+                            tau_set=self.set_tau,
+                            normalization=self.set_mse_normalization,
+                            support_k=self.set_support_k,
+                            eps=self.eps,
+                        )
+                        if torch.isfinite(set_loss):
+                            weighted_set = self.set_mse_weight * set_loss
+                            total_loss = total_loss + weighted_set
+                            if self.set_support_weight > 0.0:
+                                total_loss = total_loss + self.set_support_weight * support_loss
+                            set_metrics['set_mse_weighted_term'] = weighted_set.detach()
+                            set_metrics['raw_wce_loss'] = coverage_loss.detach()
+                    if compute_detailed_metrics:
+                        # Reported for every arm, so one checkpoint criterion can
+                        # be shared: an arm must not be selected on its own loss.
+                        set_metrics.update(hard_aggregate_metrics(
+                            student_scores, cand_mask, set_q, set_k,
+                            top_k=self.coverage_top_k, tau_topk=self.set_eval_tau_topk,
+                            eps=self.eps,
+                        ))
                     row = {
                         'stage1_loss_total': total_loss.detach(),
                         'stage1_loss_kl': zero_metric,
@@ -3879,6 +5093,7 @@ class Model(nn.Module):
                         'embedding_std_mean': embedding_std_mean.detach(),
                     }
                     row.update(coverage_metrics)
+                    row.update(set_metrics)
                     row.update(full_memory_metrics)
                     if compute_detailed_metrics and coverage_targets['oracle_indices'].numel():
                         # Where the Oracle sits in the model's own ranking. Recall@10

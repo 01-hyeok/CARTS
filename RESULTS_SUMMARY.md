@@ -1,5 +1,9 @@
 # CARTS 실험 결과 정리 (2026-08-04 기준)
 
+> 이 문서는 2026-08-04까지의 실험 결과 **아카이브**입니다. 이후의 실험은
+> `research/EXPERIMENT_LOG.md`에 기록되고, 리뷰용 문서는
+> `research/REVIEW_FOR_CHATGPT.md`로 생성됩니다. 워크플로 정의는 `CLAUDE.md` 참조.
+
 - 집계 대상: `logs/**/*.log` 의 `Stage2 Test` 라인 295건 + `metrics/stage2/**/metrics_main.csv` test 행
 - 원본 통합 테이블: `metrics/summary_test_all.csv`
 - 프로토콜: seq_len = pred_len, ETTh1 / ETTm1, multivariate(M), top_k=10, relation_top_n=3

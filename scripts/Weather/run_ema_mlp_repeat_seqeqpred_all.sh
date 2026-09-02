@@ -1,0 +1,89 @@
+#!/bin/bash
+set -euo pipefail
+
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-1}"
+
+PRED_LENS=(${PRED_LENS:-96 192 336 720})
+RELATION_TOP_N="${RELATION_TOP_N:-3}"
+
+for PRED_LEN in "${PRED_LENS[@]}"; do
+  SEQ_LEN="${PRED_LEN}"
+  STAGE1_CKPT_PATH="./checkpoints/stage1/custom/seq${SEQ_LEN}_pred${PRED_LEN}/stage1_CARTS_stage1_ema_branchwise_mlp_linear_top${RELATION_TOP_N}_Weather_${PRED_LEN}_RelationStage1_custom_ftM_sl${SEQ_LEN}_ll0_pl${PRED_LEN}_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_stage1_ema_branchwise_mlp_linear_top${RELATION_TOP_N}_Weather_seq${SEQ_LEN}_pred${PRED_LEN}_0/checkpoint.pth"
+
+  COMMON_ARGS=(
+    --data custom
+    --root_path ../Dataset/Time-Series-Library_dataset/weather/
+    --data_path weather.csv
+    --features M
+    --target OT
+    --seq_len "${SEQ_LEN}"
+    --label_len 0
+    --pred_len "${PRED_LEN}"
+    --enc_in 21
+    --batch_size 32
+    --num_workers 0
+    --d_model 128
+    --n_heads 4
+    --e_layers 2
+    --d_ff 256
+    --patch_len 16
+    --stride 16
+    --candidate_mask raft
+    --relation_input_space delta_last
+    --relation_teacher_space delta_last
+    --relation_value_space delta_last
+    --source_mode auto
+    --relation_top_n "${RELATION_TOP_N}"
+    --target_mode all
+    --relation_encoder_type mlp
+    --relation_self_fill linear
+    --focus_channel OT
+  )
+
+  echo "[Weather][seq${SEQ_LEN}_pred${PRED_LEN}][ema_mlp_linear_seqeqpred] Stage 1"
+  python -u run.py \
+    --task_name stage1_relation \
+    --learning_rate 1e-3 \
+    --is_training 1 \
+    --model_id "CARTS_stage1_ema_branchwise_mlp_linear_top${RELATION_TOP_N}_Weather_${PRED_LEN}" \
+    --model RelationStage1 \
+    "${COMMON_ARGS[@]}" \
+    --train_epochs 10 \
+    --patience 5 \
+    --tau_student 0.10 \
+    --tau_teacher 0.1 \
+    --teacher_mse_space normalized \
+    --stage1_teacher_mode ema_target \
+    --stage1_loss_mode kl \
+    --stage1_ema_momentum_base 0.99 \
+    --stage1_ema_momentum_final 0.9995 \
+    --des "stage1_ema_branchwise_mlp_linear_top${RELATION_TOP_N}_Weather_seq${SEQ_LEN}_pred${PRED_LEN}"
+
+  if [ ! -f "${STAGE1_CKPT_PATH}" ]; then
+    echo "[Weather][seq${SEQ_LEN}_pred${PRED_LEN}][ema_mlp_linear_seqeqpred] Missing Stage 1 checkpoint: ${STAGE1_CKPT_PATH}"
+    exit 1
+  fi
+
+  echo "[Weather][seq${SEQ_LEN}_pred${PRED_LEN}][ema_mlp_linear_seqeqpred] Stage 2"
+  python -u run.py \
+    --task_name stage2_relation \
+    --learning_rate 1e-2 \
+    --is_training 1 \
+    --model_id "CARTS_stage2_ema_branchwise_mlp_linear_top${RELATION_TOP_N}_concat_Weather_${PRED_LEN}" \
+    --model RelationStage2 \
+    --base_head_mode shared_target_linear \
+    "${COMMON_ARGS[@]}" \
+    --train_epochs 10 \
+    --patience 5 \
+    --stage1_ckpt_path "${STAGE1_CKPT_PATH}" \
+    --stage2_retrieval_encoder ema \
+    --freeze_stage1_encoder 1 \
+    --memory_cache_mode precompute \
+    --refresh_memory_every_epoch 1 \
+    --memory_chunk_size 1024 \
+    --top_k 10 \
+    --tau_topk 0.10 \
+    --stage2_relation_fusion gate \
+    --fusion_mode raft_concat \
+    --des "stage2_ema_branchwise_mlp_linear_top${RELATION_TOP_N}_concat_Weather_seq${SEQ_LEN}_pred${PRED_LEN}_topk10"
+done

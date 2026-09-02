@@ -32,16 +32,28 @@ logs/
 # Training outputs
 runs/
 stage1_vis/
-scripts/
-!scripts/
-scripts/*
-!scripts/run_experiment2_diff1_etth1.sh
-!scripts/run_experiment2_diff1.sh
-!scripts/summarize_experiment2_diff1.py
 outputs/
-results/
 metrics/
 checkpoints/
+
+# Experiment drivers are source, not artifacts: they are required to reproduce
+# any entry in research/EXPERIMENT_LOG.md, so they are tracked.
+!scripts/
+!scripts/**/*.sh
+!scripts/**/*.py
+# ad-hoc/hidden one-off drivers stay untracked
+scripts/.*
+
+# results/ holds raw experiment artifacts. The heavy ones stay untracked; the
+# small text summaries referenced by research/EXPERIMENT_LOG.md are tracked.
+results/*
+!results/README.md
+!results/**/
+!results/**/*.md
+!results/**/*.csv
+!results/**/*.json
+!results/**/*.txt
+!results/**/*.diff
 
 # Model files
 *.pt

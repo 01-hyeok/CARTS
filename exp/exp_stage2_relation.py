@@ -897,6 +897,11 @@ class Exp_Stage2_Relation(Exp_Basic):
             'embedding_variance', 'embedding_dimension_std_mean',
             'embedding_effective_rank', 'embedding_effective_rank_ratio',
             'embedding_dead_dimension_fraction',
+            # Did the configured comparison actually move Top-K membership? An
+            # overlap of 1.0 means the arm reduces to cosine selection whatever
+            # the config says.
+            'selection_overlap_with_cosine_at_10',
+            'selection_changed_fraction_at_10',
         ):
             if name in debug:
                 metrics[name] = debug[name].detach()
@@ -1510,6 +1515,8 @@ class Exp_Stage2_Relation(Exp_Basic):
             )
         self._ensure_memory()
         model = self.model.module if hasattr(self.model, 'module') else self.model
+        if hasattr(model, 'report_retrieval_selection'):
+            model.report_retrieval_selection()
         train_data, train_loader = self._get_data(flag='train', shuffle=True)
         vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
         _, train_cache_loader = self._get_data(flag='train', shuffle=False)

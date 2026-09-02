@@ -248,3 +248,171 @@ def test_full_online_needs_candidate_histories():
               valid_mask=torch.ones(2, 12, dtype=torch.bool),
               memory_x_last=torch.randn(12, 3),
               key_bank=torch.randn(3, 3, 12, cfg.d_model))
+
+
+# ---------------------------------------------------------------------------
+# Top-K membership, not just the name of a function.
+#
+# Six sweeps were interpreted before anyone noticed the configured comparison
+# never reached the selection call, because every check available at the time
+# asked whether the module existed rather than whether it chose the candidates.
+# These pin the indices forward() actually retrieved against the indices each
+# scorer's own Top-K returns on the same inputs.
+# ---------------------------------------------------------------------------
+
+def _capture_selection(model, batch, monkeypatch):
+    """Record the (z_q, z_mem, top_idx) forward() really selected with."""
+    import models.RelationStage2 as m2
+    real = m2.retrieve_relation_future
+    seen = []
+
+    def spy(**kw):
+        out = real(**kw)
+        seen.append({'z_q': kw['z_q'].detach(), 'z_mem': kw['z_mem'].detach(),
+                     'valid_mask': kw['valid_mask'], 'top_idx': out[2].detach()})
+        return out
+
+    monkeypatch.setattr(m2, 'retrieve_relation_future', spy)
+    model(**batch)
+    assert seen, 'forward() never reached the retrieval selection call'
+    return seen[0]
+
+
+def _manual_topk(scores, valid_mask, k):
+    masked = scores.masked_fill(~valid_mask, torch.finfo(scores.dtype).min / 4)
+    return masked.topk(k, dim=-1).indices
+
+
+def _selection_case(monkeypatch, top_k=3, n_memory=12, **cfg_overrides):
+    from models.RelationStage2 import Model
+
+    torch.manual_seed(0)
+    cfg = _stage2_config(freeze_stage1_encoder=1, top_k=top_k, **cfg_overrides)
+    model = Model(cfg)
+    model.relation_sources = [[c] for c in range(3)]
+    model.eval()
+    batch = dict(
+        batch_x=torch.randn(2, 16, 3), memory_y=torch.randn(n_memory, 8, 3),
+        valid_mask=torch.ones(2, n_memory, dtype=torch.bool),
+        memory_x_last=torch.randn(n_memory, 3),
+        candidate_x=torch.randn(n_memory, 16, 3),
+        key_bank=torch.randn(3, 3, n_memory, cfg.d_model),
+    )
+    return model, _capture_selection(model, batch, monkeypatch)
+
+
+def test_A_cosine_selection_matches_manual_cosine_topk(monkeypatch):
+    model, got = _selection_case(monkeypatch)
+    assert model._retrieval_score_fn() is None
+    manual = _manual_topk(torch.matmul(got['z_q'], got['z_mem'].T),
+                          got['valid_mask'], got['top_idx'].size(-1))
+    assert torch.equal(got['top_idx'], manual)
+
+
+def test_B_asymmetric_selection_matches_manual_asymmetric_topk(monkeypatch):
+    """Rotate the projections first.
+
+    At identity initialisation the asymmetric score *is* cosine by construction,
+    so a default-init model satisfies this assertion whether or not the metric is
+    wired in -- the test would pass against the bug it exists to catch.
+    """
+    from models.RelationStage2 import Model
+
+    torch.manual_seed(0)
+    n_memory = 12
+    cfg = _stage2_config(freeze_stage1_encoder=1, top_k=3,
+                         stage1_retrieval_metric='asymmetric',
+                         stage1_metric_output='cosine', stage1_metric_layer_norm=0)
+    model = Model(cfg)
+    model.relation_sources = [[c] for c in range(3)]
+    model.eval()
+    with torch.no_grad():
+        model.retrieval_metric.query_projection.weight.copy_(
+            torch.linalg.qr(torch.randn(cfg.d_model, cfg.d_model))[0])
+        model.retrieval_metric.key_projection.weight.copy_(
+            torch.linalg.qr(torch.randn(cfg.d_model, cfg.d_model))[0])
+    batch = dict(
+        batch_x=torch.randn(2, 16, 3), memory_y=torch.randn(n_memory, 8, 3),
+        valid_mask=torch.ones(2, n_memory, dtype=torch.bool),
+        memory_x_last=torch.randn(n_memory, 3),
+        candidate_x=torch.randn(n_memory, 16, 3),
+        key_bank=torch.randn(3, 3, n_memory, cfg.d_model),
+    )
+    got = _capture_selection(model, batch, monkeypatch)
+    with torch.no_grad():
+        scores = model.retrieval_metric.score(got['z_q'], got['z_mem'])
+    manual = _manual_topk(scores, got['valid_mask'], got['top_idx'].size(-1))
+    assert torch.equal(got['top_idx'], manual)
+
+
+def test_C_pair2_selection_matches_manual_pair_topk(monkeypatch):
+    model, got = _selection_case(monkeypatch, stage1_retrieval_score='pairwise_mlp',
+                                 stage1_pairwise_feature='pair2')
+    with torch.no_grad():
+        scores = model.pairwise_scorer.score_bank_in_chunks(got['z_q'], got['z_mem'])
+    manual = _manual_topk(scores, got['valid_mask'], got['top_idx'].size(-1))
+    assert torch.equal(got['top_idx'], manual)
+
+
+def test_D_asymmetric_selection_differs_from_cosine(monkeypatch):
+    """The wiring has to change membership, or the arm is a representation
+    ablation wearing a metric's name. Identity init would score exactly cosine,
+    so the projections are given a real rotation first."""
+    from models.RelationStage2 import Model
+
+    torch.manual_seed(0)
+    n_memory = 12
+    cfg = _stage2_config(freeze_stage1_encoder=1, top_k=3,
+                         stage1_retrieval_metric='asymmetric',
+                         stage1_metric_output='cosine', stage1_metric_layer_norm=0)
+    model = Model(cfg)
+    model.relation_sources = [[c] for c in range(3)]
+    model.eval()
+    with torch.no_grad():
+        q_w = torch.linalg.qr(torch.randn(cfg.d_model, cfg.d_model))[0]
+        model.retrieval_metric.query_projection.weight.copy_(q_w)
+        model.retrieval_metric.key_projection.weight.copy_(
+            torch.linalg.qr(torch.randn(cfg.d_model, cfg.d_model))[0])
+    batch = dict(
+        batch_x=torch.randn(2, 16, 3), memory_y=torch.randn(n_memory, 8, 3),
+        valid_mask=torch.ones(2, n_memory, dtype=torch.bool),
+        memory_x_last=torch.randn(n_memory, 3),
+        candidate_x=torch.randn(n_memory, 16, 3),
+        key_bank=torch.randn(3, 3, n_memory, cfg.d_model),
+    )
+    got = _capture_selection(model, batch, monkeypatch)
+    cosine_top = _manual_topk(torch.matmul(got['z_q'], got['z_mem'].T),
+                              got['valid_mask'], got['top_idx'].size(-1))
+    assert not torch.equal(got['top_idx'], cosine_top), (
+        'asymmetric selection returned exactly the cosine Top-K, so the metric '
+        'is not deciding membership'
+    )
+
+
+def test_frozen_arm_does_not_train_the_comparison():
+    """"Stage-1 frozen" has to include the comparison; it is half the retriever."""
+    from models.RelationStage2 import Model
+
+    for over in ({'stage1_retrieval_metric': 'asymmetric'},
+                 {'stage1_retrieval_score': 'pairwise_mlp',
+                  'stage1_pairwise_feature': 'pair2'}):
+        model = Model(_stage2_config(freeze_stage1_encoder=1, **over))
+        comparison = model.retrieval_metric or model.pairwise_scorer
+        assert comparison is not None
+        assert all(not p.requires_grad for p in comparison.parameters())
+
+
+def test_selection_diagnostic_reports_and_rejects_a_mismatch(capsys):
+    from models.RelationStage2 import Model
+
+    model = Model(_stage2_config(stage1_retrieval_metric='asymmetric'))
+    model.report_retrieval_selection()
+    out = capsys.readouterr().out
+    assert 'configured_metric         = asymmetric' in out
+    assert 'actual_selection_score_fn = asymmetric' in out
+
+    # Simulate the bug the diagnostic exists to catch: the comparison is gone
+    # from the selection path while the config still names it.
+    model.retrieval_metric = None
+    with pytest.raises(AssertionError, match='not decide Top-K membership'):
+        model.report_retrieval_selection()

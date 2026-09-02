@@ -1,4 +1,6 @@
+import contextlib
 import copy
+import os
 
 import torch
 import torch.nn as nn
@@ -188,6 +190,7 @@ class Model(nn.Module):
             )
             if self.retrieval_score == 'pairwise_mlp' else None
         )
+        self.pairwise_feature_type = getattr(configs, 'stage1_pairwise_feature', 'pair4')
         if self.retrieval_metric is not None and self.pairwise_scorer is not None:
             raise ValueError(
                 'stage1_retrieval_metric and stage1_retrieval_score=pairwise_mlp are two '
@@ -225,6 +228,7 @@ class Model(nn.Module):
             getattr(configs, 'stage2_oracle_train_mode', 'none') == 'full'
         )
         self.fusion_mode = configs.fusion_mode
+        self.retrieval_off = bool(int(getattr(configs, 'stage2_retrieval_off', 0)))
         self.stage2_relation_fusion = getattr(configs, 'stage2_relation_fusion', 'gate')
         if self.stage2_relation_fusion not in ('concat_linear', 'gate'):
             raise ValueError(f'Unsupported stage2_relation_fusion: {self.stage2_relation_fusion}')
@@ -291,6 +295,15 @@ class Model(nn.Module):
             if self.shared_cross_projection is not None:
                 for param in self.shared_cross_projection.parameters():
                     param.requires_grad = False
+            # The comparison is half of the Stage-1 retriever, so a frozen arm
+            # has to freeze it too. This was harmless only while nothing called
+            # it; once it decides Top-K membership, leaving it trainable would
+            # quietly turn "Stage-1 frozen" into "Stage-1 encoder frozen, its
+            # metric still learning" and break the comparison with the e2e arm.
+            for module in (self.retrieval_metric, self.pairwise_scorer):
+                if module is not None:
+                    for param in module.parameters():
+                        param.requires_grad = False
 
         self.base_head = BaseForecastHead(
             seq_len=configs.seq_len,
@@ -492,10 +505,72 @@ class Model(nn.Module):
                             z_q, z_k.unsqueeze(0).expand(z_q.size(0), -1, -1))
                     return self.pairwise_scorer.score_bank_in_chunks(z_q, z_k)
                 return self.pairwise_scorer(z_q, z_k)
+            pair_score.score_family = (
+                f'pair-{getattr(self, "pairwise_feature", self.pairwise_feature_type)}'
+            )
             return pair_score
+
         if self.retrieval_metric is not None:
-            return lambda z_q, z_k: self.retrieval_metric.score(z_q, z_k)
+            def metric_score(z_q, z_k):
+                return self.retrieval_metric.score(z_q, z_k)
+            metric_score.score_family = self.retrieval_metric.kind
+            return metric_score
         return None
+
+    def report_retrieval_selection(self):
+        """State, at run start, which comparison Top-K selection will really use.
+
+        Six sweeps were run and interpreted before anyone noticed the configured
+        metric never reached the selection call. Nothing in the logs would have
+        said so -- the checkpoint loaded, the module existed, and the forecast
+        looked plausible. This makes the wiring an observable, and a mismatch
+        stops the run instead of producing another table to misread.
+        """
+        fn = self._retrieval_score_fn()
+        actual = getattr(fn, 'score_family', 'cosine') if fn is not None else 'cosine'
+        if self.pairwise_scorer is not None:
+            configured = f'pair-{self.pairwise_feature_type}'
+        else:
+            configured = self.retrieval_metric_kind
+        lines = [
+            '[Retrieval Selection]',
+            f'  configured_metric         = {configured}',
+            f'  actual_selection_score_fn = {actual}',
+            f'  top_k                     = {self.top_k}',
+            f'  source_mode               = {self.source_mode}',
+            f'  stage1_backbone           = {self.retrieval_backbone}',
+            f'  freeze_stage1_encoder     = {int(self.freeze_stage1_encoder)}',
+            f'  stage2_e2e                = {int(self.e2e_retrieval)}',
+        ]
+        print('\n'.join(lines), flush=True)
+        if configured != actual:
+            raise AssertionError(
+                f'retrieval selection is wired to {actual!r} but this arm is '
+                f'configured for {configured!r}; the learned comparison would '
+                f'not decide Top-K membership'
+            )
+        return {'configured': configured, 'actual': actual}
+
+    @torch.no_grad()
+    def _selection_overlap_with_cosine(self, z_q, z_mem, valid_mask, top_idx):
+        """How much of the Top-K the learned comparison actually moved.
+
+        A configured score that names itself correctly can still return the set
+        cosine would have returned -- then the arm is a representation ablation
+        wearing a metric's name. This measures membership, which is the thing
+        that has to change for the experiment to be about selection at all.
+        """
+        masked_fill = torch.finfo(z_q.dtype).min / 4
+        cosine_scores = torch.matmul(z_q, z_mem.transpose(0, 1))
+        cosine_scores = cosine_scores.masked_fill(~valid_mask, masked_fill)
+        k = top_idx.size(-1)
+        cosine_top = cosine_scores.topk(k, dim=-1).indices
+        hits = (top_idx.unsqueeze(-1) == cosine_top.unsqueeze(1)).any(-1).sum(-1)
+        overlap = hits.float().mean() / float(k)
+        return {
+            'selection_overlap_with_cosine_at_10': overlap,
+            'selection_changed_fraction_at_10': 1.0 - overlap,
+        }
 
     def _maybe_normalize(self, z):
         """L2-normalise for cosine scoring; leave the norm alone for l2."""
@@ -953,6 +1028,242 @@ class Model(nn.Module):
         ).sum(dim=-1)
         return kl
 
+
+    @torch.no_grad()
+    def _subset_diag(self, memory_value_c, query_offset_c, oracle_target_y,
+                     target_channel, top_idx, oracle_values, oracle_valid,
+                     valid_mask, scores, oracle_idx=None):
+        """Step 0: support geometry of a full-memory softmax over candidate scores.
+
+        The set-level objective would train on y_soft = sum_i p_i y_i with p a
+        softmax over every valid candidate, while deployment keeps a hard Top-10.
+        Whether that relaxation is usable turns on one thing: is there a
+        temperature where the soft distribution still concentrates on the Top-10
+        while leaving probability outside it for a gradient to act on?
+
+        So this sweeps tau and records, per query, the effective support
+        exp(H(p)), the mass on the score Top-10 and Top-100, and the MSE of the
+        soft aggregate. hard_aggregate_mse10 is the deployment quantity and is
+        computed once at tau_topk; it must not move with tau_set.
+
+        Nothing here decides whether a reconstruction solution exists -- this
+        checkpoint never trained against one. That is a training-time question,
+        read off the epoch-wise trajectory of N_eff and Mass@10.
+
+        Guarded by CARTS_SUBSET_DIAG so ordinary runs are untouched.
+        """
+        taus = [float(t) for t in
+                os.environ.get('CARTS_SET_TAUS', '0.1,0.03,0.01,0.003,0.001').split(',')]
+        acc = getattr(self, '_subset_acc', None)
+        if acc is None:
+            acc = self._subset_acc = {
+                'n': 0, 'hard': 0.0, 'uniform': 0.0, 'indiv': 0.0, 'var': 0.0,
+                'oracle_hard': 0.0, 'oracle_uniform': 0.0,
+                'oracle_indiv': 0.0, 'oracle_var': 0.0,
+                'per_tau': {t: {'soft_mse': 0.0, 'ent': 0.0, 'ent_norm': 0.0,
+                                'neff': [], 'm10': [], 'm100': []} for t in taus},
+            }
+        limit = int(os.environ.get('CARTS_SUBSET_DIAG_BATCHES', '8'))
+        if acc['n'] >= limit:
+            return
+        if not bool(oracle_valid.all()):
+            return
+
+        qt = oracle_target_y[:, :, target_channel]
+        if self.relation_value_space == 'delta_last':
+            qt = qt - query_offset_c.unsqueeze(-1)
+        qt = qt.float()
+        pool = memory_value_c.float()
+        raw = scores.float()
+        neg = torch.finfo(raw.dtype).min / 4
+
+        # Deployment reference: hard Top-10 with the Stage-2 temperature.
+        top_scores = raw.gather(1, top_idx)
+        a = F.softmax(top_scores / float(self.tau_topk), dim=-1)
+        v_top = pool[top_idx]
+        agg = (a.unsqueeze(-1) * v_top).sum(1)
+        acc['hard'] += float(((agg - qt) ** 2).mean())
+        acc['uniform'] += float(((v_top.mean(1) - qt) ** 2).mean())
+        acc['indiv'] += float((a * ((v_top - qt.unsqueeze(1)) ** 2).mean(-1)).sum(-1).mean())
+        acc['var'] += float((a * ((v_top - agg.unsqueeze(1)) ** 2).mean(-1)).sum(-1).mean())
+
+        # Step B. The same aggregation applied to the Oracle's Top-10 -- the ten
+        # lowest individual future MSEs, weighted by the student's scores on
+        # them, exactly as Stage-2 would. It bounds what this retriever could
+        # deliver if its ranking were perfect, which separates a memory whose
+        # candidates have stopped being predictive from a retriever that is
+        # failing to find the good ones among them.
+        if oracle_idx is not None:
+            o_scores = raw.gather(1, oracle_idx)
+            o_a = F.softmax(
+                (o_scores / float(self.tau_topk)).masked_fill(~oracle_valid, neg), dim=-1
+            ) * oracle_valid.float()
+            o_a = o_a / o_a.sum(-1, keepdim=True).clamp_min(1e-8)
+            o_v = oracle_values.float()
+            o_agg = (o_a.unsqueeze(-1) * o_v).sum(1)
+            acc['oracle_hard'] += float(((o_agg - qt) ** 2).mean())
+            acc['oracle_uniform'] += float(((o_v.mean(1) - qt) ** 2).mean())
+            acc['oracle_indiv'] += float(
+                (o_a * ((o_v - qt.unsqueeze(1)) ** 2).mean(-1)).sum(-1).mean())
+            acc['oracle_var'] += float(
+                (o_a * ((o_v - o_agg.unsqueeze(1)) ** 2).mean(-1)).sum(-1).mean())
+
+        if os.environ.get('CARTS_REDUNDANCY_DIAG') == '1':
+            self._redundancy_diag(
+                pool, qt, raw, valid_mask, top_idx, acc,
+                depth=int(os.environ.get('CARTS_REDUNDANCY_DEPTH', '100')))
+
+        n_valid = valid_mask.float().sum(-1).clamp_min(1.0)
+        order = raw.masked_fill(~valid_mask, neg).argsort(dim=-1, descending=True)
+        idx10, idx100 = order[:, :10], order[:, :100]
+        for t in taus:
+            logits = (raw / t).masked_fill(~valid_mask, neg)
+            p = F.softmax(logits, dim=-1)
+            ent = -(p * (p + 1e-12).log()).sum(-1)
+            acc['per_tau'][t]['ent'] += float(ent.mean())
+            acc['per_tau'][t]['ent_norm'] += float((ent / n_valid.log()).mean())
+            acc['per_tau'][t]['neff'].append(ent.exp().cpu())
+            acc['per_tau'][t]['m10'].append(p.gather(1, idx10).sum(-1).cpu())
+            acc['per_tau'][t]['m100'].append(p.gather(1, idx100).sum(-1).cpu())
+            acc['per_tau'][t]['soft_mse'] += float(((p @ pool - qt) ** 2).mean())
+
+        acc['n'] += 1
+        if acc['n'] == limit:
+            self._subset_report(taus)
+
+
+    @torch.no_grad()
+    def _redundancy_diag(self, pool, qt, raw, valid_mask, top_idx, acc, depth):
+        """Can a swap out of the Top-10 buy aggregate quality with a little
+        individual quality?
+
+        The suspicion is that optimising each candidate's own future error
+        collects near-duplicates, so the ten of them cancel less when averaged.
+        This swaps one member for a candidate ranked 11..M and reports what the
+        trade costs and buys.
+
+        The search is guided by the true future, so an improving swap almost
+        always exists -- on any set, including the Oracle's. The number is
+        therefore meaningless alone, and two controls come with it: the same
+        search run on a random swap, which says how much of the gain is just
+        having looked; and the same search run across arms of differing spread,
+        where a redundancy story predicts more available gain for the arm whose
+        candidates are already alike.
+
+        Weighted and uniform aggregates are both reported. Only the uniform one
+        isolates set membership -- under weighting a swap also moves the softmax
+        weights, so an improvement there can come from either.
+        """
+        bsz = qt.size(0)
+        k = top_idx.size(-1)
+        neg = torch.finfo(raw.dtype).min / 4
+        order = raw.masked_fill(~valid_mask, neg).argsort(dim=-1, descending=True)
+        cand_idx = order[:, k:depth]                       # ranks 11..M
+        if cand_idx.size(1) == 0:
+            return
+        cand_v = pool[cand_idx]                            # [B, P, H]
+        cand_s = raw.gather(1, cand_idx)                   # [B, P]
+        top_v = pool[top_idx]                              # [B, k, H]
+        top_s = raw.gather(1, top_idx)                     # [B, k]
+        tau = float(self.tau_topk)
+
+        def stats(values, scores):
+            # values is [B, k, H] for the current set and [B, P, k, H] while every
+            # candidate swap is scored at once; the query broadcasts over both.
+            extra = values.dim() - 3
+            q = qt.reshape(bsz, *([1] * extra), 1, qt.size(-1))
+            a = F.softmax(scores / tau, dim=-1)
+            agg = (a.unsqueeze(-1) * values).sum(-2)
+            ind = (a * ((values - q) ** 2).mean(-1)).sum(-1)
+            var = (a * ((values - agg.unsqueeze(-2)) ** 2).mean(-1)).sum(-1)
+            qf = q.squeeze(-2)
+            uni = ((values.mean(-2) - qf) ** 2).mean(-1)
+            return ((agg - qf) ** 2).mean(-1), ind, var, uni
+
+        cur = stats(top_v, top_s)
+        best = None                                        # (weighted agg, r, p)
+        for r in range(k):
+            keep = [j for j in range(k) if j != r]
+            kv, ks = top_v[:, keep], top_s[:, keep]
+            new_v = torch.cat([kv.unsqueeze(1).expand(-1, cand_v.size(1), -1, -1),
+                               cand_v.unsqueeze(2)], dim=2)   # [B, P, k, H]
+            new_s = torch.cat([ks.unsqueeze(1).expand(-1, cand_s.size(1), -1),
+                               cand_s.unsqueeze(2)], dim=2)   # [B, P, k]
+            agg = stats(new_v, new_s)[0]                      # [B, P]
+            val, pos = agg.min(dim=-1)
+            if best is None:
+                best = [val, torch.full_like(pos, r), pos]
+            else:
+                better = val < best[0]
+                best[0] = torch.where(better, val, best[0])
+                best[1] = torch.where(better, torch.full_like(pos, r), best[1])
+                best[2] = torch.where(better, pos, best[2])
+
+        def apply_swap(r_idx, p_idx):
+            rows = torch.arange(bsz, device=qt.device)
+            v = top_v.clone(); sc = top_s.clone()
+            v[rows, r_idx] = cand_v[rows, p_idx]
+            sc[rows, r_idx] = cand_s[rows, p_idx]
+            return stats(v, sc)
+
+        swapped = apply_swap(best[1], best[2])
+        rand_r = torch.randint(0, k, (bsz,), device=qt.device)
+        rand_p = torch.randint(0, cand_v.size(1), (bsz,), device=qt.device)
+        rnd = apply_swap(rand_r, rand_p)
+
+        for name, cell in (('cur', cur), ('swap', swapped), ('rand', rnd)):
+            for j, field in enumerate(('agg', 'ind', 'var', 'uni')):
+                acc[f'{name}_{field}'] = acc.get(f'{name}_{field}', 0.0) + float(cell[j].mean())
+        acc['redundancy_batches'] = acc.get('redundancy_batches', 0) + 1
+
+    def _subset_report(self, taus):
+        acc = self._subset_acc
+        n = float(acc['n'])
+        print(f"[step0] batches={acc['n']} k={self.top_k} tau_topk={self.tau_topk}")
+        print(f"[step0] hard_aggregate_mse10   = {acc['hard']/n:.6f}   (deployment reference, fixed)")
+        print(f"[step0] oracle_individual_mse10 = {acc['oracle_indiv']/n:.6f}")
+        print(f"[step0] oracle_aggregate_mse10  = {acc['oracle_hard']/n:.6f}")
+        print(f"[step0] oracle_uniform_mse10    = {acc['oracle_uniform']/n:.6f}")
+        print(f"[step0] oracle_variance10       = {acc['oracle_var']/n:.6f}")
+        print(f"[step0] individual_headroom     = {(acc['indiv']-acc['oracle_indiv'])/n:.6f}")
+        print(f"[step0] aggregate_headroom      = {(acc['hard']-acc['oracle_hard'])/n:.6f}")
+        rn = acc.get('redundancy_batches', 0)
+        if rn:
+            g = lambda key: acc[key] / rn
+            print(f"[swap] depth={os.environ.get('CARTS_REDUNDANCY_DEPTH', '100')} "
+                  f"batches={rn}")
+            print(f"[swap] {'':10}{'aggW':>10}{'aggU':>10}{'indiv':>10}{'var':>10}")
+            for tag in ('cur', 'swap', 'rand'):
+                print(f"[swap] {tag:<10}{g(tag+'_agg'):>10.6f}{g(tag+'_uni'):>10.6f}"
+                      f"{g(tag+'_ind'):>10.6f}{g(tag+'_var'):>10.6f}")
+            print(f"[swap] delta_best  aggW {g('swap_agg')-g('cur_agg'):+.6f}  "
+                  f"aggU {g('swap_uni')-g('cur_uni'):+.6f}  "
+                  f"indiv {g('swap_ind')-g('cur_ind'):+.6f}  "
+                  f"var {g('swap_var')-g('cur_var'):+.6f}")
+            print(f"[swap] delta_rand  aggW {g('rand_agg')-g('cur_agg'):+.6f}  "
+                  f"aggU {g('rand_uni')-g('cur_uni'):+.6f}  "
+                  f"indiv {g('rand_ind')-g('cur_ind'):+.6f}  "
+                  f"var {g('rand_var')-g('cur_var'):+.6f}")
+        print(f"[step0] uniform_aggregate_mse10= {acc['uniform']/n:.6f}")
+        print(f"[step0] weighted_individual_mse10 = {acc['indiv']/n:.6f}")
+        print(f"[step0] weighted_candidate_var10  = {acc['var']/n:.6f}")
+        lhs, rhs = acc['indiv']/n, acc['hard']/n + acc['var']/n
+        print(f"[step0] decomposition check: individual={lhs:.6f} vs aggregate+variance={rhs:.6f} "
+              f"(abs diff {abs(lhs-rhs):.2e})")
+        head = (f"{'tau_set':>8} {'N_eff mean':>11} {'p25':>8} {'med':>8} {'p75':>8} "
+                f"{'H_norm':>7} {'Mass@10 mean':>13} {'p25':>7} {'med':>7} {'p75':>7} "
+                f"{'Mass@100':>9} {'SoftAggMSE':>11}")
+        print('[step0] ' + head)
+        for t in taus:
+            d = acc['per_tau'][t]
+            neff = torch.cat(d['neff']); m10 = torch.cat(d['m10']); m100 = torch.cat(d['m100'])
+            q = torch.tensor([0.25, 0.5, 0.75])
+            nq = torch.quantile(neff, q); mq = torch.quantile(m10, q)
+            print(f"[step0] {t:>8.4g} {float(neff.mean()):>11.1f} {float(nq[0]):>8.1f} "
+                  f"{float(nq[1]):>8.1f} {float(nq[2]):>8.1f} {d['ent_norm']/n:>7.4f} "
+                  f"{float(m10.mean()):>13.4f} {float(mq[0]):>7.4f} {float(mq[1]):>7.4f} "
+                  f"{float(mq[2]):>7.4f} {float(m100.mean()):>9.4f} {d['soft_mse']/n:>11.6f}")
+
     def _relation_oracle_topk_candidates(
         self,
         batch_x,
@@ -1226,6 +1537,19 @@ class Model(nn.Module):
                             student_oracle_recall_sc[metric_k][
                                 :, c, source_slot
                             ] = overlap
+                    if os.environ.get('CARTS_SUBSET_DIAG') == '1' and oracle_values is not None:
+                        self._subset_diag(
+                            memory_value_c=memory_value_c,
+                            query_offset_c=query_offset_c,
+                            oracle_target_y=oracle_target_y,
+                            target_channel=c,
+                            top_idx=top_idx,
+                            oracle_values=oracle_values,
+                            oracle_valid=oracle_valid,
+                            valid_mask=valid_mask,
+                            scores=ret_debug['scores'],
+                            oracle_idx=oracle_idx,
+                        )
                     if cache_query_embeddings:
                         relation_query_embs_all[:, c, source_slot] = z_q
                     if candidate_oracle_relations_all is not None:
@@ -1588,6 +1912,7 @@ class Model(nn.Module):
         rank_loss_terms = []
         rank_metric_rows = []
         geometry_rows = []
+        selection_overlap_rows = []
         output_offset = batch_x[:, -1:, :].detach()
         # target_y is the ground-truth future; it only ever feeds the detached
         # teacher of the retrieval KL, never the forecast path.
@@ -1700,16 +2025,50 @@ class Model(nn.Module):
                             z_mem = z_mem.to(z_q.dtype)
                         else:
                             z_q = z_q.to(z_mem.dtype)
-                    r_cr, alpha, top_idx, top_scores, ret_debug = retrieve_relation_future(
-                        z_q=z_q,
-                        z_mem=z_mem,
-                        memory_value_c=memory_value_c,
-                        valid_mask=valid_mask,
-                        top_k=self.top_k,
-                        tau_topk=self.tau_topk,
-                        similarity=self.retrieval_similarity,
-                        soft_all=self.retrieval_soft_all,
+                    # The comparison Stage-1 was trained with has to decide
+                    # Top-K *membership*, not just reweight a set cosine already
+                    # chose. Without this the retriever is judged by a function
+                    # its embeddings were never shaped for, silently: the extra
+                    # weights load fine and simply never get called.
+                    selection_score_fn = self._retrieval_score_fn()
+
+                    # Whether those bank-wide scores need a graph. They feed only
+                    # Top-K indices (argmax, not differentiable) plus weights that
+                    # e2e recomputes below from freshly encoded candidates -- so
+                    # under e2e, or with the retriever frozen, holding the graph
+                    # over every candidate buys nothing. Two consumers do put
+                    # them in the loss and must keep it:
+                    #   soft_all             every candidate score is a weight
+                    #   retrieval_kl_weight  ret_debug['scores'] is the KL student
+                    # Getting this wrong is silent: the run trains, the term is
+                    # reported, and its gradient is simply absent.
+                    selection_discarded = (
+                        not self.retrieval_soft_all
+                        and not collect_retrieval_kl
+                        and (self.e2e_retrieval or self.freeze_stage1_encoder)
                     )
+                    selection_ctx = (
+                        torch.no_grad() if selection_discarded
+                        else contextlib.nullcontext()
+                    )
+                    with selection_ctx:
+                        r_cr, alpha, top_idx, top_scores, ret_debug = retrieve_relation_future(
+                            z_q=z_q,
+                            z_mem=z_mem,
+                            memory_value_c=memory_value_c,
+                            valid_mask=valid_mask,
+                            top_k=self.top_k,
+                            tau_topk=self.tau_topk,
+                            similarity=self.retrieval_similarity,
+                            soft_all=self.retrieval_soft_all,
+                            score_fn=selection_score_fn,
+                        )
+                    if selection_score_fn is not None:
+                        selection_overlap_rows.append(
+                            self._selection_overlap_with_cosine(
+                                z_q, z_mem, valid_mask, top_idx
+                            )
+                        )
                     if self.e2e_retrieval:
                         if candidate_x is None:
                             raise ValueError(
@@ -1866,6 +2225,17 @@ class Model(nn.Module):
                     relation_query_embs,
                 )
             y_base_c = y_base_all[:, :, c]
+            if self.retrieval_off:
+                # Counterfactual: the same trained weights, with the retrieval
+                # signal replaced by the neutral element of the fusion. Nothing
+                # else moves -- base head, relation configuration, gate weights
+                # and normalisation are untouched -- so the difference in error
+                # is what the retrieval branch was contributing at inference.
+                # Under residual fusion this coincides exactly with y_base, and
+                # the assertion in the diagnostic checks that rather than
+                # assuming it; under mixture it does not, since the gate still
+                # scales y_base by (1 - lambda).
+                y_ret_c = torch.zeros_like(y_ret_c)
             if self.fusion_mode == 'raft_concat':
                 fusion_input = torch.cat([y_base_c, y_ret_c], dim=-1)
                 y_final_c = self.raft_concat_head(fusion_input)
@@ -1937,6 +2307,11 @@ class Model(nn.Module):
             for key in geometry_rows[0]:
                 debug[key] = torch.stack([
                     row[key] for row in geometry_rows if key in row
+                ]).float().mean()
+        if selection_overlap_rows:
+            for key in selection_overlap_rows[0]:
+                debug[key] = torch.stack([
+                    row[key] for row in selection_overlap_rows if key in row
                 ]).float().mean()
         y_final_out = y_final_all + output_offset
         y_base_out = y_base_all + output_offset

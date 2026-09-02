@@ -5,13 +5,16 @@ import time
 import math
 
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader, Subset
 
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models.RelationStage1 import relation_bank_collapse_metrics
+from models.RelationStage1 import (
+    collapse_geometry, relation_bank_collapse_metrics,
+)
 from utils.relation_memory import RelationMemorySampler, build_memory_index
 from utils.relation_graph import load_or_build_relation_graph
 from utils.stage1_metrics import MetricAverager, format_metrics
@@ -534,6 +537,7 @@ class Exp_Stage1_Relation(Exp_Basic):
         'ndcg10': (('student_ndcg_at_10', 'ndcg_at_10'), 1.0),
         'retrieved_mse10': (
             ('student_retrieved_future_mse_at_10', 'retrieved_future_mse_at_10'), -1.0),
+        'hard_aggregate_mse10': (('hard_aggregate_mse10',), -1.0),
     }
 
     def _side_checkpoint_scores(self, metrics):
@@ -593,6 +597,11 @@ class Exp_Stage1_Relation(Exp_Basic):
             'retrieved_mse10': (
                 ('student_retrieved_future_mse_at_10', 'retrieved_future_mse_at_10'), -1.0
             ),
+            # The error of the one aggregate Stage-2 builds from the Top-10, as
+            # opposed to the mean of those candidates' individual errors. The two
+            # differ by the spread among them, and the arms here trade one for the
+            # other, so every arm is selected on this and none on its own loss.
+            'hard_aggregate_mse10': (('hard_aggregate_mse10',), -1.0),
             # Selecting on Future Recall picks the checkpoint that best copies the
             # Future-MSE Oracle, which the alignment study showed is not the one
             # that helps the forecast. These select on measured downstream gain.
@@ -621,6 +630,55 @@ class Exp_Stage1_Relation(Exp_Basic):
         write_metric_scalars(
             self.writer, 'tiny_step', metrics, step, TINY_STEP_METRIC_KEYS
         )
+
+
+    def _probe_rank_gradient(self, model, batch_idx):
+        """Choose the ranking weight from what reaches the encoder.
+
+        A margin hinge and a cross-entropy over thousands of candidates are not
+        on a comparable scale, so matching their values says nothing about which
+        one steers training. Both terms are back-propagated separately here and
+        lambda is solved for directly:
+
+            lambda = target_share * ||g_wce|| / ||g_rank||
+
+        The cosine between the two gradients comes with it. The terms disagree
+        by construction on a candidate that beats a selected one without
+        entering the global Oracle Top-K -- the cross-entropy pushes it down,
+        the ranking loss pushes it up -- so a strongly negative cosine is the
+        expected reading, not a bug.
+        """
+        limit = int(os.environ.get('CARTS_GRAD_PROBE_BATCHES', '4'))
+        if batch_idx >= limit:
+            return
+        terms = getattr(model, '_probe_terms', None)
+        if not terms or not terms.get('rank'):
+            print(f'[probe] batch {batch_idx}: no ranking pairs were mined')
+            return
+        params = [p for p in model.encoder.parameters() if p.requires_grad]
+        if model.shared_cross_projection is not None:
+            params += [p for p in model.shared_cross_projection.parameters()
+                       if p.requires_grad]
+
+        def flat_grad(term):
+            grads = torch.autograd.grad(term, params, retain_graph=True,
+                                        allow_unused=True)
+            parts = [g.reshape(-1) for g in grads if g is not None]
+            return torch.cat(parts) if parts else None
+
+        g_w = flat_grad(torch.stack(terms['wce']).mean())
+        g_r = flat_grad(torch.stack(terms['rank']).mean())
+        model._probe_terms = {'wce': [], 'rank': []}
+        if g_w is None or g_r is None or float(g_r.norm()) == 0.0:
+            print(f'[probe] batch {batch_idx}: the ranking term reached no '
+                  f'encoder parameter')
+            return
+        nw, nr = float(g_w.norm()), float(g_r.norm())
+        cos = float(torch.dot(g_w, g_r) / (g_w.norm() * g_r.norm() + 1e-12))
+        share = float(os.environ.get('CARTS_GRAD_PROBE_SHARE', '0.1'))
+        print(f'[probe] batch {batch_idx}  |g_wce|={nw:.6f}  |g_rank|={nr:.6f}  '
+              f'cos={cos:+.4f}  ratio={nw / nr:.4f}  '
+              f'lambda@{share:.0%}={share * nw / nr:.5f}')
 
     def _run_loader(self, loader, optimizer=None, compute_detailed_metrics=False,
                     split_name='train'):
@@ -656,6 +714,13 @@ class Exp_Stage1_Relation(Exp_Basic):
                 self._build_key_bank(log=False)
             batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
             cand_mask, counts = self._candidate_mask(batch_start_idx)
+            # The loader hands one start per batch, not one per query. The
+            # evaluation loaders are sequential and unshuffled, so a query's start
+            # -- what a frozen pair is keyed by -- is that batch start plus its row.
+            starts = torch.as_tensor(batch_start_idx).reshape(-1)
+            if starts.numel() == 1 and batch_x.size(0) > 1:
+                starts = int(starts) + torch.arange(batch_x.size(0))
+            model._current_starts = starts
             teacher_batch = self._teacher_batch(split_name, batch_start_idx)
             teacher_batch.update(self._residual_batch(split_name, batch_start_idx))
             reference_scores = self._reference_scores(batch_x)
@@ -696,6 +761,14 @@ class Exp_Stage1_Relation(Exp_Basic):
                             'candidate subset training produced a loss detached from '
                             'the encoder; check the candidate re-encoding path'
                         )
+                if os.environ.get('CARTS_GRAD_PROBE') == '1' and train:
+                    self._probe_rank_gradient(model, batch_idx)
+                if os.environ.get('CARTS_COLLAPSE_PROBE') == '1' and train:
+                    marks = {0, 1, 5, 10, 20, 50, 100}
+                    grad_marks = {0, 10, 50}
+                    if batch_idx in marks:
+                        self._collapse_probe(f'step{batch_idx}',
+                                             with_grad=batch_idx in grad_marks)
                 if torch.isfinite(loss) and loss.requires_grad:
                     loss.backward()
                     grad_sq = torch.zeros((), device=self.device)
@@ -851,7 +924,501 @@ class Exp_Stage1_Relation(Exp_Basic):
                 )
         plt.close(fig)
 
+    @torch.no_grad()
+    def _swap_rows(self, writer, arm, beta, starts, c, base, new, d, cand_mask, acc):
+        """One row per candidate that entered or left the Top-10.
+
+        Written per candidate rather than summarised in place so a single query
+        can be traced afterwards: which candidate was dropped, where it had been
+        ranked, and what its future error was.
+        """
+        neg = torch.finfo(base.dtype).min / 4
+        bm = base.masked_fill(~cand_mask, neg)
+        nm = new.masked_fill(~cand_mask, neg)
+        b_ord, n_ord = bm.argsort(-1, descending=True), nm.argsort(-1, descending=True)
+        b_rank, n_rank = torch.empty_like(b_ord), torch.empty_like(n_ord)
+        ar = torch.arange(bm.size(-1), device=bm.device).expand_as(b_ord)
+        b_rank.scatter_(1, b_ord, ar)
+        n_rank.scatter_(1, n_ord, ar)
+        for row in range(bm.size(0)):
+            B = set(b_ord[row, :10].tolist())
+            N = set(n_ord[row, :10].tolist())
+            acc['ret10'].append(len(B & N) / 10.0)
+            acc['ret100'].append(len(set(b_ord[row, :100].tolist())
+                                     & set(n_ord[row, :100].tolist())) / 100.0)
+            rem, add = sorted(B - N), sorted(N - B)
+            acc['swaps'].append(len(add))
+            b_mse = float(d[row, sorted(B)].mean())
+            n_mse = float(d[row, sorted(N)].mean())
+            acc['t10delta'].append(n_mse - b_mse)
+            # Individual quality and aggregate quality differ by the spread among
+            # the ten, which is why a swap can lower every candidate's own error
+            # while the aggregate the forecaster receives gets worse.
+            acc['b_var'].append(float(d[row, sorted(B)].var(unbiased=False)))
+            acc['n_var'].append(float(d[row, sorted(N)].var(unbiased=False)))
+            if rem:
+                acc['removed'].append(float(d[row, rem].mean()))
+            if add:
+                acc['added'].append(float(d[row, add].mean()))
+            if rem and add:
+                acc['delta'].append(float(d[row, add].mean()) - float(d[row, rem].mean()))
+            for tag, ids in (('removed', rem), ('added', add)):
+                for cid in ids:
+                    if tag == 'added':
+                        acc['added_rank'].append(int(b_rank[row, cid]))
+                    writer.writerow([
+                        arm, beta, 'val', int(starts[row]), int(c), int(cid), tag,
+                        f'{float(d[row, cid]):.6f}',
+                        int(b_rank[row, cid]), int(n_rank[row, cid]),
+                        f'{float(base[row, cid]):.6f}', f'{float(new[row, cid]):.6f}',
+                        f'{b_mse:.6f}', f'{n_mse:.6f}', f'{n_mse - b_mse:.6f}',
+                        len(rem), len(add)])
+                    acc['rows'] += 1
+
+    def swap_conflict_diag(self):
+        """Retention, Top-10 swaps, anchor gradient by rank band, and whether the
+        two objectives pull the scorer apart -- all from the loaded checkpoint.
+
+        Retention is recomputed here for every arm off the same retrieval path,
+        including the one trained without an anchor, whose value was previously
+        reported from a formatting default rather than measured.
+        """
+        import csv
+        from models.RelationStage1 import boundary_hard_rank_loss, global_anchor_kl
+
+        arm = os.environ.get('CARTS_SWAP_ARM', 'unnamed')
+        beta = float(os.environ.get('CARTS_SWAP_BETA', '0'))
+        out_dir = os.environ.get('CARTS_SWAP_OUT', 'logs/swap_conflict')
+        os.makedirs(out_dir, exist_ok=True)
+        path = os.path.join(out_dir, 'swap_rows.csv')
+        fresh = not os.path.exists(path)
+        handle = open(path, 'a', newline='')
+        writer = csv.writer(handle)
+        if fresh:
+            writer.writerow(['arm', 'beta', 'split', 'query_id', 'channel_id',
+                             'candidate_id', 'swap_type', 'future_mse',
+                             'baseline_rank', 'new_rank', 'baseline_score',
+                             'new_score', 'baseline_top10_future_mse',
+                             'new_top10_future_mse', 'top10_mse_delta',
+                             'num_removed', 'num_added'])
+
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        model.eval()
+        # Fingerprint the weights that decide the ranking. Two arms that load
+        # different checkpoints must not produce the same fingerprint; when the
+        # diagnostic ran before the checkpoint was applied every arm reported
+        # the identity initialisation and the numbers looked plausible.
+        if model.retrieval_metric is not None:
+            fingerprint = float(sum(q.detach().double().abs().sum()
+                                    for q in model.retrieval_metric.parameters()))
+        else:
+            fingerprint = 0.0
+        # Recorded to a file rather than the environment: each arm runs in its
+        # own process, so an in-process record would never see the others.
+        seen_path = os.path.join(out_dir, 'fingerprints.txt')
+        prior = {}
+        if os.path.exists(seen_path):
+            for line in open(seen_path):
+                name, value = line.strip().split(' ', 1)
+                prior[name] = value
+        key = f'{fingerprint:.10f}'
+        for name, value in prior.items():
+            if value == key and name != arm:
+                raise RuntimeError(
+                    f'{arm} loaded the same scorer weights as {name}; the two '
+                    f'arms are not distinct and their numbers would agree for '
+                    f'that reason alone')
+        with open(seen_path, 'a') as fh:
+            fh.write(f'{arm} {key}\n')
+        print(f'[swap] scorer fingerprint {fingerprint:.6f}')
+        self._ensure_memory()
+        self._build_key_bank()
+        _, loader = self._get_data(flag='val', shuffle=False)
+        limit = int(os.environ.get('CARTS_SWAP_BATCHES', '2'))
+        tau = float(getattr(model, 'global_anchor_tau', 0.1)) or 0.1
+
+        acc = dict(ret10=[], ret100=[], swaps=[], removed=[], added=[],
+                   delta=[], t10delta=[], added_rank=[], rows=0, examples=[],
+                   b_var=[], n_var=[])
+        ga = dict(mass=[0.0, 0.0, 0.0], grad=[0.0, 0.0, 0.0], n=0)
+        conflict = []
+
+        for batch_idx, (bx, by, start) in enumerate(loader):
+            if batch_idx >= limit:
+                break
+            bx, by, start = self._move_batch(bx, by, start)
+            cand_mask, _ = self._candidate_mask(start)
+            starts = torch.as_tensor(start).reshape(-1)
+            if starts.numel() == 1 and bx.size(0) > 1:
+                starts = int(starts) + torch.arange(bx.size(0))
+            for c in model.target_channels():
+                for r in model.source_channels(c):
+                    with torch.no_grad():
+                        z_q = model.encoder(model._relation_tensor(bx, c, r))
+                        z_k = self.key_bank[c, 0].to(z_q.dtype)
+                        base = (F.normalize(z_q.float(), dim=-1)
+                                @ F.normalize(z_k.float(), dim=-1).t())
+                        d = model._future_mse(bx, by, self.memory_y,
+                                              self.memory_x_last, c, r).float()
+                    with torch.enable_grad():
+                        new = (model.retrieval_metric.score(z_q, z_k).float()
+                               if model.retrieval_metric is not None
+                               else base.clone().requires_grad_(True))
+                    self._swap_rows(writer, arm, beta, starts, c,
+                                    base, new.detach(), d, cand_mask, acc)
+                    if c == 0 and len(acc['examples']) < 3:
+                        acc['examples'].append(int(starts[0]))
+
+                    # Autograd on the scores, not a re-derivation, so masking and
+                    # normalisation match the objective that was trained.
+                    kl, _ = global_anchor_kl(base, new, cand_mask, tau=tau)
+                    g_s, = torch.autograd.grad(kl, new, retain_graph=True)
+                    with torch.no_grad():
+                        neg = torch.finfo(base.dtype).min / 4
+                        b_ord = base.masked_fill(~cand_mask, neg).argsort(-1, descending=True)
+                        p = torch.softmax(base.masked_fill(~cand_mask, neg) / tau, dim=-1)
+                        for bi, (lo, hi) in enumerate([(0, 10), (10, 100),
+                                                       (100, base.size(-1))]):
+                            sel = b_ord[:, lo:hi]
+                            ga['mass'][bi] += float(p.gather(1, sel).sum())
+                            ga['grad'][bi] += float(g_s.abs().gather(1, sel).sum())
+                        ga['n'] += 1
+
+                    params = [q for q in model.retrieval_metric.parameters()
+                              if q.requires_grad] if model.retrieval_metric else []
+                    if params:
+                        rk, _ = boundary_hard_rank_loss(
+                            new, d, cand_mask, top_k=10, pool_end=100, margin=0.01,
+                            pairs_per_query=32, mining_mode='candidate')
+                        gr = torch.autograd.grad(rk, params, retain_graph=True,
+                                                 allow_unused=True)
+                        gg = torch.autograd.grad(kl, params, retain_graph=True,
+                                                 allow_unused=True)
+                        fr = [x.reshape(-1) for x in gr if x is not None]
+                        fg = [x.reshape(-1) for x in gg if x is not None]
+                        if fr and fg:
+                            fr, fg = torch.cat(fr), torch.cat(fg)
+                            if float(fr.norm()) > 0 and float(fg.norm()) > 0:
+                                conflict.append((
+                                    float(torch.dot(fr, fg) / (fr.norm() * fg.norm())),
+                                    float(fr.norm()), float(fg.norm())))
+        handle.close()
+
+        def m(xs):
+            return sum(xs) / len(xs) if xs else float('nan')
+        print(f'[swap] arm={arm} beta={beta} rows={acc["rows"]} '
+              f'pairs_analysed={len(acc["ret10"])} csv={path}')
+        print(f'[swap] retention10={m(acc["ret10"]):.5f} '
+              f'retention100={m(acc["ret100"]):.5f} '
+              f'swaps_mean={m(acc["swaps"]):.4f} '
+              f'removed_mse={m(acc["removed"]):.5f} added_mse={m(acc["added"]):.5f} '
+              f'swapdelta={m(acc["delta"]):.5f} t10delta={m(acc["t10delta"]):.5f}')
+        print(f'[swap] top10_future_var base={m(acc["b_var"]):.5f} '
+              f'new={m(acc["n_var"]):.5f} '
+              f'delta={m(acc["n_var"]) - m(acc["b_var"]):+.5f}')
+        bands = [(10, 20), (20, 50), (50, 100), (100, 500)]
+        ranks = acc['added_rank']
+        if ranks:
+            frac = ' '.join(
+                f'{lo + 1}-{hi}={sum(1 for x in ranks if lo <= x < hi) / len(ranks):.3f}'
+                for lo, hi in bands)
+            print(f'[swap] added_from_rank {frac} '
+                  f'501+={sum(1 for x in ranks if x >= 500) / len(ranks):.3f}')
+        if ga['n']:
+            tm, tg = sum(ga['mass']), sum(ga['grad'])
+            print(f'[swap] ga_mass top10={ga["mass"][0]/tm:.5f} '
+                  f'11_100={ga["mass"][1]/tm:.5f} rest={ga["mass"][2]/tm:.5f}')
+            print(f'[swap] ga_grad top10={ga["grad"][0]/tg:.5f} '
+                  f'11_100={ga["grad"][1]/tg:.5f} rest={ga["grad"][2]/tg:.5f}')
+        if conflict:
+            cos = [x[0] for x in conflict]
+            print(f'[swap] conflict cos_mean={m(cos):+.5f} '
+                  f'neg_frac={sum(1 for x in cos if x < 0)/len(cos):.4f} '
+                  f'g_rank={m([x[1] for x in conflict]):.6f} '
+                  f'g_ga={m([x[2] for x in conflict]):.6f}')
+
+    @torch.no_grad()
+    def set_oracle_diag(self):
+        """Is a good Top-K a set of individually good candidates, or a set that
+        is good together?
+
+        Four selections over one shared pool, so pool coverage cannot explain a
+        difference between them, swept over pool sizes because the retriever's
+        own Top-100 excludes most of what the Oracle would pick -- widening the
+        pool separates "no complementarity here" from "the coarse retriever
+        never offered it". K is swept by prefix of one K=max run.
+
+        Everything reads the true future, so it bounds what a perfect selector
+        could do inside each pool; it does not say a model can reach it.
+        """
+        import csv
+        from models.RelationStage1 import (
+            select_good_diverse, select_greedy_set, select_individual_oracle,
+            set_utility_metrics,
+        )
+        out_dir = os.environ.get('CARTS_SETORACLE_OUT', 'logs/set_oracle')
+        os.makedirs(out_dir, exist_ok=True)
+        tag = os.environ.get('CARTS_SETORACLE_TAG', f'pred{self.args.pred_len}')
+        pools = [x.strip() for x in
+                 os.environ.get('CARTS_SETORACLE_POOL', '100').split(',')]
+        ks = sorted(int(x) for x in
+                    os.environ.get('CARTS_SETORACLE_K', '10').split(','))
+        k_max = max(ks)
+        good_n = int(os.environ.get('CARTS_SETORACLE_GOOD', '30'))
+        limit = int(os.environ.get('CARTS_SETORACLE_BATCHES', '4'))
+        arms = ['cosine', 'individual', 'good_diverse', 'set']
+
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        model.eval()
+        self._ensure_memory()
+        self._build_key_bank()
+        _, loader = self._get_data(flag='val', shuffle=False)
+
+        # cell[(pool, K, arm)] -> running metric lists
+        cell = {}
+        extra = {}
+
+        def note(key, field, values):
+            cell.setdefault(key, {}).setdefault(field, []).extend(values)
+
+        for batch_idx, (bx, by, start) in enumerate(loader):
+            if batch_idx >= limit:
+                break
+            bx, by, start = self._move_batch(bx, by, start)
+            cand_mask, _ = self._candidate_mask(start)
+            for c in model.target_channels():
+                for r in model.source_channels(c):
+                    z_q = model.encoder(model._relation_tensor(bx, c, r))
+                    z_k = self.key_bank[c, 0].to(z_q.dtype)
+                    cos = (F.normalize(z_q.float(), dim=-1)
+                           @ F.normalize(z_k.float(), dim=-1).t())
+                    q_fut, k_fut = model._relation_future_distance_inputs(
+                        bx, by, self.memory_y, self.memory_x_last, c, r)
+                    q_fut, k_fut = q_fut.float(), k_fut.float()
+                    neg = torch.finfo(cos.dtype).min / 4
+                    masked = cos.masked_fill(~cand_mask, neg)
+
+                    for spec in pools:
+                        width = (int(cand_mask.sum(-1).min()) if spec == 'full'
+                                 else min(int(spec), masked.size(-1)))
+                        width = max(width, k_max)
+                        pool_idx = masked.topk(width, dim=-1).indices
+                        pool_y = k_fut[pool_idx]
+                        d_pool = ((pool_y - q_fut.unsqueeze(1)) ** 2).mean(-1)
+                        order = torch.arange(width, device=cos.device).expand_as(pool_idx)
+
+                        picks = {
+                            'cosine': order[:, :k_max],
+                            'individual': d_pool.argsort(dim=-1)[:, :k_max],
+                            'good_diverse': select_good_diverse(
+                                pool_y, d_pool, k_max, good_n),
+                            'set': select_greedy_set(pool_y, q_fut, k_max),
+                        }
+                        for kk in ks:
+                            per = {}
+                            for arm, idx in picks.items():
+                                take = idx[:, :kk]
+                                chosen = torch.gather(
+                                    pool_y, 1,
+                                    take.unsqueeze(-1).expand(-1, -1, pool_y.size(-1)))
+                                I, A, V, res = set_utility_metrics(chosen, q_fut)
+                                if float(res.abs().max()) > 1e-4:
+                                    raise RuntimeError(
+                                        f'{arm}: I = A + V failed by '
+                                        f'{float(res.abs().max()):.3e}')
+                                key = (spec, kk, arm)
+                                note(key, 'I', I.tolist()); note(key, 'A', A.tolist())
+                                note(key, 'V', V.tolist()); note(key, 'res', res.tolist())
+                                per[arm] = (I, A, take)
+                            for row in range(pool_y.size(0)):
+                                si = set(per['individual'][2][row].tolist())
+                                ss = set(per['set'][2][row].tolist())
+                                sd = set(per['good_diverse'][2][row].tolist())
+                                e = extra.setdefault((spec, kk), {
+                                    'ov_is': [], 'ov_ds': [], 'gain': [], 'cost': []})
+                                e['ov_is'].append(len(si & ss) / kk)
+                                e['ov_ds'].append(len(sd & ss) / kk)
+                                a_i = float(per['individual'][1][row])
+                                a_s = float(per['set'][1][row])
+                                e['gain'].append((a_i - a_s) / max(a_i, 1e-12))
+                                e['cost'].append(float(per['set'][0][row])
+                                                 - float(per['individual'][0][row]))
+
+        def m(xs):
+            return sum(xs) / len(xs) if xs else float('nan')
+
+        csv_path = os.path.join(out_dir, f'pool_k_sweep_{tag}.csv')
+        with open(csv_path, 'w', newline='') as fh:
+            w = csv.writer(fh)
+            w.writerow(['tag', 'pool', 'K', 'arm', 'I', 'A', 'V', 'residual', 'n'])
+            for (spec, kk, arm), v in sorted(cell.items(), key=lambda x: str(x[0])):
+                w.writerow([tag, spec, kk, arm, f'{m(v["I"]):.6f}', f'{m(v["A"]):.6f}',
+                            f'{m(v["V"]):.6f}', f'{m(v["res"]):.3e}', len(v['A'])])
+
+        print(f'\n[setoracle] {tag} VAL  pools={pools} K={ks} good_n={good_n} '
+              f'-> {csv_path}')
+        head = (f"{'pool':>6}{'K':>4}" + ''.join(f'{a[:9]:>11}' for a in arms)
+                + f"{'SetGain':>10}{'IndCost':>10}{'ov(i,s)':>9}{'joint':>8}")
+        print('[setoracle] ' + head)
+        for spec in pools:
+            for kk in ks:
+                if (spec, kk, 'set') not in cell:
+                    continue
+                a_i = m(cell[(spec, kk, 'individual')]['A'])
+                a_s = m(cell[(spec, kk, 'set')]['A'])
+                e = extra[(spec, kk)]
+                joint = sum(1 for g, cst in zip(e['gain'], e['cost'])
+                            if g > 0 and cst >= 0) / len(e['gain'])
+                print(f'[setoracle] {spec:>6}{kk:>4}'
+                      + ''.join(f"{m(cell[(spec, kk, a)]['A']):>11.5f}" for a in arms)
+                      + f'{(a_i - a_s) / a_i:>10.4f}{m(e["cost"]):>10.5f}'
+                      f'{m(e["ov_is"]):>9.4f}{joint:>8.4f}')
+        if ('100', 1, 'set') in cell:
+            a1 = m(cell[('100', 1, 'set')]['A'])
+            b1 = m(cell[('100', 1, 'individual')]['A'])
+            if abs(a1 - b1) > 1e-6:
+                raise RuntimeError(f'K=1 must agree: set={a1} individual={b1}')
+            print('[setoracle] sanity: K=1 set == individual  OK')
+
+    class _ProbeDoneSignal(Exception):
+        pass
+
+    def _collapse_subset(self):
+        """One fixed set of queries and candidates, drawn once.
+
+        Geometry is only comparable across steps and arms if the same rows are
+        measured every time; re-drawing would let a change in the sample explain
+        a change in the numbers.
+        """
+        cached = getattr(self, '_collapse_cached', None)
+        if cached is not None:
+            return cached
+        n_q = int(os.environ.get('CARTS_COLLAPSE_QUERIES', '64'))
+        n_c = int(os.environ.get('CARTS_COLLAPSE_CANDIDATES', '1024'))
+        gen = torch.Generator().manual_seed(1234)
+        total = int(self.memory_x.size(0))
+        cand = torch.randperm(total, generator=gen)[:min(n_c, total)]
+        query = torch.randperm(total, generator=gen)[:min(n_q, total)]
+        cached = (query.to(self.device), cand.to(self.device))
+        self._collapse_cached = cached
+        return cached
+
+    def _collapse_probe(self, tag, with_grad=False):
+        """Geometry, and optionally gradients, without touching the weights.
+
+        Uses autograd.grad rather than backward so nothing lands in .grad and no
+        optimiser state moves; a checksum over the parameters is compared before
+        and after, because a diagnostic that quietly trains the model would look
+        exactly like the collapse it is meant to explain.
+        """
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        before = float(sum(p.detach().float().sum() for p in model.parameters()))
+        query_idx, cand_idx = self._collapse_subset()
+        channel = 0
+        was_training = model.training
+        model.eval()
+        try:
+            q_rel = model._relation_tensor(
+                self.memory_x[query_idx].to(self.device), channel, channel)
+            c_rel = model._relation_tensor(
+                self.memory_x[cand_idx].to(self.device), channel, channel)
+            with torch.enable_grad() if with_grad else torch.no_grad():
+                z_q = model.encoder(q_rel)
+                z_c = model.encoder(c_rel)
+                if with_grad and not z_q.requires_grad:
+                    # A frozen encoder produces embeddings outside the graph;
+                    # re-attaching them measures how much gradient the ranking
+                    # loss would deliver to the representation, which is the
+                    # comparison against the trainable arms.
+                    z_q = z_q.detach().requires_grad_(True)
+                    z_c = z_c.detach().requires_grad_(True)
+                stats = collapse_geometry(z_q, z_c)
+                if with_grad:
+                    # The ranking hinge on this subset: raise the candidate the
+                    # query should prefer, lower the one it currently prefers.
+                    scores = F.normalize(z_q, dim=-1) @ F.normalize(z_c, dim=-1).t()
+                    top = scores.topk(2, dim=-1).indices
+                    s_i = scores.gather(1, top[:, :1]).squeeze(1)
+                    s_j = scores.gather(1, top[:, 1:2]).squeeze(1)
+                    hinge = (self.args.rank_margin - s_j + s_i).clamp_min(0).mean()
+                    # With the encoder frozen there is nothing to differentiate
+                    # on its side, and asking would raise rather than report a
+                    # zero. The embedding gradients still answer the question
+                    # this probe exists for.
+                    params = [p for p in model.encoder.parameters()
+                              if p.requires_grad]
+                    targets = params + [z_q, z_c]
+                    if not any(t.requires_grad for t in targets):
+                        stats['encoder_grad_norm'] = 0.0
+                        stats['grad_z_query_norm'] = 0.0
+                        stats['grad_z_cand_norm'] = 0.0
+                        stats['hinge_on_probe'] = float(hinge)
+                        raise self._ProbeDoneSignal
+                    grads = torch.autograd.grad(hinge, targets,
+                                                allow_unused=True)
+                    enc = [g.reshape(-1) for g in grads[:len(params)] if g is not None]
+                    stats['encoder_grad_norm'] = float(
+                        torch.cat(enc).norm()) if enc else 0.0
+                    gq, gc = grads[len(params)], grads[len(params) + 1]
+                    stats['grad_z_query_norm'] = float(gq.norm()) if gq is not None else 0.0
+                    stats['grad_z_cand_norm'] = float(gc.norm()) if gc is not None else 0.0
+                    stats['hinge_on_probe'] = float(hinge)
+        except self._ProbeDoneSignal:
+            pass
+        finally:
+            if was_training:
+                model.train()
+        after = float(sum(p.detach().float().sum() for p in model.parameters()))
+        if abs(after - before) > 1e-6:
+            raise RuntimeError('the collapse probe changed model parameters')
+        line = ' '.join(f'{k}={v:.6g}' for k, v in stats.items())
+        print(f'[collapse] {tag} {line}')
+        return stats
+
+    def _train_diag_loader(self, train_data):
+        """A fixed slice of train queries, evaluated exactly as validation is.
+
+        Diagnostics computed inside the optimisation loop are taken on shuffled,
+        augmented batches under whatever the encoder looked like mid-epoch, which
+        is why they came out unusable. This is a held-constant subset run through
+        the same evaluator with the same full-memory retrieval, so a train and a
+        validation number differ only in which queries they cover -- which is
+        what separates memorising the ordering from learning it.
+        """
+        cached = getattr(self, '_train_diag_cached', None)
+        if cached is not None:
+            return cached
+        size = int(os.environ.get('CARTS_TRAIN_DIAG_QUERIES', '256'))
+        _, loader = self._get_data(flag='train', shuffle=False)
+        subset = torch.utils.data.Subset(
+            loader.dataset, list(range(min(size, len(loader.dataset)))))
+        out = torch.utils.data.DataLoader(
+            subset, batch_size=loader.batch_size, shuffle=False,
+            num_workers=0, drop_last=False)
+        self._train_diag_cached = out
+        return out
+
+    def _set_frozen_split(self, split):
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        model._frozen_split = split
+
+    def train_diag(self, train_data):
+        loader = self._train_diag_loader(train_data)
+        self._set_frozen_split('train')
+        metrics = self._run_loader(
+            loader, optimizer=None, compute_detailed_metrics=True,
+            split_name='train_diag',
+        )
+        missing = [k for k in ('missed_better_100_mean', 'pair_acc_top100_all')
+                   if k in metrics and metrics[k] != metrics[k]]
+        if missing:
+            raise RuntimeError(
+                f'train diagnostic produced NaN for {missing}; a silent NaN here '
+                f'is what made Case B and Case D indistinguishable')
+        return metrics
+
     def vali(self, vali_data, vali_loader):
+        self._set_frozen_split('val')
         return self._run_loader(
             vali_loader,
             optimizer=None,
@@ -880,6 +1447,15 @@ class Exp_Stage1_Relation(Exp_Basic):
             vali_data, vali_loader = self._get_data(flag='val', shuffle=False)
         self._set_validation_probe(vali_loader)
         self.total_update_steps = max(1, len(train_loader) * int(self.args.train_epochs))
+        frozen_ref = None
+        if int(getattr(self.args, 'stage1_freeze_encoder', 0)):
+            net = self.model.module if hasattr(self.model, 'module') else self.model
+            frozen_ref = float(sum(p.detach().double().sum()
+                                   for p in net.encoder.parameters()))
+            trainable = [n for n, p in net.named_parameters() if p.requires_grad]
+            print(f'[freeze] encoder held fixed; trainable parameters: {trainable}')
+            if any(n.startswith('encoder.') for n in trainable):
+                raise RuntimeError('encoder parameters are still trainable')
 
         path = os.path.join(self.args.checkpoints, 'stage1', self.args.data, f'seq{self.args.seq_len}_pred{self.args.pred_len}', setting)
         os.makedirs(path, exist_ok=True)
@@ -1129,6 +1705,7 @@ class Exp_Stage1_Relation(Exp_Basic):
         if self._tiny_overfit_enabled():
             self._build_key_bank()
             initial_metrics = self.vali(vali_data, vali_loader)
+
             print(format_metrics('Tiny Overfit Initial', initial_metrics))
             write_metric_scalars(writer, 'tiny_eval', initial_metrics, 0, tb_keys)
             tiny_eval_history.append((0, initial_metrics))
@@ -1143,6 +1720,22 @@ class Exp_Stage1_Relation(Exp_Basic):
                 if self.device.type == 'cuda':
                     torch.cuda.synchronize(self.device)
                 key_bank_train_time = time.time() - phase_time
+                if (epoch == 0 and getattr(self.args, 'rank_mining_mode',
+                                           'pair') == 'persistent'):
+                    # One forward-only pass before any update, so every
+                    # persistent pair comes from the checkpoint training starts
+                    # at rather than a model already moved partway through the
+                    # first epoch. It needs the key bank, hence its place here.
+                    print('[persistent] mining the fixed training pair set '
+                          'from the initial checkpoint')
+                    self._run_loader(train_loader, optimizer=None,
+                                     compute_detailed_metrics=False,
+                                     split_name='persistent_build')
+                    net = (self.model.module if hasattr(self.model, 'module')
+                           else self.model)
+                    built = sum(len(v) for v in
+                                getattr(net, '_persistent_store', {}).values())
+                    print(f'[persistent] {built} queries fixed')
                 phase_time = time.time()
                 train_metrics = self._run_loader(train_loader, optimizer=optimizer)
                 if self.device.type == 'cuda':
@@ -1154,7 +1747,37 @@ class Exp_Stage1_Relation(Exp_Basic):
                     torch.cuda.synchronize(self.device)
                 key_bank_val_time = time.time() - phase_time
                 phase_time = time.time()
+                if frozen_ref is not None:
+                    net = (self.model.module if hasattr(self.model, 'module')
+                           else self.model)
+                    now = float(sum(p.detach().double().sum()
+                                    for p in net.encoder.parameters()))
+                    if abs(now - frozen_ref) > 1e-6:
+                        raise RuntimeError(
+                            f'the frozen encoder moved: checksum {frozen_ref} '
+                            f'-> {now}')
+                if os.environ.get('CARTS_COLLAPSE_PROBE') == '1':
+                    self._collapse_probe(f'epoch{epoch + 1}', with_grad=True)
                 val_metrics = self.vali(vali_data, vali_loader)
+                if os.environ.get('CARTS_TRAIN_DIAG') == '1':
+                    tr = self.train_diag(train_data)
+                    # Must name the frozen metrics as they are actually keyed,
+                    # or the primary criterion silently drops out of the train
+                    # line while validation still shows it.
+                    keys = ('missed_better_100_mean', 'oracle_model_rank_median',
+                            'pair_acc_top100_all', 'pair_acc_top100_gap_p50',
+                            'pair_acc_top100_gap_p75',
+                            'student_retrieved_future_mse_at_10',
+                            'hard_aggregate_mse10', 'student_oracle_recall_at_10',
+                            'frozen_pair_correct_order_frac',
+                            'frozen_signed_gap_mean', 'frozen_signed_gap_p25',
+                            'frozen_signed_gap_p50', 'frozen_signed_gap_p75',
+                            'frozen_margin_satisfied_frac', 'frozen_pair_count',
+                            'rank_positive_unique_covered_frac')
+                    # Signed gaps live near 1e-5, so six decimals prints them
+                    # all as zero and hides whether a margin is forming.
+                    line = ' | '.join(f'{k}: {tr[k]:.8f}' for k in keys if k in tr)
+                    print(f'Epoch {epoch + 1} TrainDiag | {line}')
                 if self.device.type == 'cuda':
                     torch.cuda.synchronize(self.device)
                 val_time = time.time() - phase_time
@@ -1316,6 +1939,12 @@ class Exp_Stage1_Relation(Exp_Basic):
             print(f'[stage1 tiny-overfit] wrote summary to {summary_path}')
 
     def test(self, setting, test=0):
+        if os.environ.get('CARTS_TAUCAL_DIAG') == '1':
+            # Before the strict load: the encoder is already in place from
+            # --stage1_ckpt_path and the scorer must stay at its identity
+            # initialisation, which is the geometry every arm starts from.
+            self.tau_calibration_diag()
+            return {}
         self._ensure_memory()
         checkpoint_path = os.path.join(
             self.args.checkpoints,
@@ -1337,6 +1966,14 @@ class Exp_Stage1_Relation(Exp_Basic):
             checkpoint = torch.load(checkpoint_path, map_location=self.device)
             state = checkpoint.get('model_state_dict', checkpoint)
             self.model.load_state_dict(state)
+        if os.environ.get('CARTS_SETORACLE_DIAG') == '1':
+            self.set_oracle_diag()
+            return {}
+        if os.environ.get('CARTS_SWAP_DIAG') == '1':
+            # After the checkpoint is applied, or every arm would be diagnosed
+            # at its identity initialisation and look identical to the baseline.
+            self.swap_conflict_diag()
+            return {}
         self._build_key_bank()
         test_data, test_loader = self._get_data(flag='test', shuffle=False)
         metrics = self._run_loader(
