@@ -57,6 +57,215 @@ completed | failed | aborted
 
 <!-- Append experiment entries below this line. -->
 
+## EXP-1 — Test-matched Oracle Intervention (ETTh1 H96 / H720)
+
+### Date
+2026-09-02
+
+### Research Question
+In Stage-2 forecasting, does what matters come from ten individually good
+candidates, or from a set that is good *together*? Equivalently: is the
+Individual Oracle — the ground truth behind Recall@10 — actually Stage-2's
+optimal retrieval target?
+
+### Configuration
+Causal intervention, **no training**. Stage-1 encoder/scorer, Stage-2, base
+forecaster, gate and fusion all frozen; only Top-K membership is replaced.
+
+ETTh1, TEST split, `features=M`, `seq_len = pred_len`, `top_k=10`,
+`tau_topk=0.1`, `fusion_mode=residual`, `gate_mode=scalar`,
+`relation_value_space=delta_last`, `d_model=128/n_heads=4/e_layers=2/d_ff=256`.
+Support: cosine-induced fixed common candidate support, P100.
+
+**`relation_top_n=1`, `source_mode=auto`, sources `[[0],[1],[2],[3],[4],[5],[6]]`
+— every target's only source is itself. This is a SELF-RETRIEVAL experiment and
+carries no evidence about cross-channel contribution** (see CONFLICT-001).
+
+Stage-2 checkpoints (pre-registered as the KL+Cosine baseline, not chosen on
+test score):
+`checkpoints/stage2/ETTh1/seq{96,720}_pred{96,720}/stage2_carts_s2ls_fixsel_cosine_kl_stage2_*/checkpoint.pth`
+(H96 sha256 `d085398b0dd4290d…`, epoch 3; H720 sha256 `041b8e419c4dbc0b…`).
+
+### Changed Variable
+Candidate selection rule only. Five arms: R0 current retriever, R1 Individual
+Oracle, R2-U uniform set oracle, R2-W weighted set oracle (softmax re-normalised
+over the whole selected set at each greedy step), R3 Good+Diverse control.
+R2-relation was not run: under the self-only graph it is identical to R2-U, and
+is kept as a unit-test invariant.
+
+### Controlled Variables
+Stage-1 checkpoint/encoder/scorer, Stage-2 checkpoint, base forecaster, gate,
+fusion mode, `tau_topk`, test queries and their order, P100, valid mask, seed,
+normalization, K. Verified at runtime: `base_mse` identical across all arms to
+9 decimals, and the Stage-2 `state_dict` SHA256 re-checked after every arm.
+
+### Dataset / Prediction Horizon / Seed
+ETTh1 TEST; H96 (2785 queries, 19495 query×channel units) and H720 (15127 units);
+`--seed 0`.
+
+### Important Hyperparameters
+`top_k=10`, `tau_topk=0.1` (the value the checkpoint was trained with — the
+Phase-0 calibrated taus were deliberately NOT used, since this experiment
+changes selection only), P100, `good_n=30` for R3.
+
+### Result Files
+`results/EXP-1-oracle-intervention/` — per-horizon CSVs, pairwise CSVs, logs,
+`fingerprints.txt`, `command.txt`, `env.txt`, `working_tree.diff`.
+Live copies under `logs/oracle_intervention/`.
+
+### Results
+
+Metric space: TEST split, normalized absolute, target channel only — the same
+space as the Stage-2 final MSE (asserted at runtime).
+
+**H96** (base MSE 0.647403 for every arm)
+
+| Selection | I | A_uniform | A_weighted | Final MSE | Retrieval gain | Gain % |
+|---|---|---|---|---|---|---|
+| R0 Current | 0.67667 | 0.40690 | 0.40679 | 0.37469 | +0.27271 | +42.12 |
+| R1 Individual Oracle | 0.31556 | 0.18861 | 0.19022 | 0.25448 | +0.39292 | +60.69 |
+| R2-U Uniform Set Oracle | 0.38669 | **0.15718** | 0.15967 | 0.23912 | +0.40828 | +63.06 |
+| R2-W Weighted Set Oracle | 0.40221 | 0.16087 | **0.15713** | **0.23754** | +0.40986 | **+63.31** |
+| R3 Good+Diverse | 0.43534 | 0.20538 | 0.20751 | 0.27044 | +0.37696 | +58.23 |
+
+**H720** (base MSE 0.671841 for every arm)
+
+| Selection | I | A_uniform | A_weighted | Final MSE | Retrieval gain | Gain % |
+|---|---|---|---|---|---|---|
+| R0 Current | 0.98132 | 0.63258 | 0.63408 | 0.52857 | +0.14327 | +21.32 |
+| R1 Individual Oracle | 0.60071 | 0.36035 | 0.36353 | 0.39313 | +0.27871 | +41.48 |
+| R2-U Uniform Set Oracle | 0.66149 | **0.32514** | 0.33036 | 0.37742 | +0.29443 | +43.82 |
+| R2-W Weighted Set Oracle | 0.66921 | 0.32806 | **0.32699** | **0.37582** | +0.29602 | **+44.06** |
+| R3 Good+Diverse | 0.70525 | 0.36827 | 0.37579 | 0.39906 | +0.27279 | +40.60 |
+
+Supplementary (H96 / H720): V_uniform R0 0.26977 / 0.34873, R1 0.12695 / 0.24036,
+R2-U 0.22951 / 0.33635, R2-W 0.24134 / 0.34114, R3 0.22996 / 0.33698.
+lambda_mean stays in 0.5137–0.5159 (H96) and 0.5065–0.5362 (H720); lambda_std
+0.027–0.036 (H96), 0.103–0.116 (H720).
+
+**Pairwise, query-level paired** (variant − baseline; negative = variant better)
+
+| Horizon | Comparison | ΔA_uniform | ΔA_weighted | ΔFinal MSE | frac better (A_u / A_w / MSE) | overlap |
+|---|---|---|---|---|---|---|
+| H96 | R1 → R2-U | −0.03143 | −0.03055 | −0.01536 | 0.9963 / 0.9903 / 0.9508 | 0.5178 |
+| H96 | R1 → R2-W | −0.02774 | −0.03309 | −0.01694 | 0.9717 / 0.9982 / 0.9630 | 0.4951 |
+| H96 | R0 → R1 | −0.21829 | −0.21657 | −0.12021 | 0.9872 / 0.9870 / 0.9989 | 0.1365 |
+| H96 | R0 → R2-W | −0.24602 | −0.24966 | −0.13715 | 0.9995 / 1.0000 / 0.9993 | 0.0782 |
+| H96 | R2-U → R2-W | +0.00369 | −0.00254 | −0.00158 | 0.1801 / 0.5331 / 0.6434 | 0.8464 |
+| H720 | R1 → R2-U | −0.03522 | −0.03318 | −0.01572 | 0.9974 / 0.9856 / 0.9593 | 0.5663 |
+| H720 | R1 → R2-W | −0.03229 | −0.03655 | −0.01731 | 0.9884 / 0.9978 / 0.9755 | 0.5515 |
+| H720 | R0 → R1 | −0.27223 | −0.27054 | −0.13544 | 0.9940 / 0.9935 / 0.9917 | 0.0818 |
+| H720 | R0 → R2-W | −0.30452 | −0.30709 | −0.15275 | 1.0000 / 1.0000 / 0.9981 | 0.0384 |
+| H720 | R2-U → R2-W | +0.00293 | −0.00337 | −0.00159 | 0.1547 / 0.6096 / 0.6187 | 0.8380 |
+
+### Sanity Checks
+All twelve pre-registered checks pass.
+
+1. R2-W softmax re-normalised over the whole selected set each greedy step
+   (unit test: w[0] 1.000 → 0.982 when a second candidate is added).
+2. Production path unchanged apart from `forced_idx` — scores, weighting, gate,
+   fusion identical (unit-tested against the real retrieval call).
+3. Stage-2 `state_dict` SHA256 re-verified after every arm; unchanged.
+4. P100 identical across arms (deterministic construction, unit-tested).
+5. Valid mask identical across arms; `queries_dropped_below_k = 0` at both horizons.
+6. R2-target == R2-relation under the self-only graph (unit test).
+7. `I = A_u + V_u`: max residual 6.41e-07 (H96), 6.56e-07 (H720).
+8. `I_w = A_w + V_w`: max residual 6.11e-07 (H96), 5.96e-07 (H720).
+9. `base_mse` identical across all arms: 0.647403 (H96), 0.671841 (H720).
+10. `tau_topk = 0.1` for every arm.
+11. `fusion_mode = residual`, `gate_mode = scalar`.
+12. `relation_top_n = 1`, sources self-only — logged and flagged.
+
+Repository suite: `425 passed, 2 failed`; the two failures are the pre-existing
+ones at HEAD `c306def`. 29 of the passing tests are new
+(`tests/test_oracle_intervention.py`).
+
+### Implementation Notes
+New `utils/oracle_intervention.py` (support construction, per-arm selection,
+uniform/weighted decomposition, overlap, degeneracy detection). The selectors
+themselves are imported from `models/RelationStage1.py`, not reimplemented.
+`retrieve_relation_future` gained a `forced_idx` argument that replaces the
+Top-K while leaving scores, weighting and every downstream read identical.
+`RelationStage2.set_forced_selection`, driver `Exp_Stage2_Relation.oracle_intervention`,
+four CLI flags with early validation, `scripts/run_oracle_intervention.sh`.
+
+**Two implementation bugs were caught before any result was accepted:**
+
+1. *Checkpoint silently not loaded.* The Stage-2 checkpoint stores weights under
+   `model_state_dict`, not `state_dict`; the first loader matched neither and
+   `strict=False` let all 36 tensors go missing. The first run therefore executed
+   on a randomly initialised Stage-2. The loader now raises on any missing key.
+2. *Forced selection not reaching the forward pass.* `retrieve_relation_future`
+   is called from two places; only `build_retrieval_cache` had been wired, so the
+   first successful-looking run returned a byte-identical Final MSE (0.374692)
+   for all five arms while the retrieval-quality metrics moved. Both call sites
+   are now wired, and the driver raises if every arm returns an identical
+   `ret_mse` — the signature this failure produces.
+
+### Status
+completed
+
+
+## CONFLICT-001 — `relation_top_n` is not constant across campaigns
+
+### Date
+2026-09-02 (raised before EXP-1 was run; recorded rather than silently merged)
+
+### What conflicts
+
+`research/REVIEW_FOR_CHATGPT.md` and `research/EXPERIMENT_LOG.md` state
+`relation_top_n=3` as a single generic configuration covering everything. That is
+wrong: the two campaigns used different relation structures, and the REVIEW's own
+*Key Configuration* paragraph contradicts itself — it says `relation_top_n=3`
+while quoting the memory bank as `(7, 1, 8449, 128)`, whose second axis **is** the
+source-slot count.
+
+### Evidence — [repo] key-bank shapes read from the logs
+
+| Campaign | Key bank | `relation_top_n` | Sources |
+|---|---|---|---|
+| Pre-campaign (`RESULTS_SUMMARY.md`, through 2026-08-04), e.g. `logs/ETTh1/run_chronos_t5_base_concat_seqeqpred_all.log` | `(7, 3, 8449, 1536)` | **3** | self + 2 cross-channel |
+| 2026-09 corrected learned-score Stage-2 (`logs/stage2_learned_score_corrected_selection/`) | `(7, 1, 7201, 128)` | **1** | **self only** |
+| 2026-09 pre-fix learned-score Stage-2 (`logs/stage2_learned_score/`) | `(7, 1, 7969, 128)` | **1** | self only |
+| 2026-09 `e2_loss` | `(7, 1, 7201, 128)` | **1** | self only |
+| Set-oracle diagnostic (`scripts/run_set_oracle.sh`) | — | **1** (explicit flag) | self only |
+
+The relation graph confirms it: `metrics/relation_graphs/ETTh1/pearson_self_top1.json`
+has `sources = [[0],[1],[2],[3],[4],[5],[6]]`, every entry `is_self=1`.
+`pearson_self_top3.csv` does contain real cross sources (HUFL←MUFL ρ=0.984), but
+no 2026-09 run used it.
+
+### Consequence
+
+**The entire 2026-09 diagnostic campaign is a self-retrieval experiment.** It does
+not exercise cross-channel retrieval at all — the mechanism the manuscript names
+as the project's first contribution. Specifically:
+
+- Findings B1–B17 were produced under `relation_top_n=1`, self-only.
+- The pre-campaign findings (A1–A6, `RESULTS_SUMMARY.md`) were produced under
+  `relation_top_n=3` with cross-channel sources active.
+- **These two groups are therefore not directly comparable**, and no 2026-09
+  result may be cited as evidence about cross-channel contribution.
+
+A further consequence, specific to EXP-1: under a self-only graph
+`[target ‖ source] = [target ‖ target]`, so the relation space is the target
+space duplicated and a relation-space set oracle is identical to a target-space
+one. Verified in `tests/test_oracle_intervention.py`.
+
+### Resolution
+
+Not merged. The three configurations are to be documented separately —
+*generic/older diagnostics*, *corrected learned-score Stage-2*, and *oracle
+intervention* — when the documents are updated after EXP-1, with provenance kept
+rather than numbers overwritten. Cross-channel re-verification at
+`relation_top_n=3` is a separate future experiment and must not be mixed into
+EXP-1.
+
+### Status
+open — documents not yet corrected (deferred to the post-EXP-1 update)
+
+
+
 ## EXP-C01 — 2026-09 retrieval-transfer diagnostic campaign
 
 ### Date

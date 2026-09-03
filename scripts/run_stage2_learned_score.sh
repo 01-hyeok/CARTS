@@ -46,6 +46,16 @@ GRAPH_ARGS=(); [ -n "${GRAPH}" ] && GRAPH_ARGS=(--relation_graph_path "${GRAPH}"
 SEED="${SEED:-0}"
 PRED_LENS=(${PRED_LENS:-96 192 336 720})
 MODES=(${MODES:-stage2 e2e})
+# Stage-2 does not compute retrieval recall unless asked. Turning it on gives a
+# second, independent reading of the wiring: the recall is measured on the Top-K
+# the forward pass actually selected, so a configured scorer that never reached
+# selection would show up here even if the Stage-1 recall looked healthy.
+# Only valid with a frozen retrieval backbone, which is the stage2 mode.
+if [ "${ORACLE_EVAL:-0}" = "1" ]; then
+  ORACLE_ARGS=(--oracle_candidate_eval 1)
+else
+  ORACLE_ARGS=()
+fi
 # arm = score:loss   (score in cosine|asymmetric|pair2, loss in kl|wce)
 ARMS=(${ARMS:-cosine:kl cosine:wce asymmetric:kl asymmetric:wce pair2:kl pair2:wce})
 EPOCHS="${EPOCHS:-10}"; PATIENCE="${PATIENCE:-3}"
@@ -61,8 +71,8 @@ stage1_dir(){
   case "${score}:${loss}" in
     cosine:kl)      tag="${COS_KL_TAG:-e2_cos_kl}" ;;
     cosine:wce)     tag="${COS_WCE_TAG:-e2_cos_weighted_topk_ce}" ;;
-    pair2:kl)       tag="e2_pair2_kl" ;;
-    pair2:wce)      tag="e2_pair2_weighted_topk_ce" ;;
+    pair2:kl)       tag="${PAIR2_KL_TAG:-e2_pair2_kl}" ;;
+    pair2:wce)      tag="${PAIR2_WCE_TAG:-e2_pair2_weighted_topk_ce}" ;;
     # The E2 loss sweep trained both asymmetric arms under the same protocol, and
     # its kl checkpoints reproduce the on-demand ones to six decimals. Using them
     # keeps one source and is the only place pred192 exists.
@@ -123,7 +133,7 @@ for PRED in "${PRED_LENS[@]}"; do
           --stage2_e2e "${E2E}" \
           --refresh_memory_every_epoch "${E2E}" \
           --stage2_e2e_full_online "${E2E}" \
-          "${SCORE_ARGS[@]}" \
+          "${SCORE_ARGS[@]}" "${ORACLE_ARGS[@]}" \
           --des "s2ls${RUN_TAG}_${SHORT}_${DATASET}_sl${PRED}_pl${PRED}" || exit 21
         echo "### RUN COMPLETE ${DATASET}/pred${PRED}/${SHORT} $(date -Is)"
       } 2>&1 | tee "${LOG}"

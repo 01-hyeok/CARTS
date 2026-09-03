@@ -3,7 +3,8 @@ import torch.nn.functional as F
 
 
 def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_topk,
-                             similarity='cosine', soft_all=False, score_fn=None):
+                             similarity='cosine', soft_all=False, score_fn=None,
+                             forced_idx=None):
     """Retrieve target-channel futures by similarity over the candidate bank.
 
     Args:
@@ -28,6 +29,11 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
             rather than k, so a temperature tuned for Top-K leaves the weights
             spread over hundreds of them. Top-K indices are still computed for
             the recall and oracle diagnostics.
+        forced_idx: [B, k] candidate indices to use *instead of* the Top-K of
+            `scores`. The scores, the weighting and every value read downstream
+            are computed exactly as they otherwise would be -- only which
+            candidates are selected changes. That is what makes a selection-rule
+            intervention causal, so nothing else may branch on this argument.
     """
     bsz, num_memory = valid_mask.shape
     k = min(int(top_k), int(num_memory))
@@ -62,7 +68,14 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
 
     # Kept in both modes: recall@k and the oracle metrics are defined on the
     # Top-K set, and soft_all still needs them to stay comparable.
-    top_scores, top_idx = torch.topk(scores, k=k, dim=-1)
+    if forced_idx is None:
+        top_scores, top_idx = torch.topk(scores, k=k, dim=-1)
+    else:
+        if forced_idx.shape[0] != bsz:
+            raise ValueError(
+                f'forced_idx batch {forced_idx.shape[0]} != {bsz}')
+        top_idx = forced_idx.to(scores.device)
+        top_scores = scores.gather(-1, top_idx)
     top_valid = top_scores > masked_fill / 2
     v_top = memory_value_c[top_idx]
 

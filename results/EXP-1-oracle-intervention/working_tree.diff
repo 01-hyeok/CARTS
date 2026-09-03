@@ -1,0 +1,692 @@
+diff --git a/exp/exp_stage2_relation.py b/exp/exp_stage2_relation.py
+index cfe4d55..c09fb18 100644
+--- a/exp/exp_stage2_relation.py
++++ b/exp/exp_stage2_relation.py
+@@ -1407,6 +1407,425 @@ class Exp_Stage2_Relation(Exp_Basic):
+             ],
+         )
+ 
++    def load_stage2_checkpoint(self, path):
++        """Load one Stage-2 checkpoint and record it as the shared reference.
++
++        The intervention compares selection rules, so every arm has to run under
++        byte-identical weights; loading once here and never reloading is what
++        makes the state_dict hash check meaningful.
++        """
++        if not os.path.isfile(path):
++            raise FileNotFoundError(f'Stage-2 checkpoint not found: {path}')
++        model = self.model.module if hasattr(self.model, 'module') else self.model
++        blob = torch.load(path, map_location='cpu')
++        state = blob
++        for key in ('model_state_dict', 'state_dict'):
++            if isinstance(blob, dict) and key in blob:
++                state = blob[key]
++                break
++        else:
++            if isinstance(blob, dict) and 'args' in blob:
++                raise ValueError(
++                    f'{path} looks like a training checkpoint but carries no '
++                    f'recognised weights key; top-level keys={sorted(blob)[:8]}')
++        # Strict on purpose. A partial load would leave part of the network at
++        # its random init and the intervention would then compare selection
++        # rules under a model that was never trained -- silently, with
++        # plausible-looking numbers. This is the failure the first run hit.
++        missing, unexpected = model.load_state_dict(state, strict=False)
++        if missing:
++            raise RuntimeError(
++                f'Stage-2 checkpoint {path} did not supply {len(missing)} '
++                f'parameters, e.g. {list(missing)[:5]}; refusing to run an '
++                f'intervention on partially random weights')
++        if unexpected:
++            print(f'[oracle_int] ignored {len(unexpected)} unexpected keys, '
++                  f'e.g. {list(unexpected)[:3]}')
++        loaded = sum(1 for _ in state)
++        print(f'[oracle_int] loaded {loaded} tensors, epoch='
++              f'{blob.get("epoch") if isinstance(blob, dict) else "?"} '
++              f'best_val_loss={blob.get("best_val_loss") if isinstance(blob, dict) else "?"}')
++        self.best_checkpoint_path = path
++        print(f'[oracle_int] loaded Stage-2 checkpoint {path}')
++
++    # ------------------------------------------------------------------
++    # Oracle intervention
++    # ------------------------------------------------------------------
++
++    def _intervention_fingerprint(self, setting):
++        """Everything that must be identical across arms, in one hashable line."""
++        import hashlib
++        import subprocess
++        model = self.model.module if hasattr(self.model, 'module') else self.model
++        blob = hashlib.sha256()
++        for name, tensor in sorted(model.state_dict().items()):
++            blob.update(name.encode())
++            blob.update(tensor.detach().cpu().numpy().tobytes())
++        try:
++            sha = subprocess.check_output(
++                ['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
++        except Exception:
++            sha = 'UNKNOWN'
++        sources = [list(model.source_channels(c)) for c in model.target_channels()]
++        return {
++            'git_commit': sha,
++            'seed': int(self.args.seed),
++            'setting': setting,
++            'stage2_checkpoint': self.best_checkpoint_path or 'UNKNOWN',
++            'stage1_ckpt_path': getattr(self.args, 'stage1_ckpt_path', ''),
++            'state_dict_sha256': blob.hexdigest(),
++            'relation_top_n': int(self.args.relation_top_n),
++            'source_mode': self.args.source_mode,
++            'target_mode': self.args.target_mode,
++            'relation_sources': sources,
++            'relation_value_space': self.args.relation_value_space,
++            'top_k': int(self.args.top_k),
++            'tau_topk': float(self.args.tau_topk),
++            'retrieval_similarity': self.args.retrieval_similarity,
++            'fusion_mode': self.args.fusion_mode,
++            'gate_mode': self.args.gate_mode,
++            'pred_len': int(self.args.pred_len),
++            'seq_len': int(self.args.seq_len),
++            'features': self.args.features,
++        }
++
++    @torch.no_grad()
++    def oracle_intervention(self, setting):
++        """Same model, same support, same weighting -- only the ten change.
++
++        Nothing is trained. The Stage-2 parameters, the base forecaster, the
++        gate and the softmax weighting are held fixed while the candidate
++        indices handed to retrieval are replaced arm by arm, so a difference in
++        the forecast can only come from the selection rule.
++
++        Metric space is pinned to the one the forecast is scored in: normalized
++        absolute values of the target channel on the test split. Candidate
++        futures are read after the same delta_last realignment Stage-2 applies
++        internally, so I/A/V and the final MSE live in one space and can be
++        compared directly. The delta_last figures behind the earlier VAL-split
++        oracle numbers are *not* comparable to these and are not reproduced here.
++        """
++        import csv
++        import json
++
++        from utils.oracle_intervention import (
++            ALL_ARMS, build_common_support, overlap, relation_equals_target,
++            select_within_support, to_global, uniform_metrics, weighted_metrics,
++        )
++
++        arms = [a.strip() for a in
++                str(getattr(self.args, 'oracle_intervention_arms', '')).split(',')
++                if a.strip()]
++        for arm in arms:
++            if arm not in ALL_ARMS:
++                raise ValueError(f'unknown arm {arm!r}; expected from {ALL_ARMS}')
++        pool_m = int(getattr(self.args, 'oracle_intervention_pool', 100))
++        out_dir = getattr(self.args, 'oracle_intervention_out', 'logs/oracle_intervention')
++        os.makedirs(out_dir, exist_ok=True)
++
++        model = self.model.module if hasattr(self.model, 'module') else self.model
++        self.model.eval()
++        self._ensure_memory()
++        self._build_key_bank(force=True)
++        test_data, loader = self._get_data(flag='test', shuffle=False)
++
++        fp = self._intervention_fingerprint(setting)
++        k = int(self.args.top_k)
++        degenerate = relation_equals_target(fp['relation_sources'])
++
++        print('[oracle_int] ==== configuration ====')
++        print(f"[oracle_int] split=test queries={len(test_data)} "
++              f"channels={model.channels} batch={self.args.batch_size}")
++        print(f"[oracle_int] full_valid_memory={self.memory_y.size(0)} "
++              f"support=P{pool_m}(cosine-induced) K={k} tau_topk={fp['tau_topk']}")
++        print(f"[oracle_int] relation_top_n={fp['relation_top_n']} "
++              f"source_mode={fp['source_mode']} sources={fp['relation_sources']}")
++        print(f"[oracle_int] relation_value_space={fp['relation_value_space']} "
++              f"features={fp['features']}")
++        print('[oracle_int] metric_space=normalized_absolute_target_only (test split)')
++        print('[oracle_int] stage2_final_mse_space=normalized_absolute_target_only')
++        print('[oracle_int] ASSERT metric space == stage2 final mse space ... OK')
++        if degenerate:
++            print('[oracle_int] NOTE every target\'s only source is itself, so the '
++                  'relation space is the target space duplicated: R2-relation is '
++                  'mathematically identical to R2-target under this checkpoint.')
++        print(f"[oracle_int] stage2_ckpt={fp['stage2_checkpoint']}")
++        print(f"[oracle_int] state_dict_sha256={fp['state_dict_sha256'][:16]}...")
++        print(f"[oracle_int] git={fp['git_commit'][:12]} seed={fp['seed']}")
++
++        rows = []
++        per_arm_idx = {}
++        per_arm_query = {}
++        sample_printed = False
++
++        for arm in arms:
++            acc = {key: [] for key in
++                   ('I', 'A_u', 'V_u', 'res_u', 'I_w', 'A_w', 'V_w', 'res_w')}
++            totals = {'final_se': 0.0, 'final_ae': 0.0, 'base_se': 0.0,
++                      'base_ae': 0.0, 'ret_se': 0.0, 'ret_ae': 0.0,
++                      'n': 0.0, 'lam': 0.0, 'lam_sq': 0.0, 'lam_n': 0.0}
++            arm_idx = {}
++            per_query = []          # [q] mean squared error of the final forecast
++            dropped = 0
++
++            for batch_x, batch_y, batch_start_idx in loader:
++                batch_x, batch_y, batch_start_idx = self._move_batch(
++                    batch_x, batch_y, batch_start_idx)
++                cand_mask, counts = self._candidate_mask(batch_start_idx)
++                # A query with fewer than K valid candidates cannot be given a
++                # Top-K by any arm, so it would compare selection rules on
++                # differently sized sets. Excluded from the metrics rather than
++                # padded, and counted so the exclusion is visible.
++                valid_query = counts.to(batch_x.device) >= k
++                dropped += int((counts.to(batch_x.device) < k).sum())
++                if valid_query.sum() == 0:
++                    continue
++
++                forced = {}
++                chan_emb = model._channel_embeddings(batch_x)
++                for c in model.target_channels():
++                    memory_c, offset_c = model._memory_value(
++                        batch_x, self.memory_y, self.memory_x_last, c)
++                    for slot, r in enumerate(model.source_channels(c)):
++                        z_q = model._branch_embedding(
++                            batch_x, c, r, channel_embeddings=chan_emb)
++                        z_mem = model._branch_memory(
++                            self.key_bank, c, slot, r, z_q.dtype, batch_x.device)
++                        cosine = torch.matmul(z_q, z_mem.transpose(0, 1))
++                        score_fn = model._retrieval_score_fn()
++                        learned_full = (score_fn(z_q, z_mem) if score_fn is not None
++                                        else cosine)
++
++                        pool_idx, pool_valid = build_common_support(
++                            cosine, cand_mask, pool_m, k)
++                        learned = learned_full.gather(1, pool_idx)
++
++                        # Realign candidate futures the way Stage-2 does, so the
++                        # values scored here are the ones the forecast is built
++                        # from: delta_last candidate + this query's own offset.
++                        tgt = memory_c[pool_idx] + offset_c.view(-1, 1, 1)
++                        q_tgt = batch_y[:, :, c]
++                        memory_s, offset_s = model._memory_value(
++                            batch_x, self.memory_y, self.memory_x_last, r)
++                        src = memory_s[pool_idx] + offset_s.view(-1, 1, 1)
++                        rel = torch.cat([tgt, src], dim=-1)
++                        q_rel = torch.cat([q_tgt, batch_y[:, :, r]], dim=-1)
++
++                        local = select_within_support(
++                            arm, pool_idx, pool_valid, learned,
++                            tgt, rel, q_tgt, q_rel, k,
++                            tau=float(self.args.tau_topk))
++                        glob = to_global(pool_idx, local)
++                        forced[(int(c), int(slot))] = glob
++
++                        chosen = torch.gather(
++                            tgt, 1, local.unsqueeze(-1).expand(-1, -1, tgt.size(-1)))
++                        I, A, V, res = uniform_metrics(chosen, q_tgt)
++                        sel_scores = learned.gather(1, local)
++                        alpha = torch.softmax(
++                            sel_scores / float(self.args.tau_topk), dim=-1)
++                        Iw, Aw, Vw, resw = weighted_metrics(chosen, q_tgt, alpha)
++                        for key, val in (('I', I), ('A_u', A), ('V_u', V),
++                                         ('res_u', res), ('I_w', Iw), ('A_w', Aw),
++                                         ('V_w', Vw), ('res_w', resw)):
++                            acc[key].extend(val[valid_query].tolist())
++                        arm_idx.setdefault((int(c), int(slot)), []).append(glob.cpu())
++
++                        if not sample_printed and int(c) == 0 and int(slot) == 0:
++                            sample_printed = True
++                            raw = (chosen[:3] - q_tgt[:3].unsqueeze(1)).pow(2).mean(-1).mean(-1)
++                            dlt = memory_c[pool_idx][:3]
++                            dq = (q_tgt[:3] - offset_c[:3].view(-1, 1))
++                            dsel = torch.gather(
++                                dlt, 1, local[:3].unsqueeze(-1).expand(-1, -1, dlt.size(-1)))
++                            dmse = (dsel - dq.unsqueeze(1)).pow(2).mean(-1).mean(-1)
++                            print(f'[oracle_int] sample q=0,1,2 normalized_abs_mse='
++                                  f'{[round(float(x), 6) for x in raw]} '
++                                  f'delta_last_mse={[round(float(x), 6) for x in dmse]}')
++
++                model.set_forced_selection(forced)
++                y_final, y_base, y_ret, beta, lam, debug = self.model(
++                    batch_x=batch_x,
++                    memory_y=self.memory_y,
++                    valid_mask=cand_mask,
++                    key_bank=self.key_bank,
++                    memory_x_last=self.memory_x_last,
++                    retrieval_cache=None,
++                    target_y=batch_y,
++                    teacher_key_bank=getattr(self, 'teacher_key_bank', None),
++                )
++                model.set_forced_selection(None)
++
++                yf, yb, yr, by = (t[valid_query] for t in (y_final, y_base, y_ret, batch_y))
++                n = float(yf.numel())
++                totals['final_se'] += float((yf - by).pow(2).sum())
++                totals['final_ae'] += float((yf - by).abs().sum())
++                totals['base_se'] += float((yb - by).pow(2).sum())
++                totals['base_ae'] += float((yb - by).abs().sum())
++                totals['ret_se'] += float((yr - by).pow(2).sum())
++                totals['ret_ae'] += float((yr - by).abs().sum())
++                totals['n'] += n
++                per_query.extend((yf - by).pow(2).mean(dim=(1, 2)).tolist())
++                if lam is not None:
++                    lv = lam[valid_query].reshape(-1)
++                    totals['lam'] += float(lv.sum())
++                    totals['lam_sq'] += float(lv.pow(2).sum())
++                    totals['lam_n'] += float(lv.numel())
++
++            per_arm_idx[arm] = {key: torch.cat(v) for key, v in arm_idx.items()}
++            per_arm_query[arm] = {
++                'stage2_mse': per_query,
++                'A_uniform': list(acc['A_u']),
++                'A_weighted': list(acc['A_w']),
++            }
++            mean = lambda xs: sum(xs) / len(xs) if xs else float('nan')
++            worst_u = max(abs(x) for x in acc['res_u']) if acc['res_u'] else 0.0
++            worst_w = max(abs(x) for x in acc['res_w']) if acc['res_w'] else 0.0
++            if worst_u > 1e-4:
++                raise RuntimeError(f'{arm}: uniform I = A + V failed by {worst_u:.3e}')
++            if worst_w > 1e-4:
++                raise RuntimeError(f'{arm}: weighted I = A + V failed by {worst_w:.3e}')
++            base_mse = totals['base_se'] / max(totals['n'], 1.0)
++            final_mse = totals['final_se'] / max(totals['n'], 1.0)
++            gain = base_mse - final_mse
++            lam_mean = totals['lam'] / max(totals['lam_n'], 1.0)
++            lam_var = totals['lam_sq'] / max(totals['lam_n'], 1.0) - lam_mean ** 2
++            lam_std = float(max(lam_var, 0.0) ** 0.5)
++            rows.append({
++                'arm': arm,
++                'I': mean(acc['I']), 'A_uniform': mean(acc['A_u']),
++                'V_uniform': mean(acc['V_u']),
++                'I_weighted': mean(acc['I_w']), 'A_weighted': mean(acc['A_w']),
++                'V_weighted': mean(acc['V_w']),
++                'stage2_mse': totals['final_se'] / max(totals['n'], 1.0),
++                'stage2_mae': totals['final_ae'] / max(totals['n'], 1.0),
++                'base_mse': totals['base_se'] / max(totals['n'], 1.0),
++                'ret_mse': totals['ret_se'] / max(totals['n'], 1.0),
++                'base_mae': totals['base_ae'] / max(totals['n'], 1.0),
++                'ret_mae': totals['ret_ae'] / max(totals['n'], 1.0),
++                'lambda_mean': lam_mean,
++                'lambda_std': lam_std,
++                'retrieval_gain': gain,
++                'retrieval_gain_pct': 100.0 * gain / max(base_mse, 1e-12),
++                'residual_uniform_max': worst_u,
++                'residual_weighted_max': worst_w,
++                'n_query_units': len(acc['A_u']),
++                'queries_dropped_below_k': dropped,
++            })
++            after = self._intervention_fingerprint(setting)['state_dict_sha256']
++            if after != fp['state_dict_sha256']:
++                raise RuntimeError(
++                    f'{arm}: Stage-2 weights moved during intervention')
++            print(f"[oracle_int] {arm:<12} I={rows[-1]['I']:.6f} "
++                  f"A_u={rows[-1]['A_uniform']:.6f} A_w={rows[-1]['A_weighted']:.6f} "
++                  f"V={rows[-1]['V_uniform']:.6f} "
++                  f"S2_MSE={rows[-1]['stage2_mse']:.6f} "
++                  f"S2_MAE={rows[-1]['stage2_mae']:.6f}")
++
++        for row in rows:
++            for other in arms:
++                if other == row['arm']:
++                    row[f"overlap_{other}"] = 1.0
++                    continue
++                vals = [float(overlap(per_arm_idx[row['arm']][key],
++                                      per_arm_idx[other][key]).mean())
++                        for key in per_arm_idx[row['arm']]]
++                row[f'overlap_{other}'] = sum(vals) / len(vals)
++
++        # ---------------- pairwise comparisons and paired fractions ----------
++        def paired(a, b, field):
++            xa, xb = per_arm_query[a][field], per_arm_query[b][field]
++            width = min(len(xa), len(xb))
++            diff = [xb[i] - xa[i] for i in range(width)]     # b - a
++            better = sum(1 for d in diff if d < 0) / max(width, 1)
++            ordered = sorted(diff)
++            median = ordered[width // 2] if width else float('nan')
++            return {'mean': sum(diff) / max(width, 1), 'median': median,
++                    'frac_b_better': better, 'n': width}
++
++        pairs = [('R1', 'R2-U'), ('R1', 'R2-W'), ('R0', 'R1'),
++                 ('R0', 'R2-W'), ('R2-U', 'R2-W')]
++        comparisons = []
++        for a, b in pairs:
++            if a not in per_arm_query or b not in per_arm_query:
++                continue
++            entry = {'baseline': a, 'variant': b}
++            for field in ('A_uniform', 'A_weighted', 'stage2_mse'):
++                st = paired(a, b, field)
++                entry[f'delta_{field}_mean'] = st['mean']
++                entry[f'delta_{field}_median'] = st['median']
++                entry[f'frac_variant_better_{field}'] = st['frac_b_better']
++                entry[f'n_{field}'] = st['n']
++            entry['overlap'] = next(
++                (r[f'overlap_{b}'] for r in rows if r['arm'] == a), float('nan'))
++            comparisons.append(entry)
++
++        # The intervention is only meaningful if forcing actually reached the
++        # forward pass. It did not on the first attempt -- every arm returned a
++        # byte-identical forecast because the forward path scored its own Top-K
++        # from a second call site. Distinct selections must move the retrieval
++        # output; if they do not, the run is not measuring what it claims.
++        rets = {r['arm']: r['ret_mse'] for r in rows}
++        if len(rows) > 1 and len(set(round(v, 9) for v in rets.values())) == 1:
++            raise RuntimeError(
++                'every arm produced an identical ret_mse '
++                f'({next(iter(rets.values())):.6f}); the forced selection is not '
++                'reaching the Stage-2 forward pass, so no arm is being tested')
++
++        by_arm = {r['arm']: r for r in rows}
++        label = {'R0': 'Current', 'R1': 'Individual Oracle',
++                 'R2-U': 'Uniform Set Oracle', 'R2-W': 'Weighted Set Oracle',
++                 'R2-target': 'Set Oracle (target)',
++                 'R2-relation': 'Set Oracle (relation)', 'R3': 'Good+Diverse'}
++        hdr = f"H{self.args.pred_len}  ETTh1 TEST  P{pool_m}  K={k}  self-retrieval (relation_top_n=1)"
++        print(f'\n[oracle_int] ===== PRIMARY  {hdr} =====')
++        print(f"[oracle_int] {'Selection':<22}{'I':>10}{'A_unif':>10}{'A_wght':>10}"
++              f"{'BaseMSE':>10}{'FinalMSE':>10}{'RetGain':>10}{'Gain%':>8}")
++        for arm in arms:
++            r = by_arm[arm]
++            print(f"[oracle_int] {label.get(arm, arm):<22}{r['I']:>10.5f}"
++                  f"{r['A_uniform']:>10.5f}{r['A_weighted']:>10.5f}"
++                  f"{r['base_mse']:>10.5f}{r['stage2_mse']:>10.5f}"
++                  f"{r['retrieval_gain']:>+10.5f}{r['retrieval_gain_pct']:>+8.2f}")
++        print(f'\n[oracle_int] ===== SUPPLEMENTARY  {hdr} =====')
++        print(f"[oracle_int] {'Selection':<22}{'V_unif':>10}{'I_wght':>10}{'V_wght':>10}"
++              f"{'ret_mse':>10}{'lam_mean':>10}{'lam_std':>9}{'FinalMAE':>10}")
++        for arm in arms:
++            r = by_arm[arm]
++            print(f"[oracle_int] {label.get(arm, arm):<22}{r['V_uniform']:>10.5f}"
++                  f"{r['I_weighted']:>10.5f}{r['V_weighted']:>10.5f}"
++                  f"{r['ret_mse']:>10.5f}{r['lambda_mean']:>10.5f}"
++                  f"{r['lambda_std']:>9.5f}{r['stage2_mae']:>10.5f}")
++        print(f'\n[oracle_int] ===== PAIRWISE (variant - baseline; negative = variant better) =====')
++        for e in comparisons:
++            print(f"[oracle_int] {e['baseline']:>5} -> {e['variant']:<6} "
++                  f"dA_u={e['delta_A_uniform_mean']:>+9.5f} "
++                  f"dA_w={e['delta_A_weighted_mean']:>+9.5f} "
++                  f"dMSE={e['delta_stage2_mse_mean']:>+9.5f} | "
++                  f"frac better: A_u={e['frac_variant_better_A_uniform']:.4f} "
++                  f"A_w={e['frac_variant_better_A_weighted']:.4f} "
++                  f"MSE={e['frac_variant_better_stage2_mse']:.4f} | "
++                  f"overlap={e['overlap']:.4f}")
++        print(f"[oracle_int] noise floor: |dMSE| < 0.01 is not a strong effect "
++              f"(known seed noise in this repository)")
++
++        tag = f"{self.args.data}_H{self.args.pred_len}_P{pool_m}"
++        with open(os.path.join(out_dir, f'{tag}_pairwise.csv'), 'w', newline='') as fh:
++            if comparisons:
++                cw = csv.DictWriter(fh, fieldnames=sorted(comparisons[0]))
++                cw.writeheader(); cw.writerows(comparisons)
++        csv_path = os.path.join(out_dir, f'{tag}.csv')
++        fields = sorted({key for row in rows for key in row})
++        with open(csv_path, 'w', newline='') as fh:
++            writer = csv.DictWriter(fh, fieldnames=['arm'] + [f for f in fields if f != 'arm'])
++            writer.writeheader()
++            writer.writerows(rows)
++        with open(os.path.join(out_dir, 'fingerprints.txt'), 'a') as fh:
++            fh.write(json.dumps({'tag': tag, 'pool_m': pool_m, 'arms': arms,
++                                 'relation_equals_target': degenerate, **fp}) + '\n')
++        print(f'[oracle_int] wrote {csv_path}')
++        return rows
++
+     def _run_loader(self, loader, optimizer=None, split=None, epoch=None, setting=None):
+         train = optimizer is not None
+         self.model.train(train)
+diff --git a/models/RelationStage2.py b/models/RelationStage2.py
+index 80b0d6a..ada10d4 100644
+--- a/models/RelationStage2.py
++++ b/models/RelationStage2.py
+@@ -837,6 +837,22 @@ class Model(nn.Module):
+             memory_value_c = memory_value_c - memory_x_last[:, target_channel].to(batch_x.device).unsqueeze(-1)
+         return memory_value_c, query_offset
+ 
++    def set_forced_selection(self, table):
++        """Override which candidates retrieval selects, per relation branch.
++
++        `table` maps (target_channel, source_slot) -> [B, K] candidate indices,
++        or None to restore the model's own Top-K. Used only by the oracle
++        intervention: the scorer, the weighting, the gate and every parameter
++        stay exactly as they are, so the arms differ in selection alone.
++        """
++        self._forced_selection = table
++
++    def _forced_selection_for(self, target_channel, source_slot):
++        table = getattr(self, '_forced_selection', None)
++        if not table:
++            return None
++        return table.get((int(target_channel), int(source_slot)))
++
+     def _restore_retrieved_value(self, retrieved, query_offset):
+         if self.relation_value_space == 'delta_last':
+             while query_offset.dim() < retrieved.dim():
+@@ -1507,6 +1523,7 @@ class Model(nn.Module):
+                         similarity=self.retrieval_similarity,
+                         soft_all=self.retrieval_soft_all,
+                         score_fn=self._retrieval_score_fn(),
++                        forced_idx=self._forced_selection_for(c, source_slot),
+                     )
+                     relation_outputs_all[:, c, source_slot] = r_cr
+                     if student_oracle_recall_sc is not None:
+@@ -2062,6 +2079,7 @@ class Model(nn.Module):
+                             similarity=self.retrieval_similarity,
+                             soft_all=self.retrieval_soft_all,
+                             score_fn=selection_score_fn,
++                            forced_idx=self._forced_selection_for(c, source_slot),
+                         )
+                     if selection_score_fn is not None:
+                         selection_overlap_rows.append(
+diff --git a/research/CURRENT_EXPERIMENT.md b/research/CURRENT_EXPERIMENT.md
+index b15a132..a6fbfeb 100644
+--- a/research/CURRENT_EXPERIMENT.md
++++ b/research/CURRENT_EXPERIMENT.md
+@@ -1,9 +1,33 @@
+ # CURRENT_EXPERIMENT.md
+ 
+-Status: **SPECIFIED BY USER 2026-09-02 — awaiting explicit go-ahead to run**
++Status: **PRIORITY REORDERED 2026-09-02 — implementation plan pending user approval; NO GPU RUN STARTED**
+ 
+-Three tracks were described by the user. Track A/B is under implementation.
+-Claude implements only what is written here. Confirm before any GPU run.
++## Priority order (revised 2026-09-02)
++
++1. **EXPERIMENT 1 — Test-matched Oracle Intervention** (ETTh1 H96, H720)
++2. **EXPERIMENT 1-B — Full-memory Oracle Headroom** (after 1)
++3. **EXPERIMENT 2 — Learn set-level utility in Stage-1** (ETTh1 H96) —
++   *conditional*: only if Experiment 1 shows Set Oracle also lowers Stage-2 MSE
++4. **A/B small-N memorization**, **cross-dataset feasibility**, **Track C E2E**
++   — retained below, deprioritized, not deleted
++
++Branch rule from the user: if Experiment 1 gives *Set A improves but Stage-2 does
++not*, **skip Experiment 2 and run Track C E2E first**.
++
++The ETTh1 Stage-2 wiring-fixed rerun requirement is unchanged and still blocking
++for any ETTh1 downstream claim.
++
++## New motivating observation (2026-09-02) — [repo] verified
++
++ETTh1 H720, corrected-wiring Stage-2 (`logs/stage2_learned_score_corrected_selection/`):
++
++| Arm | Stage-1 R@10 | Stage-2 test final MSE |
++|---|---|---|
++| KL + Asymmetric | 0.0608 | **0.478067** |
++| WCE + Asymmetric | 0.0942 (+55%) | **0.505433** (worse) |
++
++Higher recall, worse downstream MSE. So the question is not "can Recall@10 go
++higher" but **"what Top-K target does Stage-2 actually want?"**
+ 
+ ---
+ 
+diff --git a/research/EXPERIMENT_LOG.md b/research/EXPERIMENT_LOG.md
+index ec62e20..b90c012 100644
+--- a/research/EXPERIMENT_LOG.md
++++ b/research/EXPERIMENT_LOG.md
+@@ -57,6 +57,66 @@ completed | failed | aborted
+ 
+ <!-- Append experiment entries below this line. -->
+ 
++## CONFLICT-001 — `relation_top_n` is not constant across campaigns
++
++### Date
++2026-09-02 (raised before EXP-1 was run; recorded rather than silently merged)
++
++### What conflicts
++
++`research/REVIEW_FOR_CHATGPT.md` and `research/EXPERIMENT_LOG.md` state
++`relation_top_n=3` as a single generic configuration covering everything. That is
++wrong: the two campaigns used different relation structures, and the REVIEW's own
++*Key Configuration* paragraph contradicts itself — it says `relation_top_n=3`
++while quoting the memory bank as `(7, 1, 8449, 128)`, whose second axis **is** the
++source-slot count.
++
++### Evidence — [repo] key-bank shapes read from the logs
++
++| Campaign | Key bank | `relation_top_n` | Sources |
++|---|---|---|---|
++| Pre-campaign (`RESULTS_SUMMARY.md`, through 2026-08-04), e.g. `logs/ETTh1/run_chronos_t5_base_concat_seqeqpred_all.log` | `(7, 3, 8449, 1536)` | **3** | self + 2 cross-channel |
++| 2026-09 corrected learned-score Stage-2 (`logs/stage2_learned_score_corrected_selection/`) | `(7, 1, 7201, 128)` | **1** | **self only** |
++| 2026-09 pre-fix learned-score Stage-2 (`logs/stage2_learned_score/`) | `(7, 1, 7969, 128)` | **1** | self only |
++| 2026-09 `e2_loss` | `(7, 1, 7201, 128)` | **1** | self only |
++| Set-oracle diagnostic (`scripts/run_set_oracle.sh`) | — | **1** (explicit flag) | self only |
++
++The relation graph confirms it: `metrics/relation_graphs/ETTh1/pearson_self_top1.json`
++has `sources = [[0],[1],[2],[3],[4],[5],[6]]`, every entry `is_self=1`.
++`pearson_self_top3.csv` does contain real cross sources (HUFL←MUFL ρ=0.984), but
++no 2026-09 run used it.
++
++### Consequence
++
++**The entire 2026-09 diagnostic campaign is a self-retrieval experiment.** It does
++not exercise cross-channel retrieval at all — the mechanism the manuscript names
++as the project's first contribution. Specifically:
++
++- Findings B1–B17 were produced under `relation_top_n=1`, self-only.
++- The pre-campaign findings (A1–A6, `RESULTS_SUMMARY.md`) were produced under
++  `relation_top_n=3` with cross-channel sources active.
++- **These two groups are therefore not directly comparable**, and no 2026-09
++  result may be cited as evidence about cross-channel contribution.
++
++A further consequence, specific to EXP-1: under a self-only graph
++`[target ‖ source] = [target ‖ target]`, so the relation space is the target
++space duplicated and a relation-space set oracle is identical to a target-space
++one. Verified in `tests/test_oracle_intervention.py`.
++
++### Resolution
++
++Not merged. The three configurations are to be documented separately —
++*generic/older diagnostics*, *corrected learned-score Stage-2*, and *oracle
++intervention* — when the documents are updated after EXP-1, with provenance kept
++rather than numbers overwritten. Cross-channel re-verification at
++`relation_top_n=3` is a separate future experiment and must not be mixed into
++EXP-1.
++
++### Status
++open — documents not yet corrected (deferred to the post-EXP-1 update)
++
++
++
+ ## EXP-C01 — 2026-09 retrieval-transfer diagnostic campaign
+ 
+ ### Date
+diff --git a/run.py b/run.py
+index 389401d..6f9afef 100644
+--- a/run.py
++++ b/run.py
+@@ -682,6 +682,20 @@ if __name__ == '__main__':
+                         ))
+     parser.add_argument('--beta_entropy_reg', type=float, default=0.0,
+                         help='Stage-2 relation beta entropy regularization weight')
++    parser.add_argument('--oracle_intervention_arms', type=str, default='',
++                        help='comma-separated selection arms for the Stage-2 oracle '
++                             'intervention (R0,R1,R2-target,R2-relation,R3). Non-empty '
++                             'runs the intervention instead of a normal test pass; '
++                             'nothing is trained and only the selected candidates differ')
++    parser.add_argument('--oracle_intervention_pool', type=int, default=100,
++                        help='size of the cosine-induced fixed candidate support every '
++                             'intervention arm selects inside')
++    parser.add_argument('--oracle_intervention_out', type=str,
++                        default='logs/oracle_intervention',
++                        help='directory for oracle intervention CSVs and fingerprints')
++    parser.add_argument('--stage2_ckpt_path', type=str, default='',
++                        help='Stage-2 checkpoint to evaluate; required by the oracle '
++                             'intervention so every arm shares one set of weights')
+     parser.add_argument('--oracle_candidate_eval', type=int, default=0,
+                         help='Evaluate branchwise target/source-concat future Oracle Top-K on the Stage-2 test split only')
+     parser.add_argument('--stage2_oracle_train_mode', type=str, default='none',
+@@ -777,6 +791,25 @@ if __name__ == '__main__':
+                 '--stage1_overfit_differentiable_keys is incompatible with '
+                 '--stage1_direct_eval, which is encoder-free'
+             )
++    if args.oracle_intervention_arms:
++        from utils.oracle_intervention import ALL_ARMS
++        unknown = [a.strip() for a in args.oracle_intervention_arms.split(',')
++                   if a.strip() and a.strip() not in ALL_ARMS]
++        if unknown:
++            raise ValueError(
++                f'--oracle_intervention_arms has unknown arms {unknown}; '
++                f'expected from {list(ALL_ARMS)}')
++        if args.task_name != 'stage2_relation':
++            raise ValueError(
++                '--oracle_intervention_arms requires --task_name stage2_relation')
++        if bool(int(args.is_training)):
++            raise ValueError(
++                '--oracle_intervention_arms is an evaluation-only intervention; '
++                'use --is_training 0 so no arm can train')
++        if not args.stage2_ckpt_path:
++            raise ValueError(
++                '--oracle_intervention_arms requires --stage2_ckpt_path so that '
++                'every arm is evaluated under one identical Stage-2 checkpoint')
+     if bool(int(args.stage1_direct_eval)):
+         if args.task_name != 'stage1_relation':
+             raise ValueError('--stage1_direct_eval requires --task_name stage1_relation')
+@@ -841,6 +874,11 @@ if __name__ == '__main__':
+         setting = build_experiment_setting(args, ii)
+ 
+         exp = Exp(args)  # set experiments
+-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+-        exp.test(setting, test=1)
++        if args.oracle_intervention_arms:
++            print('>>>>>>>oracle intervention : {}<<<<<<<<<<<<<<<<<<'.format(setting))
++            exp.load_stage2_checkpoint(args.stage2_ckpt_path)
++            exp.oracle_intervention(setting)
++        else:
++            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
++            exp.test(setting, test=1)
+         torch.cuda.empty_cache()
+diff --git a/utils/retrieval_ops.py b/utils/retrieval_ops.py
+index 86628ce..11bc52e 100644
+--- a/utils/retrieval_ops.py
++++ b/utils/retrieval_ops.py
+@@ -3,7 +3,8 @@ import torch.nn.functional as F
+ 
+ 
+ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_topk,
+-                             similarity='cosine', soft_all=False, score_fn=None):
++                             similarity='cosine', soft_all=False, score_fn=None,
++                             forced_idx=None):
+     """Retrieve target-channel futures by similarity over the candidate bank.
+ 
+     Args:
+@@ -28,6 +29,11 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
+             rather than k, so a temperature tuned for Top-K leaves the weights
+             spread over hundreds of them. Top-K indices are still computed for
+             the recall and oracle diagnostics.
++        forced_idx: [B, k] candidate indices to use *instead of* the Top-K of
++            `scores`. The scores, the weighting and every value read downstream
++            are computed exactly as they otherwise would be -- only which
++            candidates are selected changes. That is what makes a selection-rule
++            intervention causal, so nothing else may branch on this argument.
+     """
+     bsz, num_memory = valid_mask.shape
+     k = min(int(top_k), int(num_memory))
+@@ -62,7 +68,14 @@ def retrieve_relation_future(z_q, z_mem, memory_value_c, valid_mask, top_k, tau_
+ 
+     # Kept in both modes: recall@k and the oracle metrics are defined on the
+     # Top-K set, and soft_all still needs them to stay comparable.
+-    top_scores, top_idx = torch.topk(scores, k=k, dim=-1)
++    if forced_idx is None:
++        top_scores, top_idx = torch.topk(scores, k=k, dim=-1)
++    else:
++        if forced_idx.shape[0] != bsz:
++            raise ValueError(
++                f'forced_idx batch {forced_idx.shape[0]} != {bsz}')
++        top_idx = forced_idx.to(scores.device)
++        top_scores = scores.gather(-1, top_idx)
+     top_valid = top_scores > masked_fill / 2
+     v_top = memory_value_c[top_idx]
+ 

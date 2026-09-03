@@ -216,6 +216,9 @@ if __name__ == '__main__':
                         help=('Additive weight on the expected-future-MSE term for '
                               'wce_expected_mse. Separate from --expected_mse_weight, which '
                               'kl_expected_mse mixes convexly and so caps at 1'))
+    parser.add_argument('--stage1_wce_weight', type=float, default=1.0,
+                        help='scale on the WCE term under wce_soft_set_mse; 0.0 gives '
+                             'a pure soft_set_mse arm without reimplementing the loss')
     parser.add_argument('--stage1_set_mse_weight', type=float, default=0.0,
                         help=('lambda on the set-level term. The cross-entropy sits near 7 and the '
                               'normalised set MSE near 0.2, so parity needs roughly 30-40, not 0.5'))
@@ -682,6 +685,20 @@ if __name__ == '__main__':
                         ))
     parser.add_argument('--beta_entropy_reg', type=float, default=0.0,
                         help='Stage-2 relation beta entropy regularization weight')
+    parser.add_argument('--oracle_intervention_arms', type=str, default='',
+                        help='comma-separated selection arms for the Stage-2 oracle '
+                             'intervention (R0,R1,R2-target,R2-relation,R3). Non-empty '
+                             'runs the intervention instead of a normal test pass; '
+                             'nothing is trained and only the selected candidates differ')
+    parser.add_argument('--oracle_intervention_pool', type=int, default=100,
+                        help='size of the cosine-induced fixed candidate support every '
+                             'intervention arm selects inside')
+    parser.add_argument('--oracle_intervention_out', type=str,
+                        default='logs/oracle_intervention',
+                        help='directory for oracle intervention CSVs and fingerprints')
+    parser.add_argument('--stage2_ckpt_path', type=str, default='',
+                        help='Stage-2 checkpoint to evaluate; required by the oracle '
+                             'intervention so every arm shares one set of weights')
     parser.add_argument('--oracle_candidate_eval', type=int, default=0,
                         help='Evaluate branchwise target/source-concat future Oracle Top-K on the Stage-2 test split only')
     parser.add_argument('--stage2_oracle_train_mode', type=str, default='none',
@@ -777,6 +794,25 @@ if __name__ == '__main__':
                 '--stage1_overfit_differentiable_keys is incompatible with '
                 '--stage1_direct_eval, which is encoder-free'
             )
+    if args.oracle_intervention_arms:
+        from utils.oracle_intervention import ALL_ARMS
+        unknown = [a.strip() for a in args.oracle_intervention_arms.split(',')
+                   if a.strip() and a.strip() not in ALL_ARMS]
+        if unknown:
+            raise ValueError(
+                f'--oracle_intervention_arms has unknown arms {unknown}; '
+                f'expected from {list(ALL_ARMS)}')
+        if args.task_name != 'stage2_relation':
+            raise ValueError(
+                '--oracle_intervention_arms requires --task_name stage2_relation')
+        if bool(int(args.is_training)):
+            raise ValueError(
+                '--oracle_intervention_arms is an evaluation-only intervention; '
+                'use --is_training 0 so no arm can train')
+        if not args.stage2_ckpt_path:
+            raise ValueError(
+                '--oracle_intervention_arms requires --stage2_ckpt_path so that '
+                'every arm is evaluated under one identical Stage-2 checkpoint')
     if bool(int(args.stage1_direct_eval)):
         if args.task_name != 'stage1_relation':
             raise ValueError('--stage1_direct_eval requires --task_name stage1_relation')
@@ -841,6 +877,11 @@ if __name__ == '__main__':
         setting = build_experiment_setting(args, ii)
 
         exp = Exp(args)  # set experiments
-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, test=1)
+        if args.oracle_intervention_arms:
+            print('>>>>>>>oracle intervention : {}<<<<<<<<<<<<<<<<<<'.format(setting))
+            exp.load_stage2_checkpoint(args.stage2_ckpt_path)
+            exp.oracle_intervention(setting)
+        else:
+            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+            exp.test(setting, test=1)
         torch.cuda.empty_cache()

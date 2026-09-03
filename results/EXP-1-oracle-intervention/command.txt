@@ -1,0 +1,4 @@
+source /data/pjh_workspace/ts-env/bin/activate
+PREDS="96"  GPU=1 bash scripts/run_oracle_intervention.sh
+PREDS="720" GPU=1 bash scripts/run_oracle_intervention.sh
+# arms default: R0,R1,R2-U,R2-W,R3   pool: P100   K: 10

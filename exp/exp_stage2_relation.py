@@ -1407,6 +1407,492 @@ class Exp_Stage2_Relation(Exp_Basic):
             ],
         )
 
+    def load_stage2_checkpoint(self, path):
+        """Load one Stage-2 checkpoint and record it as the shared reference.
+
+        The intervention compares selection rules, so every arm has to run under
+        byte-identical weights; loading once here and never reloading is what
+        makes the state_dict hash check meaningful.
+        """
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f'Stage-2 checkpoint not found: {path}')
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        blob = torch.load(path, map_location='cpu')
+        state = blob
+        for key in ('model_state_dict', 'state_dict'):
+            if isinstance(blob, dict) and key in blob:
+                state = blob[key]
+                break
+        else:
+            if isinstance(blob, dict) and 'args' in blob:
+                raise ValueError(
+                    f'{path} looks like a training checkpoint but carries no '
+                    f'recognised weights key; top-level keys={sorted(blob)[:8]}')
+        # Strict on purpose. A partial load would leave part of the network at
+        # its random init and the intervention would then compare selection
+        # rules under a model that was never trained -- silently, with
+        # plausible-looking numbers. This is the failure the first run hit.
+        missing, unexpected = model.load_state_dict(state, strict=False)
+        if missing:
+            raise RuntimeError(
+                f'Stage-2 checkpoint {path} did not supply {len(missing)} '
+                f'parameters, e.g. {list(missing)[:5]}; refusing to run an '
+                f'intervention on partially random weights')
+        if unexpected:
+            print(f'[oracle_int] ignored {len(unexpected)} unexpected keys, '
+                  f'e.g. {list(unexpected)[:3]}')
+        loaded = sum(1 for _ in state)
+        print(f'[oracle_int] loaded {loaded} tensors, epoch='
+              f'{blob.get("epoch") if isinstance(blob, dict) else "?"} '
+              f'best_val_loss={blob.get("best_val_loss") if isinstance(blob, dict) else "?"}')
+        self.best_checkpoint_path = path
+        print(f'[oracle_int] loaded Stage-2 checkpoint {path}')
+
+    # ------------------------------------------------------------------
+    # Oracle intervention
+    # ------------------------------------------------------------------
+
+    def _intervention_fingerprint(self, setting):
+        """Everything that must be identical across arms, in one hashable line."""
+        import hashlib
+        import subprocess
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        blob = hashlib.sha256()
+        for name, tensor in sorted(model.state_dict().items()):
+            blob.update(name.encode())
+            blob.update(tensor.detach().cpu().numpy().tobytes())
+        try:
+            sha = subprocess.check_output(
+                ['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
+        except Exception:
+            sha = 'UNKNOWN'
+        sources = [list(model.source_channels(c)) for c in model.target_channels()]
+        return {
+            'git_commit': sha,
+            'seed': int(self.args.seed),
+            'setting': setting,
+            'stage2_checkpoint': self.best_checkpoint_path or 'UNKNOWN',
+            'stage1_ckpt_path': getattr(self.args, 'stage1_ckpt_path', ''),
+            'state_dict_sha256': blob.hexdigest(),
+            'relation_top_n': int(self.args.relation_top_n),
+            'source_mode': self.args.source_mode,
+            'target_mode': self.args.target_mode,
+            'relation_sources': sources,
+            'relation_value_space': self.args.relation_value_space,
+            'top_k': int(self.args.top_k),
+            'tau_topk': float(self.args.tau_topk),
+            'retrieval_similarity': self.args.retrieval_similarity,
+            'fusion_mode': self.args.fusion_mode,
+            'gate_mode': self.args.gate_mode,
+            'pred_len': int(self.args.pred_len),
+            'seq_len': int(self.args.seq_len),
+            'features': self.args.features,
+        }
+
+    @torch.no_grad()
+    def oracle_intervention(self, setting):
+        """Same model, same support, same weighting -- only the ten change.
+
+        Nothing is trained. The Stage-2 parameters, the base forecaster, the
+        gate and the softmax weighting are held fixed while the candidate
+        indices handed to retrieval are replaced arm by arm, so a difference in
+        the forecast can only come from the selection rule.
+
+        Metric space is pinned to the one the forecast is scored in: normalized
+        absolute values of the target channel on the test split. Candidate
+        futures are read after the same delta_last realignment Stage-2 applies
+        internally, so I/A/V and the final MSE live in one space and can be
+        compared directly. The delta_last figures behind the earlier VAL-split
+        oracle numbers are *not* comparable to these and are not reproduced here.
+        """
+        import csv
+        import json
+
+        from utils.oracle_intervention import (
+            ALL_ARMS, build_common_support, overlap, relation_equals_target,
+            select_within_support, to_global, uniform_metrics, weighted_metrics,
+        )
+
+        arms = [a.strip() for a in
+                str(getattr(self.args, 'oracle_intervention_arms', '')).split(',')
+                if a.strip()]
+        for arm in arms:
+            if arm not in ALL_ARMS:
+                raise ValueError(f'unknown arm {arm!r}; expected from {ALL_ARMS}')
+        pool_m = int(getattr(self.args, 'oracle_intervention_pool', 100))
+        full_memory = pool_m <= 0
+        out_dir = getattr(self.args, 'oracle_intervention_out', 'logs/oracle_intervention')
+        os.makedirs(out_dir, exist_ok=True)
+
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        self.model.eval()
+        self._ensure_memory()
+        self._build_key_bank(force=True)
+        test_data, loader = self._get_data(flag='test', shuffle=False)
+
+        # Sized only after the memory exists; a full-memory support is simply a
+        # support as wide as the bank, so the same code path serves both.
+        if full_memory:
+            pool_m = int(self.memory_y.size(0))
+        pool_label = 'FULL' if full_memory else f'P{pool_m}'
+
+        fp = self._intervention_fingerprint(setting)
+        k = int(self.args.top_k)
+        degenerate = relation_equals_target(fp['relation_sources'])
+
+        print('[oracle_int] ==== configuration ====')
+        print(f"[oracle_int] split=test queries={len(test_data)} "
+              f"channels={model.channels} batch={self.args.batch_size}")
+        support_desc = ('FULL MEMORY (every valid candidate)' if full_memory
+                        else f'P{pool_m} (cosine-induced fixed common support)')
+        print(f"[oracle_int] full_valid_memory={self.memory_y.size(0)} "
+              f"support={support_desc} K={k} tau_topk={fp['tau_topk']}")
+        if not full_memory:
+            print('[oracle_int] NOTE a P-support result bounds what a selector could '
+                  'do given what cosine offered; it is NOT a full-memory oracle.')
+        else:
+            print('[oracle_int] support = FULL')
+            counts, energies = [], []
+            for _bx, _by, _bs in loader:
+                _bx, _by, _bs = self._move_batch(_bx, _by, _bs)
+                _, cnt = self._candidate_mask(_bs)
+                counts.extend(cnt.reshape(-1).tolist())
+                delta = _by - _bx[:, -1:, :]
+                energies.append((float((_by ** 2).mean()), float(_by.var()),
+                                 float((delta ** 2).mean()), _by.size(0)))
+            tot = sum(e[3] for e in energies)
+            wmean = lambda i: sum(e[i] * e[3] for e in energies) / max(tot, 1)
+            print(f'[oracle_int] total_memory={self.memory_y.size(0)} '
+                  f'queries={len(counts)}')
+            print(f'[oracle_int] valid_candidates mean={sum(counts)/max(len(counts),1):.1f} '
+                  f'min={min(counts) if counts else 0} max={max(counts) if counts else 0}')
+            print(f'[oracle_int] queries_with_valid_lt_{k}='
+                  f'{sum(1 for c in counts if c < k)}')
+            print(f'[oracle_int] target mean(Yq^2)={wmean(0):.5f} '
+                  f'var(Yq)={wmean(1):.5f} delta_last_energy={wmean(2):.5f}')
+        print(f"[oracle_int] relation_top_n={fp['relation_top_n']} "
+              f"source_mode={fp['source_mode']} sources={fp['relation_sources']}")
+        print(f"[oracle_int] relation_value_space={fp['relation_value_space']} "
+              f"features={fp['features']}")
+        print('[oracle_int] metric_space=normalized_absolute_target_only (test split)')
+        print('[oracle_int] stage2_final_mse_space=normalized_absolute_target_only')
+        print('[oracle_int] ASSERT metric space == stage2 final mse space ... OK')
+        if degenerate:
+            print('[oracle_int] NOTE every target\'s only source is itself, so the '
+                  'relation space is the target space duplicated: R2-relation is '
+                  'mathematically identical to R2-target under this checkpoint.')
+        print(f"[oracle_int] stage2_ckpt={fp['stage2_checkpoint']}")
+        print(f"[oracle_int] state_dict_sha256={fp['state_dict_sha256'][:16]}...")
+        print(f"[oracle_int] git={fp['git_commit'][:12]} seed={fp['seed']}")
+
+        rows = []
+        per_arm_idx = {}
+        per_arm_query = {}
+        per_query_rows = []
+        sample_printed = False
+
+        for arm in arms:
+            acc = {key: [] for key in
+                   ('I', 'A_u', 'V_u', 'res_u', 'I_w', 'A_w', 'V_w', 'res_w')}
+            totals = {'final_se': 0.0, 'final_ae': 0.0, 'base_se': 0.0,
+                      'base_ae': 0.0, 'ret_se': 0.0, 'ret_ae': 0.0,
+                      'n': 0.0, 'lam': 0.0, 'lam_sq': 0.0, 'lam_n': 0.0}
+            arm_idx = {}
+            per_query = []          # [q] mean squared error of the final forecast
+            dropped = 0
+
+            for batch_x, batch_y, batch_start_idx in loader:
+                batch_x, batch_y, batch_start_idx = self._move_batch(
+                    batch_x, batch_y, batch_start_idx)
+                cand_mask, counts = self._candidate_mask(batch_start_idx)
+                # A query with fewer than K valid candidates cannot be given a
+                # Top-K by any arm, so it would compare selection rules on
+                # differently sized sets. Excluded from the metrics rather than
+                # padded, and counted so the exclusion is visible.
+                valid_query = counts.to(batch_x.device) >= k
+                dropped += int((counts.to(batch_x.device) < k).sum())
+                if valid_query.sum() == 0:
+                    continue
+
+                forced = {}
+                chan_emb = model._channel_embeddings(batch_x)
+                for c in model.target_channels():
+                    memory_c, offset_c = model._memory_value(
+                        batch_x, self.memory_y, self.memory_x_last, c)
+                    for slot, r in enumerate(model.source_channels(c)):
+                        z_q = model._branch_embedding(
+                            batch_x, c, r, channel_embeddings=chan_emb)
+                        z_mem = model._branch_memory(
+                            self.key_bank, c, slot, r, z_q.dtype, batch_x.device)
+                        cosine = torch.matmul(z_q, z_mem.transpose(0, 1))
+                        score_fn = model._retrieval_score_fn()
+                        learned_full = (score_fn(z_q, z_mem) if score_fn is not None
+                                        else cosine)
+
+                        pool_idx, pool_valid = build_common_support(
+                            cosine, cand_mask, pool_m, k)
+                        learned = learned_full.gather(1, pool_idx)
+
+                        # Realign candidate futures the way Stage-2 does, so the
+                        # values scored here are the ones the forecast is built
+                        # from: delta_last candidate + this query's own offset.
+                        tgt = memory_c[pool_idx] + offset_c.view(-1, 1, 1)
+                        q_tgt = batch_y[:, :, c]
+                        if int(r) == int(c):
+                            # [target||target] gives the same mean squared error
+                            # as target alone, so the duplicate is skipped --
+                            # over a full memory bank it would double the
+                            # largest tensor in the loop for no information.
+                            rel, q_rel = tgt, q_tgt
+                        else:
+                            memory_s, offset_s = model._memory_value(
+                                batch_x, self.memory_y, self.memory_x_last, r)
+                            src = memory_s[pool_idx] + offset_s.view(-1, 1, 1)
+                            rel = torch.cat([tgt, src], dim=-1)
+                            q_rel = torch.cat([q_tgt, batch_y[:, :, r]], dim=-1)
+
+                        local = select_within_support(
+                            arm, pool_idx, pool_valid, learned,
+                            tgt, rel, q_tgt, q_rel, k,
+                            tau=float(self.args.tau_topk))
+                        glob = to_global(pool_idx, local)
+                        forced[(int(c), int(slot))] = glob
+
+                        chosen = torch.gather(
+                            tgt, 1, local.unsqueeze(-1).expand(-1, -1, tgt.size(-1)))
+                        I, A, V, res = uniform_metrics(chosen, q_tgt)
+                        sel_scores = learned.gather(1, local)
+                        alpha = torch.softmax(
+                            sel_scores / float(self.args.tau_topk), dim=-1)
+                        Iw, Aw, Vw, resw = weighted_metrics(chosen, q_tgt, alpha)
+                        for key, val in (('I', I), ('A_u', A), ('V_u', V),
+                                         ('res_u', res), ('I_w', Iw), ('A_w', Aw),
+                                         ('V_w', Vw), ('res_w', resw)):
+                            acc[key].extend(val[valid_query].tolist())
+                        vq_cpu = valid_query.detach().cpu()
+                        qids = batch_start_idx.detach().cpu(
+                            ).reshape(-1)[vq_cpu].tolist()
+                        for n, qid in enumerate(qids):
+                            per_query_rows.append({
+                                'arm': arm, 'query_start': int(qid),
+                                'target_channel': int(c), 'source_slot': int(slot),
+                                'I': float(I[valid_query][n]),
+                                'A_uniform': float(A[valid_query][n]),
+                                'V_uniform': float(V[valid_query][n]),
+                                'I_weighted': float(Iw[valid_query][n]),
+                                'A_weighted': float(Aw[valid_query][n]),
+                                'V_weighted': float(Vw[valid_query][n]),
+                                'alpha_sum': float(alpha[valid_query][n].sum()),
+                                'n_unique': int(len(set(
+                                    glob[valid_query][n].tolist()))),
+                            })
+                        arm_idx.setdefault((int(c), int(slot)), []).append(glob.cpu())
+
+                        if not sample_printed and int(c) == 0 and int(slot) == 0:
+                            sample_printed = True
+                            raw = (chosen[:3] - q_tgt[:3].unsqueeze(1)).pow(2).mean(-1).mean(-1)
+                            dlt = memory_c[pool_idx][:3]
+                            dq = (q_tgt[:3] - offset_c[:3].view(-1, 1))
+                            dsel = torch.gather(
+                                dlt, 1, local[:3].unsqueeze(-1).expand(-1, -1, dlt.size(-1)))
+                            dmse = (dsel - dq.unsqueeze(1)).pow(2).mean(-1).mean(-1)
+                            print(f'[oracle_int] sample q=0,1,2 normalized_abs_mse='
+                                  f'{[round(float(x), 6) for x in raw]} '
+                                  f'delta_last_mse={[round(float(x), 6) for x in dmse]}')
+
+                model.set_forced_selection(forced)
+                y_final, y_base, y_ret, beta, lam, debug = self.model(
+                    batch_x=batch_x,
+                    memory_y=self.memory_y,
+                    valid_mask=cand_mask,
+                    key_bank=self.key_bank,
+                    memory_x_last=self.memory_x_last,
+                    retrieval_cache=None,
+                    target_y=batch_y,
+                    teacher_key_bank=getattr(self, 'teacher_key_bank', None),
+                )
+                model.set_forced_selection(None)
+
+                yf, yb, yr, by = (t[valid_query] for t in (y_final, y_base, y_ret, batch_y))
+                n = float(yf.numel())
+                totals['final_se'] += float((yf - by).pow(2).sum())
+                totals['final_ae'] += float((yf - by).abs().sum())
+                totals['base_se'] += float((yb - by).pow(2).sum())
+                totals['base_ae'] += float((yb - by).abs().sum())
+                totals['ret_se'] += float((yr - by).pow(2).sum())
+                totals['ret_ae'] += float((yr - by).abs().sum())
+                totals['n'] += n
+                per_query.extend((yf - by).pow(2).mean(dim=(1, 2)).tolist())
+                if lam is not None:
+                    lv = lam[valid_query].reshape(-1)
+                    totals['lam'] += float(lv.sum())
+                    totals['lam_sq'] += float(lv.pow(2).sum())
+                    totals['lam_n'] += float(lv.numel())
+
+            per_arm_idx[arm] = {key: torch.cat(v) for key, v in arm_idx.items()}
+            per_arm_query[arm] = {
+                'stage2_mse': per_query,
+                'A_uniform': list(acc['A_u']),
+                'A_weighted': list(acc['A_w']),
+            }
+            mean = lambda xs: sum(xs) / len(xs) if xs else float('nan')
+            worst_u = max(abs(x) for x in acc['res_u']) if acc['res_u'] else 0.0
+            worst_w = max(abs(x) for x in acc['res_w']) if acc['res_w'] else 0.0
+            if worst_u > 1e-4:
+                raise RuntimeError(f'{arm}: uniform I = A + V failed by {worst_u:.3e}')
+            if worst_w > 1e-4:
+                raise RuntimeError(f'{arm}: weighted I = A + V failed by {worst_w:.3e}')
+            base_mse = totals['base_se'] / max(totals['n'], 1.0)
+            final_mse = totals['final_se'] / max(totals['n'], 1.0)
+            gain = base_mse - final_mse
+            lam_mean = totals['lam'] / max(totals['lam_n'], 1.0)
+            lam_var = totals['lam_sq'] / max(totals['lam_n'], 1.0) - lam_mean ** 2
+            lam_std = float(max(lam_var, 0.0) ** 0.5)
+            rows.append({
+                'arm': arm,
+                'I': mean(acc['I']), 'A_uniform': mean(acc['A_u']),
+                'V_uniform': mean(acc['V_u']),
+                'I_weighted': mean(acc['I_w']), 'A_weighted': mean(acc['A_w']),
+                'V_weighted': mean(acc['V_w']),
+                'stage2_mse': totals['final_se'] / max(totals['n'], 1.0),
+                'stage2_mae': totals['final_ae'] / max(totals['n'], 1.0),
+                'base_mse': totals['base_se'] / max(totals['n'], 1.0),
+                'ret_mse': totals['ret_se'] / max(totals['n'], 1.0),
+                'base_mae': totals['base_ae'] / max(totals['n'], 1.0),
+                'ret_mae': totals['ret_ae'] / max(totals['n'], 1.0),
+                'lambda_mean': lam_mean,
+                'lambda_std': lam_std,
+                'retrieval_gain': gain,
+                'retrieval_gain_pct': 100.0 * gain / max(base_mse, 1e-12),
+                'residual_uniform_max': worst_u,
+                'residual_weighted_max': worst_w,
+                'n_query_units': len(acc['A_u']),
+                'queries_dropped_below_k': dropped,
+            })
+            after = self._intervention_fingerprint(setting)['state_dict_sha256']
+            if after != fp['state_dict_sha256']:
+                raise RuntimeError(
+                    f'{arm}: Stage-2 weights moved during intervention')
+            print(f"[oracle_int] {arm:<12} I={rows[-1]['I']:.6f} "
+                  f"A_u={rows[-1]['A_uniform']:.6f} A_w={rows[-1]['A_weighted']:.6f} "
+                  f"V={rows[-1]['V_uniform']:.6f} "
+                  f"S2_MSE={rows[-1]['stage2_mse']:.6f} "
+                  f"S2_MAE={rows[-1]['stage2_mae']:.6f}")
+
+        for row in rows:
+            for other in arms:
+                if other == row['arm']:
+                    row[f"overlap_{other}"] = 1.0
+                    continue
+                vals = [float(overlap(per_arm_idx[row['arm']][key],
+                                      per_arm_idx[other][key]).mean())
+                        for key in per_arm_idx[row['arm']]]
+                row[f'overlap_{other}'] = sum(vals) / len(vals)
+
+        # ---------------- pairwise comparisons and paired fractions ----------
+        def paired(a, b, field):
+            xa, xb = per_arm_query[a][field], per_arm_query[b][field]
+            width = min(len(xa), len(xb))
+            diff = [xb[i] - xa[i] for i in range(width)]     # b - a
+            better = sum(1 for d in diff if d < 0) / max(width, 1)
+            ordered = sorted(diff)
+            median = ordered[width // 2] if width else float('nan')
+            return {'mean': sum(diff) / max(width, 1), 'median': median,
+                    'frac_b_better': better, 'n': width}
+
+        pairs = [('R1', 'R2-U'), ('R1', 'R2-W'), ('R0', 'R1'),
+                 ('R0', 'R2-W'), ('R2-U', 'R2-W')]
+        comparisons = []
+        for a, b in pairs:
+            if a not in per_arm_query or b not in per_arm_query:
+                continue
+            entry = {'baseline': a, 'variant': b}
+            for field in ('A_uniform', 'A_weighted', 'stage2_mse'):
+                st = paired(a, b, field)
+                entry[f'delta_{field}_mean'] = st['mean']
+                entry[f'delta_{field}_median'] = st['median']
+                entry[f'frac_variant_better_{field}'] = st['frac_b_better']
+                entry[f'n_{field}'] = st['n']
+            entry['overlap'] = next(
+                (r[f'overlap_{b}'] for r in rows if r['arm'] == a), float('nan'))
+            comparisons.append(entry)
+
+        # The intervention is only meaningful if forcing actually reached the
+        # forward pass. It did not on the first attempt -- every arm returned a
+        # byte-identical forecast because the forward path scored its own Top-K
+        # from a second call site. Distinct selections must move the retrieval
+        # output; if they do not, the run is not measuring what it claims.
+        rets = {r['arm']: r['ret_mse'] for r in rows}
+        if len(rows) > 1 and len(set(round(v, 9) for v in rets.values())) == 1:
+            raise RuntimeError(
+                'every arm produced an identical ret_mse '
+                f'({next(iter(rets.values())):.6f}); the forced selection is not '
+                'reaching the Stage-2 forward pass, so no arm is being tested')
+
+        by_arm = {r['arm']: r for r in rows}
+        label = {'R0': 'Current', 'R1': 'Individual Oracle',
+                 'R2-U': 'Uniform Set Oracle', 'R2-W': 'Weighted Set Oracle',
+                 'R2-target': 'Set Oracle (target)',
+                 'R2-relation': 'Set Oracle (relation)', 'R3': 'Good+Diverse'}
+        hdr = (f"{self.args.data}  H{self.args.pred_len}  TEST  {pool_label}  K={k}  "
+               f"relation_top_n={fp['relation_top_n']}"
+               + ("  self-retrieval" if degenerate else "  cross-channel"))
+        print(f'\n[oracle_int] ===== PRIMARY  {hdr} =====')
+        print(f"[oracle_int] {'Selection':<22}{'I':>10}{'A_unif':>10}{'A_wght':>10}"
+              f"{'BaseMSE':>10}{'FinalMSE':>10}{'RetGain':>10}{'Gain%':>8}")
+        for arm in arms:
+            r = by_arm[arm]
+            print(f"[oracle_int] {label.get(arm, arm):<22}{r['I']:>10.5f}"
+                  f"{r['A_uniform']:>10.5f}{r['A_weighted']:>10.5f}"
+                  f"{r['base_mse']:>10.5f}{r['stage2_mse']:>10.5f}"
+                  f"{r['retrieval_gain']:>+10.5f}{r['retrieval_gain_pct']:>+8.2f}")
+        print(f'\n[oracle_int] ===== SUPPLEMENTARY  {hdr} =====')
+        print(f"[oracle_int] {'Selection':<22}{'V_unif':>10}{'I_wght':>10}{'V_wght':>10}"
+              f"{'ret_mse':>10}{'lam_mean':>10}{'lam_std':>9}{'FinalMAE':>10}")
+        for arm in arms:
+            r = by_arm[arm]
+            print(f"[oracle_int] {label.get(arm, arm):<22}{r['V_uniform']:>10.5f}"
+                  f"{r['I_weighted']:>10.5f}{r['V_weighted']:>10.5f}"
+                  f"{r['ret_mse']:>10.5f}{r['lambda_mean']:>10.5f}"
+                  f"{r['lambda_std']:>9.5f}{r['stage2_mae']:>10.5f}")
+        print(f'\n[oracle_int] ===== PAIRWISE (variant - baseline; negative = variant better) =====')
+        for e in comparisons:
+            print(f"[oracle_int] {e['baseline']:>5} -> {e['variant']:<6} "
+                  f"dA_u={e['delta_A_uniform_mean']:>+9.5f} "
+                  f"dA_w={e['delta_A_weighted_mean']:>+9.5f} "
+                  f"dMSE={e['delta_stage2_mse_mean']:>+9.5f} | "
+                  f"frac better: A_u={e['frac_variant_better_A_uniform']:.4f} "
+                  f"A_w={e['frac_variant_better_A_weighted']:.4f} "
+                  f"MSE={e['frac_variant_better_stage2_mse']:.4f} | "
+                  f"overlap={e['overlap']:.4f}")
+        print(f"[oracle_int] noise floor: |dMSE| < 0.01 is not a strong effect "
+              f"(known seed noise in this repository)")
+
+        tag = f"{self.args.data}_H{self.args.pred_len}_{pool_label}"
+        with open(os.path.join(out_dir, f'{tag}_pairwise.csv'), 'w', newline='') as fh:
+            if comparisons:
+                cw = csv.DictWriter(fh, fieldnames=sorted(comparisons[0]))
+                cw.writeheader(); cw.writerows(comparisons)
+        pq_path = os.path.join(out_dir, f'{tag}_per_query.csv')
+        if per_query_rows:
+            with open(pq_path, 'w', newline='') as fh:
+                pw = csv.DictWriter(fh, fieldnames=list(per_query_rows[0]))
+                pw.writeheader(); pw.writerows(per_query_rows)
+            print(f'[oracle_int] wrote {pq_path} ({len(per_query_rows)} rows)')
+
+        csv_path = os.path.join(out_dir, f'{tag}.csv')
+        fields = sorted({key for row in rows for key in row})
+        with open(csv_path, 'w', newline='') as fh:
+            writer = csv.DictWriter(fh, fieldnames=['arm'] + [f for f in fields if f != 'arm'])
+            writer.writeheader()
+            writer.writerows(rows)
+        with open(os.path.join(out_dir, 'fingerprints.txt'), 'a') as fh:
+            fh.write(json.dumps({'tag': tag, 'pool_m': pool_m, 'arms': arms,
+                                 'support': pool_label, 'full_memory': full_memory,
+                                 'relation_equals_target': degenerate, **fp}) + '\n')
+        print(f'[oracle_int] wrote {csv_path}')
+        return rows
+
     def _run_loader(self, loader, optimizer=None, split=None, epoch=None, setting=None):
         train = optimizer is not None
         self.model.train(train)

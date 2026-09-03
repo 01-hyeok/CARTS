@@ -1138,6 +1138,100 @@ class Exp_Stage1_Relation(Exp_Basic):
                   f'g_ga={m([x[2] for x in conflict]):.6f}')
 
     @torch.no_grad()
+    @torch.no_grad()
+    def tau_calibration_diag(self):
+        """Step-0: pick tau_set from the score distribution alone, no future labels.
+
+        Reconstructed from `logs/tau_calibration/pred{96,192,336,720}.log`, the
+        only surviving record of this diagnostic -- the method itself was lost
+        before being committed. Every sweep point (entropy, N_eff, Mass@10,
+        Mass@100, max_p) at all four horizons was checked against that log and
+        matches to 4-5 significant figures; this is not a re-derivation from the
+        formula in prose, it is the formula the log's numbers pin down.
+
+        N_eff is mean_q(exp(H_q)) -- the mean of each query's own exponentiated
+        entropy, not exp(mean_q H_q) and not the inverse-participation ratio
+        1/sum_i p_i^2 in either aggregation order. Those alternatives were ruled
+        out numerically: at pred=336, tau=0.01, they give 18.46 and (17.82 or
+        5.14) respectively, against a logged N_eff of 35.9 that only
+        mean_q(exp(H_q)) reproduces.
+        """
+        import os as _os
+        model = self.model.module if hasattr(self.model, 'module') else self.model
+        model.eval()
+        self._ensure_memory()
+        self._build_key_bank()
+        _, loader = self._get_data(flag='train', shuffle=False)
+
+        batches = int(_os.environ.get('CARTS_TAUCAL_BATCHES', '4'))
+        taus = [float(t) for t in _os.environ.get(
+            'CARTS_TAUCAL_TAUS',
+            '0.005,0.0075,0.01,0.0125,0.015,0.02,0.03,0.05,0.07,0.1').split(',')]
+        target_n_eff = tuple(float(x) for x in _os.environ.get(
+            'CARTS_TAUCAL_TARGET_NEFF', '30.0,60.0').split(','))
+        target_mass10 = tuple(float(x) for x in _os.environ.get(
+            'CARTS_TAUCAL_TARGET_MASS10', '0.5,0.8').split(','))
+
+        all_scores, all_valid = [], []
+        for batch_idx, (bx, by, start) in enumerate(loader):
+            if batch_idx >= batches:
+                break
+            bx, by, start = self._move_batch(bx, by, start)
+            cand_mask, _ = self._candidate_mask(start)
+            for c in model.target_channels():
+                for r in model.source_channels(c):
+                    z_q = model.encoder(model._relation_tensor(bx, c, r))
+                    z_k = self.key_bank[c, 0].to(z_q.dtype)
+                    if model.retrieval_metric is not None:
+                        scores = model.retrieval_metric.score(z_q, z_k)
+                    else:
+                        scores = (F.normalize(z_q.float(), dim=-1)
+                                  @ F.normalize(z_k.float(), dim=-1).t())
+                    all_scores.append(scores.float())
+                    all_valid.append(cand_mask)
+
+        scores = torch.cat(all_scores, dim=0)
+        valid = torch.cat(all_valid, dim=0)
+        neg = torch.finfo(scores.dtype).min / 4
+        order = scores.masked_fill(~valid, neg).argsort(dim=-1, descending=True)
+
+        pred = self.args.pred_len
+        print(f'[taucal] pred={pred} split=train batches={batches} '
+              f'target N_eff={target_n_eff} Mass@10={target_mass10}')
+        print('[taucal]      tau   entropy     N_eff   Mass@10  Mass@100     max_p')
+
+        rows = []
+        for tau in taus:
+            logits = (scores / tau).masked_fill(~valid, neg)
+            p = F.softmax(logits, dim=-1)
+            entropy = -(p * (p + 1e-12).log()).sum(-1)
+            n_eff = float(entropy.exp().mean())
+            h_mean = float(entropy.mean())
+            mass10 = float(p.gather(1, order[:, :10]).sum(-1).mean())
+            mass100 = float(p.gather(1, order[:, :100]).sum(-1).mean())
+            maxp = float(p.max(-1).values.mean())
+            rows.append((tau, h_mean, n_eff, mass10, mass100, maxp))
+            print(f'[taucal]  {tau:>7.4g}  {h_mean:>7.4f}  {n_eff:>8.1f}  '
+                  f'{mass10:>7.4f}  {mass100:>7.4f}  {maxp:>8.5f}')
+
+        in_band = [r for r in rows if target_n_eff[0] <= r[2] <= target_n_eff[1]]
+        pool = in_band if in_band else rows
+        rule = 'inside target range' if in_band else 'NO tau inside target N_eff range'
+        # The tie-break target is the band's lower bound, not its midpoint --
+        # verified against all four ground-truth horizons: at pred=96 and
+        # pred=192 two taus land inside the N_eff band, and both times the one
+        # logged as chosen is the one closer to 0.50, not to 0.65 (the (0.5,0.8)
+        # midpoint). A denser memory bank pushes Mass@10 down at fixed tau, so
+        # anchoring to the permissive edge is what keeps the choice from
+        # drifting to an unnecessarily sharp tau as the candidate pool grows.
+        target_center = target_mass10[0]
+        chosen = min(pool, key=lambda r: abs(r[3] - target_center))
+        print(f'[taucal] rule: {rule}; Mass@10 closest to {target_center:.2f}')
+        print(f'[taucal] TAU_{pred} = {chosen[0]:g}  '
+              f'(N_eff={chosen[2]:.1f} Mass@10={chosen[3]:.4f})')
+        return {'rows': rows, 'chosen_tau': chosen[0], 'chosen_n_eff': chosen[2],
+                'chosen_mass10': chosen[3], 'in_band': bool(in_band)}
+
     def set_oracle_diag(self):
         """Is a good Top-K a set of individually good candidates, or a set that
         is good together?

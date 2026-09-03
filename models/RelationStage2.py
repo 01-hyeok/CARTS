@@ -837,6 +837,22 @@ class Model(nn.Module):
             memory_value_c = memory_value_c - memory_x_last[:, target_channel].to(batch_x.device).unsqueeze(-1)
         return memory_value_c, query_offset
 
+    def set_forced_selection(self, table):
+        """Override which candidates retrieval selects, per relation branch.
+
+        `table` maps (target_channel, source_slot) -> [B, K] candidate indices,
+        or None to restore the model's own Top-K. Used only by the oracle
+        intervention: the scorer, the weighting, the gate and every parameter
+        stay exactly as they are, so the arms differ in selection alone.
+        """
+        self._forced_selection = table
+
+    def _forced_selection_for(self, target_channel, source_slot):
+        table = getattr(self, '_forced_selection', None)
+        if not table:
+            return None
+        return table.get((int(target_channel), int(source_slot)))
+
     def _restore_retrieved_value(self, retrieved, query_offset):
         if self.relation_value_space == 'delta_last':
             while query_offset.dim() < retrieved.dim():
@@ -1507,6 +1523,7 @@ class Model(nn.Module):
                         similarity=self.retrieval_similarity,
                         soft_all=self.retrieval_soft_all,
                         score_fn=self._retrieval_score_fn(),
+                        forced_idx=self._forced_selection_for(c, source_slot),
                     )
                     relation_outputs_all[:, c, source_slot] = r_cr
                     if student_oracle_recall_sc is not None:
@@ -2062,6 +2079,7 @@ class Model(nn.Module):
                             similarity=self.retrieval_similarity,
                             soft_all=self.retrieval_soft_all,
                             score_fn=selection_score_fn,
+                            forced_idx=self._forced_selection_for(c, source_slot),
                         )
                     if selection_score_fn is not None:
                         selection_overlap_rows.append(

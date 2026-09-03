@@ -3289,6 +3289,7 @@ class Model(nn.Module):
         self.set_mse_normalization = getattr(configs, 'stage1_set_mse_normalization', 'mean')
         self.set_support_k = int(getattr(configs, 'stage1_set_support_k', 0))
         self.set_support_weight = float(getattr(configs, 'stage1_set_support_weight', 0.0))
+        self.wce_weight = float(getattr(configs, 'stage1_wce_weight', 1.0))
         if self.set_tau <= 0.0:
             raise ValueError('stage1_set_tau must be positive')
         if self.set_mse_normalization not in ('none', 'mean', 'median'):
@@ -4892,7 +4893,7 @@ class Model(nn.Module):
                         continue
 
                     zero_metric = coverage_loss.detach() * 0.0
-                    total_loss = coverage_loss + regularization_loss
+                    total_loss = self.wce_weight * coverage_loss + regularization_loss
                     set_metrics = {}
                     if self.loss_mode == 'oracle_imitation':
                         from_future = future_mse.detach()

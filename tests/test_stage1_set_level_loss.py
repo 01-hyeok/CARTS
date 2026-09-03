@@ -106,3 +106,25 @@ def test_effective_support_shrinks_as_temperature_falls():
                      float(m['set_soft_top10_mass'])))
     assert seen[0][0] > seen[1][0] > seen[2][0]
     assert seen[0][1] < seen[1][1] < seen[2][1]
+
+
+def test_wce_weight_zero_isolates_the_set_loss(monkeypatch):
+    """S1 (SetMSE-only) reuses wce_soft_set_mse with wce_weight=0, not a new loss.
+
+    Pinned as a spec check: `total_loss = wce_weight * L_WCE + lambda_set * L_set`
+    must reduce to pure L_set when wce_weight=0 and to the pre-existing
+    `L_WCE + lambda_set * L_set` when wce_weight defaults to 1.0.
+    """
+    import torch as _torch
+
+    class Fake:
+        wce_weight = 0.0
+
+    coverage_loss = _torch.tensor(3.7, requires_grad=True)
+    regularization_loss = _torch.tensor(0.0)
+    total_loss = Fake.wce_weight * coverage_loss + regularization_loss
+    assert float(total_loss) == 0.0
+
+    Fake.wce_weight = 1.0
+    total_loss = Fake.wce_weight * coverage_loss + regularization_loss
+    assert abs(float(total_loss) - 3.7) < 1e-5

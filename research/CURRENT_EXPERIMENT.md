@@ -1,9 +1,33 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **SPECIFIED BY USER 2026-09-02 — awaiting explicit go-ahead to run**
+Status: **PRIORITY REORDERED 2026-09-02 — implementation plan pending user approval; NO GPU RUN STARTED**
 
-Three tracks were described by the user. Track A/B is under implementation.
-Claude implements only what is written here. Confirm before any GPU run.
+## Priority order (revised 2026-09-02)
+
+1. **EXPERIMENT 1 — Test-matched Oracle Intervention** (ETTh1 H96, H720)
+2. **EXPERIMENT 1-B — Full-memory Oracle Headroom** (after 1)
+3. **EXPERIMENT 2 — Learn set-level utility in Stage-1** (ETTh1 H96) —
+   *conditional*: only if Experiment 1 shows Set Oracle also lowers Stage-2 MSE
+4. **A/B small-N memorization**, **cross-dataset feasibility**, **Track C E2E**
+   — retained below, deprioritized, not deleted
+
+Branch rule from the user: if Experiment 1 gives *Set A improves but Stage-2 does
+not*, **skip Experiment 2 and run Track C E2E first**.
+
+The ETTh1 Stage-2 wiring-fixed rerun requirement is unchanged and still blocking
+for any ETTh1 downstream claim.
+
+## New motivating observation (2026-09-02) — [repo] verified
+
+ETTh1 H720, corrected-wiring Stage-2 (`logs/stage2_learned_score_corrected_selection/`):
+
+| Arm | Stage-1 R@10 | Stage-2 test final MSE |
+|---|---|---|
+| KL + Asymmetric | 0.0608 | **0.478067** |
+| WCE + Asymmetric | 0.0942 (+55%) | **0.505433** (worse) |
+
+Higher recall, worse downstream MSE. So the question is not "can Recall@10 go
+higher" but **"what Top-K target does Stage-2 actually want?"**
 
 ---
 

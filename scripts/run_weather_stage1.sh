@@ -39,6 +39,11 @@ for PRED in "${PRED_LENS[@]}"; do
       cosine)     METRIC_ARGS=() ;;
       asymmetric) METRIC_ARGS=(--stage1_retrieval_metric asymmetric
                                --stage1_metric_output cosine --stage1_metric_layer_norm 0) ;;
+      # Same flags the ETTh1 sweep used for the pairwise-MLP arm, so the two
+      # datasets train the same scorer rather than two things sharing a name.
+      pair2)      METRIC_ARGS=(--stage1_retrieval_score pairwise_mlp
+                               --stage1_pairwise_feature pair2) ;;
+      *) echo "unknown score ${SCORE}" >&2; exit 2 ;;
     esac
     SHORT="${SCORE}_${LOSS_SHORT}"
     LOG="${DIR}/${SHORT}.log"; MARKER="${DIR}/${SHORT}.done"
@@ -52,7 +57,7 @@ for PRED in "${PRED_LENS[@]}"; do
         --model_id "carts_w1_${SHORT}_${DATASET}_${PRED}" --model RelationStage1 \
         --data custom --root_path "${ROOT}" --data_path "${DATASET}.csv" --features M \
         --seq_len "${PRED}" --label_len 0 --pred_len "${PRED}" \
-        --enc_in "${CHANNELS}" --batch_size 32 --num_workers 0 \
+        --enc_in "${CHANNELS}" --batch_size "${BS:-32}" --num_workers 0 \
         --d_model 128 --d_ff 256 --n_heads 4 --e_layers 2 \
         --patch_len 16 --stride 16 --seed "${SEED}" --candidate_mask raft \
         --relation_input_space delta_last --relation_teacher_space delta_last \
