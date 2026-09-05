@@ -300,10 +300,18 @@ class Exp_Stage2_Relation(Exp_Basic):
         if self.key_bank is not None and not force:
             return
         model = self.model.module if hasattr(self.model, 'module') else self.model
+        residual_cache = (
+            self._residual_teacher_cache()
+            if bool(int(getattr(self.args, 'stage2_candidate_residual_conditioning', 0)))
+            else None
+        )
         self.key_bank = model.build_memory_key_bank(
             self.memory_bank.memory_x,
             self.device,
             chunk_size=self.args.memory_chunk_size,
+            memory_residual=(
+                residual_cache['memory_residual'] if residual_cache is not None else None
+            ),
         )
         print(f'[stage2] built relation key memory bank: {tuple(self.key_bank.shape)}')
         if self._uses_ema_retrieval_teacher():
@@ -467,6 +475,10 @@ class Exp_Stage2_Relation(Exp_Basic):
             for batch_x, batch_y, batch_start_idx in loader:
                 batch_x, batch_y, batch_start_idx = self._move_batch(batch_x, batch_y, batch_start_idx)
                 cand_mask, counts = self._candidate_mask(batch_start_idx)
+                residual_extras = (
+                    self._residual_batch(split, batch_start_idx)
+                    if self._needs_live_residual_conditioning() else {}
+                )
                 cache = model.build_retrieval_cache(
                     batch_x=batch_x,
                     memory_y=self.memory_y,
@@ -479,6 +491,8 @@ class Exp_Stage2_Relation(Exp_Basic):
                         else None
                     ),
                     full_oracle_only=self._encoder_free_full_oracle(),
+                    query_residual=residual_extras.get('query_residual'),
+                    query_y=batch_y,
                 )
                 for key in cache_parts:
                     if key in cache:
@@ -523,18 +537,15 @@ class Exp_Stage2_Relation(Exp_Basic):
             selected['relation_outputs'] = selected[oracle_key]
         return selected
 
-    def _e2e_extras(self, split, batch_start_idx):
-        """Raw candidate windows and residual teachers for the end-to-end path."""
-        if not bool(int(getattr(self.args, 'stage2_e2e', 0))):
-            return {}
-        if not hasattr(self, '_candidate_x'):
-            self._candidate_x = torch.from_numpy(
-                self.memory_bank.memory_x).float().to(self.device)
-            print(f'[stage2] e2e candidate histories {tuple(self._candidate_x.shape)}')
-        extras = {'candidate_x': self._candidate_x}
+    def _residual_teacher_cache(self):
+        """Load-once cache of base-forecast residuals, shared by the e2e path
+        and by EXP-FRR01's R1/R2 conditioning at Stage-2 (which needs the same
+        data under the ordinary frozen-Stage-1 protocol, not only under
+        stage2_e2e). Returns None if --stage2_residual_cache is unset.
+        """
         root = getattr(self.args, 'stage2_residual_cache', '')
         if not root:
-            return extras
+            return None
         if not hasattr(self, '_residual_cache_value'):
             from scripts.precompute_residual_teacher import load
 
@@ -549,7 +560,14 @@ class Exp_Stage2_Relation(Exp_Basic):
             self._residual_cache_value = cache
             print(f'[stage2] residual teacher {path} '
                   f'memory_residual={tuple(cache["memory_residual"].shape)}')
-        cache = self._residual_cache_value
+        return self._residual_cache_value
+
+    def _residual_batch(self, split, batch_start_idx):
+        """query_residual for this batch + the shared memory_residual archive,
+        or {} if no residual cache is configured."""
+        cache = self._residual_teacher_cache()
+        if cache is None:
+            return {}
         # Stage-2 names the validation split 'vali'; the cache was built through
         # the data provider, which calls it 'val'.
         key = split if split in cache['splits'] else {'vali': 'val', 'val': 'vali'}.get(split)
@@ -563,8 +581,32 @@ class Exp_Stage2_Relation(Exp_Basic):
         except KeyError:
             raise KeyError(f'residual cache for {split} does not cover this batch')
         index = torch.tensor(rows, dtype=torch.long)
-        extras['query_residual'] = part['query_residual'].index_select(0, index).to(self.device)
-        extras['memory_residual'] = cache['memory_residual']
+        return {
+            'query_residual': part['query_residual'].index_select(0, index).to(self.device),
+            'memory_residual': cache['memory_residual'],
+        }
+
+    def _needs_live_residual_conditioning(self):
+        return (
+            bool(int(getattr(self.args, 'stage2_query_base_conditioning', 0)))
+            or bool(int(getattr(self.args, 'stage2_candidate_residual_conditioning', 0)))
+        )
+
+    def _e2e_extras(self, split, batch_start_idx):
+        """Raw candidate windows and residual teachers for the end-to-end path,
+        plus (independent of stage2_e2e) the residual batch EXP-FRR01's R1/R2
+        conditioning needs to stay live under the ordinary frozen-Stage-1
+        protocol."""
+        e2e = bool(int(getattr(self.args, 'stage2_e2e', 0)))
+        extras = {}
+        if e2e:
+            if not hasattr(self, '_candidate_x'):
+                self._candidate_x = torch.from_numpy(
+                    self.memory_bank.memory_x).float().to(self.device)
+                print(f'[stage2] e2e candidate histories {tuple(self._candidate_x.shape)}')
+            extras['candidate_x'] = self._candidate_x
+        if e2e or self._needs_live_residual_conditioning():
+            extras.update(self._residual_batch(split, batch_start_idx))
         return extras
 
     def _gradient_norms(self):
@@ -1955,6 +1997,14 @@ class Exp_Stage2_Relation(Exp_Basic):
                         key_bank=self.key_bank,
                         memory_x_last=self.memory_x_last,
                         retrieval_cache=retrieval_cache,
+                        # EXP-FRR01 conditioning recovers a deterministic base
+                        # forecast of X_q alone (base = Y_q - R_q, both already
+                        # computed from X_q only) -- not new information beyond
+                        # what the residual cache already encodes, and the
+                        # train branch above passes target_y for the same
+                        # reason. Passing it in eval too keeps both branches
+                        # exercising the same forward path.
+                        target_y=batch_y,
                         **e2e_extras,
                     )
                     loss = self._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)

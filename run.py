@@ -362,6 +362,17 @@ if __name__ == '__main__':
                               'from cached base forecasts, which scales to the full bank'))
     parser.add_argument('--stage1_residual_teacher_cache', type=str, default='',
                         help='Residual cache from scripts/precompute_residual_teacher.py')
+    parser.add_argument('--stage1_query_base_conditioning', type=int, default=0,
+                        help=('EXP-FRR01 R1: add a small projection of the query base '
+                              'forecast (Y_q - R_q, from the residual teacher cache) into '
+                              'the query embedding before scoring. Requires '
+                              '--stage1_residual_teacher 1'))
+    parser.add_argument('--stage1_candidate_residual_conditioning', type=int, default=0,
+                        help=('EXP-FRR01 R2: add a small projection of each candidate\'s own '
+                              'historical residual (from the train-only residual teacher '
+                              'archive) into its embedding before scoring, at every site that '
+                              'produces a candidate embedding (bank / differentiable_keys / '
+                              'full_online). Requires --stage1_residual_teacher 1'))
     parser.add_argument('--stage1_pool_size', type=int, default=0,
                         help=('Restrict the loss to the frozen reference encoder\'s Top-M '
                               'candidates; 0 keeps the full memory bank'))
@@ -525,6 +536,16 @@ if __name__ == '__main__':
     parser.add_argument('--stage2_residual_cache', type=str, default='',
                         help=('Residual cache from scripts/precompute_residual_teacher.py, '
                               'used as the ranking teacher'))
+    parser.add_argument('--stage2_query_base_conditioning', type=int, default=0,
+                        help=('EXP-FRR01 R1 at Stage-2: apply the same query base-forecast '
+                              'conditioning the Stage-1 checkpoint was trained with, at '
+                              'retrieval time. Requires --stage2_residual_cache and a '
+                              'checkpoint trained with --stage1_query_base_conditioning 1'))
+    parser.add_argument('--stage2_candidate_residual_conditioning', type=int, default=0,
+                        help=('EXP-FRR01 R2 at Stage-2: apply the same candidate historical- '
+                              'residual conditioning the Stage-1 checkpoint was trained with, '
+                              'at retrieval time. Requires --stage2_residual_cache and a '
+                              'checkpoint trained with --stage1_candidate_residual_conditioning 1'))
     parser.add_argument('--use_ema_teacher', type=int, default=1,
                         help=('0 disables the EMA teacher encoder and its updates. The '
                               'end-to-end arms run without it; the flag keeps the original '

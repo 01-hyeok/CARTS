@@ -57,6 +57,241 @@ completed | failed | aborted
 
 <!-- Append experiment entries below this line. -->
 
+## EXP-FRR01 — Full-Memory Forecast-Conditioned Residual Retrieval: model-discovery pilot verdict: STOP
+
+### Date
+2026-09-05
+
+### Research Question
+Redefine retrieval from "similar future" to "similar historical
+forecast-error/residual pattern" via 5 arms building on a residual teacher:
+R0 (residual teacher only), R1 (R0 + query base-forecast conditioning), R2
+(R0 + candidate historical-residual representation), R12 (R1+R2), R3 (R12 +
+asymmetric dual encoder). Full-memory retrieval only, no Top-M shortlist
+anywhere. Does any arm improve Stage-2 Final MSE over B0 by a real (>= 0.01,
+the pre-registered 3-seed-confirmation threshold) margin?
+
+### Configuration
+See `results/EXP-FRR01/command.txt` for exact flags per arm and
+`results/EXP-FRR01/notes.md` for the full account, including a real
+architecture gap found and fixed mid-run: `RelationStage2.load_stage1_checkpoint`
+originally had no path to load the new `query_cond_proj`/`candidate_cond_proj`
+conditioning modules, which would have made R1/R2/R12/R3's actual mechanism
+silently absent at Stage-2 retrieval time. Fixed (see Implementation Notes)
+after confirming the fix with the user before proceeding.
+
+### Changed Variable
+Per-arm: which distance the WCE coverage target is graded by (R0), whether
+the query/candidate embedding is additively conditioned on a base-forecast /
+historical-residual projection (R1/R2/R12), and the retrieval comparison
+(cosine vs asymmetric, R3). B0's architecture, loss, and protocol are
+otherwise unchanged.
+
+### Controlled Variables
+Stage-2 architecture, base forecaster, fusion (`residual`/`scalar` gate),
+`relation_top_n=1`, `top_k=10`, `tau_topk=0.1`, `candidate_mask=raft`,
+`freeze_stage1_encoder=1`, `stage2_e2e=0`, split, seed. Identical to B0
+(EXP-3's `S0_wce` cell) in every respect except the flags each arm adds.
+
+### Dataset
+ETTh1
+
+### Prediction Horizon
+96 (H96 only, per the pre-registered pilot scope)
+
+### Seed
+0 (1-seed pilot; no arm crossed the 3-seed-confirmation threshold, so no
+further seeds were run)
+
+### Important Hyperparameters
+Same as B0's Stage-1/Stage-2 recipe (d_model=128, batch_size=32, lr=1e-3,
+train_epochs=10/patience=5, `stage1_full_memory_gradient_mode full_online`,
+`stage1_checkpoint_metric hard_aggregate_mse10`). Residual-teacher cache
+rebuilt from the current campaign's own B0 Stage-2 checkpoint (not the older,
+differently-sourced `cache/residual_teacher/ETTh1_pred96.pt`).
+
+### Result Files
+`results/EXP-FRR01/` (`metrics.csv`, `command.txt`, `notes.md`, `env.txt`,
+`working_tree.diff`, `residual_cache_sha256.txt`, `logs/` — copies of
+`logs/exp_frr01/*_stage1.log` and `*_stage2.log`).
+
+### Results
+Stage-2 Final MSE (ETTh1 H96, lower is better), B0 = 0.37312 (reused EXP-3
+checkpoint, not rerun):
+
+| Arm | Stage-1 HardAgg@10 | Recall@10 (orig) | Recall@10 (residual-target) | Stage-2 Final MSE | Delta vs B0 |
+|---|---:|---:|---:|---:|---:|
+| B0 | 0.4073 | 0.0570 | — | 0.37312 | — |
+| R0 | 0.4154 | 0.0507 | 0.0282 | 0.37397 | +0.00085 |
+| R1 | 0.4703 | 0.0505 | 0.0477 | 0.37099 | -0.00213 |
+| R2 | 0.4667 | 0.0861 | 0.0606 | 0.38023 | +0.00711 |
+| R12 | 0.4655 | 0.0866 | 0.0669 | 0.38112 | +0.00800 |
+| R3 | 0.4537 | 0.0805 | 0.0596 | 0.37953 | +0.00641 |
+
+No arm improved or worsened Stage-2 Final MSE by >= 0.01 (the pre-registered
+threshold for a 3-seed confirmation run), so none was confirmed and none
+qualifies as GO. R1's small improvement (-0.00213) is below the project's own
+~0.01 seed-noise reference and is not distinguishable from noise at 1 seed.
+R2/R12/R3 raised Recall@10 substantially (+51%/+52%/+41% relative) while
+Stage-1 `hard_aggregate_mse10` and Stage-2 Final MSE both got worse — the same
+"Recall does not predict Stage-2" pattern EXP-C01/EXP-3 established, now
+reproduced through a structurally different mechanism (embedding conditioning
+rather than a soft aggregate loss).
+
+### Sanity Checks
+`pytest tests/` run after every code change (R0/R1/R2 mechanism, Stage-2
+wiring): 444 passed both times, exactly the 2 pre-existing failures
+(`test_topk_coverage_reuses_target_indices_across_relations`,
+`test_identity_retrieval_uses_raw_target_source_relation_without_encoder`), no
+regression. 1-epoch smoke test of R3 (exercises every new code path: query
+conditioning, candidate conditioning at all embedding sites, asymmetric
+metric) run to completion, both at Stage-1 and Stage-2, before the real
+10-epoch runs. `[legality]` assertion (memory_residual row count == train
+split query count) passed for every Stage-1 arm. `[Retrieval Selection]
+configured_metric=asymmetric actual_selection_score_fn=asymmetric` wiring
+guard passed for R3 at Stage-2.
+
+### Implementation Notes
+`models/RelationStage1.py`: WCE coverage-target distance now switches to
+`_residual_mse(query_residual, memory_residual, c)` when
+`stage1_residual_teacher` is active (previously only the KL-teacher branch
+read the residual teacher; the WCE branch, which is what B0 and every arm
+here actually use, ignored it entirely). Added `_condition_query_embedding`/
+`_condition_candidate_embedding` and the `stage1_query_base_conditioning`/
+`stage1_candidate_residual_conditioning` flags, wired at every embedding site
+(query: single site; candidate: key_bank, differentiable_keys, and
+`full_online` re-encoding — three sites, mirroring the historical
+forced-selection bug pattern of wiring only one of several call sites).
+
+`models/RelationStage2.py`: mirrored the same two conditioning modules and
+flags (`stage2_query_base_conditioning`/`stage2_candidate_residual_conditioning`),
+extended `load_stage1_checkpoint`'s existing per-module loop to also load
+them, and wired them into `build_retrieval_cache` (the static per-split cache
+path, which is the one actually used here since `freeze_stage1_encoder=1`
+plus ETTh1's self-only relation graph makes `_use_retrieval_cache()` true) and
+`build_memory_key_bank` (the candidate bank builder). Added `query_y=`/
+`query_residual=` threading and a `target_y=batch_y` fix to the eval branch of
+`exp_stage2_relation.py::_run_loader`, which previously omitted `target_y`
+entirely.
+
+`exp/exp_stage1_relation.py`: added the `[legality]` assertion and log line
+in `_residual_cache`. `exp/exp_stage2_relation.py`: refactored the residual
+cache loader out of `_e2e_extras` into `_residual_teacher_cache`/
+`_residual_batch`, reachable independent of `stage2_e2e` (it previously
+returned `{}` immediately when `stage2_e2e=0`, which every arm here uses).
+
+New files: `tests/test_exp_frr01_arms.py` (8 tests, additive-conditioning and
+legality-assert coverage), `scripts/run_exp_frr01_stage1.sh`,
+`scripts/run_exp_frr01_stage2.sh`, `cache/residual_teacher_frr01/ETTh1_pred96.pt`
+(hash in `results/EXP-FRR01/residual_cache_sha256.txt`).
+
+### Status
+completed (model-discovery pilot); verdict STOP — no 3-seed confirmation
+triggered, no arm meets GO. Not run: other horizons/datasets, R1/R2/R3
+follow-up designs, any hyperparameter sweep, per the pre-registered scope.
+
+---
+
+## EXP-3-CLOSURE — soft_set_mse representative Stage-2 verdict: STOP
+
+### Date
+2026-09-04
+
+### Research Question
+Does the aggregate-aligned soft_set_mse Stage-1 loss, which showed mixed
+Stage-1-internal signal (ETTh1: hard_aggregate_mse10 worse; Weather: better),
+actually improve Stage-2 downstream forecasting?
+
+### Configuration
+Representative closure, not the full 5-arm sweep: per cell, only S0 (WCE
+baseline) vs the single non-baseline arm with the best **validation**
+hard_aggregate_mse10 from the already-completed Stage-1 sweep (never TEST,
+never each arm's own training objective). Stage-2 architecture, base
+forecaster, gate (`residual`/`scalar`), `relation_top_n=1`, `top_k=10`,
+`tau_topk=0.1`, split, and protocol identical to every other Stage-2 run in
+this project; only the Stage-1 checkpoint (and therefore the selection arm)
+differs.
+
+Full 20-run Stage-1×Stage-2 sweep was intentionally paused after Stage-1
+completed (20/20) and Stage-2 reached 3/20, once representative closure
+became the priority. 2 of 8 representative cells (ETTh1 H96 S0/S2) were
+already complete and reused as-is; the other 6 were run fresh.
+
+### Changed Variable
+Stage-1 selection arm only (S0 vs best-by-val-HardAgg non-baseline).
+
+### Dataset / Prediction Horizon / Seed
+ETTh1 H96/H720, Weather H96/H720; `--seed 0`.
+
+### Result Files
+`results/EXP-3-soft-set-mse-closure/logs/` (copy of `logs/soft_set_mse/`),
+git commit recorded alongside.
+
+### Results
+
+| Dataset | H | Arm | S2 Final MSE | Delta vs S0 | Rel% | Stage-1 HardAgg@10 | Recall@10 | N_eff | Eff. rank |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| ETTh1 | 96 | S0 (WCE) | 0.37312 | — | — | 0.4073 | 0.0570 | 94.6 | 20.8 |
+| ETTh1 | 96 | S2 (lam10) | 0.37911 | **+0.00599** | **+1.61%** | 0.4147 | 0.0516 | 201.1 | 12.1 |
+| ETTh1 | 720 | S0 (WCE) | 0.46827 | — | — | 0.5732 | 0.0198 | 68.5 | 17.6 |
+| ETTh1 | 720 | S3 (lam30) | 0.50947 | **+0.04120** | **+8.80%** | 0.5864 | 0.0210 | 207.4 | 11.4 |
+| Weather | 96 | S0 (WCE) | 0.17553 | — | — | 0.2348 | 0.0579 | 1498.7 | 12.2 |
+| Weather | 96 | S1 (set only) | 0.17681 | **+0.00128** | **+0.73%** | 0.2058 | 0.0548 | 8870.6 | 5.8 |
+| Weather | 720 | S0 (WCE) | 0.31869 | — | — | 0.5672 | 0.0116 | 81.5 | 20.0 |
+| Weather | 720 | S3 (lam30) | 0.38574 | **+0.06705** | **+21.04%** | 0.4650 | 0.0105 | 700.0 | 4.4 |
+
+MSE lower is better; every delta above is positive, i.e. **every representative
+arm is worse than WCE on Stage-2 Final MSE, at all 4 cells, with no exception.**
+
+Weather's Stage-1 `hard_aggregate_mse10` appeared to *improve* at both
+horizons (−12.3% H96, −18.0% H720) while `N_eff` exploded (+492%, +759%) and
+`effective_rank` collapsed (−53%, −78%) — the improvement does not survive
+contact with Stage-2 and is consistent with the diffusion/collapse confound
+flagged as a risk before Stage-2 was run.
+
+Known seed noise in this repository is ≈0.01 MSE. ETTh1 H720 (+0.041) and
+Weather H720 (+0.067) are 4-7x that; Weather H96 (+0.0013) is within it but
+still the wrong sign for a claimed improvement; ETTh1 H96 (+0.006) is
+borderline but likewise the wrong sign.
+
+### Sanity Checks
+Driver safety guard (`expected/executed/completed/skipped/failed` counters,
+non-zero exit on missing-checkpoint skip) verified functioning both on a
+simulated failure and on this real run
+(`[summary] expected=2 executed=2 completed=2 ... failed=0` per cell called;
+`overall_status=OK`). `pytest tests/`: 436 passed (+3 new, EXP-SC01 Gate B),
+2 pre-existing failures unchanged, no regression.
+
+### Implementation Notes
+Fixed a checkpoint-path bug in `run_soft_set_mse_stage2.sh` (`--checkpoints`
+implicitly nests under `stage1/`, the lookup glob did not) that had silently
+skipped all 20 Stage-2 runs in the prior attempt while the script still
+reported success. Added the counters/guard described above. No Stage-2
+model/gate/fusion code touched.
+
+### Status
+completed — **VERDICT: STOP** (see decision below)
+
+### Verdict: STOP
+
+Per the pre-registered stop rule, all of the following hold:
+- ETTh1: representative arm fails to improve Stage-2 baseline at both horizons.
+- Weather: the Stage-1-level improvement is strongly coupled to N_eff
+  explosion and representation collapse.
+- All 4 cells move in the same (worse) direction — not merely inconsistent,
+  uniformly negative.
+- Two of four deltas exceed seed noise; the other two are the wrong sign to
+  claim improvement regardless of magnitude.
+
+**Conclusion (stated within what the data supports):** Set Oracle analysis
+showed real headroom in candidate *combination*, but training a full-memory
+soft aggregation loss to capture it did not transfer to Top-K retrieval or
+downstream forecasting, because of a soft/hard selection mismatch (ETTh1) and
+probability diffusion into representation collapse (Weather). No further
+lambda/tau/support-penalty sweep is planned on this direction.
+
+
+
 ## EXP-1 — Test-matched Oracle Intervention (ETTh1 H96 / H720)
 
 ### Date

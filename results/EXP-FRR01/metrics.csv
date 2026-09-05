@@ -1,0 +1,7 @@
+arm,stage1_hard_agg_mse10,stage1_recall_at_10_original,stage1_recall_at_10_residual_target,stage1_effective_rank,stage1_set_soft_effective_candidates,stage2_final_mse,stage2_final_mae,delta_final_mse_vs_b0,stage1_train_seconds,stage2_train_seconds
+B0,0.4073,0.0570,,20.8,94.6,0.37312,,,,
+R0,0.4154,0.0507,0.0282,23.9,264.1,0.37397,0.39899,0.00085,228.4,145.4
+R1,0.4703,0.0505,0.0477,25.7,63.4,0.37099,0.39737,-0.00213,1167.7,182.3
+R2,0.4667,0.0861,0.0606,14.7,56.8,0.38023,0.40020,0.00711,202.6,183.3
+R12,0.4655,0.0866,0.0669,20.8,34.3,0.38112,0.40126,0.00800,306.5,398.6
+R3,0.4537,0.0805,0.0596,23.4,49.4,0.37953,0.40061,0.00641,350.9,205.7

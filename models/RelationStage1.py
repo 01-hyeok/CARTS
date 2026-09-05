@@ -3334,6 +3334,36 @@ class Model(nn.Module):
         self.residual_teacher_active = bool(int(getattr(configs, 'stage1_residual_teacher', 0)))
         self.reference_pool_size = int(getattr(configs, 'stage1_pool_size', 0))
 
+        # EXP-FRR01 R1/R2: small additive conditioning terms on top of the
+        # existing encoder embeddings. Neither touches self.encoder's input
+        # width -- each is one independent nn.Linear(pred_len, d_model) whose
+        # output is added to the embedding and renormalised, so a checkpoint
+        # trained with both flags off is architecturally identical to one that
+        # never saw these flags.
+        self.query_base_conditioning = bool(
+            int(getattr(configs, 'stage1_query_base_conditioning', 0)))
+        self.candidate_residual_conditioning = bool(
+            int(getattr(configs, 'stage1_candidate_residual_conditioning', 0)))
+        if self.query_base_conditioning and not self.residual_teacher_active:
+            raise ValueError(
+                'stage1_query_base_conditioning needs stage1_residual_teacher=1 '
+                '(it reads the same cached query_residual to recover the base '
+                'forecast: base = query_y - query_residual)')
+        if self.candidate_residual_conditioning and not self.residual_teacher_active:
+            raise ValueError(
+                'stage1_candidate_residual_conditioning needs '
+                'stage1_residual_teacher=1 (it reads the same cached '
+                'memory_residual)')
+        if self.query_base_conditioning:
+            self.query_cond_proj = nn.Linear(self.pred_len, int(configs.d_model))
+        if self.candidate_residual_conditioning:
+            self.candidate_cond_proj = nn.Linear(self.pred_len, int(configs.d_model))
+            if self.full_memory_gradient_mode == 'topk':
+                raise NotImplementedError(
+                    'stage1_candidate_residual_conditioning does not yet cover '
+                    'the topk-subset full-memory-gradient path '
+                    '(_reencode_selected_candidates); use full_online or bank')
+
         # Externally measured retrieval teacher. The supervision signal moves
         # from "which candidate's future looks like mine" to "which candidate
         # actually improves the forecast", which cannot be computed inside this
@@ -3708,6 +3738,42 @@ class Model(nn.Module):
         k = F.normalize(k, dim=-1, eps=self.eps)
         return torch.matmul(q, k.transpose(0, 1))
 
+    def _condition_query_embedding(self, z_q, query_y, query_residual, target_channel):
+        """EXP-FRR01 R1: fold the query's own base forecast into its embedding.
+
+        base = Y_q - R_q, both already computed by the residual-teacher cache,
+        so this costs one small projection, no extra forward pass.
+        """
+        if query_residual is None:
+            raise ValueError(
+                'stage1_query_base_conditioning needs the cached query_residual'
+            )
+        query_base = query_y[:, :, target_channel] - query_residual[:, :, target_channel]
+        return F.normalize(
+            z_q + self.query_cond_proj(query_base.to(z_q.dtype)),
+            dim=-1, eps=self.eps,
+        )
+
+    def _condition_candidate_embedding(self, z, memory_residual, target_channel):
+        """EXP-FRR01 R2: fold each candidate's own historical residual into its
+        embedding. `memory_residual` is the single train-only archive shared by
+        every split (see _residual_cache in exp_stage1_relation.py) -- a val/test
+        query scoring against it is exactly as legal as scoring against
+        memory_y already is, since both come from the same train-split bank.
+        Must be called at every site that produces a candidate embedding
+        (bank, differentiable_keys, full_online re-encoding) or the ablation
+        silently reverts to the unconditioned bank for whichever site is missed.
+        """
+        if memory_residual is None:
+            raise ValueError(
+                'stage1_candidate_residual_conditioning needs the cached '
+                'memory_residual'
+            )
+        residual_row = memory_residual[:, :, target_channel].to(z.dtype)
+        return F.normalize(
+            z + self.candidate_cond_proj(residual_row), dim=-1, eps=self.eps,
+        )
+
     def _residual_mse(self, query_residual, memory_residual, target_channel):
         """Pairwise MSE between query and candidate base-forecast residuals.
 
@@ -3984,7 +4050,8 @@ class Model(nn.Module):
         )
 
     def _apply_full_memory_gradient(self, student_scores, z_q, candidate_x, future_mse,
-                                    cand_mask, target_channel, source_channel):
+                                    cand_mask, target_channel, source_channel,
+                                    memory_residual=None):
         """Put the candidate branch back in the graph without shrinking the support.
 
         The bank is detached, so scoring against it trains only the query side.
@@ -4004,6 +4071,14 @@ class Model(nn.Module):
         if self.full_memory_gradient_mode == 'full_online':
             z_all = self.encoder(
                 self._relation_tensor(candidate_x, target_channel, source_channel))
+            if self.candidate_residual_conditioning:
+                # Same conditioning as the bank/differentiable_keys sites,
+                # applied here too -- full_online discards z_k entirely and
+                # rescores from this fresh z_all, so skipping this site would
+                # silently drop R2's conditioning for every candidate that
+                # matters (all of them, in full_online mode).
+                z_all = self._condition_candidate_embedding(
+                    z_all, memory_residual, target_channel)
             if self.pairwise_scorer is not None:
                 # The pair scorer over the whole memory. Mining existed because a
                 # pair feature is 2-4x the embedding width and cannot be folded
@@ -4380,8 +4455,25 @@ class Model(nn.Module):
                 elif self.loss_mode in ('topk_coverage', 'weighted_topk_ce', 'wce_soft_set_mse', 'expected_mse',
                                      'wce_expected_mse', 'rank_only',
                                      'oracle_imitation'):
+                    # EXP-FRR01 R0: the WCE coverage target/positives are graded
+                    # by residual similarity instead of raw future similarity
+                    # when the residual teacher is active. future_mse itself is
+                    # left untouched -- it still feeds every real-Y diagnostic
+                    # (recall, hard_aggregate_metrics, oracle_rank_statistics)
+                    # so "original Recall" stays comparable to every other arm.
+                    if self.residual_teacher_active:
+                        if query_residual is None or memory_residual is None:
+                            raise ValueError(
+                                'stage1_residual_teacher needs the cached query '
+                                'and memory residuals'
+                            )
+                        coverage_distance = self._residual_mse(
+                            query_residual, memory_residual, c
+                        )
+                    else:
+                        coverage_distance = future_mse
                     coverage_targets = prepare_topk_coverage_targets(
-                        future_mse,
+                        coverage_distance,
                         cand_mask,
                         self.coverage_top_k,
                     )
@@ -4446,6 +4538,10 @@ class Model(nn.Module):
                         q_rel,
                         return_pre_normalized=True,
                     )
+                if self.query_base_conditioning:
+                    z_q = self._condition_query_embedding(
+                        z_q, query_y, query_residual, c)
+                    z_q_pre_normalized = z_q
                 if (
                     not direct_retrieval
                     and (self.variance_weight > 0.0 or self.covariance_weight > 0.0)
@@ -4472,6 +4568,8 @@ class Model(nn.Module):
                     z_k = key_bank[c, source_slot].to(
                         device=query_x.device, dtype=z_q.dtype
                     )
+                if self.candidate_residual_conditioning:
+                    z_k = self._condition_candidate_embedding(z_k, memory_residual, c)
 
                 if self.encoder.retrieval_similarity == 'l2':
                     # The encoder already skipped its L2 normalisation, so z_q and
@@ -4528,7 +4626,8 @@ class Model(nn.Module):
                     and self.training
                 ):
                     student_scores, full_memory_metrics = self._apply_full_memory_gradient(
-                        student_scores, z_q, candidate_x, future_mse, cand_mask, c, r
+                        student_scores, z_q, candidate_x, future_mse, cand_mask, c, r,
+                        memory_residual=memory_residual,
                     )
                 # Reported for every loss mode, not just the coverage branch that
                 # happened to merge it first. A blank `full_memory_reencoded` on a
@@ -5137,6 +5236,27 @@ class Model(nn.Module):
                         row.update(
                             student_retrieval_metric_aliases(retrieval_metrics)
                         )
+                        if self.residual_teacher_active:
+                            # EXP-FRR01: "original Recall" above is already
+                            # future_mse-based and unaffected by the residual
+                            # teacher. This is its residual-space counterpart --
+                            # whether the model's own ranking recovers the
+                            # residual-similarity oracle it was actually trained
+                            # to hit, reported under a distinct prefix so both
+                            # can sit in the same results row.
+                            residual_retrieval_metrics = _student_retrieval_metrics(
+                                student_scores, student_prob, coverage_distance,
+                                cand_mask, eps=self.eps,
+                            )
+                            row.update({
+                                f'residual_target_{key}': value
+                                for key, value in residual_retrieval_metrics.items()
+                            })
+                            row.update({
+                                f'residual_target_{key}': value
+                                for key, value in student_retrieval_metric_aliases(
+                                    residual_retrieval_metrics).items()
+                            })
                         row['recall@1'] = row['oracle_recall_at_1']
                         row['recall@5'] = row['oracle_recall_at_5']
                         row['retrieved_future_mse_top1'] = row[

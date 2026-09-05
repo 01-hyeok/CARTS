@@ -134,3 +134,47 @@ confirms a decision.
 - **Status:** active
 
 <!-- Append decisions below this line. -->
+
+## D-0009 — EXP-FRR01 (residual-conditioned full-memory retrieval) closed: STOP, no 3-seed confirmation
+
+- **Date:** 2026-09-05
+- **Decided by:** pre-registered rule, specified by the user before the run
+  ("최고 arm이 S0 대비 ≥0.01 개선일 때만 3-seed 확인"), mechanically triggered
+  by the actual 1-seed results.
+- **Decision:** None of R0/R1/R2/R12/R3 (residual-teacher WCE target, query
+  base-forecast conditioning, candidate historical-residual conditioning, and
+  their combination with an asymmetric dual encoder) improves Stage-2 Final
+  MSE over B0 by the pre-registered margin. No 3-seed confirmation run
+  triggered. No further arm/hyperparameter variation planned on this specific
+  pilot's mechanisms without new evidence.
+- **Evidence:** `EXPERIMENT_LOG.md` EXP-FRR01 — deltas vs B0 (0.37312):
+  R0 +0.00085, R1 -0.00213, R2 +0.00711, R12 +0.00800, R3 +0.00641; none
+  exceed the ±0.01 threshold. R2/R12/R3 raised Recall@10 by ~50% while making
+  both `hard_aggregate_mse10` and Stage-2 Final MSE worse.
+- **Consequence:** Reproduces EXP-C01/EXP-3's "Recall@10 does not predict
+  Stage-2" finding via a second, structurally different mechanism (embedding
+  conditioning vs. a soft aggregate loss), strengthening it as a property of
+  this retrieval setup rather than an artifact of one loss family. The
+  Individual→Set Oracle gap (EXP-1/EXP-2) remains real and unreached by every
+  mechanism tried so far.
+- **Status:** active
+
+## D-0008 — soft_set_mse (EXP-3) closed: STOP, no further sweep
+
+- **Date:** 2026-09-04
+- **Decided by:** user, on representative-closure evidence
+- **Decision:** Full-memory `soft_set_mse` as a Stage-1 training objective is
+  closed. No further lambda/tau/support-penalty sweep on this direction.
+- **Evidence:** `EXPERIMENT_LOG.md` EXP-3-CLOSURE — 0 of 4 representative
+  cells (ETTh1 H96/H720, Weather H96/H720) improved Stage-2 Final MSE vs the
+  WCE baseline; Weather's apparent Stage-1-level gain was confounded by N_eff
+  explosion (+492%/+759%) and representation collapse (effective_rank
+  -53%/-78%).
+- **Consequence:** The Individual→Set Oracle gap (EXP-1/EXP-2) remains a real,
+  measured upper bound and is NOT closed by this result — only this specific
+  attempt to reach it (full-memory softmax training) failed. Candidate next
+  direction (coarse-retrieve-then-rerank, confined to a fixed shortlist so
+  diffusion cannot recur) is designed in `CURRENT_EXPERIMENT.md`, not started.
+- **Status:** active
+
+

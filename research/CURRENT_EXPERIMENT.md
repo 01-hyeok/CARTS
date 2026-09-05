@@ -1,206 +1,163 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **PRIORITY REORDERED 2026-09-02 — implementation plan pending user approval; NO GPU RUN STARTED**
+Status: **DESIGN ONLY — NOT APPROVED, NOT STARTED. No code written, no GPU used.**
 
-## Priority order (revised 2026-09-02)
-
-1. **EXPERIMENT 1 — Test-matched Oracle Intervention** (ETTh1 H96, H720)
-2. **EXPERIMENT 1-B — Full-memory Oracle Headroom** (after 1)
-3. **EXPERIMENT 2 — Learn set-level utility in Stage-1** (ETTh1 H96) —
-   *conditional*: only if Experiment 1 shows Set Oracle also lowers Stage-2 MSE
-4. **A/B small-N memorization**, **cross-dataset feasibility**, **Track C E2E**
-   — retained below, deprioritized, not deleted
-
-Branch rule from the user: if Experiment 1 gives *Set A improves but Stage-2 does
-not*, **skip Experiment 2 and run Track C E2E first**.
-
-The ETTh1 Stage-2 wiring-fixed rerun requirement is unchanged and still blocking
-for any ETTh1 downstream claim.
-
-## New motivating observation (2026-09-02) — [repo] verified
-
-ETTh1 H720, corrected-wiring Stage-2 (`logs/stage2_learned_score_corrected_selection/`):
-
-| Arm | Stage-1 R@10 | Stage-2 test final MSE |
-|---|---|---|
-| KL + Asymmetric | 0.0608 | **0.478067** |
-| WCE + Asymmetric | 0.0942 (+55%) | **0.505433** (worse) |
-
-Higher recall, worse downstream MSE. So the question is not "can Recall@10 go
-higher" but **"what Top-K target does Stage-2 actually want?"**
+EXP-3 (soft_set_mse) closed with verdict STOP (see `EXPERIMENT_LOG.md` →
+EXP-3-CLOSURE, `REVIEW_FOR_CHATGPT.md`). This is the candidate next design,
+written per instruction "design only" — Claude does not choose to start this;
+that is the user's and the reviewer's decision.
 
 ---
 
 # Research Question
 
-Is the future-derived Oracle retrieval target learnable at all from past-only
-information, and if not, can retrieval instead be trained directly against
-forecasting MSE?
-
-This replaces the earlier question "how do we raise Recall@10 further?", which
-`RESEARCH_CONTEXT.md` B2/B4/B12 showed to be the wrong target.
+Why does the current past-only retriever fail to find Individual-Oracle-level
+candidates at all (the primary, larger bottleneck), independent of the
+set-composition question EXP-3 tested? Concretely: does separating **coarse
+retrieval** (cheap, full-memory, cosine-based) from **fine reranking**
+(expensive, small shortlist, learned) let a reranker improve real Top-10
+retrieval without the full-memory softmax diffusion that sank EXP-3?
 
 # Hypothesis
 
-Three competing hypotheses, deliberately not pre-ranked:
-
-- **Q1 (predictability):** future-derived Oracle utility does not generalize from
-  past-only input. Phase C (B15) is direct evidence for this.
-- **Q2 (capacity):** the asymmetric scorer is simply under-capacity.
-- **Q3 (objective):** Oracle-membership matching is the wrong intermediate
-  objective; forecasting-MSE-aligned end-to-end retrieval is the right one.
+The full-memory soft objective in EXP-3 failed partly because a softmax over
+tens of thousands of candidates has no floor on how diffuse it can get (Weather
+N_eff hit 8870/700 out of ~36,700). Restricting the learned objective to a
+fixed, small coarse shortlist (e.g. the current retriever's own Top-100)
+removes that degree of freedom by construction — the reranker cannot diffuse
+across more candidates than the shortlist contains.
 
 # Motivation
 
-Phase C showed that direct Oracle imitation sits at random/uniform on validation
-(TeacherSetRecall@10 0.0847–0.1363 vs random 0.10; imitation loss 4.589–4.621 vs
-ln(100) ≈ 4.605) — **for the Individual target as well as the Set target**.
-Because both failed, the failure cannot be attributed to the pointwise scorer's
-inability to express a set objective. Before adding another loss, establish
-whether the target is learnable at all.
+- EXP-1/EXP-2 (Oracle Intervention): a Weighted-Set Oracle beats an Individual
+  Oracle on A_weighted at every horizon on both datasets (17.7-43.2%
+  improvement) — real headroom exists in candidate *combination*.
+- EXP-3 closure (this document's sibling): training a full-memory soft
+  aggregate loss to reach that headroom made Stage-2 worse at all 4
+  representative cells, confounded by soft/hard mismatch (ETTh1) and
+  N_eff/collapse (Weather).
+- Before trying another full-memory objective, check whether the *support*
+  itself (P100 vs FULL) is the larger bottleneck. EXP-1's own P100 vs FULL
+  comparison (already in `EXPERIMENT_LOG.md`, EXP-1 section) showed Individual
+  Oracle A_weighted improves substantially from P100 to FULL support at ETTh1
+  H96 (0.1442 P100 → lower under FULL — recheck exact figures before running),
+  meaning the *current* retriever's Top-100 already excludes candidates the
+  oracle would want. A reranker confined to that Top-100 inherits that ceiling
+  — this experiment does not fix the coarse-retrieval bottleneck, only
+  isolates whether a reranker can capture set-composition value **within**
+  whatever the coarse stage already offers, cleanly separated from diffusion.
 
----
+# Baseline
 
-# Experiment A/B — Feasibility / scorer capacity (small-N memorization)
+S0 (WCE, plain cosine retriever), the same checkpoints already trained in
+EXP-3, at ETTh1 H96/H720 and Weather H96/H720. No retraining of Stage-1.
 
-Directory: `logs/memorization/`.
+# Experimental Change (the only component that changes)
 
-**Setup.** 32–64 fixed *train* queries, fixed P100, healthy WCE encoder frozen.
-
-**Targets:** (1) Individual Oracle, (2) Set Oracle.
-
-**Scorers:** (1) asymmetric, (2) `PairwiseScorer(feature_type='pair4')` from
-`layers/pairwise_scorer.py`, whose pair4 feature is
-`[z_q, z_k, z_q − z_k, |z_q − z_k|]`.
-
-**Hard constraint:** reuse the scorer already wired into Stage-1. Do **not** wire
-a new `UtilityPairScorer` into Stage-1 for this experiment.
-
-**Reference baseline:** random TeacherSetRecall@10 in P100 = **0.10**.
-
-## Decision Criterion (A/B)
-
-| Outcome | Reading | Next action |
-|---|---|---|
-| **A** — train ≈ 0.1 too | Not a capacity result yet | Check target / index / gradient / update wiring **first**; only then suspect scorer functional capacity |
-| **B** — train 0.8–1.0, VAL ≈ 0.1 | Not capacity — generalization / past-only predictability | Q1 becomes the leading hypothesis |
-| **C** — asymmetric fails, pairwise MLP improves on train *and* VAL | Asymmetric scorer capacity bottleneck | Q2 supported |
-| **D** — pairwise MLP memorizes train but fails VAL | Representation / predictability / generalization bottleneck | Q1 supported, Q2 rejected |
-
----
-
-# Experiment — Cross-dataset feasibility
-
-Is the failure ETTh1-specific? Same Individual-Oracle direct imitation on
-**ETTh1 / ETTm1 / Weather** at **H96**, using the most expressive scorer whose
-train fit was confirmed in A/B.
-
-- Only ETTh1 low, others high → dataset-specific predictability / density issue.
-- All near random → the problem formulation (predicting future-Oracle membership
-  from past-only input) is itself the difficulty.
-
----
-
-# Track C — End-to-End forecasting-aligned retrieval
-
-Runs in parallel with, and independent of, Oracle imitation. Writes to its own
-separate directory.
-
-**Question.** Can retrieval that never matches Oracle candidates still lower
-final forecasting MSE?
-
-**Method.** Soft retrieval, no differentiable hard Top-K in this first pass:
+Add a reranker stage between coarse retrieval and Stage-2:
 
 ```
-p_i       = Softmax(s_i / tau_H)
-Y_ret     = sum_i p_i * Y_i
-L_E2E     = MSE(Y_final, Y_q)
+Full memory --[frozen S0 retriever, cosine]--> Top-100 (fixed shortlist)
+Top-100     --[NEW: learned reranker]--------> Top-10 (fed to Stage-2)
 ```
 
-`tau_H` uses the Phase 0 calibrated values: 0.015 (H96), 0.015 (H192),
-0.01 (H336), 0.02 (H720).
+The reranker's objective is a set-level utility (softmax aggregate error),
+identical in form to `soft_set_mse`, but the softmax runs **only over the
+100-candidate shortlist**, not the full bank — this is the one thing EXP-3 did
+not test and the one change this experiment isolates.
 
-## Required control arms
-
-| Arm | Scorer | Retrieval | Stage-2 |
-|---|---|---|---|
-| E0 | — | base only | train |
-| E1 | frozen | hard Top-10 | train |
-| E1-soft | frozen | soft | train |
-| E2 | trainable | soft | train |
-
-The two contrasts that carry the result:
-
-- `E1-soft − E1` = effect of the hard→soft retrieval representation change alone
-- `E2 − E1-soft` = **pure effect of training the scorer with forecasting gradient**
-
-**Mandatory across every arm:** same base forecaster checkpoint, same Stage-2
-initialization, same seed, same split. Past experiments measured
-`corr(base_mse, final_mse) ≈ +0.958`, so a differing base checkpoint contaminates
-any retrieval-effect reading. This control is not optional.
-
-## Decision Criterion (Track C)
-
-| Case | Observation | Reading |
-|---|---|---|
-| 1 | soft MSE ↓ **and** hard Top-10 AggregateMSE ↓ **and** hard Stage-2 MSE ↓ | forecast-aligned E2E retrieval works |
-| 2 | soft objective ↓ only, hard Top-10 unchanged | objective learns; soft→hard transfer is the bottleneck |
-| 3 | no improvement | representation / predictability limit, or a limit on retrieval signal Stage-2 can exploit |
-| 4 | Oracle imitation fails **but** E2E succeeds | **high-value result** — the Oracle-membership intermediate target was itself misaligned with forecasting |
-
----
-
-# Required rerun — ETTh1 Stage-2 under fixed wiring
-
-Independent of the above and **blocking for any downstream claim about ETTh1**.
-
-Re-evaluate {KL, WCE} × {Cosine, Asymmetric, MLP} × {H96, H192, H336, H720} under
-identical Stage-2 conditions with the wiring fix in place. Until then ETTh1
-Stage-2 is a pre-fix historical diagnostic only; Weather is the valid downstream
-evidence. See `RESEARCH_CONTEXT.md` → *Invalidated Results — Do Not Cite*.
-
----
+Everything else stays exactly as EXP-3/EXP-1 held it: Stage-1 S0 encoder
+frozen, Stage-2 architecture/gate/fusion/`top_k`/`tau_topk` unchanged,
+`relation_top_n=1` (self-only, not mixed with the cross-channel question).
 
 # Controlled Variables
 
-Held fixed unless named as the changed variable above:
-
-- dataset and split protocol; `seq_len = pred_len`; `--features M`
-- `--top_k 10`, `--relation_top_n 3`
-- model size (`d_model 128`, `n_heads 4`, `e_layers 2`, `d_layers 1`, `d_ff 256`)
-- frozen healthy WCE Stage-1 encoder; fixed P100 candidate pool
-- per-horizon τ from Phase 0
-- optimizer, LR schedule, epochs, patience, batch size, `--seed`
-- checkpoint selection rule; evaluation protocol and metric definitions
-- **Track C additionally:** identical base forecaster checkpoint and Stage-2 init
+- Coarse retriever: frozen S0 (WCE, cosine) checkpoint, unchanged.
+- Coarse shortlist size: 100 (same P100 definition already used and verified
+  in EXP-1/EXP-2's oracle intervention).
+- Stage-2 architecture, gate, fusion, `top_k=10`, `tau_topk=0.1`: unchanged.
+- Seed, split, candidate masking: unchanged.
+- Checkpoint selection: validation, not test (same discipline as EXP-3).
 
 # Dataset
 
-ETTh1 (A/B, Track C, rerun); ETTh1 + ETTm1 + Weather (cross-dataset, H96 only).
+ETTh1 and Weather, same as EXP-3.
 
 # Prediction Horizons
 
-A/B: H96 and H720. Cross-dataset: H96. Track C and the rerun: 96 / 192 / 336 / 720.
+H96 and H720 only, matching EXP-3's representative-cell precedent — do not
+expand to H192/H336 until this shows a clear signal at the cheaper horizons.
+
+# Loss
+
+Reranker-only softmax aggregate loss over the fixed 100-shortlist:
+
+```
+p_i = softmax(reranker_score_i / tau)     i in the 100-candidate shortlist only
+Y_ret_soft = sum_i p_i * Y_i
+L = MSE(Y_ret_soft, Y_q)
+```
+
+`tau` requires its own Step-0 calibration **on the 100-candidate support**,
+not reused from EXP-3's full-memory calibration (support size changed, so the
+temperature-to-N_eff mapping changed) — this is the same calibration procedure
+already implemented and acceptance-tested (`tau_calibration_diag`), pointed at
+the 100-candidate case.
 
 # Metrics
 
-- TeacherSetRecall@10 (against 0.10 random baseline) and imitation loss
-  (against ln(100) ≈ 4.605)
-- `I` individual MSE@10, `A` HardAggregateMSE@10, `V` candidate variance —
-  reported together, since `I = A + V`
-- Stage-2 final MSE, base MSE, retrieval gain, λ
-- Recall@1/5/10 retained as a *diagnostic*, explicitly not as the objective
+Same as EXP-3, plus the shortlist-vs-support distinction made explicit:
 
-# Expected Outcomes
+- `HardAggregateMSE@10` computed with the Top-10 the reranker actually selects
+  from the 100-shortlist (never from the full bank at eval time).
+- `N_eff` (should now be bounded above by 100 by construction — report it to
+  confirm this, not to newly discover a diffusion problem).
+- `effective_rank` / mean pairwise cosine (collapse check, same as EXP-3).
+- Stage-2 Final MSE, downstream, on validation for arm selection and test for
+  the reported number (same discipline as EXP-3/EXP-1).
+- Recall@10 reported, not used as the success criterion (established finding:
+  it does not track Stage-2).
 
-Enumerated per track in the decision-criterion tables above. Each outcome was
-specified before running.
+# Success Criterion
+
+`HardAggregateMSE@10` (hard, Top-10, 100-shortlist-constrained) improves over
+S0's own Top-10 **and** that improvement reaches Stage-2 Final MSE beyond the
+≈0.01 MSE seed-noise floor, at both H96 and H720, on at least one dataset,
+without `N_eff` approaching the shortlist size (100) or `effective_rank`
+dropping further than S0's own baseline.
+
+# Failure Criterion
+
+Any of: Stage-2 does not improve beyond noise; `N_eff` saturates near 100
+(diffusing across the whole shortlist, the small-scale analogue of EXP-3's
+failure); `effective_rank` collapses further than the frozen S0 baseline
+(would indicate the reranker itself is degenerating, since the encoder is
+frozen and cannot itself collapse — a nonobvious result worth flagging rather
+than average over, since it is not supposed to be able to happen with a frozen
+encoder); or the result is confined to one dataset only in a way that cannot
+be distinguished from that dataset's already-known bottleneck differences
+(e.g. Weather's baseline collapse) rather than the reranking idea itself.
+
+# Expected Compute
+
+Reranker is a small module (comparable to the existing `PairwiseScorer`) scored
+over only 100 candidates per query — orders of magnitude cheaper per step than
+EXP-3's full-memory softmax over ~8,000-36,700 candidates. Rough estimate:
+Stage-1-equivalent reranker training at ETTh1 scale (~minutes based on this
+project's existing Stage-1 timing), Weather scale proportionally longer given
+its larger channel count, but still far below EXP-3's Weather Stage-1 run
+times (~40min/run) since the candidate axis shrinks by 2-3 orders of
+magnitude. Full estimate to be refined at implementation time, before any GPU
+run.
 
 # Decision Criterion
 
-Per the tables above. Reminders that apply to all tracks:
-
-- Seed noise is ≈0.01 MSE; smaller differences are not evidence.
-- A metric improvement does not establish a mechanism.
-- Nothing in the *Do Not Conclude* table of `RESEARCH_CONTEXT.md` may be asserted
-  on the strength of these runs.
+If the success criterion is met on both datasets at both horizons: proceed to
+the full H192/H336 horizons and consider this the retrieval-quality-improving
+direction to develop further. If it succeeds on one dataset only: treat as
+dataset-dependent and investigate that dataset's specific bottleneck (Weather's
+known representation collapse) before generalizing. If it fails on both: the
+bottleneck is more likely in the coarse stage (the P100 shortlist itself
+excluding good candidates, per EXP-1's P100-vs-FULL gap) than in what a
+reranker can do once handed the shortlist — the next question becomes
+improving the coarse retriever, not the reranker.

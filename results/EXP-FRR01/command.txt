@@ -1,0 +1,30 @@
+Stage-1 (5 arms, ETTh1 H96, GPU 1):
+  bash scripts/run_exp_frr01_stage1.sh
+  (residual-teacher cache rebuilt first from the current campaign's own B0
+   Stage-2 checkpoint, NOT the older cache/residual_teacher/ETTh1_pred96.pt:
+   python scripts/precompute_residual_teacher.py \
+     --checkpoint checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_.../checkpoint.pth \
+     --out_dir cache/residual_teacher_frr01 --splits train,val,test --force)
+
+Stage-2 (5 arms, identical B0 protocol, GPU 1):
+  bash scripts/run_exp_frr01_stage2.sh
+
+Per-arm flags (both scripts), on top of the shared B0 recipe
+(candidate_mask=raft, relation_top_n=1 self-only, full_online gradient mode at
+Stage-1, freeze_stage1_encoder=1 + stage2_e2e=0 at Stage-2, fusion=residual/
+scalar-gate, top_k=10, tau_topk=0.1, seed=0):
+
+  R0   --stage1_residual_teacher 1 --stage1_residual_teacher_cache cache/residual_teacher_frr01
+       (Stage-2: plain load, no extra flags)
+  R1   R0 + --stage1_query_base_conditioning 1
+       (Stage-2: + --stage2_query_base_conditioning 1 --stage2_residual_cache cache/residual_teacher_frr01)
+  R2   R0 + --stage1_candidate_residual_conditioning 1
+       (Stage-2: + --stage2_candidate_residual_conditioning 1 --stage2_residual_cache cache/residual_teacher_frr01)
+  R12  R1 + R2 flags together
+  R3   R12 + --stage1_retrieval_metric asymmetric
+       (Stage-2 must also pass --stage1_retrieval_metric asymmetric or the
+        asymmetric weights in the checkpoint are silently ignored)
+
+B0 is NOT re-run: reused as-is from EXP-3 closure
+  (checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_.../checkpoint.pth,
+   checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_.../checkpoint.pth)

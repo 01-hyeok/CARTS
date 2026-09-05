@@ -369,6 +369,30 @@ class Exp_Stage1_Relation(Exp_Basic):
             print(f'[stage1] residual cache {path}: '
                   f'memory_residual={tuple(cache["memory_residual"].shape)} '
                   f'reference={meta.get("reference_stage2", "?")}')
+            # EXP-FRR01 temporal-legality check: `memory_residual` must be the
+            # single train-only archive shared by every split -- if its row
+            # count matched val/test instead of train, or if the cache carried
+            # a per-split memory tensor a caller could point at val/test by
+            # mistake, this is exactly the failure mode that would make R2/R12/
+            # R3's candidate conditioning leak future information into the
+            # candidate side. Asserted, not just documented, so a future cache
+            # format change cannot silently break it.
+            train_rows = cache['splits']['train']['query_residual'].shape[0]
+            memory_rows = cache['memory_residual'].shape[0]
+            if memory_rows != train_rows:
+                raise ValueError(
+                    f'residual cache {path}: memory_residual has {memory_rows} rows '
+                    f'but the train split has {train_rows} queries -- memory_residual '
+                    'is expected to be built from the train split alone (see '
+                    'scripts/precompute_residual_teacher.py::build); refusing to use '
+                    'it for candidate conditioning until this is verified'
+                )
+            print(f'[legality] memory_residual is the train-split-only archive '
+                  f'({memory_rows} rows, matches train query count); the same '
+                  f'archive is shared by every split (train={train_rows}, '
+                  f'val={cache["splits"]["val"]["query_residual"].shape[0]}, '
+                  f'test={cache["splits"]["test"]["query_residual"].shape[0]}) -- '
+                  'no val/test window ever contributes to memory_residual')
         return self._residual_cache_value
 
     def _reference_key_bank(self):

@@ -196,6 +196,25 @@ class Model(nn.Module):
                 'stage1_retrieval_metric and stage1_retrieval_score=pairwise_mlp are two '
                 'different comparisons; pick one')
 
+        # EXP-FRR01 R1/R2 at Stage-2: the same additive conditioning Stage-1
+        # trained with must stay live at retrieval time here too, or Stage-2
+        # only inherits "an encoder shaped by the signal during training" and
+        # silently drops the actual mechanism. Weights are loaded from the
+        # Stage-1 checkpoint in load_stage1_checkpoint, mirroring retrieval_metric.
+        self.query_base_conditioning = bool(
+            int(getattr(configs, 'stage2_query_base_conditioning', 0)))
+        self.candidate_residual_conditioning = bool(
+            int(getattr(configs, 'stage2_candidate_residual_conditioning', 0)))
+        if self.query_base_conditioning:
+            self.query_cond_proj = nn.Linear(self.pred_len, int(configs.d_model))
+        if self.candidate_residual_conditioning:
+            self.candidate_cond_proj = nn.Linear(self.pred_len, int(configs.d_model))
+            if bool(int(getattr(configs, 'stage2_e2e_full_online', 0))):
+                raise NotImplementedError(
+                    'stage2_candidate_residual_conditioning does not yet cover '
+                    'the e2e_full_online re-encoding path '
+                    '(_reencode_all_candidates); use the default static bank')
+
         # End-to-end retrieval supervision: lambda * KL(future-MSE teacher || cosine student).
         # Zero keeps the pure forecasting objective, i.e. the current behaviour.
         self.retrieval_kl_weight = float(getattr(configs, 'retrieval_kl_weight', 0.0))
@@ -692,7 +711,9 @@ class Model(nn.Module):
         # other leaves a randomly initialised metric scoring trained embeddings,
         # which is worse than either alone and fails silently.
         for attr, prefix in (('retrieval_metric', 'retrieval_metric.'),
-                             ('pairwise_scorer', 'pairwise_scorer.')):
+                             ('pairwise_scorer', 'pairwise_scorer.'),
+                             ('query_cond_proj', 'query_cond_proj.'),
+                             ('candidate_cond_proj', 'candidate_cond_proj.')):
             module = getattr(self, attr, None)
             if module is None:
                 continue
@@ -735,7 +756,7 @@ class Model(nn.Module):
             print(f'[stage2] {msg}')
 
     @torch.no_grad()
-    def build_memory_key_bank(self, memory_x, device, chunk_size=None):
+    def build_memory_key_bank(self, memory_x, device, chunk_size=None, memory_residual=None):
         was_training = self.training
         chunk_size = int(chunk_size or self.memory_chunk_size)
         memory_x = torch.as_tensor(memory_x, dtype=torch.float32)
@@ -817,7 +838,12 @@ class Model(nn.Module):
                 for start in range(0, memory_x.size(0), chunk_size):
                     cur = memory_x[start:start + chunk_size].to(device)
                     rel = self._relation_tensor(cur, c, r)
-                    encoded_chunk = self.stage1_encoder(rel).cpu()
+                    encoded_chunk = self.stage1_encoder(rel)
+                    if self.candidate_residual_conditioning:
+                        residual_chunk = memory_residual[start:start + chunk_size].to(device)
+                        encoded_chunk = self._condition_candidate_embedding(
+                            encoded_chunk, residual_chunk, c)
+                    encoded_chunk = encoded_chunk.cpu()
                     if self.uses_sparse_relation_graph():
                         encoded_chunk = encoded_chunk.half()
                     encoded.append(encoded_chunk)
@@ -1363,6 +1389,8 @@ class Model(nn.Module):
         memory_x_last=None,
         oracle_target_y=None,
         full_oracle_only=False,
+        query_residual=None,
+        query_y=None,
     ):
         if full_oracle_only and oracle_target_y is None:
             raise ValueError('full_oracle_only requires oracle_target_y')
@@ -1503,6 +1531,8 @@ class Model(nn.Module):
                     z_q = self._branch_embedding(
                         batch_x, c, r, channel_embeddings=query_channel_embeddings
                     )
+                    if self.query_base_conditioning:
+                        z_q = self._condition_query_embedding(z_q, query_y, query_residual, c)
                     z_mem = self._branch_memory(
                         key_bank, c, source_slot, r, z_q.dtype, batch_x.device
                     )
@@ -1736,6 +1766,30 @@ class Model(nn.Module):
             cache['alpha_margin'] = torch.stack([row['alpha_margin'] for row in debug_rows], dim=1).mean(dim=1).detach()
             cache['top_k_effective'] = torch.stack([row['top_k_effective'] for row in debug_rows], dim=1).mean(dim=1).detach()
         return cache
+
+    def _condition_query_embedding(self, z_q, query_y, query_residual, target_channel):
+        """EXP-FRR01 R1 at Stage-2, mirrors RelationStage1._condition_query_embedding
+        exactly: base = Y_q - R_q, projected and added, then renormalised."""
+        if query_residual is None or query_y is None:
+            raise ValueError(
+                'stage2_query_base_conditioning needs query_residual and query_y '
+                '(target_y) -- both must reach this call'
+            )
+        query_base = query_y[:, :, target_channel] - query_residual[:, :, target_channel]
+        return F.normalize(
+            z_q + self.query_cond_proj(query_base.to(z_q.dtype)), dim=-1, eps=1e-8,
+        )
+
+    def _condition_candidate_embedding(self, z, memory_residual, target_channel):
+        """EXP-FRR01 R2 at Stage-2, mirrors RelationStage1._condition_candidate_embedding."""
+        if memory_residual is None:
+            raise ValueError(
+                'stage2_candidate_residual_conditioning needs memory_residual'
+            )
+        residual_row = memory_residual[:, :, target_channel].to(z.dtype)
+        return F.normalize(
+            z + self.candidate_cond_proj(residual_row), dim=-1, eps=1e-8,
+        )
 
     def _residual_pair_mse(self, query_residual, memory_residual, target_channel):
         """Pairwise MSE between query and candidate base-forecast residuals.
@@ -2021,10 +2075,16 @@ class Model(nn.Module):
                             z_q = self._branch_embedding(
                                 batch_x, c, r, channel_embeddings=query_channel_embeddings
                             )
+                            if self.query_base_conditioning:
+                                z_q = self._condition_query_embedding(
+                                    z_q, target_y, query_residual, c)
                     else:
                         z_q = self._branch_embedding(
                             batch_x, c, r, channel_embeddings=query_channel_embeddings
                         )
+                        if self.query_base_conditioning:
+                            z_q = self._condition_query_embedding(
+                                z_q, target_y, query_residual, c)
                     if self.e2e_full_online and self.training:
                         if candidate_x is None:
                             raise ValueError(

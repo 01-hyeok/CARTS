@@ -101,176 +101,223 @@ horizon (SHA256-verified).
 
 ---
 
-# EXP-3 — Learning a Stage-1 loss aligned with the aggregate (IN PROGRESS)
+# EXP-3 — soft_set_mse: representative Stage-2 closure (COMPLETE — VERDICT: STOP)
 
 ## Research Question
 
-EXP-1/EXP-2 showed an *oracle* aggregate-aware selection beats an oracle
-individual selection. Can a **differentiable, trainable** Stage-1 loss that
-targets the same aggregate quantity actually be learned, and does it improve
-the real (hard, Top-K, deployed) retrieval — not just an oracle upper bound?
+Does a differentiable, aggregate-aligned Stage-1 loss (`soft_set_mse`, full
+memory bank softmax) improve real Stage-2 downstream forecasting, not just an
+oracle upper bound (EXP-1/EXP-2 already showed the oracle upper bound is real)?
 
-```
-p_i = softmax(s_i / tau_set)              over the WHOLE valid memory bank
-Y_ret_soft = sum_i p_i * Y_i
-L_set = MSE(Y_ret_soft, Y_q)
-L_total = wce_weight * L_WCE + lambda_set * L_set
-```
+## Why representative closure instead of the full sweep
 
-This reuses the pre-existing `soft_set_mse()` / `hard_aggregate_metrics()`
-implementation and Stage-1 loss mode `wce_soft_set_mse`, unit-tested before
-this run (existing 7 tests: manual weighted-aggregate match, complementary
-candidates, gradient reaches every valid score, invalid candidates get zero
-gradient, one-sided support hinge, effective-support-vs-temperature). One new
-flag, `--stage1_wce_weight` (default 1.0), was added to reach `L = L_set` alone
-(S1) without writing a new loss.
+Stage-1 (20/20 runs) showed the soft-loss arms disagreeing in direction between
+datasets (ETTh1: hard_aggregate_mse10 got worse; Weather: it improved, but with
+N_eff and collapse warning signs). Rather than run all 20 Stage-2 downstream
+evaluations, one representative comparison per cell was prioritized to reach a
+GO/STOP decision quickly: **S0 (WCE baseline) vs the single non-baseline arm
+with the best VALIDATION `hard_aggregate_mse10`** (never TEST, never each arm's
+own training objective) from the already-completed Stage-1 sweep. The
+remaining 12 Stage-1×Stage-2 combinations were not run and are not needed for
+this decision. 2 of the 8 representative runs (ETTh1 H96 S0/S2) were already
+complete from an earlier partial pass and were reused as-is, not rerun.
 
-## Arms (score function and everything else held fixed; only the loss changes)
+Stage-2 architecture, base forecaster, gate (`residual`/`scalar`),
+`relation_top_n=1`, `top_k=10`, `tau_topk=0.1`, split and training protocol are
+identical across every arm and cell — only the Stage-1 checkpoint differs.
 
-| Arm | wce_weight | set_mse_weight |
-|---|---:|---:|
-| S0 (WCE baseline) | 1.0 | 0.0 |
-| S1 (SetMSE only) | 0.0 | 1.0 |
-| S2 | 1.0 | 10.0 |
-| S3 | 1.0 | 30.0 |
-| S4 | 1.0 | 50.0 |
+## Results — [repo]
 
-`tau_set`: ETTh1 uses the pre-existing Phase-0 calibrated values (0.015 @ H96,
-0.02 @ H720). Weather had no such calibration on record for its actual
-`tau_calibration_diag` method — the method itself had been lost before being
-committed and was reconstructed and acceptance-tested against the four
-surviving ETTh1 ground-truth logs (matched to 4-5 significant figures at every
-sweep point before being trusted) — then run fresh for Weather. Weather's
-result was a genuine two-sided conflict, not a tuning failure: at H96 the
-target `N_eff` band (30-60) is **structurally unreachable** — N_eff floors at
-≈2150 even as tau→0 — consistent with the severe representation collapse
-already on record for the Weather encoder (`effective_rank_mean` ≈ 6.6); at
-H720 `N_eff` is reachable but `Mass@10` is then pinned at ≈0.92 throughout the
-whole reachable range, far outside its own (0.5, 0.8) target. Both were
-resolved by the pre-registered tie-break rule (closest `Mass@10` to 0.5) rather
-than forcing a value, **before** any Stage-1/Stage-2 result was seen. Chosen:
-0.0025 (H96), 0.00105 (H720).
+| Dataset | H | Arm | S2 Final MSE | Delta vs S0 | Rel% | Stage-1 HardAgg@10 | Recall@10 | N_eff | Eff. rank |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| ETTh1 | 96 | S0 (WCE) | 0.37312 | — | — | 0.4073 | 0.0570 | 94.6 | 20.8 |
+| ETTh1 | 96 | S2 (lam10) | 0.37911 | +0.00599 | +1.61% | 0.4147 | 0.0516 | 201.1 | 12.1 |
+| ETTh1 | 720 | S0 (WCE) | 0.46827 | — | — | 0.5732 | 0.0198 | 68.5 | 17.6 |
+| ETTh1 | 720 | S3 (lam30) | 0.50947 | +0.04120 | +8.80% | 0.5864 | 0.0210 | 207.4 | 11.4 |
+| Weather | 96 | S0 (WCE) | 0.17553 | — | — | 0.2348 | 0.0579 | 1498.7 | 12.2 |
+| Weather | 96 | S1 (set only) | 0.17681 | +0.00128 | +0.73% | 0.2058 | 0.0548 | 8870.6 | 5.8 |
+| Weather | 720 | S0 (WCE) | 0.31869 | — | — | 0.5672 | 0.0116 | 81.5 | 20.0 |
+| Weather | 720 | S3 (lam30) | 0.38574 | +0.06705 | +21.04% | 0.4650 | 0.0105 | 700.0 | 4.4 |
 
-Checkpoint selection: **`hard_aggregate_mse10` on validation** for every arm
-(not each arm's own training objective, and never the test split).
+MSE lower is better. **Every representative arm is worse than S0 at every cell
+— 0 of 4 improved.** ETTh1 H720 and Weather H720 exceed the repository's
+recorded seed noise (≈0.01 MSE) by 4-7x, decisively in the worse direction; the
+two H96 deltas are within/near noise but are also the wrong sign to claim
+improvement regardless of magnitude.
 
-## Status: Stage-1 14/20 runs complete; Stage-2 0/20 (not started)
+Weather's Stage-1-internal `hard_aggregate_mse10` *did* improve (−12.3% H96,
+−18.0% H720) — but `N_eff` exploded (+492%, +759% over baseline, against a
+~36,700-candidate bank) and `effective_rank` collapsed (−53%, −78%) at the same
+time. The Stage-1 improvement does not survive Stage-2 and reads as the
+diffusion/collapse confound flagged as a risk before this run, not as genuine
+retrieval learning.
 
-Completed: ETTh1 H96 (5/5), ETTh1 H720 (5/5), Weather H96 (4/5, S4 running).
-Remaining: Weather H96 S4, then Weather H720 all 5 arms, then all 20 Stage-2
-downstream runs. **The question this experiment exists to answer —
-does a Stage-1 gain reach Stage-2's final forecast — cannot be answered yet.**
-What follows is Stage-1-only and may not survive contact with Stage-2.
+## Verdict: STOP
 
-## Interim Stage-1 results — [repo]
+All of the pre-registered stop conditions hold: ETTh1 fails to improve Stage-2
+at both horizons; Weather's apparent gain is confounded by N_eff explosion and
+representation collapse; all 4 cells move in the same (worse) direction rather
+than merely disagreeing; two of four deltas exceed seed noise and the other two
+are the wrong sign. **No further lambda/tau/support-penalty sweep is planned on
+this direction.**
 
-### ETTh1 H96
+## Conclusion (stated within what the data supports)
 
-| Arm | Recall@10 | HardAgg@10 | SoftSetMSE | N_eff |
-|---|---:|---:|---:|---:|
-| S0 WCE | 0.0570 | **0.4073** | 0.2190 | 94.6 |
-| S1 SetMSE only | 0.0455 | 0.4226 | 0.1925 | 585.4 |
-| S2 (lambda=10) | 0.0516 | 0.4147 | 0.2008 | 201.1 |
-| S3 (lambda=30) | 0.0479 | 0.4220 | 0.1980 | 254.1 |
-| S4 (lambda=50) | 0.0460 | 0.4258 | 0.1961 | 334.2 |
+Set Oracle analysis (EXP-1/EXP-2) showed real headroom in candidate
+*combination* — a Weighted-Set Oracle beats an Individual Oracle on
+A_weighted at every horizon tested, on both datasets. But training a
+full-memory soft aggregation loss (`soft_set_mse`) to capture that headroom did
+not transfer to Top-K retrieval or downstream forecasting: on ETTh1 the soft
+objective improves while the hard, deployed Top-10 aggregate does not
+(soft/hard selection mismatch); on Weather the apparent hard-aggregate gain is
+inseparable from the loss diffusing probability mass across thousands of
+candidates while the encoder representation collapses. Neither dataset shows a
+Stage-2 improvement that survives these confounds.
 
-### ETTh1 H720
+## What this does NOT establish
 
-| Arm | Recall@10 | HardAgg@10 | SoftSetMSE | N_eff |
-|---|---:|---:|---:|---:|
-| S0 WCE | 0.0198 | **0.5732** | 0.2590 | 68.5 |
-| S1 SetMSE only | 0.0197 | 0.6176 | 0.2652 | 345.9 |
-| S2 | 0.0193 | 0.6017 | 0.2684 | 127.9 |
-| S3 | 0.0210 | 0.5864 | 0.2568 | 207.4 |
-| S4 | 0.0228 | 0.5868 | 0.2503 | 263.3 |
-
-**Every set-loss arm is worse than WCE alone on `HardAggregateMSE@10` at both
-ETTh1 horizons**, and `N_eff` (mean_q exp(entropy_q) of the softmax over the
-full bank) inflates 3-9x over the WCE baseline as `lambda` grows.
-
-### Weather H96 (4 of 5 arms; S4 still training)
-
-| Arm | Recall@10 | HardAgg@10 | SoftSetMSE | N_eff |
-|---|---:|---:|---:|---:|
-| S0 WCE | 0.0579 | 0.2348 | 0.2650 | 1498.7 |
-| S1 SetMSE only | 0.0548 | **0.2058** | 0.1371 | 8870.6 |
-| S2 | 0.0450 | 0.2065 | 0.1407 | 4556.4 |
-| S3 | 0.0534 | **0.1988** | 0.1385 | 5286.5 |
-| S4 | — | training | — | — |
-
-Here `HardAggregateMSE@10` *improves* with the set loss — the opposite
-direction from ETTh1 — but `N_eff` for S1 is 8870 out of ≈36,700 valid
-candidates, roughly 6x the (already very high, 1499) WCE baseline. A
-representation-collapse diagnostic captured mid-run on the Weather S4 arm
-showed `effective_rank_mean` falling to 2.75 and mean pairwise cosine rising to
-0.91 — markedly worse than the WCE baseline's own already-poor 6.6.
-
-## Claude's technical observations (implementation-level only, no research conclusion)
-
-1. **ETTh1 reads as Case 3 from the pre-registered decision rules**: the soft
-   objective improves (`SoftSetMSE` falls with `lambda`) but the hard,
-   deployed Top-10 aggregate does not — a soft-relaxation-vs-hard-selection
-   mismatch, not a representation problem (ETTh1's `N_eff` values, while
-   inflated, stay in the tens-to-low-hundreds against ≈8,200-8,450 valid
-   candidates).
-2. **Weather's apparent improvement is confounded with two failure modes at
-   once**: `N_eff` in the thousands out of ~36,700 (Case C, "excessive
-   diffusion" — closer to averaging most of memory than to retrieving) and a
-   further representation-rank drop as `lambda` increases (Case E,
-   representation collapse). An aggregate-error improvement produced by
-   averaging over thousands of near-duplicate embeddings is not evidence that
-   the set-level objective is teaching useful retrieval.
-3. Neither dataset has a Stage-2 number yet. Whether ETTh1's clean Case-3
-   reading and Weather's confounded improvement both wash out, both persist, or
-   diverge further at the fusion stage is unknown.
-
-## Possible issues / confounds for the reviewer to weigh independently
-
-- Is `hard_aggregate_mse10` at validation the right checkpoint criterion when
-  the training loss can trivially lower it by inflating `N_eff` (diffusing
-  toward the memory mean) rather than by learning a better retrieval geometry?
-  A checkpoint selected this way could be selecting for diffusion, not utility.
-- Weather's tau values were chosen by a fixed, pre-registered rule under a
-  structural conflict the rule was not originally built to arbitrate (neither
-  target being simultaneously satisfiable). Is "closest `Mass@10` to 0.5,
-  restricted to the `N_eff`-band when one exists" still the right tie-break
-  when the `N_eff` band is provably unreachable, versus reachable-but-conflicting?
-- The representation-collapse severity gap between ETTh1 (`N_eff` stays modest)
-  and Weather (`N_eff` in the thousands) tracks the two datasets' already very
-  different baseline `effective_rank` (≈17-18 for ETTh1's WCE encoder vs ≈6.6
-  for Weather's) — is Weather's result telling us anything about `soft_set_mse`
-  specifically, or mainly reflecting that Weather's encoder was already close
-  to collapsed before this loss was added?
-- No Stage-2 result exists yet for either dataset. Please treat every number
-  above as Stage-1-internal and not indicative of downstream utility.
+- That no differentiable aggregate-aware Stage-1 loss could ever work — only
+  that a full-memory softmax over the whole bank, at these temperatures and
+  lambdas, does not.
+- That the Individual Oracle → Weighted-Set Oracle gap (EXP-1/EXP-2) is closed
+  or irrelevant — it remains a real, measured upper bound; this experiment
+  shows one specific way of trying to reach it failing, not that the gap is
+  unreachable in principle.
+- Anything about cross-channel relations — this stayed self-only
+  (`relation_top_n=1`) throughout, per the standing decision to keep that
+  question separate.
 
 ## Questions for ChatGPT
 
-1. Given only the Stage-1 evidence so far, is Case 3 (ETTh1) severe enough to
-   deprioritize completing the Weather/Stage-2 legs of this experiment, or is
-   the Weather divergence (opposite direction) reason enough to see it through?
-2. Is "improves the training objective by increasing `N_eff` into the
-   thousands" a result worth reporting as a negative finding in its own right
-   (a concrete failure mode of naive full-memory soft-aggregate losses), even
-   if Stage-2 numbers never materialize?
-3. Does the ETTh1 Case-3 pattern (soft objective improves, hard deployed
-   Top-10 does not) suggest a specific fix — e.g. restricting the softmax to a
-   pre-selected shortlist rather than the whole memory bank — that would be a
-   more informative next experiment than waiting out the current sweep?
-4. Should checkpoint selection be changed to jointly gate on `N_eff` staying
-   near the calibrated band, so a collapsing/diffusing checkpoint cannot be
-   selected merely for a favorable `hard_aggregate_mse10`?
+1. Is "STOP on this specific loss formulation" the right scope for the
+   conclusion, or does the ETTh1 vs Weather divergence (opposite Stage-1
+   directions, same Stage-2 direction) suggest something more general about
+   full-memory soft losses that should be stated more strongly?
+2. Given the confirmed Individual→Set Oracle gap and this closure's negative
+   result, is "retrieve-then-rerank" (coarse Top-100 by the existing retriever,
+   then a separate reranker minimizing set-level utility only inside that
+   shortlist) the most information-dense next experiment, or is there a
+   cheaper diagnostic that should come first?
+3. Does the Weather N_eff/collapse pattern (worse baseline representation
+   quality **and** a much larger relative diffusion under the same loss)
+   suggest the representation should be stabilized before any further
+   set-level objective is tried on Weather specifically?
 
-## Candidate next experiments (not chosen here)
+## Candidate next experiment considered, then independently tested (see below)
 
-- Finish the current sweep (Weather H720 Stage-1 + all 20 Stage-2 runs) before
-  drawing any downstream conclusion — this is already queued and running.
-- If Stage-2 confirms ETTh1's Case 3, try a shortlist-restricted soft objective
-  (softmax over the model's own Top-100, not the full bank) as the direct fix
-  for the soft/hard mismatch.
-- If Weather's `N_eff` explosion is confirmed to be doing the work, an explicit
-  `N_eff` penalty (already implemented as `stage1_set_support_k` /
-  `stage1_set_support_weight`, currently unused at weight 0 in this sweep)
-  is a natural, already-available follow-up rather than a new experiment.
+The reranker-on-a-shortlist design proposed after EXP-3 (still in
+`research/CURRENT_EXPERIMENT.md`, unstarted) is one candidate direction. A
+*different* direction — full-memory residual-conditioned retrieval, explicitly
+avoiding any shortlist — was specified by the researcher and run to
+completion as EXP-FRR01 below, independent of this candidate.
+
+---
+
+# EXP-FRR01 — Full-memory forecast-conditioned residual retrieval (COMPLETE — VERDICT: STOP)
+
+## Research Question
+
+Redefine retrieval from "similar future" to "similar historical
+forecast-error/residual pattern." Five arms, each adding one mechanism on top
+of the last, all full-memory (no Top-M shortlist anywhere):
+
+```
+R0   residual teacher only: WCE's Top-K target graded by residual similarity
+     (S_R(q,k) = -MSE(R_q, R_k), R = Y - base_forecast) instead of raw future
+     similarity, everything else (architecture, loss family) unchanged
+R1   R0 + query conditioning: the query embedding gets an additive projection
+     of its own base forecast (Y_q - R_q) before scoring
+R2   R0 + candidate conditioning: same additive idea, on each candidate's own
+     historical residual, at every embedding site (key bank, differentiable
+     re-encoding, full_online re-encoding)
+R12  R1 + R2 together
+R3   R12 + an asymmetric dual-encoder comparison (separate W_q/W_k
+     projections) in place of plain cosine
+```
+
+Primary (only) success metric: Stage-2 Final MSE. Pre-registered rule: an
+arm needs to beat B0 by >= 0.01 to trigger a 3-seed confirmation run;
+Stage-1-proxy improvement (recall, hard_aggregate_mse10) alone is not success.
+ETTh1 H96 only, 1 seed, per the pre-registered pilot scope.
+
+## A real architecture gap found mid-run
+
+Before any Stage-2 run, auditing `RelationStage2.load_stage1_checkpoint`
+showed it only transplanted `encoder`/`shared_cross_projection`/
+`retrieval_metric` weights from a Stage-1 checkpoint — nothing loaded the new
+`query_cond_proj`/`candidate_cond_proj` conditioning modules R1/R2 add. Left
+as-is, Stage-2 would have kept only "an encoder shaped by conditioning during
+training" and silently dropped R1/R2's actual mechanism at retrieval time —
+not what the arms are defined to be. Flagged to the researcher before
+proceeding; they chose to wire it properly (over two faster/partial options)
+rather than accept a reduced test. Full account in
+`results/EXP-FRR01/notes.md`.
+
+## Results — [repo], ETTh1 H96, B0 reused from EXP-3 (0.37312, not rerun)
+
+| Arm | Stage-1 HardAgg@10 | Recall@10 (orig) | Recall@10 (residual-target) | Stage-2 Final MSE | Delta vs B0 |
+|---|---:|---:|---:|---:|---:|
+| B0 | 0.4073 | 0.0570 | — | 0.37312 | — |
+| R0 | 0.4154 | 0.0507 | 0.0282 | 0.37397 | +0.00085 |
+| R1 | 0.4703 | 0.0505 | 0.0477 | 0.37099 | -0.00213 |
+| R2 | 0.4667 | 0.0861 | 0.0606 | 0.38023 | +0.00711 |
+| R12 | 0.4655 | 0.0866 | 0.0669 | 0.38112 | +0.00800 |
+| R3 | 0.4537 | 0.0805 | 0.0596 | 0.37953 | +0.00641 |
+
+No arm crosses +/-0.01 -> no 3-seed confirmation triggered, no GO. R1's small
+improvement (-0.00213) is below this project's own ~0.01 seed-noise reference
+and is not distinguishable from noise at 1 seed. R2/R12/R3 raised Recall@10
+substantially (+51%/+52%/+41% relative to B0) while Stage-1
+`hard_aggregate_mse10` and Stage-2 Final MSE both got worse.
+
+## Sanity checks passed
+
+`pytest tests/`: 444 passed, exactly the 2 pre-existing repository failures,
+both before and after every code change. 1-epoch smoke test of R3 (exercises
+every new code path at once) run to completion at both stages before the real
+10-epoch runs. `[legality]` assertion (candidate-side `memory_residual` row
+count equals the train split's query count, i.e. it is the train-only
+archive) passed for every Stage-1 arm. Retrieval-selection wiring guard
+(`configured_metric == actual_selection_score_fn`) passed for R3 at Stage-2.
+
+## Conclusion (stated within what the data supports)
+
+Redefining the retrieval target/representation around residual similarity,
+in five increasingly complex forms, does not improve Stage-2 forecasting on
+ETTh1 H96 at 1 seed. The R2/R12/R3 result reproduces EXP-C01/EXP-3's
+"Recall@10 does not predict Stage-2" finding through a structurally different
+mechanism (embedding conditioning, not a soft aggregate loss) — evidence the
+disconnect is about what Recall@10 measures, not an artifact specific to the
+soft_set_mse loss family.
+
+## What this does NOT establish
+
+- That no residual-conditioned retrieval mechanism could ever help — only
+  that this specific set of additive, frozen-Stage-1-encoder mechanisms does
+  not, at 1 seed, on ETTh1 H96.
+- Anything about Weather or other horizons — not run, per the pre-registered
+  scope (no arm reached the 3-seed/follow-up bar that would have justified
+  extending scope).
+- Anything about cross-channel relations — self-only (`relation_top_n=1`)
+  throughout.
+
+## Questions for ChatGPT
+
+1. Is a single ETTh1-H96/1-seed pilot sufficient evidence to close this whole
+   direction, or does R1's small (noise-scale) improvement in the opposite
+   direction from R2/R12/R3 warrant a second seed before concluding STOP,
+   even without crossing the pre-registered 0.01 bar?
+2. R2/R12/R3 raising Recall@10 by ~50% while making both `hard_aggregate_mse10`
+   and Stage-2 worse is now a two-mechanism replication (soft losses in EXP-3,
+   embedding conditioning here). Is there a more direct diagnostic that would
+   explain *why* Recall@10 is this decoupled from aggregate/downstream
+   quality, rather than reconfirming that it is?
+3. Given EXP-1/EXP-2's confirmed Individual->Set-Oracle gap remains real and
+   unreached by every mechanism tried so far (soft losses, residual
+   conditioning), is the reranker-on-a-shortlist design in
+   `research/CURRENT_EXPERIMENT.md` now the most promising remaining
+   candidate, or does EXP-FRR01's result suggest that direction should also be
+   pressure-tested against a cheaper diagnostic first?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
