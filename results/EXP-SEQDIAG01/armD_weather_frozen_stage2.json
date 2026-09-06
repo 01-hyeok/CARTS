@@ -1,0 +1,16 @@
+{
+  "b0_unforced_final_mse": 0.17552851828509117,
+  "b0_unforced_final_mae": 0.22098150601909133,
+  "sequential_forced_final_mse": 0.2173307306151538,
+  "sequential_forced_final_mae": 0.25006418486203214,
+  "individual_oracle_mse": 0.03631435829301555,
+  "set_oracle_a_weighted": 0.016976618056084483,
+  "seq_a_weighted": 0.3671589847701196,
+  "b0_a_weighted": 0.23475070737062692,
+  "gap_recovery": -0.6080074898545369,
+  "seq_set_recall_at_k": 0.022929091207529353,
+  "duplicate_rate": 0.0,
+  "invalid_rate": 0.0,
+  "n_channels": 21,
+  "n_test_rows_per_channel": 10444
+}

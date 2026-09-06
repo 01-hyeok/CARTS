@@ -1,9 +1,30 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **EXP-SEQDIAG01 — Cross-Dataset Sequential Collapse Diagnostic.**
-Approved and commissioned directly by the user (2026-09-06), executed in the
-same session. See `research/EXPERIMENT_LOG.md` → EXP-SEQDIAG01 for the
-factual result once complete.
+Status: **EXP-SEQDIAG01 — Cross-Dataset Sequential Collapse Diagnostic —
+COMPLETE (2026-09-06).** All 4 arms finished (plus a HardAggregateMSE@10
+companion metric and independent SHA256 encoder-freeze verification added
+after the initial run); full factual record in `research/EXPERIMENT_LOG.md`
+→ EXP-SEQDIAG01, reviewer handoff in `research/REVIEW_FOR_CHATGPT.md`,
+closing decision in `research/RESEARCH_DECISIONS.md` → D-0011. Result:
+partial support for H1 (frozen encoder improves `gap_recovery` AND
+`HardAggregateMSE@10` consistently on both ETTh1 and Weather) but not full
+support (every arm on both datasets remains net worse than B0 under both
+metrics) — H2 remains necessary alongside H1. Per D-0011, exact one-hot
+sequential imitation (both encoder variants) is now closed; Dense Marginal
+Utility is named as a candidate next direction but **not implemented or
+approved**.
+
+**Note: "Frozen" in this experiment means the Stage-1 encoder's own weights
+did not update during Stage-1 training — Stage-1 and Stage-2 were already
+separated (via `set_forced_selection`, no forecasting-loss backprop into
+Stage-1) in every arm, Trainable included. This is not a different
+Stage-1/Stage-2 architecture and not end-to-end training.**
+
+**No next experiment is approved.** Per this project's workflow, the next
+step is an independent review (ChatGPT/Codex reads
+`research/REVIEW_FOR_CHATGPT.md` and writes `research/NEXT_EXPERIMENT.md`);
+the user then promotes an approved plan into this file. Do not start a new
+experiment until that happens.
 
 **Note on research direction (2026-09-06):** the coarse-retrieve-then-rerank
 design that previously occupied this file (a fixed Top-100 shortlist between

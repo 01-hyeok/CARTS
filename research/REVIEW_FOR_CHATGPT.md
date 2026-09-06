@@ -2,10 +2,13 @@
 
 Handoff for independent review. Self-contained: no log files needed.
 
-**Status: four completed experiments (EXP-1/EXP-2 Oracle Intervention,
+**Status: five completed experiments (EXP-1/EXP-2 Oracle Intervention,
 EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned retrieval,
-EXP-SEQFULL01 sequential set-conditioned retrieval). All four most recent
-directions (EXP-3, FRR01, SEQFULL01) closed with verdict STOP.**
+EXP-SEQFULL01 sequential set-conditioned retrieval, EXP-SEQDIAG01
+cross-dataset frozen-encoder collapse diagnostic). All four most recent
+directions (EXP-3, FRR01, SEQFULL01, SEQDIAG01) closed with verdict STOP or,
+for SEQDIAG01, a diagnostic result requiring the reviewer's interpretation
+rather than a pass/fail verdict.**
 
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
 engineer; **[user]** = supplied by the researcher, not independently
@@ -463,6 +466,201 @@ weak signal, rather than only a correlate, is exactly what EXP-SEQDIAG01
    procedure variant is tried on the current representation, or does this
    three-way failure suggest the representation itself needs to change
    before the objective does?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+
+# EXP-SEQDIAG01 — Cross-dataset frozen-encoder collapse diagnostic (COMPLETE)
+
+## Research Question
+
+EXP-SEQFULL01 trained cleanly but its encoder's effective rank collapsed
+(20.8 → 5.43 on ETTh1) alongside the generalization failure. Is the collapse
+a *cause* of the failure (H1), or is the failure about the discrete
+set-construction rule not transferring to held-out queries regardless of
+representation quality (H2)? A Frozen-B0 control arm (B0's own encoder
+weights, never updated; only the new `SetConditioner` trains) isolates this,
+run on both ETTh1 and Weather H96 to also check dataset-dependence.
+
+## Method
+
+Identical protocol to EXP-SEQFULL01 (teacher-forced, full-memory, step-wise
+cross-entropy imitation of the same Weighted Set Oracle teacher; Stage-2
+injection via `set_forced_selection`, unchanged), with a `--frozen_encoder`
+flag: B0's own Stage-1 encoder weights are loaded (not randomly
+initialised) and excluded from the optimizer; only `SetConditioner` +
+`EmptySetToken` train. Four arms: ETTh1 Trainable (reused from
+EXP-SEQFULL01, not rerun), ETTh1 Frozen-B0, Weather Trainable, Weather
+Frozen-B0. Seed 0, `top_k=10`, H96 only, both `relation_top_n=1` (self-only).
+
+## Results — [repo]
+
+`gap_recovery` = `(A_B0 − A_seq)/(A_B0 − A_set_oracle)`, same definition as
+EXP-SEQFULL01; negative = worse than B0, 0 = matches B0, 1 = matches the set
+oracle. Comparable across datasets; raw MSE is not.
+
+| Arm | Dataset | b0_unforced_mse | sequential_forced_mse | gap_recovery | seq_set_recall@10 |
+|---|---|---:|---:|---:|---:|
+| Trainable (reused) | ETTh1 | 0.37312 | 0.40277 | −0.404 | 0.01354 |
+| **Frozen-B0** | ETTh1 | 0.373122 | 0.387924 | **−0.248** | 0.01242 |
+| Trainable | Weather | 0.175529 | 0.268140 | −0.816 | 0.00917 |
+| **Frozen-B0** | Weather | 0.175529 | 0.217331 | **−0.608** | 0.02293 |
+
+`duplicate_rate` / `invalid_rate` = 0.0 on all four arms.
+
+Effective-rank diagnostic (post-hoc, `embedding_geometry`, full candidate
+bank, channel 0):
+
+| Encoder | Dataset | effective_rank (of 128) | mean pairwise cosine |
+|---|---|---:|---:|
+| B0 | ETTh1 | ~20.8 (EXP-3 figure, not recomputed) | UNKNOWN |
+| Trainable | ETTh1 | 5.433 | 0.0122 |
+| B0 | Weather | 19.576 | 0.8123 |
+| Trainable | Weather | 4.297 | 0.7063 |
+
+Weather's trained encoder loses ~78% of its effective rank (19.576→4.297);
+ETTh1's loses ~74% (20.8→5.433) — consistent relative-magnitude collapse
+across both datasets. Mean pairwise cosine, notably, does *not* move the
+same direction on Weather (B0's own cosine there is already high, 0.812; the
+trained arm's, 0.706, is *lower*) — cosine is not a reliable cross-dataset
+collapse indicator here; effective rank is.
+
+**HardAggregateMSE@10** (`= MSE(mean_i y_i, y_q)`, equal-weight aggregate,
+distinct from the B0-weighted `A_weighted` above; the production eval script
+only reports the latter, so this was computed post-hoc):
+
+| Arm | Dataset | sequential | B0 (unforced) | seq / b0 |
+|---|---|---:|---:|---:|
+| Trainable (reused) | ETTh1 | 0.59017 | 0.40741 | 1.449x |
+| **Frozen-B0** | ETTh1 | **0.51901** | 0.40741 | **1.274x** |
+| Trainable | Weather | **4.30396** | 0.23421 | **18.38x** |
+| **Frozen-B0** | Weather | **0.92057** | 0.23421 | **3.93x** |
+
+Same direction as `gap_recovery` (freezing helps on both datasets) but a
+much larger and markedly asymmetric magnitude: freezing cuts Weather's
+unweighted aggregate error 4.7x (4.304→0.921) versus only 1.14x on ETTh1
+(0.590→0.519). Trainable Weather's unweighted error (4.30) is over 18x B0's
+— a far starker failure than the weighted `A_weighted` number suggested,
+visible only once the B0-derived weighting is removed. No arm beats its own
+B0 under this metric either.
+
+**Structural invariants, independently re-verified beyond training-time
+logging:** encoder-freeze checked by SHA256 of every `encoder.*` tensor —
+Arm B's and Arm D's checkpoints are byte-identical to their source B0
+checkpoints; Arm C's (trainable) differs, as expected. Full-memory checked
+by code inspection of `step_logits()` — it scores the complete
+`candidate_embeddings` tensor (8449/36696) at every step; no shortlist stage
+exists anywhere in the training/eval scripts.
+
+## Sanity checks passed
+
+`pytest tests/`: 466 passed (8 new, in `tests/test_exp_seqdiag01.py`),
+exactly the same 2 pre-existing repository failures, no regression.
+`b0_unforced_final_mse` independently re-derived and fingerprint-matched by
+every arm's own evaluation run (ETTh1: 0.373122 vs. recorded 0.37312;
+Weather: 0.175529 reproduced identically by both Weather arms). A server
+reboot mid-campaign killed Arm D at 2/10 Stage-1 epochs; it was discarded
+(not resumed — no epoch-resume logic exists) and rerun from scratch, all 10
+epochs, after reboot. Full detail: `results/EXP-SEQDIAG01/notes.md`,
+`logs/exp_seqdiag01/RESUME_STATE.md`.
+
+## Conclusion (stated within what the data supports)
+
+Freezing the encoder moved `gap_recovery` toward zero on **both** datasets
+(ETTh1: −0.404→−0.248, Δ+0.156; Weather: −0.816→−0.608, Δ+0.208) — a
+consistent, same-direction, cross-dataset effect, corroborated by a second,
+independent line of evidence (relative effective-rank collapse magnitude
+matching within ~4 points of each other across the two datasets). This is
+**partial support for H1**: representation collapse is a genuine,
+consistent contributing cause of EXP-SEQFULL01's generalization failure, not
+merely a correlate specific to ETTh1.
+
+It is not **full** support. Every one of the four arms — including both
+Frozen-B0 controls, where the representation is held fixed at B0's own,
+uncollapsed quality — remains net `gap_recovery`-negative: even with
+representation quality controlled for, the sequential selector's forced
+Top-10 is still worse than B0's own unforced selection on both datasets.
+**H2 (the discrete greedy set-construction rule does not transfer from
+training queries to held-out ones from past-only `X_q`/`X_i` information,
+independent of representation quality) remains necessary** to explain this
+residual failure. The honest reading is: **collapse is a real contributing
+factor, but not the whole explanation** — this is not a clean Case A (H1
+fully vindicates, mechanism otherwise sound) nor a clean Case B (H1 plays no
+role); it sits between them, with H1 explaining part of the gap and H2
+explaining the rest.
+
+HardAggregateMSE@10 (equal-weight, computed post-hoc) sharpens this: on
+Weather, freezing cuts the sequential arm's unweighted aggregate error by
+4.7x (4.304→0.921) — a far larger effect than `gap_recovery` alone showed —
+while on ETTh1 the same metric moves only 1.14x (0.590→0.519). Both datasets
+still agree on *direction*; the *size* of the freeze benefit is not
+comparable across datasets, and Weather's Trainable arm in particular is
+catastrophically bad under the unweighted metric (18x worse than B0) despite
+looking only ~2x worse under the B0-weighted `A_weighted` metric — the
+weighting in `A_weighted` (derived from B0's own retrieval score) appears to
+substantially mask how poor the Trainable arm's raw candidate selection is
+on Weather specifically.
+
+**Clarification on what "Frozen" means here (stated explicitly per this
+project's protocol):** the Frozen-B0 arm is **not** a different Stage-1/
+Stage-2 architecture. Every arm in this experiment, Trainable and Frozen
+alike, already separates Stage-1 (produces a hard Top-10 via
+`set_forced_selection`) from Stage-2 (B0's own unchanged forecaster/gate/
+fusion/aggregation; the forecasting loss is never backpropagated into
+Stage-1). "Frozen" refers only to whether the Stage-1 encoder's own weights
+update during Stage-1 training — an encoder-representation control *within*
+the existing separated two-stage design, not a new end-to-end or
+joint-training configuration. True Stage-1+Stage-2 joint end-to-end training
+(Stage-2 loss backpropagated into Stage-1) was not implemented and remains
+out of scope.
+
+## What this does NOT establish
+
+- That freezing the encoder, or any other collapse-prevention mechanism, is
+  sufficient on its own to reach competitive Stage-2 performance — it is
+  not, on either dataset tested.
+- Anything about horizons other than H96, or about `relation_top_n>1`
+  (cross-channel) configurations — not run, per the pre-registered scope.
+- The exact quantitative split between "how much of the gap is H1 vs. H2" —
+  only the qualitative direction (both contribute) is supported by this
+  design; a cleaner decomposition would need a different experiment.
+- Why Weather's `gap_recovery` is uniformly worse than ETTh1's on both
+  Trainable and Frozen arms (−0.816 vs. −0.404 Trainable; −0.608 vs. −0.248
+  Frozen) — the effective-rank collapse magnitude is *similar* across
+  datasets, so this cross-dataset gap in absolute severity is not explained
+  by collapse alone; not investigated further here.
+
+## Questions for ChatGPT
+
+7. Given collapse contributes but does not fully explain the failure on
+   either dataset (H1 partial, H2 still necessary), what is the most
+   informative next experiment to isolate H2's remaining contribution —
+   i.e., to test whether the discrete greedy rule itself is learnable from
+   past-only information, independent of both representation collapse and
+   the specific conditioner architecture tried so far?
+8. Effective rank (not mean pairwise cosine) is the metric that agrees in
+   direction across ETTh1 and Weather; cosine moves the "wrong" way on
+   Weather (trained arm's cosine is *lower* than B0's, despite lower
+   effective rank). Is this a known dissociation between these two collapse
+   metrics, and does it change how much weight effective rank alone should
+   get as *the* collapse diagnostic going forward, versus needing a second
+   corroborating metric on every future encoder-quality claim?
+9. Weather's `gap_recovery` is substantially worse than ETTh1's at both
+   Trainable and Frozen settings, despite comparable relative effective-rank
+   collapse. Is this consistent with a channel-count / candidate-pool-size
+   confound (Weather: 21 channels, 36696 candidates/channel vs. ETTh1: 7
+   channels, 8449 candidates/channel — a ~4.3x larger, higher-cardinality
+   problem for the same sequential classification objective), or does it
+   suggest something dataset-specific unrelated to scale?
+10. `A_weighted` (B0-weighted) and `HardAggregateMSE@10` (equal-weight) agree
+    on direction but disagree sharply on magnitude for Weather's Trainable
+    arm (~2x worse than B0 vs. 18x worse than B0, respectively). Given
+    `A_weighted` is the metric `gap_recovery` and this project's other
+    verdicts are built on, should `HardAggregateMSE@10` (or another
+    unweighted view) be reported as a standard companion metric going
+    forward, on the reasoning that a B0-derived weighting could obscure how
+    bad a candidate set's raw composition is?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 

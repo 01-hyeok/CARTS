@@ -1,0 +1,5 @@
+arm,dataset,encoder,b0_unforced_final_mse,sequential_forced_final_mse,individual_oracle_mse,set_oracle_a_weighted,seq_a_weighted,b0_a_weighted,gap_recovery,seq_set_recall_at_10,duplicate_rate,invalid_rate,n_channels,effective_rank,mean_pairwise_cosine,hard_aggregate_mse_individual,hard_aggregate_mse_set_oracle,hard_aggregate_mse_seq,hard_aggregate_mse_b0
+etth1_trainable_reused,ETTh1,trainable,0.37312,0.40277,0.19101,0.10303,0.53040,0.40734,-0.40439,0.01354,0.0,0.0,7,5.433,0.0122,0.19101,0.30503,0.59017,0.40741
+armB_etth1_frozen,ETTh1,frozen_b0,0.373122,0.387924,0.191011,0.103034,0.482890,0.407342,-0.248261,0.012424,0.0,0.0,7,20.8,UNKNOWN,0.19101,0.30503,0.51901,0.40741
+armC_weather_trainable,custom,trainable,0.175529,0.268140,0.036314,0.016977,0.412376,0.234751,-0.815639,0.009174,0.0,0.0,21,4.297,0.7063,0.03631,0.12417,4.30396,0.23421
+armD_weather_frozen,custom,frozen_b0,0.175529,0.217331,0.036314,0.016977,0.367159,0.234751,-0.608007,0.022929,0.0,0.0,21,19.576,0.8123,0.03631,0.12417,0.92057,0.23421

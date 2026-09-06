@@ -1,0 +1,6 @@
+{
+  "hard_aggregate_mse_individual": 0.036314357846996444,
+  "hard_aggregate_mse_set_oracle": 0.12417027356870047,
+  "hard_aggregate_mse_seq": 4.303961100171903,
+  "hard_aggregate_mse_b0": 0.2342055473922997
+}

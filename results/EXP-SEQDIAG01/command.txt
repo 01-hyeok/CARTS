@@ -1,0 +1,45 @@
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+
+ETTH1_S1_CKPT="checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth"
+ETTH1_S2_CKPT="checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth"
+WEATHER_S1_CKPT="checkpoints/soft_set_mse/stage1/custom/seq96_pred96/stage1_carts_softset_Weather_96_S0_wce_RelationStage1_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl96_pl96_0/checkpoint.pth"
+WEATHER_S2_CKPT="checkpoints/stage2/custom/seq96_pred96/stage2_carts_softset_s2_Weather_96_S0_wce_RelationStage2_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl96_pl96_0/checkpoint.pth"
+
+# ARM B: ETTh1 Frozen-B0
+python -u scripts/train_seqfull01.py --base_ckpt "$ETTH1_S1_CKPT" \
+  --teacher_cache cache/seqfull01_teacher/ETTh1_pred96.pt \
+  --checkpoints checkpoints/exp_seqdiag01 \
+  --model_id carts_seqdiag01_etth1_frozen --des seqdiag01_etth1_frozen \
+  --top_k 10 --seed 0 --frozen_encoder
+python -u scripts/eval_seqfull01_stage2.py --stage2_checkpoint "$ETTH1_S2_CKPT" \
+  --sequential_checkpoint checkpoints/exp_seqdiag01/seqfull01/ETTh1/seq96_pred96/carts_seqdiag01_etth1_frozen/checkpoint.pth \
+  --teacher_cache cache/seqfull01_teacher/ETTh1_pred96.pt \
+  --top_k 10 --out results/EXP-SEQDIAG01/armB_etth1_frozen_stage2.json
+
+# ARM C: Weather Trainable
+python -u scripts/train_seqfull01.py --base_ckpt "$WEATHER_S1_CKPT" \
+  --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --checkpoints checkpoints/exp_seqdiag01 \
+  --model_id carts_seqdiag01_weather_trainable --des seqdiag01_weather_trainable \
+  --top_k 10 --seed 0
+python -u scripts/eval_seqfull01_stage2.py --stage2_checkpoint "$WEATHER_S2_CKPT" \
+  --sequential_checkpoint checkpoints/exp_seqdiag01/seqfull01/custom/seq96_pred96/carts_seqdiag01_weather_trainable/checkpoint.pth \
+  --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --top_k 10 --out results/EXP-SEQDIAG01/armC_weather_trainable_stage2.json
+
+# ARM D: Weather Frozen-B0 (rerun from scratch after 2026-09-06 server reboot;
+# see logs/exp_seqdiag01/RESUME_STATE.md)
+python -u scripts/train_seqfull01.py --base_ckpt "$WEATHER_S1_CKPT" \
+  --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --checkpoints checkpoints/exp_seqdiag01 \
+  --model_id carts_seqdiag01_weather_frozen --des seqdiag01_weather_frozen \
+  --top_k 10 --seed 0 --frozen_encoder
+python -u scripts/eval_seqfull01_stage2.py --stage2_checkpoint "$WEATHER_S2_CKPT" \
+  --sequential_checkpoint checkpoints/exp_seqdiag01/seqfull01/custom/seq96_pred96/carts_seqdiag01_weather_frozen/checkpoint.pth \
+  --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --top_k 10 --out results/EXP-SEQDIAG01/armD_weather_frozen_stage2.json
+
+# Post-hoc effective-rank diagnostic (Weather B0 + Arm C trained encoder),
+# not part of the training/eval scripts; ad hoc, see scratch script referenced
+# in research/EXPERIMENT_LOG.md -> EXP-SEQDIAG01 Results section.

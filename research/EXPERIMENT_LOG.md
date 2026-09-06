@@ -815,3 +815,301 @@ The Phase C imitation numbers match the logs exactly.
 ### Status
 completed (diagnostic campaign); **ETTh1 Stage-2 sweep requires rerun**
 
+---
+
+## EXP-SEQDIAG01 — Cross-Dataset Sequential Collapse Diagnostic (Frozen-B0 control)
+
+### Date
+2026-09-06
+
+### Research Question
+EXP-SEQFULL01 (full-memory, teacher-forced, sequential imitation of the
+Weighted Set Oracle's greedy construction) trained cleanly on ETTh1 H96 but
+did not generalize to held-out queries, and its trained encoder's effective
+rank collapsed from B0's ~20.8 to 5.43. Two explanations are entangled:
+
+- **H1**: the sequential full-memory cross-entropy objective itself collapses
+  the encoder representation, and that collapse is what prevents
+  generalization.
+- **H2**: even with the representation held stable, past-only `X_q`/`X_i`
+  information does not let this mechanism learn a discrete greedy
+  set-construction rule that transfers from training queries to held-out
+  ones.
+
+A Frozen-B0 control arm (B0's own encoder weights, never updated; only the
+new `SetConditioner` trains) was added on both ETTh1 and Weather H96 and
+compared against the existing/new Trainable arm on each dataset, to
+distinguish these hypotheses and check whether any conclusion is
+dataset-dependent.
+
+Pre-registered decision framing: **Case A** — Frozen improves over Trainable
+on both datasets (H1 supported: collapse is a genuine contributing cause).
+**Case B** — Frozen also fails to improve over Trainable on both datasets
+(H2 supported: the failure is not primarily about representation collapse).
+**Case C** — the two datasets disagree (dataset-dependent learnability, no
+clean call). No exact numeric threshold for "improves" was recorded in the
+repository prior to this entry; this entry reports the sign and magnitude of
+every arm's `gap_recovery` explicitly so the reviewer can apply their own
+threshold.
+
+### Configuration
+Stage-1 (`scripts/train_seqfull01.py`) then Stage-2 (`scripts/eval_seqfull01_stage2.py`),
+matching EXP-SEQFULL01's protocol exactly except for the `--frozen_encoder`
+flag and the dataset. Exact commands (also in `logs/exp_seqdiag01/RESUME_STATE.md`
+and `logs/exp_seqdiag01/run_bcd_chain.sh`):
+
+```bash
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+
+# Arm B: ETTh1 Frozen-B0
+python -u scripts/train_seqfull01.py \
+  --base_ckpt "$ETTH1_S1_CKPT" --teacher_cache cache/seqfull01_teacher/ETTh1_pred96.pt \
+  --checkpoints checkpoints/exp_seqdiag01 \
+  --model_id carts_seqdiag01_etth1_frozen --des seqdiag01_etth1_frozen \
+  --top_k 10 --seed 0 --frozen_encoder
+python -u scripts/eval_seqfull01_stage2.py \
+  --stage2_checkpoint "$ETTH1_S2_CKPT" \
+  --sequential_checkpoint checkpoints/exp_seqdiag01/seqfull01/ETTh1/seq96_pred96/carts_seqdiag01_etth1_frozen/checkpoint.pth \
+  --teacher_cache cache/seqfull01_teacher/ETTh1_pred96.pt \
+  --top_k 10 --out results/EXP-SEQDIAG01/armB_etth1_frozen_stage2.json
+
+# Arm C: Weather Trainable (no --frozen_encoder)
+python -u scripts/train_seqfull01.py \
+  --base_ckpt "$WEATHER_S1_CKPT" --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --checkpoints checkpoints/exp_seqdiag01 \
+  --model_id carts_seqdiag01_weather_trainable --des seqdiag01_weather_trainable \
+  --top_k 10 --seed 0
+python -u scripts/eval_seqfull01_stage2.py \
+  --stage2_checkpoint "$WEATHER_S2_CKPT" \
+  --sequential_checkpoint checkpoints/exp_seqdiag01/seqfull01/custom/seq96_pred96/carts_seqdiag01_weather_trainable/checkpoint.pth \
+  --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --top_k 10 --out results/EXP-SEQDIAG01/armC_weather_trainable_stage2.json
+
+# Arm D: Weather Frozen-B0
+python -u scripts/train_seqfull01.py \
+  --base_ckpt "$WEATHER_S1_CKPT" --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --checkpoints checkpoints/exp_seqdiag01 \
+  --model_id carts_seqdiag01_weather_frozen --des seqdiag01_weather_frozen \
+  --top_k 10 --seed 0 --frozen_encoder
+python -u scripts/eval_seqfull01_stage2.py \
+  --stage2_checkpoint "$WEATHER_S2_CKPT" \
+  --sequential_checkpoint checkpoints/exp_seqdiag01/seqfull01/custom/seq96_pred96/carts_seqdiag01_weather_frozen/checkpoint.pth \
+  --teacher_cache cache/seqfull01_teacher/custom_pred96.pt \
+  --top_k 10 --out results/EXP-SEQDIAG01/armD_weather_frozen_stage2.json
+```
+
+ETTh1's Trainable-arm row is **reused, not rerun**, from EXP-SEQFULL01
+(`results/EXP-SEQFULL01/metrics.csv`); its `b0_unforced_final_mse` was
+cross-checked against Arm B's own `b0_unforced_final_mse` (0.373122 both),
+confirming the two experiments' evaluation code paths agree on the same B0
+baseline.
+
+`--frozen_encoder`: freezes the Stage-1 `RelationEncoder` weights (loaded
+from B0's own Stage-1 checkpoint rather than randomly initialised, unlike
+EXP-SEQFULL01's Trainable arms) and B0's own retrieval modules; only the new
+`SetConditioner` (and `EmptySetToken`) receive gradient updates. Verified by
+unit test and by `encoder_grad_norm=None(frozen)` in every frozen-arm epoch
+line of the training logs.
+
+### Changed Variable
+`--frozen_encoder` (on/off) x dataset (ETTh1/Weather), 2x2, with ETTh1
+Trainable reused from EXP-SEQFULL01.
+
+### Controlled Variables
+Everything else matches EXP-SEQFULL01's protocol and B0's own hyperparameters
+(loaded from B0's Stage-1 checkpoint `args`): `seq_len=pred_len=96`, `top_k=10`,
+d_model=128, teacher-forced step-wise full-memory cross-entropy, no shortlist
+at any point (every valid candidate scored at every step; only
+already-selected/invalid candidates masked), Stage-2's forced-selection
+mechanism (`RelationStage2.set_forced_selection`) reused verbatim, B0's own
+frozen retrieval aggregation weights unchanged.
+
+### Dataset
+ETTh1 (7 channels, 8449 valid candidates/channel) and Weather (`custom`, 21
+channels, 36696 valid candidates/channel).
+
+### Prediction Horizon
+96 only.
+
+### Seed
+0 (`--seed 0`, explicit on every arm).
+
+### Important Hyperparameters
+`--top_k 10`; Stage-1 training 10 epochs each arm; Weather per-epoch wall
+clock ~510-525s (Frozen) / ~642s (Trainable), observed directly in
+`logs/exp_seqdiag01/armD_weather_frozen_train.log` and prior Arm C log.
+
+### Result Files
+- `results/EXP-SEQDIAG01/armB_etth1_frozen_stage2.json`
+- `results/EXP-SEQDIAG01/armC_weather_trainable_stage2.json`
+- `results/EXP-SEQDIAG01/armD_weather_frozen_stage2.json`
+- `results/EXP-SEQFULL01/metrics.csv` (ETTh1 Trainable, reused)
+- `results/EXP-SEQDIAG01/notes.md` (this campaign's full working notes)
+- `logs/exp_seqdiag01/` (training logs, resume-state note, chain script)
+- Checkpoints: `checkpoints/exp_seqdiag01/seqfull01/{ETTh1,custom}/seq96_pred96/carts_seqdiag01_{etth1_frozen,weather_trainable,weather_frozen}/checkpoint.pth`
+
+### Results
+
+`gap_recovery`: fraction of the B0-to-set-oracle-A_weighted gap the arm's
+forced selection recovers; 0 = matches B0, negative = worse than B0 (moves
+away from the set oracle), 1 = matches the set oracle exactly. Not comparable
+in raw MSE across datasets; `gap_recovery` is the normalized quantity meant
+to be cross-dataset comparable.
+
+| Arm | Dataset | b0_unforced_mse | sequential_forced_mse | gap_recovery | seq_set_recall@10 | duplicate/invalid rate |
+|---|---|---:|---:|---:|---:|---:|
+| Trainable (reused, EXP-SEQFULL01) | ETTh1 | 0.37312 | 0.40277 | -0.404 | 0.01354 | 0.0 / 0.0 |
+| **Frozen-B0 (Arm B)** | ETTh1 | 0.373122 | 0.387924 | **-0.248** | 0.01242 | 0.0 / 0.0 |
+| Trainable (Arm C) | Weather | 0.175529 | 0.268140 | -0.816 | 0.00917 | 0.0 / 0.0 |
+| **Frozen-B0 (Arm D)** | Weather | 0.175529 | 0.217331 | **-0.608** | 0.02293 | 0.0 / 0.0 |
+
+Freezing the encoder moved `gap_recovery` toward zero (less negative, i.e.
+less bad) on **both** datasets: ETTh1 -0.404 → -0.248 (Δ +0.156), Weather
+-0.816 → -0.608 (Δ +0.208). This is the same-direction pattern on both
+datasets called out in the pre-registered Case A framing above — but on
+neither dataset does the frozen arm come close to `gap_recovery = 0`
+(matching B0), let alone a positive value: **every one of the four arms
+remains net negative**, meaning the sequential selector's forced Top-10 is
+still worse than B0's own unforced selection in all four cases.
+
+Effective-rank diagnostic (`utils.rank_losses.embedding_geometry`, full
+candidate bank, channel 0, computed post-hoc from the saved checkpoints —
+not saved by the training script itself):
+
+| Encoder | Dataset | n_candidates | effective_rank (of 128) | mean pairwise cosine |
+|---|---|---:|---:|---:|
+| B0 (frozen arms reuse this exactly) | ETTh1 | 8449 | ~20.8 (recorded in EXP-3's closure, not recomputed here) | — |
+| Trainable (EXP-SEQFULL01) | ETTh1 | 8449 | 5.433 | 0.0122 |
+| B0 | Weather | 36696 | 19.576 | 0.8123 |
+| Trainable (Arm C) | Weather | 36696 | 4.297 | 0.7063 |
+
+The Weather Trainable encoder collapses in effective rank by almost exactly
+the same relative amount as ETTh1's did (19.576 → 4.297 is a 78% reduction;
+20.8 → 5.433 is a 74% reduction) — a second, independent piece of evidence
+for consistent, cross-dataset representation collapse under this objective.
+Note the mean-pairwise-cosine reading does **not** move in the same direction
+on Weather as it does on ETTh1 (B0's Weather cosine, 0.812, is already high
+before training, and the trained arm's cosine, 0.706, is *lower* than B0's,
+not higher) — cosine alone is not a reliable collapse indicator on Weather;
+effective rank is the metric that agrees across both datasets.
+
+**HardAggregateMSE@10** (`= MSE(mean_i y_i, y_q)`, the equal-weight aggregate
+of the forced Top-10, computed post-hoc — `scripts/compute_hard_aggregate_mse_seqdiag01.py`,
+not part of the production eval script, which only reports the B0-weighted
+`A_weighted` aggregate):
+
+| Arm | Dataset | individual_oracle | set_oracle | sequential | B0 (unforced) | seq / b0 ratio |
+|---|---|---:|---:|---:|---:|---:|
+| Trainable (reused) | ETTh1 | 0.19101 | 0.30503 | 0.59017 | 0.40741 | 1.449x |
+| **Frozen-B0 (Arm B)** | ETTh1 | 0.19101 | 0.30503 | **0.51901** | 0.40741 | **1.274x** |
+| Trainable (Arm C) | Weather | 0.03631 | 0.12417 | **4.30396** | 0.23421 | **18.38x** |
+| **Frozen-B0 (Arm D)** | Weather | 0.03631 | 0.12417 | **0.92057** | 0.23421 | **3.93x** |
+
+This unweighted metric shows a much larger freeze effect than `gap_recovery`/
+`A_weighted` did, especially on Weather: freezing the encoder drops the
+sequential arm's unweighted aggregate MSE by **4.7x** (4.304 → 0.921), versus
+a much smaller relative improvement on ETTh1 (0.590 → 0.519, 1.14x). Both
+datasets move in the *same direction* (freezing helps), corroborating the
+`gap_recovery`/effective-rank pattern above with a third, independent
+metric — but the *magnitude* of the freeze effect is markedly larger on
+Weather under this unweighted metric than under the B0-weighted one, an
+asymmetry not visible in `gap_recovery` alone. Every arm's `seq` value still
+exceeds its own `b0` value (no arm beats B0 under this metric either).
+
+### Structural invariant verification
+
+**Encoder-freeze invariant** (independently verified beyond the training-time
+`requires_grad=False` assertion already built into `scripts/train_seqfull01.py`):
+SHA256 of every `encoder.*` parameter tensor in the saved frozen-arm
+checkpoints, byte-for-byte, against the B0 Stage-1 checkpoint each was loaded
+from —
+
+| Checkpoint | Encoder-only SHA256 |
+|---|---|
+| B0 ETTh1 Stage-1 | `b7cc8b56...d9f87c3b1` |
+| Arm B (ETTh1 Frozen) | `b7cc8b56...d9f87c3b1` (**identical**) |
+| B0 Weather Stage-1 | `ecfcc2e9...af73a29db` |
+| Arm D (Weather Frozen) | `ecfcc2e9...af73a29db` (**identical**) |
+| Arm C (Weather Trainable) | `0402369a...acdee7902` (differs from B0, as expected — this arm is not frozen) |
+
+Confirms, at the weight level and independent of any training-time logging,
+that the frozen arms' encoders are exactly B0's own weights with zero drift.
+
+**Full-memory invariant**: `models/SequentialSetRetriever.py::step_logits`
+computes `torch.matmul(h_t, candidate_embeddings.transpose(0,1))` against
+the full `candidate_embeddings` tensor (N=8449 ETTh1 / N=36696 Weather) at
+every one of the K=10 steps; only `selected_mask | ~valid_mask` positions
+are set to `-inf`. No Top-M/shortlist/coarse-retrieval stage exists anywhere
+in `scripts/train_seqfull01.py` or `scripts/eval_seqfull01_stage2.py` — every
+valid candidate is scored at every step, confirmed by direct code
+inspection (not merely by the module's own docstring claim).
+
+**Important distinction (do not conflate):** the Frozen-B0 arms are **not**
+a different Stage-1/Stage-2 architecture. Every arm in this experiment —
+Trainable and Frozen alike — already separates Stage-1 (produces a hard
+Top-10 via `set_forced_selection`) from Stage-2 (B0's own unchanged
+forecaster/gate/fusion/aggregation, forecasting loss never backpropagated
+into Stage-1). "Frozen" refers only to whether the Stage-1 `RelationEncoder`
+weights update during Stage-1 training — it is an encoder-representation
+control within the existing separated two-stage design, not a new
+end-to-end or joint-training configuration. True Stage-1+Stage-2 joint
+end-to-end training (Stage-2 forecasting loss backpropagated into Stage-1)
+was not implemented and is out of scope for this experiment.
+
+### Sanity Checks
+`pytest tests/`: 466 passed, 2 failed (pre-existing at HEAD `c306def`, listed
+in *Known Repository Issues*; `tests/test_exp_seqdiag01.py` adds 8 new
+passing tests for the frozen-encoder control and metric definitions), no
+regression versus the 396-passed/2-failed baseline recorded 2026-09-02 (the
+delta from 396 to 458 to 466 passed reflects tests added by EXP-SEQFULL01
+and EXP-SEQDIAG01 themselves, not a changed baseline).
+
+`b0_unforced_final_mse` fingerprint check: every arm's evaluation script
+independently re-derives B0's own (unforced) selection through the identical
+evaluation loop before reporting the forced-selection number. ETTh1:
+0.373122 (Arm B) reproduces 0.37312 (EXP-SEQFULL01's recorded B0 baseline)
+to 5 significant figures. Weather: 0.175529 reproduced identically by both
+Arm C and Arm D (same B0 checkpoint, same evaluation code path, two
+independent runs).
+
+Server reboot mid-campaign (2026-09-06, ~03:2x): all background processes
+were cleanly SIGTERM'd before the planned reboot (no mid-write), GPU 1
+confirmed free before shutdown. Arm D's Stage-1 was 2/10 epochs in at that
+point; per `logs/exp_seqdiag01/RESUME_STATE.md`, the 2-epoch checkpoint was
+discarded (not resumed — `train_seqfull01.py` has no epoch-resume logic) and
+Arm D was rerun from scratch after reboot. Arms B and C were unaffected
+(both completed before the reboot).
+
+### Implementation Notes
+`--frozen_encoder` support added to `scripts/train_seqfull01.py` (loads B0's
+own Stage-1 encoder weights instead of random init, excludes encoder
+parameters from the optimizer, keeps the encoder in eval mode, asserts zero
+encoder gradient each epoch). `tests/test_exp_seqdiag01.py` (8 tests) covers
+the frozen-encoder gradient-isolation contract and the corrected
+`overlap_at_k` metric definition (see ERRATUM above this entry).
+
+### Status
+completed (diagnostic campaign, 4/4 arms, plus the HardAggregateMSE@10
+companion metric and independent structural-invariant re-verification added
+after the initial 4-arm result). **Case A pattern observed on both datasets
+(Frozen improves `gap_recovery` AND `HardAggregateMSE@10` over Trainable,
+same direction on both metrics and both datasets, similar relative
+effective-rank collapse magnitude) — partial support for H1: sequential
+training's representation collapse is a genuine, consistent contributing
+cause. This is not full support: every arm on both datasets remains net
+`gap_recovery`-negative and net `HardAggregateMSE@10`-worse-than-B0, so H2
+(the discrete greedy rule itself does not transfer to held-out queries from
+past-only information, independent of representation quality) remains
+necessary to explain the residual failure even once the encoder is held
+fixed at B0's values.** The freeze effect's *magnitude* is markedly larger
+on Weather than ETTh1 under the unweighted metric (4.7x vs. 1.14x
+reduction) — a dataset asymmetry `gap_recovery` alone did not surface.
+**Encoder freeze is a within-Stage-1 representation control, not a
+different Stage-1/Stage-2 architecture: every arm here (Trainable and
+Frozen alike) already separates Stage-1 hard-selection from Stage-2's
+unchanged forecaster via `set_forced_selection`, with no forecasting-loss
+backpropagation into Stage-1 in either case.** Interpretation, novelty
+assessment, and next-experiment recommendation are left to the reviewer per
+this project's role division — see `research/REVIEW_FOR_CHATGPT.md`.
+

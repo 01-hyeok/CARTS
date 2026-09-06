@@ -198,4 +198,44 @@ confirms a decision.
   diffusion cannot recur) is designed in `CURRENT_EXPERIMENT.md`, not started.
 - **Status:** active
 
+## D-0011 — EXP-SEQDIAG01 closed: exact one-hot sequential imitation (Trainable AND Frozen-B0) STOP; Dense Marginal Utility named as next candidate, not started
+
+- **Date:** 2026-09-06
+- **Decided by:** pre-registered Case A/B/C rule, specified by the user
+  before this entry, mechanically applied to the actual 4-arm results.
+- **Decision:** Discrete, one-hot, teacher-forced full-memory sequential
+  cross-entropy imitation of the Weighted Set Oracle's greedy construction
+  is closed as a direction — in **both** its Trainable and Frozen-B0
+  encoder variants, on **both** ETTh1 and Weather H96. Freezing the encoder
+  is not, by itself, sufficient to make this mechanism competitive with B0.
+  No further hyperparameter/architecture variant of this exact-imitation
+  objective is planned without new evidence.
+- **Evidence:** `EXPERIMENT_LOG.md` EXP-SEQDIAG01 — `gap_recovery` is
+  negative for all 4 arms (ETTh1 Trainable −0.404, ETTh1 Frozen −0.248,
+  Weather Trainable −0.816, Weather Frozen −0.608); `HardAggregateMSE@10` is
+  worse than B0's own unforced selection for all 4 arms (1.449x, 1.274x,
+  18.38x, 3.93x respectively). Freezing the encoder improves both metrics on
+  both datasets (partial H1 support, confirmed by independent SHA256
+  encoder-weight verification that the frozen arms truly never update), but
+  none of the four arms comes close to matching, let alone beating, B0.
+  This is neither a clean Case A (H1 fully vindicates — frozen arm would
+  need to beat B0 or reach `gap_recovery≈0`) nor a clean Case B (H1 plays no
+  role at all — it clearly does, on both datasets and two metrics); the
+  decision to close applies regardless of which sub-case this is, since the
+  closing criterion (does any arm reach competitive Stage-2 performance) is
+  met identically either way: no.
+- **Consequence:** The Individual→Set-Oracle gap (EXP-1/EXP-2) remains real
+  and unreached by five structurally different mechanisms now (EXP-3 soft
+  relaxation, EXP-FRR01 embedding conditioning, EXP-SEQFULL01/EXP-SEQDIAG01
+  discrete sequential imitation in trainable and frozen-encoder variants).
+  Per the user's own pre-registered Case B consequence, the next candidate
+  direction named (but **not implemented, not started, not approved for
+  execution**) is a **Full-Memory Set-Conditioned Dense Marginal Utility**
+  objective: `Delta_i(S) = A(S) − A(S ∪ {i})`, a dense per-candidate teacher
+  signal rather than a single one-hot next-index target. This still
+  requires the user's/reviewer's explicit approval and a `CURRENT_EXPERIMENT.md`
+  design before any implementation begins. `FULL MEMORY -> DIRECT TOP-K`
+  (D-0010) continues to govern: no shortlist/reranker reopening.
+- **Status:** active
+
 
