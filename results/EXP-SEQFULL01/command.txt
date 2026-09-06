@@ -1,0 +1,35 @@
+Teacher precompute (offline Weighted Set Oracle sequence, full memory, fixed B0 reference score):
+  python scripts/precompute_seqfull01_teacher.py \
+    --checkpoint checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_.../checkpoint.pth \
+    --out_dir cache/seqfull01_teacher --splits train,val,test --top_k 10 --tau 0.1
+
+Small-N sanity gate (PASS):
+  python scripts/train_seqfull01.py \
+    --base_ckpt checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_.../checkpoint.pth \
+    --checkpoints checkpoints/exp_seqfull01_smalln \
+    --model_id carts_seqfull01_smalln --des seqfull01_smalln \
+    --top_k 10 --small_n --small_n_queries 16 --small_n_candidates 256 \
+    --small_n_steps 400 --small_n_target_channel 0 --seed 0
+
+Full ETTh1 H96 training (main arm, all 8449 candidates, self-only, 7 channels):
+  python scripts/train_seqfull01.py \
+    --base_ckpt checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_.../checkpoint.pth \
+    --teacher_cache cache/seqfull01_teacher/ETTh1_pred96.pt \
+    --checkpoints checkpoints/exp_seqfull01 \
+    --model_id carts_seqfull01_main --des seqfull01_main \
+    --top_k 10 --seed 0
+  (hyperparameters -- encoder, d_model, optimizer, lr, epochs=10, patience=5,
+   candidate_mask=raft, split, seed -- taken verbatim from B0's own saved
+   checkpoint args; only the new sequential objective replaces B0's loss)
+
+Stage-2 evaluation (forced_idx injection, B0's weighting/gate/fusion untouched):
+  python scripts/eval_seqfull01_stage2.py \
+    --stage2_checkpoint checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_.../checkpoint.pth \
+    --sequential_checkpoint checkpoints/exp_seqfull01/seqfull01/ETTh1/seq96_pred96/carts_seqfull01_main/checkpoint.pth \
+    --teacher_cache cache/seqfull01_teacher/ETTh1_pred96.pt --top_k 10 \
+    --out results/EXP-SEQFULL01/stage2_eval.json
+
+B0 is NOT re-run: reused as-is from EXP-3 closure (S0_wce Stage-1 and Stage-2
+checkpoints). Fingerprint check: this script's own b0_unforced_final_mse
+(0.373122) reproduces the known B0 baseline (0.37312) essentially exactly,
+confirming checkpoint/protocol match before trusting the forced-selection number.

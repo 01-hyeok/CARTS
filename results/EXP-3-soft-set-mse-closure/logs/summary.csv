@@ -1,0 +1,6 @@
+dataset,horizon,arm,label,recall10,retrieved_mse10,hard_aggregate_mse10,uniform_aggregate_mse10,weighted_individual_mse10,weighted_candidate_variance10,retrieval_regret10,set_soft_mse_raw,set_soft_mse_normalized,set_soft_entropy,set_soft_entropy_norm,n_eff,set_soft_top10_mass,set_soft_top100_mass,online_collapse_effective_rank_mean,base_mse,ret_mse,final_mse,final_mae,retrieval_gain,retrieval_gain_pct
+Weather,96,S0_wce,WCE,0.057891,0.436299,0.234751,0.234206,0.436241,0.20149,0.394247,0.259182,0.264965,2.90503,0.276395,1498.705381,0.760229,0.914139,12.186398,nan,nan,nan,nan,nan,nan
+Weather,96,S1_set_only,SetMSE only,0.054832,0.413394,0.205796,0.20578,0.413391,0.207595,0.371343,0.16508,0.137137,8.457618,0.804689,8870.637304,0.020579,0.131266,5.764224,nan,nan,nan,nan,nan,nan
+Weather,96,S2_lam10,WCE + Set λ10,0.044957,0.4427,0.20651,0.206486,0.442689,0.236179,0.400648,0.16631,0.140653,6.816286,0.648527,4556.423592,0.099577,0.42096,3.427803,nan,nan,nan,nan,nan,nan
+Weather,96,S3_lam30,WCE + Set λ30,0.053419,0.395193,0.198788,0.198757,0.395191,0.196403,0.353142,0.164749,0.138519,7.285355,0.693155,5286.490617,0.065948,0.320456,3.096008,nan,nan,nan,nan,nan,nan
+Weather,96,S4_lam50,WCE + Set λ50,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan

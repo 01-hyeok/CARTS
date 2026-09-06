@@ -2,11 +2,10 @@
 
 Handoff for independent review. Self-contained: no log files needed.
 
-**Status: two completed experiments (EXP-1, EXP-2) + one experiment IN PROGRESS
-(EXP-3, Stage-1 only, Stage-2 not yet run).** EXP-3 is included because its
-interim Stage-1 signal is already informative and the researcher wants a read
-before the remaining ~6+ hours of compute finishes. Do not treat EXP-3's
-numbers as final — explicitly flagged below.
+**Status: four completed experiments (EXP-1/EXP-2 Oracle Intervention,
+EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned retrieval,
+EXP-SEQFULL01 sequential set-conditioned retrieval). All four most recent
+directions (EXP-3, FRR01, SEQFULL01) closed with verdict STOP.**
 
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
 engineer; **[user]** = supplied by the researcher, not independently
@@ -318,6 +317,140 @@ soft_set_mse loss family.
    `research/CURRENT_EXPERIMENT.md` now the most promising remaining
    candidate, or does EXP-FRR01's result suggest that direction should also be
    pressure-tested against a cheaper diagnostic first?
+
+---
+
+# EXP-SEQFULL01 — Full-memory set-conditioned sequential retrieval (COMPLETE — VERDICT: STOP)
+
+## Research Question
+
+Rather than scoring candidates independently (every prior arm) or relaxing
+the set objective into a differentiable soft aggregate (EXP-3), directly
+imitate the Full-Memory Weighted Set Oracle's own DISCRETE GREEDY CONSTRUCTION:
+a sequential selector conditions each of K=10 steps on the set chosen so far
+and scores the WHOLE valid memory bank at every step (never a Top-M
+shortlist), trained via teacher-forced full-memory cross-entropy against the
+oracle's own step order. Does this let hard Top-K retrieval capture the
+Individual→Set-Oracle headroom EXP-1/EXP-2 measured, and does that reach
+Stage-2?
+
+## Method
+
+`SetConditioner`: `concat(q, mean(selected embeddings)) -> Linear -> GELU ->
+Linear -> residual -> norm` (a learned empty-set token at t=1). Teacher:
+`utils.oracle_intervention.select_greedy_weighted_set` (the exact function
+EXP-1/EXP-2 validated), run offline over the FULL memory bank per query,
+weighted by B0's own frozen retrieval score (fixed, never the student's own
+changing score) — cached once, never recomputed during training. Candidate
+encoder re-encoded live (gradient on, no `.detach()`) once per optimisation
+step and reused across all K steps, mirroring the existing `full_online`
+mechanism. Stage-2: the final Top-10 is injected via
+`RelationStage2.set_forced_selection`, the same mechanism EXP-1/EXP-2 already
+use — Stage-2's base forecaster/gate/fusion/aggregation weighting are B0's,
+completely unchanged; only Top-K *membership* differs.
+
+ETTh1 H96 only, self-only (`relation_top_n=1`), 1 seed. B0 reused as-is
+(EXP-3's S0_wce checkpoints, not rerun).
+
+## Results — [repo]
+
+**Small-N gate: PASS** (16 queries/256 candidates/single channel/400 steps).
+Val overlap@10 with the tiny-universe teacher = 0.875 (chance ≈0.4%);
+candidate-side gradient norm nonzero throughout (0.081); 0 duplicate/invalid
+selections (structural, not merely observed).
+
+**Full ETTh1 H96 (8449 candidates): trained cleanly, did not generalize.**
+Candidate gradient stayed nonzero across all 10 epochs (0.044–0.091); train
+loss decreased monotonically; but validation Set overlap@10 stayed at chance
+the entire run (0.009 → 0.013 → 0.011 → 0.012 across epochs 1–10; chance
+≈0.0118 for random 10-of-8449 overlap).
+
+| Quantity (test split) | Value |
+|---|---:|
+| Individual Oracle MSE (diagnostic) | 0.1910 |
+| B0's own A_weighted (natural Top-10) | 0.4073 |
+| Full-Memory Weighted Set Oracle A_weighted | 0.1030 |
+| Sequential selector's own A_weighted | 0.5304 |
+| gap_recovery = (A_B0 − A_seq)/(A_B0 − A_set_oracle) | **−0.404** |
+| Sequential Set Recall@10 vs. oracle | 0.0135 (chance ≈0.0118) |
+| Effective rank of trained encoder | 5.43 / 128 (B0's own ≈20.8) |
+
+**Stage-2** (fingerprint-verified: this run's own B0-unforced pass reproduces
+0.373122 against the recorded 0.37312):
+
+| Arm | Stage-2 Final MSE | Delta vs B0 |
+|---|---:|---:|
+| B0 (reproduced) | 0.37312 | — |
+| Sequential selector (forced Top-10) | 0.40277 | **+0.02965** |
+
+## Sanity checks passed
+
+`pytest tests/`: 458 passed (14 new), exactly the 2 pre-existing repository
+failures, no regression. A dataloader-unpacking bug crashed the first
+full-run attempt on batch 1 (caught immediately by the crash, fixed, rerun
+from scratch — see `results/EXP-SEQFULL01/notes.md`). Structural masking
+guarantees (0 duplicate, 0 invalid) verified both by direct measurement and
+by 5 of the 14 unit tests.
+
+## Conclusion (stated within what the data supports)
+
+The sequential, teacher-forced, full-memory imitation of the Weighted Set
+Oracle's own greedy construction memorizes cleanly at small N but does not
+generalize to held-out queries over the full 8449-candidate bank at all —
+validation/test Set Recall@10 never exceeds chance across 10 full epochs of
+otherwise-healthy training (nonzero gradient, monotonically decreasing train
+loss). `gap_recovery` is negative: the sequential selector's own aggregate is
+worse than B0's simple retriever's, not merely short of the Set Oracle's.
+Stage-2 Final MSE is correspondingly worse than B0 by +0.02965 (~3x this
+project's own seed-noise reference, wrong direction).
+
+This is **H2 evidence, not H1**: the failure is not attributable to a soft
+relaxation (EXP-3's mechanism) or to insufficient candidate/query information
+richness (EXP-FRR01's mechanisms) — this arm removed both potential
+confounds (discrete, teacher-forced, full-memory training; live
+non-detached candidate gradient) and still failed to generalize. The
+bottleneck this experiment isolates is that past-only `X_q`/`X_i` information
+alone does not let this class of mechanism learn a discrete greedy
+set-construction rule that transfers from training queries to held-out ones,
+independent of how the objective is relaxed or what side information is
+added to the embeddings.
+
+## What this does NOT establish
+
+- That no sequential/set-conditioned mechanism could ever work — only that
+  this specific minimal instantiation (small MLP conditioner, mean-pooled set
+  summary, cosine scoring, fresh encoder) does not generalize on ETTh1 H96 at
+  1 seed.
+- That the Individual→Set-Oracle gap (EXP-1/EXP-2) is unreachable in
+  principle — it remains a real, measured upper bound; three structurally
+  different attempts to reach it (soft relaxation, embedding conditioning,
+  discrete sequential imitation) have now all failed to reach Stage-2, which
+  is itself the accumulating evidence worth weighing.
+- Anything about Weather, other horizons, or cross-channel relations — not
+  run, per the pre-registered scope.
+
+## Questions for ChatGPT (in addition to EXP-FRR01's, above)
+
+4. Three structurally different mechanisms (EXP-3 soft relaxation, EXP-FRR01
+   embedding conditioning, EXP-SEQFULL01 discrete sequential imitation) have
+   now all failed to convert the confirmed Individual→Set-Oracle headroom
+   into a Stage-2 improvement. Does this pattern point toward the headroom
+   being fundamentally unreachable from past-only `X_q`/`X_i` information
+   (a generalization/information ceiling), or is there a specific mechanism
+   class not yet tried that these three failures don't rule out?
+5. EXP-SEQFULL01's negative `gap_recovery` (the learned sequential selector
+   is worse than B0's own simple retriever, not just short of the oracle) is
+   a stronger negative result than EXP-FRR01's (which stayed close to B0).
+   Does a discrete, high-cardinality (8449-way), sequential classification
+   objective have a known failure mode (e.g. an effective label space too
+   large relative to ~8449 training queries) that would explain this
+   specifically, independent of the set-conditioning idea itself?
+6. Given this, should any further Set-Oracle-imitation work require adding
+   inference-observable information to the query/candidate representations
+   (as EXP-FRR01 tried, also without success) before another objective/
+   procedure variant is tried on the current representation, or does this
+   three-way failure suggest the representation itself needs to change
+   before the objective does?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 

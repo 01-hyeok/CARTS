@@ -1,0 +1,6 @@
+?? models/SequentialSetRetriever.py
+?? scripts/eval_seqfull01_stage2.py
+?? scripts/precompute_seqfull01_teacher.py
+?? scripts/train_seqfull01.py
+?? tests/test_exp_seqfull01.py
+(all new/untracked files -- no existing code was modified for EXP-SEQFULL01, only new files added; see command.txt / notes.md)

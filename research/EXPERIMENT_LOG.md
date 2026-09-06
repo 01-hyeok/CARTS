@@ -57,6 +57,145 @@ completed | failed | aborted
 
 <!-- Append experiment entries below this line. -->
 
+## EXP-SEQFULL01 — Full-Memory Set-Conditioned Sequential Retrieval: verdict STOP
+
+### Date
+2026-09-05
+
+### Research Question
+Does directly imitating the Full-Memory Weighted Set Oracle's discrete greedy
+construction via a set-conditioned sequential selector (score against the
+WHOLE valid memory bank at every one of K=10 steps, mask only selected/invalid
+candidates, never a Top-M shortlist anywhere) let a student learn hard Top-K
+retrieval that captures the Individual->Set-Oracle headroom EXP-1/EXP-2
+measured, and does that improve Stage-2 Final MSE?
+
+### Configuration
+See `results/EXP-SEQFULL01/command.txt`. ETTh1 H96 only, self-only
+(`relation_top_n=1`), `top_k=10`, seed 0. Encoder/optimizer/lr/epochs=10/
+patience=5/candidate_mask=raft/split/seed taken verbatim from B0's own saved
+checkpoint args (`Exp_Stage1_Relation` built from `ckpt['args']`, not
+hand-listed flags) -- only the training objective differs from every other
+Stage-1 arm in this campaign. No residual teacher, no query/candidate
+conditioning, no asymmetric metric (FRR01's mechanisms deliberately excluded
+from this pilot). B0 is reused as-is (EXP-3's S0_wce checkpoints), not rerun.
+
+### Changed Variable
+Stage-1 training objective and inference procedure only: teacher-forced,
+step-wise full-memory cross-entropy against an offline Full-Memory Weighted
+Set Oracle sequence (reusing `utils.oracle_intervention.select_greedy_weighted_set`
+unmodified), instead of any single-shot WCE/KL/soft-set loss. A new small
+SetConditioner module (`concat(q,m) -> Linear -> GELU -> Linear -> residual
+-> norm`) conditions each step's query representation on the mean embedding
+of the set selected so far (a learned empty-set token at t=1).
+
+### Controlled Variables
+Stage-2 architecture, base forecaster, gate (`residual`/`scalar`), fusion,
+`top_k=10`, `tau_topk=0.1`, split, seed -- identical to B0. The sequential
+selector's output only ever changes WHICH 10 candidates enter Stage-2
+(via `RelationStage2.set_forced_selection`, the mechanism EXP-1/EXP-2 already
+use and this project has already reviewed); Stage-2's aggregation weighting
+for those 10 candidates is B0's own frozen retrieval score, never anything
+the sequential model produces.
+
+### Dataset
+ETTh1
+
+### Prediction Horizon
+96
+
+### Seed
+0
+
+### Important Hyperparameters
+`d_model=128`, `batch_size=32`, `learning_rate=1e-3` (B0's own), K=10,
+`tau_topk=0.1` for the teacher's softmax weighting (fixed, from B0's own
+frozen checkpoint, never the student's own changing score).
+
+### Result Files
+`results/EXP-SEQFULL01/` (`metrics.csv`, `command.txt`, `notes.md`, `env.txt`,
+`working_tree.diff`, `logs/train_full.log`, `train_summary.json`,
+`stage2_eval.json`, teacher/checkpoint sha256 fingerprints).
+
+### Results
+
+**Small-N sanity gate: PASS.** 16 queries, 256 candidates, single channel,
+400 steps: val overlap@10 with the tiny-universe teacher = 0.875 (chance
+~0.4% for 10-of-~240); candidate-side gradient norm 0.081 (nonzero
+throughout); 0 duplicate/invalid selections (masking is structural, not
+merely observed).
+
+**Full ETTh1 H96 (8449 candidates, 7 self-only channels): the mechanism
+trained cleanly but did not generalize.** Across all 10 epochs,
+candidate-side gradient norm stayed nonzero (0.044-0.091) and train loss
+decreased monotonically (8.571 -> 8.463), but validation Set overlap@10
+never rose meaningfully above chance:
+
+| Epoch | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| val overlap@10 | 0.0090 | 0.0097 | 0.0103 | 0.0114 | 0.0123 | 0.0111 | 0.0120 | **0.0130** | 0.0112 | 0.0120 |
+
+(chance for random unordered 10-of-8449 overlap ≈ 0.0118). Checkpoint
+selected at epoch 8 (best validation overlap). Test-split diagnostics with
+that checkpoint:
+
+| Quantity | Value |
+|---|---:|
+| Individual Oracle MSE (diagnostic) | 0.1910 |
+| B0's own A_weighted (natural Top-10) | 0.4073 |
+| Full-Memory Weighted Set Oracle A_weighted | 0.1030 |
+| Sequential selector's own A_weighted | 0.5304 |
+| gap_recovery = (A_B0 - A_seq)/(A_B0 - A_set_oracle) | **-0.404** |
+| Sequential Set Recall@10 (test, vs. oracle) | 0.0135 (chance ≈ 0.0118) |
+| Duplicate rate / Invalid rate | 0.0 / 0.0 |
+| Effective rank of trained encoder | 5.43 (of 128; B0's own ≈ 20.8) |
+
+**Stage-2 (fingerprint-verified protocol match: this run's own B0-unforced
+pass reproduces 0.373122 against the recorded 0.37312):**
+
+| Arm | Stage-2 Final MSE | Delta vs B0 |
+|---|---:|---:|
+| B0 (unforced, this run's own reproduction) | 0.37312 | — |
+| Sequential selector (forced Top-10) | 0.40277 | **+0.02965** |
+
+### Sanity Checks
+`pytest tests/`: 458 passed (14 new in `tests/test_exp_seqfull01.py`, covering
+masking invariants, duplicate impossibility, teacher-forcing prefix
+correctness, CE-target correctness, candidate-gradient non-zero and
+non-detachment, single shared differentiable embedding tensor across K steps,
+and forced-selection reaching Stage-2 without touching any other attribute),
+exactly the 2 pre-existing failures, no regression. A dataloader-unpacking
+bug (`loader, _ = exp._get_data(...)` instead of `_, loader = ...`) crashed
+the first full-run attempt on batch 1; caught immediately, fixed, rerun from
+scratch (see `results/EXP-SEQFULL01/notes.md`).
+
+### Implementation Notes
+New files only, no existing production code modified: `models/SequentialSetRetriever.py`
+(SetConditioner, EmptySetToken, step_logits), `scripts/precompute_seqfull01_teacher.py`
+(offline teacher, reuses `select_greedy_weighted_set`/`build_common_support`
+unmodified with a full-memory pool), `scripts/train_seqfull01.py`
+(teacher-forced sequential training + small-N gate, reuses `Exp_Stage1_Relation`
+for all data/memory plumbing and `Model.encoder`/`_relation_tensor` for
+embeddings), `scripts/eval_seqfull01_stage2.py` (Stage-2 evaluation via
+`set_forced_selection`, reused verbatim). `tests/test_exp_seqfull01.py` (14
+tests).
+
+### Status
+completed; verdict STOP. Stage-2 Final MSE is worse than B0 by +0.02965 --
+roughly 3x the project's own ~0.01 seed-noise reference and in the wrong
+direction, so no 3-seed confirmation is warranted per the pre-registered
+rule. H1/H2 evidence: small-N memorization succeeded cleanly, but validation/
+test Set Recall@10 never exceeded chance on the full 8449-candidate memory,
+and `gap_recovery` is negative (the sequential selector's own aggregate is
+worse than B0's simple retriever's, not merely short of the Set Oracle's) --
+this is H2 evidence (past-only X_q/X_i information does not let this
+mechanism generalize the oracle's discrete choice to held-out queries), not
+H1 (a soft-relaxation-specific failure). Not run: any other horizon, dataset,
+cross-channel relation, or hyperparameter/architecture variant, per the
+pre-registered scope.
+
+---
+
 ## EXP-FRR01 — Full-Memory Forecast-Conditioned Residual Retrieval: model-discovery pilot verdict: STOP
 
 ### Date
