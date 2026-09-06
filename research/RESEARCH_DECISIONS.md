@@ -135,6 +135,27 @@ confirms a decision.
 
 <!-- Append decisions below this line. -->
 
+## D-0010 — Standing research constraint: full-memory direct Top-K, no shortlist/reranker direction
+
+- **Date:** 2026-09-06
+- **Decided by:** user, stated explicitly and repeatedly across the
+  EXP-FRR01, EXP-SEQFULL01, and EXP-SEQDIAG01 experiment specifications.
+- **Decision:** This project's retrieval research direction is, until further
+  explicit user decision, `FULL MEMORY -> DIRECT TOP-K`. Top-100 / Top-M /
+  shortlist / candidate pruning / coarse retrieval / reranker /
+  retrieve-then-rerank architectures are not to be proposed as the current or
+  next research direction, in experiment designs, in `CURRENT_EXPERIMENT.md`,
+  or in `REVIEW_FOR_CHATGPT.md`'s forward-looking questions.
+- **Evidence:** Direct, repeated user instruction (not inferred from
+  experiment results). The coarse-retrieve-then-rerank design previously in
+  `CURRENT_EXPERIMENT.md` (see D-0008's consequence) was superseded and
+  removed on this date per this decision.
+- **Consequence:** Historical factual records of P100/shortlist use in past
+  diagnostics (EXP-1/EXP-2's P100 arms, EXP-C01's coarse-vs-full comparisons)
+  remain in `EXPERIMENT_LOG.md` unchanged — this decision governs *future*
+  proposals only, not the append-only historical record.
+- **Status:** active
+
 ## D-0009 — EXP-FRR01 (residual-conditioned full-memory retrieval) closed: STOP, no 3-seed confirmation
 
 - **Date:** 2026-09-05

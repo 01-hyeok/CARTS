@@ -8,7 +8,9 @@ set_oracle_a_weighted_test,0.10303
 sequential_a_weighted_test,0.53040
 gap_recovery,-0.40439
 sequential_set_recall_at_10_test,0.01354
-chance_recall_at_10_approx,0.01183
+chance_recall_at_10_approx_CORRECTED_2026-09-06,0.001184
+chance_recall_at_10_approx_ORIGINAL_WRONG_formula_K2_over_N,0.01183
+small_n_chance_recall_at_10_CORRECTED,0.04167
 duplicate_rate,0.0
 invalid_rate,0.0
 best_epoch,8

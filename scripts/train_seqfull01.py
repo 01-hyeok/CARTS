@@ -161,6 +161,10 @@ def main():
     ap.add_argument('--small_n_steps', type=int, default=400)
     ap.add_argument('--small_n_target_channel', type=int, default=0)
     ap.add_argument('--seed', type=int, default=0)
+    ap.add_argument('--frozen_encoder', action='store_true',
+                     help='EXP-SEQDIAG01 control arm: load --base_ckpt weights into the '
+                          'encoder and freeze it (requires_grad=False, excluded from the '
+                          'optimizer); only SetConditioner + EmptySetToken train.')
     cli = ap.parse_args()
 
     overrides = {
@@ -205,6 +209,17 @@ def main():
     model = exp.model.module if hasattr(exp.model, 'module') else exp.model
     k = int(cli.top_k)
 
+    if cli.frozen_encoder:
+        # EXP-SEQDIAG01 control: same encoder weights B0 was evaluated with,
+        # never updated -- isolates whether set-conditioning alone (on top of
+        # a representation that cannot collapse) is learnable.
+        b0_ckpt = torch.load(cli.base_ckpt, map_location='cpu')
+        model.load_state_dict(b0_ckpt['model_state_dict'], strict=True)
+        for p in model.encoder.parameters():
+            p.requires_grad = False
+        model.encoder.eval()
+        print(f'[seqfull01] frozen_encoder=1: loaded and froze encoder weights from {cli.base_ckpt}')
+
     exp._ensure_memory()
     if cli.small_n:
         train_data, _ = exp._get_data(flag='train', shuffle=False)
@@ -226,12 +241,10 @@ def main():
     d_model = int(args.d_model)
     set_conditioner = SetConditioner(d_model).to(device)
     empty_token = EmptySetToken(d_model).to(device)
-    optimizer = torch.optim.Adam(
-        list(model.encoder.parameters())
-        + list(set_conditioner.parameters())
-        + list(empty_token.parameters()),
-        lr=float(args.learning_rate),
-    )
+    trainable_params = list(set_conditioner.parameters()) + list(empty_token.parameters())
+    if not cli.frozen_encoder:
+        trainable_params = list(model.encoder.parameters()) + trainable_params
+    optimizer = torch.optim.Adam(trainable_params, lr=float(args.learning_rate))
 
     ckpt_dir = Path(cli.checkpoints) / 'seqfull01' / args.data / f'seq{args.seq_len}_pred{args.pred_len}' / args.model_id
     ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -251,12 +264,17 @@ def main():
         else:
             model.eval()
             set_conditioner.eval()
+        if cli.frozen_encoder:
+            # Frozen regardless of the train()/eval() call above -- no
+            # dropout/BN drift, no gradient, ever.
+            model.encoder.eval()
         total_loss, n_batches = 0.0, 0
         step_acc_sum = [0.0] * k
         step_acc_n = [0] * k
         overlap_sum, overlap_n = 0.0, 0
         candidate_grad_norm = None
         encoder_grad_norm = None
+        set_conditioner_grad_norm = 0.0
         ctx = torch.enable_grad() if train else torch.no_grad()
         with ctx:
             for batch_x, batch_y, batch_start_idx in loader:
@@ -267,7 +285,12 @@ def main():
                 batch_loss = 0.0
                 for c in channel_list:
                     E = encode(model, exp.memory_x, c)
-                    if train and c == channel_list[-1]:
+                    if train and c == channel_list[-1] and E.requires_grad:
+                        # Frozen-encoder arm: E carries no gradient path at
+                        # all (nothing upstream is trainable), so there is
+                        # nothing to retain_grad on -- candidate_grad_norm
+                        # stays None for that arm by construction, which is
+                        # the expected/correct reading, not a bug.
                         E.retain_grad()
                     q = encode(model, batch_x, c)
                     if cli.small_n:
@@ -312,9 +335,22 @@ def main():
                     batch_loss.backward()
                     if E.grad is not None:
                         candidate_grad_norm = E.grad.norm().item()
-                    encoder_grad_norm = sum(
-                        p.grad.norm().item() ** 2 for p in model.encoder.parameters()
-                        if p.grad is not None) ** 0.5
+                    if cli.frozen_encoder:
+                        # Must be exactly None (never even a zero tensor):
+                        # requires_grad=False means autograd never assigns
+                        # .grad at all, which is the actual assertion this
+                        # control arm needs, not merely a zero norm.
+                        assert all(p.grad is None for p in model.encoder.parameters()), (
+                            'frozen_encoder=1 but an encoder parameter received a gradient')
+                        encoder_grad_norm = None
+                    else:
+                        encoder_grad_norm = sum(
+                            p.grad.norm().item() ** 2 for p in model.encoder.parameters()
+                            if p.grad is not None) ** 0.5
+                    sc_grads = [p.grad for p in set_conditioner.parameters() if p.grad is not None]
+                    set_conditioner_grad_norm = (
+                        sum(g.norm().item() ** 2 for g in sc_grads) ** 0.5 if sc_grads else 0.0
+                    )
                     optimizer.step()
                 total_loss += float(batch_loss.detach())
                 n_batches += 1
@@ -326,6 +362,7 @@ def main():
             'overlap_at_k': overlap,
             'candidate_grad_norm': candidate_grad_norm,
             'encoder_grad_norm': encoder_grad_norm,
+            'set_conditioner_grad_norm': set_conditioner_grad_norm,
         }
 
     history = []
@@ -343,17 +380,26 @@ def main():
         dt = time.time() - t0
         row = {'epoch': epoch + 1, 'train': train_metrics, 'val': val_metrics, 'seconds': dt}
         history.append(row)
+        enc_grad_str = (
+            'None(frozen)' if train_metrics['encoder_grad_norm'] is None
+            else f"{train_metrics['encoder_grad_norm']:.5f}"
+        )
         print(f"[seqfull01] epoch {epoch+1} train_loss={train_metrics['loss']:.5f} "
               f"val_loss={val_metrics['loss']:.5f} val_overlap@{k}={val_metrics['overlap_at_k']:.4f} "
               f"cand_grad_norm={train_metrics['candidate_grad_norm']} "
-              f"encoder_grad_norm={train_metrics['encoder_grad_norm']:.5f} "
+              f"encoder_grad_norm={enc_grad_str} "
+              f"set_conditioner_grad_norm={train_metrics['set_conditioner_grad_norm']:.5f} "
               f"time={dt:.1f}s")
         print(f"[seqfull01] epoch {epoch+1} train_step_acc="
               f"{[round(a, 4) for a in train_metrics['step_acc']]}")
         print(f"[seqfull01] epoch {epoch+1} val_step_acc="
               f"{[round(a, 4) for a in val_metrics['step_acc']]}")
-        if train_metrics['candidate_grad_norm'] is not None and train_metrics['candidate_grad_norm'] == 0.0:
+        if (not cli.frozen_encoder and train_metrics['candidate_grad_norm'] is not None
+                and train_metrics['candidate_grad_norm'] == 0.0):
             print('[seqfull01][FAIL] candidate-side gradient norm is exactly 0 -- STOP')
+            break
+        if train_metrics['set_conditioner_grad_norm'] == 0.0:
+            print('[seqfull01][FAIL] SetConditioner gradient norm is exactly 0 -- STOP')
             break
         if val_metrics['overlap_at_k'] > best_val:
             best_val = val_metrics['overlap_at_k']
@@ -366,6 +412,8 @@ def main():
                 'args': vars(args),
                 'epoch': epoch + 1,
                 'val_overlap_at_k': best_val,
+                'frozen_encoder': cli.frozen_encoder,
+                'frozen_encoder_source_ckpt': cli.base_ckpt if cli.frozen_encoder else None,
             }, ckpt_dir / 'checkpoint.pth')
         else:
             patience_left -= 1
@@ -379,6 +427,7 @@ def main():
         'best_epoch': best_epoch, 'best_val_overlap_at_k': best_val,
         'wall_clock_seconds': wall_time, 'peak_gpu_memory_mib': peak_mem,
         'history': history, 'args': vars(args), 'checkpoint': str(ckpt_dir / 'checkpoint.pth'),
+        'frozen_encoder': cli.frozen_encoder,
     }
     with open(ckpt_dir / 'summary.json', 'w') as fh:
         json.dump(summary, fh, indent=2, default=str)

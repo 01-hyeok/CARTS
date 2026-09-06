@@ -82,3 +82,17 @@ architecture trained with WCE in EXP-3's closure). Consistent with, though
 not proof of, a representation that discriminates far less sharply among the
 8449 candidates than B0's does -- plausibly part of why generalisation from
 the training queries to held-out ones failed so completely.
+
+## ERRATUM (2026-09-06, found during EXP-SEQDIAG01's mandatory metric audit)
+
+The "chance" baselines quoted for `overlap_at_k` (normalized set overlap,
+`|S_pred∩S_teacher|/K`) throughout this experiment's write-ups used the wrong
+formula: `K²/N` for the full-memory case (should be `K/N` ≈ 0.00118, not
+0.0118) and `1/N` for the small-N case (should be `K/N` ≈ 0.0417, not
+~0.004). Monte Carlo-verified (50,000 trials). The small-N PASS verdict is
+unchanged. The full-memory reading changes: measured overlap (0.009-0.013)
+is ~8-11x the correct chance, not "at chance" -- a small but real
+generalization signal that is nonetheless too weak to produce a competitive
+aggregate (gap_recovery and Stage-2 Final MSE, both unaffected by this
+labeling error, remain the decisive negative evidence). See
+research/EXPERIMENT_LOG.md's ERRATUM for the full table.

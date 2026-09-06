@@ -192,23 +192,29 @@ Stage-2 improvement that survives these confounds.
    conclusion, or does the ETTh1 vs Weather divergence (opposite Stage-1
    directions, same Stage-2 direction) suggest something more general about
    full-memory soft losses that should be stated more strongly?
-2. Given the confirmed Individual→Set Oracle gap and this closure's negative
-   result, is "retrieve-then-rerank" (coarse Top-100 by the existing retriever,
-   then a separate reranker minimizing set-level utility only inside that
-   shortlist) the most information-dense next experiment, or is there a
-   cheaper diagnostic that should come first?
+2. *(Superseded 2026-09-06 — the researcher's standing constraint is
+   full-memory direct Top-K, not a shortlist/reranker stage; a
+   shortlist-based next experiment is no longer a live candidate. Left here
+   only as the historical record of what was asked when this section was
+   written. See EXP-FRR01/EXP-SEQFULL01/EXP-SEQDIAG01 below for the
+   full-memory directions actually pursued instead.)* Given the confirmed
+   Individual→Set Oracle gap and this closure's negative result, is there a
+   cheaper full-memory diagnostic that should come before another full-memory
+   objective/procedure variant?
 3. Does the Weather N_eff/collapse pattern (worse baseline representation
    quality **and** a much larger relative diffusion under the same loss)
    suggest the representation should be stabilized before any further
    set-level objective is tried on Weather specifically?
 
-## Candidate next experiment considered, then independently tested (see below)
+## Research direction taken instead (see below)
 
-The reranker-on-a-shortlist design proposed after EXP-3 (still in
-`research/CURRENT_EXPERIMENT.md`, unstarted) is one candidate direction. A
-*different* direction — full-memory residual-conditioned retrieval, explicitly
-avoiding any shortlist — was specified by the researcher and run to
-completion as EXP-FRR01 below, independent of this candidate.
+The reranker-on-a-shortlist design considered after EXP-3 was **not** pursued
+— the researcher's standing constraint is full-memory direct Top-K
+throughout, not a shortlist/reranker stage (see `research/CURRENT_EXPERIMENT.md`).
+Three full-memory directions were specified and run to completion instead:
+EXP-FRR01 (residual-conditioned retrieval), EXP-SEQFULL01 (sequential
+set-conditioned imitation), and EXP-SEQDIAG01 (collapse-vs-generalization
+diagnostic for EXP-SEQFULL01) — all below.
 
 ---
 
@@ -312,11 +318,11 @@ soft_set_mse loss family.
    explain *why* Recall@10 is this decoupled from aggregate/downstream
    quality, rather than reconfirming that it is?
 3. Given EXP-1/EXP-2's confirmed Individual->Set-Oracle gap remains real and
-   unreached by every mechanism tried so far (soft losses, residual
-   conditioning), is the reranker-on-a-shortlist design in
-   `research/CURRENT_EXPERIMENT.md` now the most promising remaining
-   candidate, or does EXP-FRR01's result suggest that direction should also be
-   pressure-tested against a cheaper diagnostic first?
+   unreached by every full-memory mechanism tried so far (soft losses,
+   residual conditioning), what full-memory diagnostic (not a shortlist/
+   reranker stage — outside this project's research constraint, see
+   `research/CURRENT_EXPERIMENT.md`) would most cheaply test whether that gap
+   is reachable at all from past-only information?
 
 ---
 
@@ -355,15 +361,21 @@ ETTh1 H96 only, self-only (`relation_top_n=1`), 1 seed. B0 reused as-is
 ## Results — [repo]
 
 **Small-N gate: PASS** (16 queries/256 candidates/single channel/400 steps).
-Val overlap@10 with the tiny-universe teacher = 0.875 (chance ≈0.4%);
-candidate-side gradient norm nonzero throughout (0.081); 0 duplicate/invalid
-selections (structural, not merely observed).
+Val overlap@10 with the tiny-universe teacher = 0.875 (correct chance for
+this metric, `|S_pred∩S_teacher|/K`, is `K/N` ≈ 0.042 for N≈240, K=10 — an
+earlier write-up of this section used the wrong formula, `1/N` ≈ 0.004; see
+EXPERIMENT_LOG.md's ERRATUM). Still an unambiguous pass either way (~21x the
+correct chance). Candidate-side gradient norm nonzero throughout (0.081); 0
+duplicate/invalid selections (structural, not merely observed).
 
-**Full ETTh1 H96 (8449 candidates): trained cleanly, did not generalize.**
+**Full ETTh1 H96 (8449 candidates): trained cleanly; a small, real
+generalisation signal, far too weak to produce a competitive aggregate.**
 Candidate gradient stayed nonzero across all 10 epochs (0.044–0.091); train
-loss decreased monotonically; but validation Set overlap@10 stayed at chance
-the entire run (0.009 → 0.013 → 0.011 → 0.012 across epochs 1–10; chance
-≈0.0118 for random 10-of-8449 overlap).
+loss decreased monotonically. Validation Set overlap@10 ranged 0.009–0.013
+across epochs 1–10. **Corrected chance baseline: `K/N` ≈ 0.00118** (an
+earlier write-up used `K²/N` ≈ 0.0118, ~10x too large — see EXPERIMENT_LOG.md's
+ERRATUM). The measured range is therefore **~8–11x the correct chance**, not
+"at chance" — a real but weak signal.
 
 | Quantity (test split) | Value |
 |---|---:|
@@ -372,7 +384,7 @@ the entire run (0.009 → 0.013 → 0.011 → 0.012 across epochs 1–10; chance
 | Full-Memory Weighted Set Oracle A_weighted | 0.1030 |
 | Sequential selector's own A_weighted | 0.5304 |
 | gap_recovery = (A_B0 − A_seq)/(A_B0 − A_set_oracle) | **−0.404** |
-| Sequential Set Recall@10 vs. oracle | 0.0135 (chance ≈0.0118) |
+| Sequential Set Recall@10 vs. oracle (chance ≈0.00118, corrected) | 0.0135 |
 | Effective rank of trained encoder | 5.43 / 128 (B0's own ≈20.8) |
 
 **Stage-2** (fingerprint-verified: this run's own B0-unforced pass reproduces
@@ -395,25 +407,25 @@ by 5 of the 14 unit tests.
 ## Conclusion (stated within what the data supports)
 
 The sequential, teacher-forced, full-memory imitation of the Weighted Set
-Oracle's own greedy construction memorizes cleanly at small N but does not
-generalize to held-out queries over the full 8449-candidate bank at all —
-validation/test Set Recall@10 never exceeds chance across 10 full epochs of
-otherwise-healthy training (nonzero gradient, monotonically decreasing train
-loss). `gap_recovery` is negative: the sequential selector's own aggregate is
-worse than B0's simple retriever's, not merely short of the Set Oracle's.
-Stage-2 Final MSE is correspondingly worse than B0 by +0.02965 (~3x this
+Oracle's own greedy construction memorizes cleanly at small N. At full scale
+it shows a small, real generalisation signal (~8–11x the corrected chance
+baseline for Set Recall@10) that is nonetheless far too weak to produce a
+competitive aggregate: `gap_recovery` is negative (the sequential selector's
+own aggregate is worse than B0's simple retriever's, not merely short of the
+Set Oracle's), and Stage-2 Final MSE is worse than B0 by +0.02965 (~3x this
 project's own seed-noise reference, wrong direction).
 
-This is **H2 evidence, not H1**: the failure is not attributable to a soft
+This is **H2-consistent, not H1**: the failure is not attributable to a soft
 relaxation (EXP-3's mechanism) or to insufficient candidate/query information
 richness (EXP-FRR01's mechanisms) — this arm removed both potential
 confounds (discrete, teacher-forced, full-memory training; live
-non-detached candidate gradient) and still failed to generalize. The
-bottleneck this experiment isolates is that past-only `X_q`/`X_i` information
-alone does not let this class of mechanism learn a discrete greedy
-set-construction rule that transfers from training queries to held-out ones,
-independent of how the objective is relaxed or what side information is
-added to the embeddings.
+non-detached candidate gradient) and still produced an aggregate worse than
+B0's naive retrieval. The revised (post-erratum) reading is more specific
+than "zero generalization": weak-but-real membership-level signal does not
+survive into aggregate/downstream quality. Whether the encoder's own
+representation collapse (effective rank 20.8→5.43) is a *cause* of that
+weak signal, rather than only a correlate, is exactly what EXP-SEQDIAG01
+(below) was designed to separate.
 
 ## What this does NOT establish
 

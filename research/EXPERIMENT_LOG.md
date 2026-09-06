@@ -194,6 +194,41 @@ H1 (a soft-relaxation-specific failure). Not run: any other horizon, dataset,
 cross-channel relation, or hyperparameter/architecture variant, per the
 pre-registered scope.
 
+### ERRATUM (2026-09-06)
+The "chance ≈ 0.0118" and "chance ≈ 0.4%" figures quoted above and in the
+now-superseded `REVIEW_FOR_CHATGPT.md` write-up were **computed with the
+wrong formula**, caught during EXP-SEQDIAG01's mandatory metric/chance-baseline
+audit. `overlap_at_k` (`scripts/train_seqfull01.py`) computes the NORMALIZED
+set overlap `|S_pred ∩ S_teacher| / K`; its correct chance expectation for two
+independent random K-subsets of an N-candidate pool is `K/N`, not `K²/N`
+(what was actually used for the full-memory "0.0118" figure) nor `1/N` (what
+was actually used for the small-N "0.4%" figure). Monte Carlo-verified
+(50,000 trials) correct values:
+
+| Setting | N | K | Wrong figure quoted | Correct chance (K/N) | Measured |
+|---|---:|---:|---:|---:|---:|
+| ETTh1 full-memory | 8449 | 10 | 0.0118 (used K²/N) | **0.00118** | 0.009–0.013 |
+| Small-N gate | ~240 | 10 | 0.004 (used 1/N) | **0.0417** | 0.875 |
+
+The small-N gate's PASS verdict is unchanged (0.875 is ~21x the *correct*
+chance, was reported as ~219x the *wrong* one -- still an unambiguous pass
+either way). The full-memory reading changes materially: the measured
+overlap (0.009–0.013) is **~8–11x the correct chance baseline**, not "at
+chance" as originally written -- there is a small but real generalization
+signal, not zero. This does **not** change the Stage-2 verdict (Final MSE
++0.02965 worse than B0, `gap_recovery` -0.404, both computed independently of
+this labeling error and unaffected by it): a selector that is ~10x better
+than random at matching individual set members still produces a *worse*
+aggregate than B0's naive retriever, which is if anything a more specific
+finding than "no signal at all" -- weak-to-moderate correct-direction signal
+in membership does not survive into aggregate quality. The H1/H2 read is
+revised accordingly: this is still H2-consistent (generalization is real but
+far too weak for the discrete-imitation objective to produce a competitive
+aggregate) rather than "zero generalization." See EXP-SEQDIAG01 below, which
+was designed in part to separate how much of this weak-and-insufficient
+signal is attributable to the representation collapse also recorded in this
+entry (effective rank 20.8 → 5.43).
+
 ---
 
 ## EXP-FRR01 — Full-Memory Forecast-Conditioned Residual Retrieval: model-discovery pilot verdict: STOP
