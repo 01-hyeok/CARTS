@@ -35,10 +35,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from exp.exp_stage1_relation import Exp_Stage1_Relation
-from models.DenseUtilityRetriever import UtilityHead
+from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
 from models.SequentialSetRetriever import EmptySetToken, SetConditioner
 from scripts.train_margutil01 import build_experiment, encode, memory_value, run_sequence_dense
 from utils.dense_utility import candidate_weights, dense_utility, normalize_utility
+from layers.retrieval_metric import cosine_init_deviation
 
 
 def pairwise_step_loss(u_hat, u_target, valid_mask, top_pct=0.01, min_pos=10,
@@ -195,6 +196,10 @@ def main():
     ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--loss_mode', required=True, choices=['smoothl1', 'pairwise', 'hybrid'])
     ap.add_argument('--lambda_rank', type=float, default=1.0)
+    ap.add_argument('--scorer_mode', default='cosine', choices=['cosine', 'asymmetric'],
+                     help='EXP-ASYM-SCORER01: cosine (default, UtilityHead, EXP-TOPTAIL-RANK01 '
+                          'unchanged) or asymmetric (AsymmetricUtilityHead, identity-init-equivalent '
+                          'to cosine at step 0 -- verified before training starts).')
     cli = ap.parse_args()
 
     overrides = {
@@ -232,15 +237,27 @@ def main():
     d_model = int(args.d_model)
     set_conditioner = SetConditioner(d_model).to(device)
     empty_token = EmptySetToken(d_model).to(device)
-    utility_head = UtilityHead().to(device)
+    if cli.scorer_mode == 'asymmetric':
+        utility_head = AsymmetricUtilityHead(d_model).to(device)
+        deviation = cosine_init_deviation(utility_head.metric, samples=256,
+                                           generator=torch.Generator(device=device).manual_seed(args.seed))
+        print(f'[toptail_rank01] scorer_mode=asymmetric identity-init check: '
+              f'max_abs_score_deviation={deviation:.3e} (must be < 1e-6)')
+        if deviation >= 1e-6:
+            raise RuntimeError(
+                f'asymmetric scorer is not identity-initialised to cosine (deviation={deviation:.3e} '
+                f'>= 1e-6) -- refusing to start an expensive training run on a broken controlled variable')
+    else:
+        utility_head = UtilityHead().to(device)
     trainable_params = (list(set_conditioner.parameters()) + list(empty_token.parameters())
                          + list(utility_head.parameters()))
     n_params = sum(p.numel() for p in trainable_params)
-    print(f'[toptail_rank01] trainable_params={n_params} '
+    print(f'[toptail_rank01] scorer_mode={cli.scorer_mode} trainable_params={n_params} '
           f'(SetConditioner={sum(p.numel() for p in set_conditioner.parameters())}, '
           f'EmptySetToken={sum(p.numel() for p in empty_token.parameters())}, '
-          f'UtilityHead={sum(p.numel() for p in utility_head.parameters())}) '
-          f'-- must equal EXP-MARGUTIL01 R0\'s own trainable_params for a fair comparison')
+          f'UtilityHead/ScorerHead={sum(p.numel() for p in utility_head.parameters())}) '
+          f'-- SetConditioner/EmptySetToken must equal EXP-TOPTAIL-RANK01 R2\'s own params exactly; '
+          f'only the scorer head differs by design (W_q/W_k added when asymmetric)')
     optimizer = torch.optim.Adam(trainable_params, lr=float(args.learning_rate))
 
     ckpt_dir = Path(cli.checkpoints) / 'toptail_rank01' / args.data / f'seq{args.seq_len}_pred{args.pred_len}' / args.model_id
@@ -341,6 +358,24 @@ def main():
               f"margin={vd.get('margin', float('nan')):.5f} "
               f"score_std={vd.get('score_std', float('nan')):.5f} "
               f"utility_head_a={a_val:.5f} utility_head_b={b_val:.5f}")
+        if cli.scorer_mode == 'asymmetric':
+            with torch.no_grad():
+                eye = torch.eye(d_model, device=device)
+                wq = utility_head.metric.query_projection.weight
+                wk = utility_head.metric.key_projection.weight
+                wq_dev = float((wq - eye).norm())
+                wk_dev = float((wk - eye).norm())
+                wq_norm = float(wq.norm())
+                wk_norm = float(wk.norm())
+                try:
+                    wq_cond = float(torch.linalg.cond(wq.double()))
+                    wk_cond = float(torch.linalg.cond(wk.double()))
+                except Exception:
+                    wq_cond = wk_cond = float('nan')
+            print(f"[toptail_rank01] epoch {epoch+1} scorer(asym) "
+                  f"||Wq-I||_F={wq_dev:.5f} ||Wk-I||_F={wk_dev:.5f} "
+                  f"||Wq||_F={wq_norm:.5f} ||Wk||_F={wk_norm:.5f} "
+                  f"cond(Wq)={wq_cond:.3f} cond(Wk)={wk_cond:.3f}")
         if train_metrics['set_conditioner_grad_norm'] == 0.0:
             print('[toptail_rank01][FAIL] SetConditioner gradient norm is exactly 0 -- STOP')
             break
@@ -355,6 +390,7 @@ def main():
                 'utility_head_state_dict': utility_head.state_dict(),
                 'args': vars(args), 'epoch': epoch + 1, 'val_overlap_at_k': best_val,
                 'frozen_encoder_source_ckpt': cli.base_ckpt, 'loss_mode': cli.loss_mode,
+                'scorer_mode': cli.scorer_mode,
             }, ckpt_dir / 'checkpoint.pth')
         else:
             patience_left -= 1
@@ -367,7 +403,7 @@ def main():
     summary = {'best_epoch': best_epoch, 'best_val_overlap_at_k': best_val,
                'wall_clock_seconds': wall_time, 'peak_gpu_memory_mib': peak_mem,
                'history': history, 'args': vars(args), 'checkpoint': str(ckpt_dir / 'checkpoint.pth'),
-               'loss_mode': cli.loss_mode, 'trainable_params': n_params}
+               'loss_mode': cli.loss_mode, 'scorer_mode': cli.scorer_mode, 'trainable_params': n_params}
     with open(ckpt_dir / 'summary.json', 'w') as fh:
         json.dump(summary, fh, indent=2, default=str)
     print(f'[toptail_rank01] done. best_epoch={best_epoch} best_val_overlap_at_k={best_val:.4f} '

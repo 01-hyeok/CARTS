@@ -2,18 +2,20 @@
 
 Handoff for independent review. Self-contained: no log files needed.
 
-**Status: nine completed/scoped experiments (EXP-1/EXP-2 Oracle
+**Status: ten completed/scoped experiments (EXP-1/EXP-2 Oracle
 Intervention, EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned
 retrieval, EXP-SEQFULL01 sequential set-conditioned retrieval, EXP-SEQDIAG01
 cross-dataset frozen-encoder collapse diagnostic, EXP-MARGUTIL01 dense
 marginal-utility successor, EXP-FIRSTANCHOR-DIAG causal t=1 decomposition,
 EXP-CONTINUATION-DIAG exhaustive t=2 continuation diagnostic,
-EXP-TOPTAIL-RANK01 loss-formulation comparison R0/R1/R2). EXP-TOPTAIL-RANK01
-is IN PROGRESS: ETTh1 H96 is complete for all three arms (R0 SmoothL1, R1
-pairwise, R2 hybrid); Weather H96 R2 is still training (R1 was stopped
-before completion by explicit user decision, so Weather H96 will compare
-R0 vs. R2 only, not R1). This section will be refreshed again once Weather
-H96 R2 finishes.
+EXP-TOPTAIL-RANK01 loss-formulation comparison R0/R1/R2, EXP-ASYM-SCORER01
+scorer-geometry ablation). EXP-TOPTAIL-RANK01 is complete on ETTh1 H96 (all
+3 arms); Weather H96 R1/R2 were both stopped before completion by explicit
+user decision (no result for either). EXP-ASYM-SCORER01 (ETTh1 H96 only) is
+complete and found evidence AGAINST the scorer-capacity-bottleneck
+hypothesis — every decision-relevant metric is worse with an asymmetric
+scorer than with plain cosine, despite the training-time checkpoint-
+selection proxy preferring the asymmetric arm.
 EXP-MARGUTIL01/EXP-FIRSTANCHOR-DIAG/EXP-CONTINUATION-DIAG are complete for
 a reduced 3-cell scope (Weather H720 cancelled by explicit user decision,
 D-0013) and all three need the reviewer's interpretation rather than
@@ -1020,7 +1022,7 @@ Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 
 ---
 
-# EXP-TOPTAIL-RANK01 — loss-formulation comparison for the Dense selector (IN PROGRESS: ETTh1 H96 complete, Weather H96 R2 training)
+# EXP-TOPTAIL-RANK01 — loss-formulation comparison for the Dense selector (COMPLETE: ETTh1 H96, all 3 arms; Weather H96 R1/R2 both stopped by explicit user decision, no result)
 
 ## Research Question
 
@@ -1173,6 +1175,129 @@ pre-existing failures, no regression.
     +0.022 worse than B0), versus the t=2-specific set-conditioned ranking
     limitation EXP-CONTINUATION-DIAG originally identified?
 
-Please answer using the structure in `research/NEXT_EXPERIMENT.md`. Weather
-H96 results will be appended once R2 training completes.
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+**Weather H96 update:** R1 was stopped after 2 epochs (loss plateaued near
+`ln(2)` on both epochs, matching ETTh1's own collapse signature). R2 was
+trained to an epoch-1 checkpoint, then explicitly stopped and that
+checkpoint discarded/unevaluated by user decision, in favour of proceeding
+directly to EXP-ASYM-SCORER01 (below) on the already-complete ETTh1 H96
+result. Weather H96 therefore has no R1 or R2 result in this experiment.
+
+---
+
+# EXP-ASYM-SCORER01 — R2 + asymmetric scorer vs. R2 + cosine (COMPLETE: ETTh1 H96 only)
+
+## Research Question
+
+Does R2's remaining top-tail/continuation ranking failure and Stage-2 gap
+stem from the fixed, symmetric cosine geometry's limited expressiveness?
+`C0 = R2 + cosine` (existing EXP-TOPTAIL-RANK01/R2 checkpoint, reused
+verbatim) vs. `C1 = R2 + asymmetric` (`u_hat = a*cos(W_q h_t, W_k e_i)+b`,
+`W_q`/`W_k` identity-initialised so C1 starts exactly where C0 does),
+everything else held identical.
+
+## Method
+
+`AsymmetricUtilityHead` wraps `layers.retrieval_metric.RetrievalMetric
+(kind='asymmetric', layer_norm=False, output='cosine')` — the project's
+existing, already-reviewed asymmetric scorer, not reimplemented — with the
+same affine `scale`/`bias` `UtilityHead` already uses. Identity-init
+equivalence verified before training (`max_abs_score_deviation = 0.0`,
+threshold 1e-6). `trainable_params`: C0=49794, C1=82562 (exactly +32770 for
+`W_q`/`W_k`+their own scale/bias, confirmed to be the only source of the
+difference). Same R2 hybrid loss (`lambda_smooth=1.0`), same
+checkpoint-selection criterion (`val_overlap@10`), same evaluation scripts
+(`eval_margutil01_stage2.py`/`eval_firstanchor_diag.py`/
+`eval_continuation_diag.py`, unmodified except that `load_trained_selector`
+now reads the checkpoint's own `scorer_mode` to pick the right head class).
+ETTh1 H96 only, per pre-registered scope.
+
+## Results — [repo]
+
+| Metric | C0 (cosine) | C1 (asymmetric) | Delta |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.41257 | **+0.017 (worse)** |
+| gap_recovery | -0.263 | -0.488 | worse |
+| HardAggregate@10 (seq) | 0.551 | 0.690 | worse |
+| t1 Spearman within true top-1% | 0.213 | 0.159 | worse |
+| t1 oracle-best predicted rank median | 99 | 180 | worse |
+| t1 Top-50 containment | 30.5% | 26.5% | worse |
+| t2 hurt_frac | 23.2% | 24.0% | worse |
+| t2 selected-second true rank median | 1934 | 2799 | worse |
+| t2 oracle-second predicted rank median | 560 | 673 | worse |
+| t2 Spearman within true top-10% | 0.288 | 0.256 | worse |
+| t2 continuation regret | 0.350 | 0.375 | worse |
+| t2 Spearman GLOBAL | 0.177 | 0.248 | **better** |
+| checkpoint-selection proxy (`val_overlap@10` at best epoch) | 0.0082 | 0.0085 | **better** |
+
+`duplicate_rate`/`invalid_rate` = 0.0 for both. C1's training-time
+checkpoint-selection proxy improved (and peaked later — epoch 3 vs. epoch
+1), yet every decision-relevant downstream metric is worse. The one metric
+that improved for C1, global (non-top-tail) Spearman, reproduces this
+project's now-repeated global-vs-top-tail dissociation pattern at the
+scorer-geometry level. `cond(W_k)` grew monotonically through training
+(24.6 → 58.8 at the selected epoch → 139.6 by the final epoch),
+suggesting the candidate-side projection drifts toward an increasingly
+anisotropic transformation as training proceeds.
+
+## Sanity checks passed
+
+`pytest tests/`: 502 passed (6 new), same 2 pre-existing failures, no
+regression. Identity-init check, gradient flow to `W_q`/`W_k`, param-count
+audit, and encoder-frozen invariant all verified — full checklist in
+`results/EXP-ASYM-SCORER01/REPORT.md`.
+
+## Conclusion (stated within what the data supports)
+
+**Evidence against the scorer-capacity-bottleneck hypothesis, on ETTh1
+H96, under R2's hybrid loss and this training budget.** Every
+decision-relevant metric — Stage-2, HardAggregate, t=2 continuation, and
+most of t=1 — is worse with the asymmetric scorer, by margins well past
+this project's 0.01 Stage-2 noise-scale reference. This is not evidence
+that no asymmetric scorer could ever help (identity init guarantees C1
+starts exactly at C0's performance; no hyperparameter retuning or
+regularisation on `W_q`/`W_k` was attempted for the larger parameter
+space, per the pre-registered scope) — only that, under the SAME
+hyperparameters tuned for cosine, giving the scorer more freedom made this
+specific training run worse, not better.
+
+## What this does NOT establish
+
+- Whether different hyperparameters (LR, regularisation on `W_q`/`W_k`,
+  e.g. an orthogonality penalty targeting the growing `cond(W_k)`) would
+  change the outcome — not swept.
+- Weather H96 or H720 behavior under the asymmetric scorer — not run.
+- Mahalanobis (the "middle rung" of `layers/retrieval_metric.py`'s own
+  expressiveness ladder, between cosine and full asymmetric) — not tested.
+- Whether `cond(W_k)`'s growth is causally responsible for the degradation
+  or merely correlated with it.
+
+## Questions for ChatGPT
+
+22. C1's checkpoint-selection proxy (`val_overlap@10`) improved while every
+    downstream/decision-relevant metric worsened. Combined with question 20
+    (R1/R2 also showing `val_overlap@10` peaking at/near epoch 1 and
+    declining), is `val_overlap@10` — unordered final-Top-10-set overlap
+    with the oracle sequence — simply not a trustworthy checkpoint-selection
+    criterion for this family of models, and should this project's next
+    experiments use a different proxy (e.g. one derived from the t=1/t=2
+    top-tail diagnostics directly) for early stopping?
+23. `cond(W_k)` grows monotonically and much faster than `cond(W_q)`
+    throughout training (candidate-side projection becoming increasingly
+    anisotropic). Is this a known signature of representation narrowing in
+    a learned scorer (analogous to the encoder-collapse pattern
+    EXP-SEQDIAG01 found in a different part of this pipeline), and would an
+    explicit regularisation on the candidate-side projection specifically
+    (rather than the query-side, or both) be the more targeted next
+    experiment if scorer geometry is revisited later?
+24. Given this negative result for scorer capacity, and R2's own remaining
+    Stage-2 gap after the loss-formulation fix, which of the two named
+    fallback directions (SetConditioner representation, or the frozen
+    encoder representation itself) is more likely to be the real
+    bottleneck, and what is the smallest, most diagnostic (not yet
+    committing to a full retraining) next experiment to distinguish between
+    them?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 

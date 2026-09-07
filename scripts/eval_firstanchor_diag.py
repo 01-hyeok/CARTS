@@ -36,7 +36,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from exp.exp_stage1_relation import Exp_Stage1_Relation
-from models.DenseUtilityRetriever import UtilityHead
+from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
 from models.SequentialSetRetriever import EmptySetToken, SetConditioner
 from utils.retrieval_diagnostics import load_stage2
 
@@ -55,7 +55,10 @@ def load_trained_selector(seq_ckpt_path, device):
     empty_token = EmptySetToken(d_model).to(device)
     empty_token.load_state_dict(ckpt['empty_token_state_dict'])
     empty_token.eval()
-    utility_head = UtilityHead().to(device)
+    if ckpt.get('scorer_mode') == 'asymmetric':
+        utility_head = AsymmetricUtilityHead(d_model).to(device)
+    else:
+        utility_head = UtilityHead().to(device)
     utility_head.load_state_dict(ckpt['utility_head_state_dict'])
     utility_head.eval()
     return model, set_conditioner, empty_token, utility_head, args

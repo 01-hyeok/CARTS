@@ -1,0 +1,201 @@
+diff --git a/models/DenseUtilityRetriever.py b/models/DenseUtilityRetriever.py
+index 12d8227..a138ec0 100644
+--- a/models/DenseUtilityRetriever.py
++++ b/models/DenseUtilityRetriever.py
+@@ -6,10 +6,21 @@ The only new piece is `UtilityHead`: a minimal learnable affine rescaling of
+ the existing cosine score, `u_hat = a * cosine(h_t, e_i) + b`, so the model
+ outputs a real-valued utility estimate rather than a softmax-normalised
+ logit. No attention, no pair-MLP, no asymmetric scorer.
++
++EXP-ASYM-SCORER01 adds `AsymmetricUtilityHead`: the same affine head, but
++`cosine(h_t, e_i)` is replaced by `cosine(W_q h_t, W_k e_i)`. Rather than
++reimplementing query/key projections, this wraps
++`layers.retrieval_metric.RetrievalMetric(kind='asymmetric', output='cosine',
++layer_norm=False)` -- the project's existing, already-reviewed asymmetric
++scorer (identity-initialised, L2-normalised after projection, exactly
++`cos` at init) -- so the only new code here is the affine `a*x+b` on top,
++matching `UtilityHead`'s own convention exactly.
+ """
+ import torch
+ import torch.nn as nn
+ 
++from layers.retrieval_metric import RetrievalMetric
++
+ 
+ class UtilityHead(nn.Module):
+     """u_hat = a * cosine(h_t, e_i) + b, a/b scalar and learnable."""
+@@ -24,3 +35,22 @@ class UtilityHead(nn.Module):
+         [C, D] chunk of it (L2-normalised). Returns [B, N] or [B, C]."""
+         cosine = torch.matmul(h_t, candidate_embeddings.transpose(0, 1))
+         return self.scale * cosine + self.bias
++
++
++class AsymmetricUtilityHead(nn.Module):
++    """u_hat = a * cosine(W_q h_t, W_k e_i) + b.
++
++    W_q/W_k are identity-initialised (via `RetrievalMetric`), so at
++    construction this is numerically identical to `UtilityHead` -- verified
++    by `layers.retrieval_metric.cosine_init_deviation` before any training
++    starts (see `scripts/train_asym_scorer01.py`'s startup check)."""
++
++    def __init__(self, dim):
++        super().__init__()
++        self.metric = RetrievalMetric(kind='asymmetric', dim=dim, layer_norm=False, output='cosine')
++        self.scale = nn.Parameter(torch.tensor(1.0))
++        self.bias = nn.Parameter(torch.tensor(0.0))
++
++    def forward(self, h_t, candidate_embeddings):
++        cosine = self.metric.score(h_t, candidate_embeddings)
++        return self.scale * cosine + self.bias
+diff --git a/scripts/eval_firstanchor_diag.py b/scripts/eval_firstanchor_diag.py
+index 661ca6e..ea93f6b 100644
+--- a/scripts/eval_firstanchor_diag.py
++++ b/scripts/eval_firstanchor_diag.py
+@@ -36,7 +36,7 @@ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+ 
+ from exp.exp_stage1_relation import Exp_Stage1_Relation
+-from models.DenseUtilityRetriever import UtilityHead
++from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
+ from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+ from utils.retrieval_diagnostics import load_stage2
+ 
+@@ -55,7 +55,10 @@ def load_trained_selector(seq_ckpt_path, device):
+     empty_token = EmptySetToken(d_model).to(device)
+     empty_token.load_state_dict(ckpt['empty_token_state_dict'])
+     empty_token.eval()
+-    utility_head = UtilityHead().to(device)
++    if ckpt.get('scorer_mode') == 'asymmetric':
++        utility_head = AsymmetricUtilityHead(d_model).to(device)
++    else:
++        utility_head = UtilityHead().to(device)
+     utility_head.load_state_dict(ckpt['utility_head_state_dict'])
+     utility_head.eval()
+     return model, set_conditioner, empty_token, utility_head, args
+diff --git a/scripts/eval_margutil01_stage2.py b/scripts/eval_margutil01_stage2.py
+index 373778d..7587773 100644
+--- a/scripts/eval_margutil01_stage2.py
++++ b/scripts/eval_margutil01_stage2.py
+@@ -34,7 +34,7 @@ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+ 
+ from exp.exp_stage1_relation import Exp_Stage1_Relation
+-from models.DenseUtilityRetriever import UtilityHead
++from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
+ from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+ from scripts.train_margutil01 import run_sequence_dense
+ from utils.dense_utility import candidate_weights, dense_utility
+@@ -55,7 +55,10 @@ def load_trained_selector(seq_ckpt_path, device):
+     empty_token = EmptySetToken(d_model).to(device)
+     empty_token.load_state_dict(ckpt['empty_token_state_dict'])
+     empty_token.eval()
+-    utility_head = UtilityHead().to(device)
++    if ckpt.get('scorer_mode') == 'asymmetric':
++        utility_head = AsymmetricUtilityHead(d_model).to(device)
++    else:
++        utility_head = UtilityHead().to(device)
+     utility_head.load_state_dict(ckpt['utility_head_state_dict'])
+     utility_head.eval()
+     return model, set_conditioner, empty_token, utility_head, args
+diff --git a/scripts/train_toptail_rank01.py b/scripts/train_toptail_rank01.py
+index d5acbeb..0e8e9d8 100644
+--- a/scripts/train_toptail_rank01.py
++++ b/scripts/train_toptail_rank01.py
+@@ -35,10 +35,11 @@ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+ 
+ from exp.exp_stage1_relation import Exp_Stage1_Relation
+-from models.DenseUtilityRetriever import UtilityHead
++from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
+ from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+ from scripts.train_margutil01 import build_experiment, encode, memory_value, run_sequence_dense
+ from utils.dense_utility import candidate_weights, dense_utility, normalize_utility
++from layers.retrieval_metric import cosine_init_deviation
+ 
+ 
+ def pairwise_step_loss(u_hat, u_target, valid_mask, top_pct=0.01, min_pos=10,
+@@ -195,6 +196,10 @@ def main():
+     ap.add_argument('--seed', type=int, default=0)
+     ap.add_argument('--loss_mode', required=True, choices=['smoothl1', 'pairwise', 'hybrid'])
+     ap.add_argument('--lambda_rank', type=float, default=1.0)
++    ap.add_argument('--scorer_mode', default='cosine', choices=['cosine', 'asymmetric'],
++                     help='EXP-ASYM-SCORER01: cosine (default, UtilityHead, EXP-TOPTAIL-RANK01 '
++                          'unchanged) or asymmetric (AsymmetricUtilityHead, identity-init-equivalent '
++                          'to cosine at step 0 -- verified before training starts).')
+     cli = ap.parse_args()
+ 
+     overrides = {
+@@ -232,15 +237,27 @@ def main():
+     d_model = int(args.d_model)
+     set_conditioner = SetConditioner(d_model).to(device)
+     empty_token = EmptySetToken(d_model).to(device)
+-    utility_head = UtilityHead().to(device)
++    if cli.scorer_mode == 'asymmetric':
++        utility_head = AsymmetricUtilityHead(d_model).to(device)
++        deviation = cosine_init_deviation(utility_head.metric, samples=256,
++                                           generator=torch.Generator(device=device).manual_seed(args.seed))
++        print(f'[toptail_rank01] scorer_mode=asymmetric identity-init check: '
++              f'max_abs_score_deviation={deviation:.3e} (must be < 1e-6)')
++        if deviation >= 1e-6:
++            raise RuntimeError(
++                f'asymmetric scorer is not identity-initialised to cosine (deviation={deviation:.3e} '
++                f'>= 1e-6) -- refusing to start an expensive training run on a broken controlled variable')
++    else:
++        utility_head = UtilityHead().to(device)
+     trainable_params = (list(set_conditioner.parameters()) + list(empty_token.parameters())
+                          + list(utility_head.parameters()))
+     n_params = sum(p.numel() for p in trainable_params)
+-    print(f'[toptail_rank01] trainable_params={n_params} '
++    print(f'[toptail_rank01] scorer_mode={cli.scorer_mode} trainable_params={n_params} '
+           f'(SetConditioner={sum(p.numel() for p in set_conditioner.parameters())}, '
+           f'EmptySetToken={sum(p.numel() for p in empty_token.parameters())}, '
+-          f'UtilityHead={sum(p.numel() for p in utility_head.parameters())}) '
+-          f'-- must equal EXP-MARGUTIL01 R0\'s own trainable_params for a fair comparison')
++          f'UtilityHead/ScorerHead={sum(p.numel() for p in utility_head.parameters())}) '
++          f'-- SetConditioner/EmptySetToken must equal EXP-TOPTAIL-RANK01 R2\'s own params exactly; '
++          f'only the scorer head differs by design (W_q/W_k added when asymmetric)')
+     optimizer = torch.optim.Adam(trainable_params, lr=float(args.learning_rate))
+ 
+     ckpt_dir = Path(cli.checkpoints) / 'toptail_rank01' / args.data / f'seq{args.seq_len}_pred{args.pred_len}' / args.model_id
+@@ -341,6 +358,24 @@ def main():
+               f"margin={vd.get('margin', float('nan')):.5f} "
+               f"score_std={vd.get('score_std', float('nan')):.5f} "
+               f"utility_head_a={a_val:.5f} utility_head_b={b_val:.5f}")
++        if cli.scorer_mode == 'asymmetric':
++            with torch.no_grad():
++                eye = torch.eye(d_model, device=device)
++                wq = utility_head.metric.query_projection.weight
++                wk = utility_head.metric.key_projection.weight
++                wq_dev = float((wq - eye).norm())
++                wk_dev = float((wk - eye).norm())
++                wq_norm = float(wq.norm())
++                wk_norm = float(wk.norm())
++                try:
++                    wq_cond = float(torch.linalg.cond(wq.double()))
++                    wk_cond = float(torch.linalg.cond(wk.double()))
++                except Exception:
++                    wq_cond = wk_cond = float('nan')
++            print(f"[toptail_rank01] epoch {epoch+1} scorer(asym) "
++                  f"||Wq-I||_F={wq_dev:.5f} ||Wk-I||_F={wk_dev:.5f} "
++                  f"||Wq||_F={wq_norm:.5f} ||Wk||_F={wk_norm:.5f} "
++                  f"cond(Wq)={wq_cond:.3f} cond(Wk)={wk_cond:.3f}")
+         if train_metrics['set_conditioner_grad_norm'] == 0.0:
+             print('[toptail_rank01][FAIL] SetConditioner gradient norm is exactly 0 -- STOP')
+             break
+@@ -355,6 +390,7 @@ def main():
+                 'utility_head_state_dict': utility_head.state_dict(),
+                 'args': vars(args), 'epoch': epoch + 1, 'val_overlap_at_k': best_val,
+                 'frozen_encoder_source_ckpt': cli.base_ckpt, 'loss_mode': cli.loss_mode,
++                'scorer_mode': cli.scorer_mode,
+             }, ckpt_dir / 'checkpoint.pth')
+         else:
+             patience_left -= 1
+@@ -367,7 +403,7 @@ def main():
+     summary = {'best_epoch': best_epoch, 'best_val_overlap_at_k': best_val,
+                'wall_clock_seconds': wall_time, 'peak_gpu_memory_mib': peak_mem,
+                'history': history, 'args': vars(args), 'checkpoint': str(ckpt_dir / 'checkpoint.pth'),
+-               'loss_mode': cli.loss_mode, 'trainable_params': n_params}
++               'loss_mode': cli.loss_mode, 'scorer_mode': cli.scorer_mode, 'trainable_params': n_params}
+     with open(ckpt_dir / 'summary.json', 'w') as fh:
+         json.dump(summary, fh, indent=2, default=str)
+     print(f'[toptail_rank01] done. best_epoch={best_epoch} best_val_overlap_at_k={best_val:.4f} '

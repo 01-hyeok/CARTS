@@ -1,0 +1,7 @@
+{
+  "check": "cosine_init_deviation(AsymmetricUtilityHead.metric, samples=256) before training started",
+  "max_abs_score_deviation": 0.0,
+  "threshold": 1e-06,
+  "passed": true,
+  "note": "Wq/Wk identity-initialised via layers.retrieval_metric.RetrievalMetric(kind='asymmetric', layer_norm=False, output='cosine'); score at init is bitwise-equal to plain cosine on 256 random query/key pairs (float32)."
+}

@@ -1514,3 +1514,232 @@ questions (including the explicit A/B/C/D/E failure-mode judgement):
 assessment, and next-experiment recommendation left to the reviewer — see
 `research/REVIEW_FOR_CHATGPT.md`.
 
+---
+
+## EXP-TOPTAIL-RANK01 — loss-formulation comparison (R0/R1/R2) for the Dense selector
+
+### Date
+2026-09-07
+
+### Research Question
+EXP-CONTINUATION-DIAG found extreme-top-tail utility ranking negatively
+correlated with true continuation quality in all 9 dataset/horizon/anchor
+combinations tested, while global ranking correlation was mixed. Is
+EXP-MARGUTIL01's pointwise SmoothL1 regression target itself responsible —
+does replacing/augmenting it with a top-tail-focused pairwise ranking loss
+improve the decision-relevant top-tail ranking, and does that reach
+free-running Top-K and Stage-2?
+
+### Configuration
+New file `scripts/train_toptail_rank01.py`, importing (not reimplementing)
+`build_experiment`/`encode`/`memory_value`/`run_sequence_dense` from
+`scripts/train_margutil01.py`. Three loss modes, everything else identical
+to EXP-MARGUTIL01 (frozen B0 encoder, `SetConditioner`, `EmptySetToken`,
+`UtilityHead=a*cosine+b`, oracle-prefix teacher forcing, full-memory
+candidate support): `--loss_mode smoothl1` (R0, EXP-MARGUTIL01's own arm,
+reused not retrained), `--loss_mode pairwise` (R1: logistic pairwise
+ranking between true-top-1% positives and predicted-high hard negatives,
+fully vectorised/batched — an early per-row-Python-loop implementation was
+replaced after real-data timing showed it impractically slow), `--loss_mode
+hybrid --lambda_rank 1.0` (R2 = pairwise + 1.0*SmoothL1). Evaluation reuses
+`scripts/eval_margutil01_stage2.py` (Stage-2), `scripts/eval_firstanchor_diag.py`
+(t=1, new file this campaign), `scripts/eval_continuation_diag.py`
+(exhaustive t=2, new file this campaign) unmodified.
+
+### Changed Variable
+Training loss only (smoothl1 / pairwise / hybrid). Same architecture, same
+target definition (`u_i^(t)=-A_weighted(S*_{t-1}+{i})`), same checkpoint-
+selection criterion (`val_overlap@10`) across all three arms.
+
+### Controlled Variables
+Frozen B0 encoder, `SetConditioner`/`EmptySetToken`/`UtilityHead`
+architecture (`trainable_params=49794`, verified identical across R0/R1/R2),
+oracle-prefix teacher forcing, teacher cache, full-memory candidate support,
+K=10, seed 0, Stage-2 checkpoint/architecture/aggregation.
+
+### Dataset / Horizon
+ETTh1 H96 (all 3 arms, complete). Weather H96: R0 (existing EXP-MARGUTIL01
+result) only — **R1 was stopped after 2 epochs by explicit user decision**
+(loss had plateaued near `ln(2)≈0.693` on both epochs, the value indicating
+the pairwise loss cannot separate positives from negatives; no checkpoint
+past epoch 1 quality); **R2 was stopped after training an epoch-1
+checkpoint, then that checkpoint was explicitly discarded/unevaluated by
+user decision** ("stop하고 새로운 실험 진행할거야") in favour of proceeding
+to EXP-ASYM-SCORER01. Weather H96 therefore has NO R1 or R2 result in this
+campaign. H720 not run (out of scope).
+
+### Seed
+0.
+
+### Result Files
+`results/EXP-TOPTAIL-RANK01/{ETTh1_H96,Weather_H96}_stage2.json` (R1),
+`results/EXP-TOPTAIL-RANK01/R2/ETTh1_H96_R2_*` (Stage-2, t=1, t=2 for R2),
+plus the reused R0 files in `results/EXP-MARGUTIL01/`.
+
+### Results — ETTh1 H96 (complete, 3/3 arms)
+
+| Arm | Stage-2 MSE | Delta vs B0 | gap_recovery | HardAgg (seq) | Global Spearman (t=1, teacher-forced) |
+|---|---:|---:|---:|---:|---:|
+| B0 | 0.37312 | — | — | 0.407 | — |
+| R0 (SmoothL1) | 0.52991 | +0.157 | -1.832 | 1.657 | +0.543 |
+| R1 (pairwise) | 0.39978 | +0.027 | -0.303 | 0.600 | -0.162 |
+| R2 (hybrid) | 0.39526 | +0.022 | -0.263 | 0.551 | -0.103 |
+
+t=1 (FIRSTANCHOR-DIAG): Spearman-within-true-top-1% went -0.558 (R0) →
++0.163 (R1) → +0.213 (R2) — monotonic. t=2 (CONTINUATION-DIAG,
+`dense_first` anchor): `hurt_frac` 37.6% (R0) → 24.6% (R1) → 23.2% (R2),
+`continuation_regret` 0.839 → 0.479 → 0.350 — also monotonic on most
+metrics, though R1 has a very slightly better t=2 oracle-predicted-rank
+and top-tail Spearman than R2 specifically (small differences; see
+`research/REVIEW_FOR_CHATGPT.md` for full numbers). R0→R1→R2 is a clean,
+consistent improvement on Stage-2/`gap_recovery`/HardAggregate/t=1; every
+global teacher-forced Spearman is negative or near-zero for R1/R2 while
+positive for R0, reproducing this project's global-vs-top-tail dissociation
+finding at three points along a loss-weighting spectrum.
+
+### Sanity Checks
+`pytest tests/`: 496 passed (6 new in `tests/test_exp_toptail_rank01.py`),
+same 2 pre-existing failures, no regression. `trainable_params=49794`
+identical across R0/R1/R2, confirmed by startup log every run.
+
+### Training stability
+Both R1 and R2 select `best_epoch=1` by `val_overlap@10` on ETTh1 H96 and
+decline afterward; R1's `pairwise_loss` converges to almost exactly
+`ln(2)=0.693` by epoch 6 (the degenerate value), while R2's stays in
+`0.697-0.703` throughout and `UtilityHead`'s scale `a` declines gradually
+(0.921→0.799) rather than collapsing toward 0 — R2 measurably softens but
+does not eliminate the degradation pattern.
+
+### Implementation Notes
+New files: `scripts/train_toptail_rank01.py`, `tests/test_exp_toptail_rank01.py`.
+A per-row Python-loop pairwise-loss implementation was replaced with a
+fully vectorised (batched `topk`/`scatter`/`gather`) version after a
+real-data GPU sanity run showed the loop version was impractically slow
+(a full epoch did not complete within the harness's execution window); the
+vectorised rewrite was re-verified against the same test suite before any
+further training.
+
+### Status
+completed for ETTh1 H96 (3/3 arms); Weather H96 incomplete by explicit
+user decision (R1/R2 both stopped, no result for either). R0→R1→R2 shows a
+consistent Stage-2/t=1/t=2 improvement on ETTh1 H96, but R2's Stage-2 MSE
+(0.39526) is still worse than B0 (+0.022, above the project's 0.01
+noise-scale reference). Followed immediately by EXP-ASYM-SCORER01 (below),
+testing whether R2's remaining gap is a scorer-capacity bottleneck.
+Interpretation and next-direction recommendation left to the reviewer —
+see `research/REVIEW_FOR_CHATGPT.md`.
+
+---
+
+## EXP-ASYM-SCORER01 — R2 + asymmetric scorer vs. R2 + cosine
+
+### Date
+2026-09-07
+
+### Research Question
+Does R2's remaining top-tail/continuation ranking failure and Stage-2 gap
+stem from the fixed symmetric cosine geometry's limited expressiveness?
+`C0 = R2 + cosine` (existing checkpoint, reused) vs. `C1 = R2 +
+asymmetric` (`cos(W_q h_t, W_k e_i)`, `W_q`/`W_k` identity-initialised),
+everything else identical.
+
+### Configuration
+`models/DenseUtilityRetriever.py::AsymmetricUtilityHead` wraps
+`layers.retrieval_metric.RetrievalMetric(kind='asymmetric', layer_norm=False,
+output='cosine')` (the project's existing, previously-reviewed asymmetric
+scorer implementation — not reimplemented) with the same affine
+`scale`/`bias` `UtilityHead` already uses. `scripts/train_toptail_rank01.py`
+gained `--scorer_mode {cosine,asymmetric}` (default `cosine`, i.e. every
+prior experiment's behaviour is unchanged); `asymmetric` runs an
+identity-init equivalence check (`layers.retrieval_metric.cosine_init_deviation`)
+before training and aborts if `>= 1e-6`. `eval_margutil01_stage2.py`/
+`eval_firstanchor_diag.py` (and `eval_continuation_diag.py`, which imports
+from it) read the checkpoint's own saved `scorer_mode` and instantiate the
+matching head — old checkpoints (no such key) default to `UtilityHead`,
+unaffected. Full commands: `results/EXP-ASYM-SCORER01/command.txt`.
+
+### Changed Variable
+Scorer geometry only (cosine vs. asymmetric). R2's hybrid loss
+(`lambda_smooth=1.0`), all hyperparameters, and checkpoint-selection
+criterion (`val_overlap@10`) held identical.
+
+### Controlled Variables
+Frozen B0 encoder (same checkpoint), `SetConditioner`/`EmptySetToken`,
+teacher cache/definition/normalization, positive/hard-negative definition
+and sampling counts, optimizer/lr/batch/epochs/patience/seed, candidate
+validity mask, K=10, full-memory support, free-running inference, Stage-2
+architecture/aggregation/gate/fusion, evaluation scripts and query
+subsets — all identical between C0 and C1. `trainable_params`: C0=49794,
+C1=82562 (= C0 + 32770 for `W_q`/`W_k`, confirmed to be the only source of
+the difference by startup log and unit test).
+
+### Dataset / Horizon
+ETTh1 H96 only, seed 0. Weather and H720 explicitly not run.
+
+### Result Files
+`results/EXP-ASYM-SCORER01/{command.txt, config.json, scorer_init_check.json,
+ETTh1_H96_C1_stage2.json, ETTh1_H96_C1_summary.json,
+ETTh1_H96_C1_dense_first_summary.json, continuation_diag_ETTh1_H96_C1_dense_first.csv,
+ETTh1_H96_C1_top20_catastrophic.json, metrics.csv, REPORT.md, logs/,
+working_tree.diff, checkpoint_fingerprints.txt, env.txt, git_commit.txt}`.
+
+### Results
+
+Identity-init check: `max_abs_score_deviation = 0.0` (< 1e-6), verified
+before training started. C1 selected `best_epoch=3` (`val_overlap@10=0.0085`),
+slightly better than C0's `best_epoch=1` (`0.0085` vs `0.0082`) — the
+training-time proxy metric improved. Every downstream metric did not:
+
+| Metric | C0 | C1 | Delta |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.41257 | **+0.01731 (worse)** |
+| Delta vs B0 | +0.02214 | +0.03945 | worse |
+| gap_recovery | -0.263 | -0.488 | worse |
+| HardAggregate@10 (seq) | 0.551 | 0.690 | worse |
+| t1 Spearman within true top-1% | 0.213 | 0.159 | worse |
+| t1 oracle-best predicted rank median | 99 | 180 | worse |
+| t1 Top-50 containment | 30.5% | 26.5% | worse |
+| t2 hurt_frac | 23.2% | 24.0% | worse |
+| t2 selected-second true rank median | 1934 | 2799 | worse |
+| t2 oracle-second predicted rank median | 560 | 673 | worse |
+| t2 Spearman within true top-10% | 0.288 | 0.256 | worse |
+| t2 continuation regret | 0.350 | 0.375 | worse |
+| t2 Spearman GLOBAL | 0.177 | 0.248 | **better** |
+
+`duplicate_rate`/`invalid_rate` = 0.0 for both arms. Every metric is flat
+or worse for C1 except global (non-top-tail) Spearman, which improves —
+the same global-vs-top-tail dissociation this project has repeatedly found
+elsewhere replays at the scorer-geometry level: more expressive geometry
+fits the bulk of the ranking marginally better while the decision-critical
+extreme tail gets worse. `cond(W_k)` grew monotonically through training
+(24.6 at epoch 1 → 58.8 at the selected epoch 3 → 139.6 by epoch 8),
+suggesting the candidate-side projection moves toward an increasingly
+anisotropic transformation.
+
+### Sanity Checks
+`pytest tests/`: 502 passed (6 new in `tests/test_exp_asym_scorer01.py`),
+same 2 pre-existing failures, no regression. Identity-init equivalence,
+gradient flow to `W_q`/`W_k`, encoder-frozen invariant, and param-count
+audit all verified (see REPORT.md section 2-3 for the full checklist).
+
+### Implementation Notes
+New class: `models/DenseUtilityRetriever.py::AsymmetricUtilityHead`.
+Modified: `scripts/train_toptail_rank01.py` (`--scorer_mode` flag),
+`scripts/eval_margutil01_stage2.py`, `scripts/eval_firstanchor_diag.py`
+(`load_trained_selector` now scorer-mode-aware). New tests:
+`tests/test_exp_asym_scorer01.py`.
+
+### Status
+completed (1 cell, C0 vs C1). **Evidence AGAINST the scorer-capacity-
+bottleneck hypothesis**: every decision-relevant metric (Stage-2,
+HardAggregate, t=2 continuation, most of t=1) is worse with the asymmetric
+scorer than with plain cosine, despite the training-time checkpoint-
+selection proxy (`val_overlap@10`) preferring the asymmetric arm — this
+itself is informative about that proxy's reliability. Not evidence that no
+asymmetric scorer could ever help under different hyperparameters/training
+budget (not swept, per the pre-registered scope). Per the user's explicit
+instruction, no further experiment (Weather, H720, hyperparameter sweep,
+Mahalanobis, encoder unfreezing, SetConditioner changes) was started.
+Interpretation, novelty assessment, and next-experiment recommendation
+left to the reviewer — see `research/REVIEW_FOR_CHATGPT.md`.
+

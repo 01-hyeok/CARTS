@@ -1,0 +1,24 @@
+{
+  "experiment_id": "EXP-ASYM-SCORER01",
+  "base_experiment": "EXP-TOPTAIL-RANK01 R2 (hybrid loss: pairwise + 1.0*SmoothL1)",
+  "changed_variable": "scorer geometry only (cosine -> asymmetric W_q/W_k, identity-initialised)",
+  "controlled_variables": [
+    "frozen B0 encoder (same checkpoint)", "SetConditioner", "EmptySetToken",
+    "UtilityHead affine scale/bias convention (a*x+b)", "R2 hybrid loss (lambda_smooth=1.0)",
+    "oracle-prefix teacher forcing", "teacher cache", "teacher utility definition",
+    "utility normalization", "top-1% positive definition", "hard-negative definition",
+    "hard-negative sampling counts", "optimizer/lr/batch/epochs/patience/seed",
+    "train/val/test split", "candidate validity mask", "K=10", "full-memory candidate support",
+    "free-running inference", "Stage-2 checkpoint/architecture/aggregation/gate/fusion",
+    "checkpoint-selection criterion (val_overlap@10)", "diagnostic query subsets (200/500)",
+    "evaluation scripts (eval_margutil01_stage2.py, eval_firstanchor_diag.py, eval_continuation_diag.py, unmodified)"
+  ],
+  "scope": {"dataset": "ETTh1", "horizon": 96, "seed": 0, "top_k": 10},
+  "explicitly_not_run": ["Weather", "H720", "pair-MLP", "Mahalanobis", "attention scorer",
+                          "encoder unfreezing", "SetConditioner modification", "lambda sweep",
+                          "checkpoint-selection criterion change"],
+  "arms": {
+    "C0": "R2 + cosine (UtilityHead) -- existing EXP-TOPTAIL-RANK01/R2 ETTh1_H96 checkpoint, reused verbatim, not retrained",
+    "C1": "R2 + asymmetric (AsymmetricUtilityHead: cos(Wq h, Wk e), Wq=Wk=I at init) -- new training this experiment"
+  }
+}

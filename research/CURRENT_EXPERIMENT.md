@@ -1,6 +1,6 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **All three approved experiments COMPLETE for their (reduced)
+Status: **All five approved experiments COMPLETE for their (reduced)
 scope. No experiment currently running. Nothing running on any GPU on
 behalf of this project.**
 
@@ -57,6 +57,37 @@ set-conditioned top-tail ranking failure as the best-evidenced single
 component): `results/EXP-CONTINUATION-DIAG/REPORT.md`. Full record:
 `research/EXPERIMENT_LOG.md` → EXP-CONTINUATION-DIAG.
 
+**4) EXP-TOPTAIL-RANK01 — loss-formulation comparison (R0/R1/R2) — COMPLETE
+on ETTh1 H96, Weather H96 abandoned (2026-09-07).** No new architecture;
+same frozen encoder/`SetConditioner`/`UtilityHead`, only the training loss
+varies: R0=SmoothL1 (EXP-MARGUTIL01's own arm), R1=top-tail pairwise
+ranking, R2=R1+R0 hybrid. On ETTh1 H96, R0→R1→R2 is a clean, consistent
+improvement on Stage-2 (+0.157→+0.027→**+0.022** vs B0), `gap_recovery`,
+HardAggregate, and t=1 top-tail ranking (Spearman-within-true-top-1%:
+-0.558→+0.163→**+0.213**) — global teacher-forced Spearman goes the
+opposite direction (+0.543→-0.162→-0.103), reproducing this project's
+global-vs-top-tail dissociation finding a third time. **Weather H96: R1
+was stopped after 2 epochs (loss plateaued near `ln(2)`, matching ETTh1's
+own signature); R2's epoch-1 checkpoint was explicitly discarded/
+unevaluated by user decision — no Weather H96 R1 or R2 result exists.**
+Full record: `research/EXPERIMENT_LOG.md` → EXP-TOPTAIL-RANK01.
+
+**5) EXP-ASYM-SCORER01 — R2+cosine vs. R2+asymmetric scorer — COMPLETE,
+ETTh1 H96 only (2026-09-07).** No new training objective or architecture
+change beyond the scorer: `AsymmetricUtilityHead` wraps the project's
+existing `layers.retrieval_metric.RetrievalMetric(kind='asymmetric')`,
+identity-initialised (`max_abs_score_deviation=0.0`, verified before
+training). **Result: evidence AGAINST the scorer-capacity-bottleneck
+hypothesis.** Every decision-relevant metric (Stage-2 +0.017 worse,
+`gap_recovery` worse, HardAggregate worse, t=1/t=2 top-tail ranking worse)
+is worse with the asymmetric scorer, DESPITE the training-time checkpoint-
+selection proxy (`val_overlap@10`) preferring the asymmetric arm — itself
+informative about that proxy's reliability for this model family. Not
+tested/not concluded: whether different hyperparameters or regularisation
+on the growing `cond(W_k)` would change this outcome. Full record:
+`research/EXPERIMENT_LOG.md` → EXP-ASYM-SCORER01, full 7-question
+evidence-based breakdown: `results/EXP-ASYM-SCORER01/REPORT.md`.
+
 **No next experiment is approved.** Per this project's workflow, the next
 step is an independent review (ChatGPT/Codex reads
 `research/REVIEW_FOR_CHATGPT.md` and writes `research/NEXT_EXPERIMENT.md`);
@@ -70,7 +101,11 @@ training objective (or an aggregation-weight cap) as a "fix" for
 EXP-CONTINUATION-DIAG's top-tail-ranking finding without the reviewer's/
 user's explicit approval — the finding is well-evidenced, but which fix (if
 any) to try next is exactly the kind of call this workflow reserves for the
-reviewer.
+reviewer. Per EXP-ASYM-SCORER01's own explicit instructions: do not
+automatically run Weather/H720 for the asymmetric scorer, do not sweep
+hyperparameters or add regularisation to `W_q`/`W_k`, do not try
+Mahalanobis, and do not modify `SetConditioner` or unfreeze the encoder,
+without the reviewer's/user's explicit approval first.
 
 **Standing constraint, unchanged:** `FULL MEMORY -> DIRECT TOP-K` (D-0010).
 Top-100/Top-M/shortlist/coarse-retrieval/reranker are not to be proposed as
