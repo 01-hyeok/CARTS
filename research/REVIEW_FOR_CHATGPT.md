@@ -2,12 +2,18 @@
 
 Handoff for independent review. Self-contained: no log files needed.
 
-**Status: eight completed/scoped experiments (EXP-1/EXP-2 Oracle
+**Status: nine completed/scoped experiments (EXP-1/EXP-2 Oracle
 Intervention, EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned
 retrieval, EXP-SEQFULL01 sequential set-conditioned retrieval, EXP-SEQDIAG01
 cross-dataset frozen-encoder collapse diagnostic, EXP-MARGUTIL01 dense
 marginal-utility successor, EXP-FIRSTANCHOR-DIAG causal t=1 decomposition,
-EXP-CONTINUATION-DIAG exhaustive t=2 continuation diagnostic).
+EXP-CONTINUATION-DIAG exhaustive t=2 continuation diagnostic,
+EXP-TOPTAIL-RANK01 loss-formulation comparison R0/R1/R2). EXP-TOPTAIL-RANK01
+is IN PROGRESS: ETTh1 H96 is complete for all three arms (R0 SmoothL1, R1
+pairwise, R2 hybrid); Weather H96 R2 is still training (R1 was stopped
+before completion by explicit user decision, so Weather H96 will compare
+R0 vs. R2 only, not R1). This section will be refreshed again once Weather
+H96 R2 finishes.
 EXP-MARGUTIL01/EXP-FIRSTANCHOR-DIAG/EXP-CONTINUATION-DIAG are complete for
 a reduced 3-cell scope (Weather H720 cancelled by explicit user decision,
 D-0013) and all three need the reviewer's interpretation rather than
@@ -1011,4 +1017,162 @@ and notably the failure rate is HIGHER, not lower, under the good
     WHICH of B or C dominates before committing to either fix?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+
+# EXP-TOPTAIL-RANK01 — loss-formulation comparison for the Dense selector (IN PROGRESS: ETTh1 H96 complete, Weather H96 R2 training)
+
+## Research Question
+
+EXP-CONTINUATION-DIAG's question 16 asked whether EXP-MARGUTIL01's
+pointwise SmoothL1 regression target itself was the bottleneck for
+top-tail ranking. This tests three loss formulations, EVERYTHING else held
+identical (same frozen B0 encoder, `SetConditioner`, `EmptySetToken`,
+`UtilityHead = a*cosine+b`, oracle-prefix teacher forcing, full-memory
+candidate support, checkpoint-selection criterion, evaluation protocol —
+reusing EXP-MARGUTIL01's and EXP-CONTINUATION-DIAG's own code, not
+reimplemented):
+
+- **R0** = SmoothL1 pointwise regression (EXP-MARGUTIL01's own arm, reused).
+- **R1** = top-tail logistic pairwise ranking loss only (true top-1%
+  positives vs. predicted-high hard negatives).
+- **R2** = R1 + R0 combined (`L = L_pairwise + 1.0 * L_smoothl1`), testing
+  whether pointwise supervision stabilises/improves the pairwise objective.
+
+`trainable_params=49794` verified identical across all three arms (same
+`SetConditioner`+`EmptySetToken`+`UtilityHead` classes, no capacity
+change) — logged at the start of every training run.
+
+## Method
+
+New file `scripts/train_toptail_rank01.py`, importing (not reimplementing)
+`build_experiment`/`encode`/`memory_value`/`run_sequence_dense` from
+`scripts/train_margutil01.py`. Pairwise loss: fully vectorised (batched
+`topk`/`scatter`/`gather`, no per-row Python loop) — an early per-row-loop
+implementation was replaced after a real-data sanity run showed it was
+prohibitively slow (>>300s/epoch and not converging within a reasonable
+window); the vectorised rewrite reproduces the identical mathematical
+definition (verified by the same 6-test suite,
+`tests/test_exp_toptail_rank01.py`) at ETTh1-H96 epoch times of
+~200-500s, comparable to the per-row version's own isolated sanity timing.
+Evaluation reuses `scripts/eval_margutil01_stage2.py` (Stage-2, teacher-forced
+utility), `scripts/eval_firstanchor_diag.py` (t=1 rank/top-tail
+diagnostics), and `scripts/eval_continuation_diag.py` (exhaustive t=2
+continuation) completely unmodified — only the `--sequential_checkpoint`
+argument points at the new R1/R2 checkpoints.
+
+**Weather H96 R1 was stopped mid-training by explicit user decision**
+(mirroring the same kind of scope-reduction as EXP-MARGUTIL01's Weather
+H720/D-0013) after 2 epochs, both showing the loss plateaued near
+`ln(2)≈0.693` (the value a pairwise logistic loss takes when it cannot
+distinguish positives from negatives) — no checkpoint was ever promoted
+past epoch 1 quality, and Weather H96's comparison will be R0 vs. R2 only,
+not R1. **R2 training on GPU 1 ran literally in parallel with R1's Weather
+H96 training** (same physical GPU, two processes, per explicit user
+instruction) for part of this campaign — both trained correctly and
+independently under this sharing (verified: no cross-contamination
+possible, separate model instances/optimizers/processes), only wall-clock
+time was affected (epochs took ~5-7x longer while sharing than isolated).
+
+## Results — ETTh1 H96 (complete, 3/3 arms) — [repo]
+
+### Stage-2
+
+| Arm | Stage-2 MSE | Delta vs B0 | gap_recovery | HardAgg (seq) | Global Spearman (teacher-forced) |
+|---|---:|---:|---:|---:|---:|
+| B0 | 0.37312 | — | — | 0.407 | — |
+| R0 (SmoothL1) | 0.52991 | +0.157 | -1.832 | 1.657 | +0.543 |
+| R1 (pairwise) | 0.39978 | +0.027 | -0.303 | 0.600 | -0.162 |
+| R2 (hybrid) | **0.39526** | **+0.022** | **-0.263** | **0.551** | -0.103 |
+
+### t=1 (FIRSTANCHOR-DIAG diagnostics, reused)
+
+| Arm | Spearman within true top-1% | Oracle rank median | Top-50 containment | Top-1 hit |
+|---|---:|---:|---:|---:|
+| R0 | -0.558 | 489 | 11.5% | 0% |
+| R1 | +0.163 | 387 | 20.0% | 0% |
+| R2 | **+0.213** | **99** | **30.5%** | **0.5%** |
+
+### t=2 (CONTINUATION-DIAG exhaustive, `dense_first` anchor, reused)
+
+| Arm | hurt_frac | true rank median | oracle predicted rank median | Spearman top-1% | Spearman top-10% | regret |
+|---|---:|---:|---:|---:|---:|---:|
+| R0 | 37.6% | 5244 | 8372 | -0.257 | -0.558 | 0.839 |
+| R1 | 24.6% | 2305 | **502.5** | **+0.155** | **+0.305** | 0.479 |
+| R2 | **23.2%** | **1934** | 560 | 0.140 | 0.288 | **0.350** |
+
+**R0→R1→R2 is a monotonic improvement on Stage-2, `gap_recovery`,
+HardAggregate, and every t=1 metric — a clean, consistent staircase.** t=2
+is the one place R2 is NOT uniformly better than R1: R2 wins on
+`hurt_frac`/true-rank/regret but R1 has a very slightly better
+oracle-predicted-rank and top-tail Spearman at t=2 specifically (differences
+of a few percentage points/ranks, not large). Every arm's global
+teacher-forced Spearman is negative or near-zero for R1/R2 while positive
+for R0 — reproducing EXP-TOPTAIL-RANK01's central pattern (pointwise
+regression fits the global distribution better, pairwise-family losses fit
+the decision-relevant top tail better) at three points along a
+SmoothL1-weight spectrum, not just two.
+
+## Training stability (R1 vs. R2, ETTh1 H96)
+
+Both R1 and R2 selected `best_epoch=1` by the (unchanged) `val_overlap@10`
+criterion and both show `val_overlap@10` declining after epoch 1 — this
+specific symptom is NOT resolved by adding SmoothL1. However, the
+CHARACTER of the decline differs: R1's `pairwise_loss` value converges
+essentially exactly to `ln(2)=0.693` by epoch 6 (the value indicating the
+model can no longer separate positive from negative pairs at all); R2's
+stays in the `0.697-0.703` range throughout 6 epochs (never fully
+collapsing), and `UtilityHead`'s scale parameter `a` declines gradually
+(0.921→0.799 over 6 epochs) rather than collapsing toward 0. The
+positive-negative `margin` also improves slightly over R2's own epochs
+(-0.0183→-0.0082). **R2 measurably softens, but does not eliminate, the
+degradation pattern seen in R1** — best checkpoint is still epoch 1 for
+both.
+
+## Sanity checks passed
+
+`pytest tests/`: 496 passed (6 new in `tests/test_exp_toptail_rank01.py`,
+covering: known-ordering recovery via gradient descent, positives-from-true-
+top-tail-only, hard-negatives-from-predicted-high-excluding-true-positives,
+invalid/selected-candidate exclusion with exact zero gradient outside the
+valid region, loss ordering (already-correct pairs score lower than
+already-wrong pairs), and `UtilityHead` param-count parity), same 2
+pre-existing failures, no regression.
+
+## What this does NOT establish yet
+
+- Weather H96's R2 comparison — training in progress, not complete.
+- Whether `lambda_rank` values other than 1.0 would change the R1-vs-R2
+  tradeoff at t=2 specifically (not swept, per the pre-registered scope).
+- Anything about H720, or about an asymmetric/non-cosine scorer (explicitly
+  out of scope for this experiment, deferred as a separate follow-up
+  question, not run here).
+
+## Questions for ChatGPT
+
+19. R0→R1→R2 is a clean monotonic improvement on Stage-2/`gap_recovery`/t=1,
+    but R2 is NOT uniformly better than R1 at t=2 (R1 has marginally better
+    oracle-predicted-rank and top-tail Spearman there specifically, while
+    R2 wins on hurt-fraction/true-rank/regret). Is there a principled reason
+    pointwise auxiliary supervision would help the FIRST selection step more
+    than the SECOND (set-conditioned) one, or is this within noise at
+    n=500 queries and not a real dissociation?
+20. Both R1 and R2 still select `best_epoch=1` by `val_overlap@10` and
+    decline afterward, though R2's decline is visibly softer (score scale
+    `a` shrinks gradually instead of collapsing, margin improves slightly
+    instead of flatlining at `ln(2)`). Is `val_overlap@10` (unordered
+    final-Top-10-set overlap with the oracle) simply a noisy/uninformative
+    early-stopping criterion for a ranking-loss-trained model, and would a
+    different checkpoint-selection metric (e.g. one closer to the t=1/t=2
+    top-tail diagnostics themselves) likely change which epoch gets
+    selected and the resulting Stage-2 numbers?
+21. Given R2 is the best arm on ETTh1 H96 across nearly every metric, is a
+    `lambda_rank` sweep (explicitly not run in this pilot) or a longer
+    training budget (patience/epochs, also not swept) likely to matter
+    more for closing the remaining gap to B0 (R2's Stage-2 MSE is still
+    +0.022 worse than B0), versus the t=2-specific set-conditioned ranking
+    limitation EXP-CONTINUATION-DIAG originally identified?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`. Weather
+H96 results will be appended once R2 training completes.
 

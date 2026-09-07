@@ -1,0 +1,113 @@
+{
+  "stage2": {
+    "b0_unforced_final_mse": 0.3731216918222617,
+    "b0_unforced_final_mae": 0.3982472681699578,
+    "dense_first_final_mse": 0.39525834740945864,
+    "dense_first_final_mae": 0.41382089879682576,
+    "b0_first_final_mse": 0.3916388732363569,
+    "b0_first_final_mae": 0.41098452378330325,
+    "oracle_first_final_mse": 0.35571962662962875,
+    "oracle_first_final_mae": 0.38870993044535973
+  },
+  "aggregate": {
+    "dense_first": {
+      "a_weighted": 0.48726281840187,
+      "hard_aggregate_mse": 0.5513873813344065,
+      "set_recall_at_k": 0.009725570659143087,
+      "duplicate_rate": 0.0,
+      "invalid_rate": 0.0
+    },
+    "b0_first": {
+      "a_weighted": 0.48087159292469056,
+      "hard_aggregate_mse": 0.5354428900186171,
+      "set_recall_at_k": 0.010007694280584466,
+      "duplicate_rate": 0.0,
+      "invalid_rate": 0.0
+    },
+    "oracle_first": {
+      "a_weighted": 0.39609817005904113,
+      "hard_aggregate_mse": 0.49177934039386356,
+      "set_recall_at_k": 0.10622723775323457,
+      "duplicate_rate": 0.0,
+      "invalid_rate": 0.0
+    }
+  },
+  "stepwise_trajectory": {
+    "dense_first": [
+      0.7602020995640302,
+      0.6811900426574657,
+      0.6147909284834221,
+      0.5724703293212502,
+      0.547185556396028,
+      0.5295586227413308,
+      0.5150963840793573,
+      0.503971390018756,
+      0.4950099632186014,
+      0.48726281840187
+    ],
+    "b0_first": [
+      0.6658469786412229,
+      0.6274131103448147,
+      0.5811915973564942,
+      0.5522348129766879,
+      0.5317165380152228,
+      0.5168223378296524,
+      0.5049055989903345,
+      0.4958009470954526,
+      0.487604293656765,
+      0.48087159292469056
+    ],
+    "oracle_first": [
+      0.19101074628625567,
+      0.30759715461555537,
+      0.3615715304635146,
+      0.3768475756418914,
+      0.38468934143703526,
+      0.3887734129851735,
+      0.3919696669384004,
+      0.39352248720566746,
+      0.39497542455625223,
+      0.39609817005904113
+    ]
+  },
+  "t1_rank": {
+    "rows": 200,
+    "oracle_rank_mean": 511.02,
+    "oracle_rank_median": 99,
+    "oracle_percentile_rank_mean": 0.060490056818181814,
+    "top1_hit_rate": 0.005,
+    "top5_containment": 0.045,
+    "top10_containment": 0.08,
+    "top50_containment": 0.305,
+    "spearman_within_teacher_top1pct": 0.21278517360566185,
+    "ndcg10_utility_at_predicted_rank": 0.9753550273180008,
+    "ndcg50_utility_at_predicted_rank": 0.977532011270523
+  },
+  "t1_candidate_quality": {
+    "dense": {
+      "mean": 0.7602020964909285,
+      "median": 0.4698905944824219,
+      "p25": 0.23752868175506592,
+      "p75": 1.0164258480072021
+    },
+    "b0": {
+      "mean": 0.6658469764657163,
+      "median": 0.44437217712402344,
+      "p25": 0.22603754699230194,
+      "p75": 0.8977288603782654
+    },
+    "oracle": {
+      "mean": 0.19101074599751938,
+      "median": 0.13885226845741272,
+      "p25": 0.07954387366771698,
+      "p75": 0.27996736764907837
+    },
+    "n_first": 19495,
+    "b0_eq_oracle_fraction": 0.01036163118748397,
+    "dense_eq_oracle_fraction": 0.006617081302898179,
+    "b0_beats_dense_fraction": 0.5274685816876122,
+    "dense_beats_b0_fraction": 0.41395229546037443,
+    "first_pick_tie_fraction": 0.05857912285201334
+  },
+  "identity_check_singleton_oracle_eq_teacher_first": true
+}
