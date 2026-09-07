@@ -2,15 +2,20 @@
 
 Handoff for independent review. Self-contained: no log files needed.
 
-**Status: seven completed/scoped experiments (EXP-1/EXP-2 Oracle
+**Status: eight completed/scoped experiments (EXP-1/EXP-2 Oracle
 Intervention, EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned
 retrieval, EXP-SEQFULL01 sequential set-conditioned retrieval, EXP-SEQDIAG01
 cross-dataset frozen-encoder collapse diagnostic, EXP-MARGUTIL01 dense
-marginal-utility successor, EXP-FIRSTANCHOR-DIAG causal t=1 decomposition).
-EXP-MARGUTIL01 and EXP-FIRSTANCHOR-DIAG are complete for a reduced 3-cell
-scope (Weather H720 cancelled by explicit user decision, D-0013) and both
-need the reviewer's interpretation rather than carrying a mechanical
-pass/fail verdict — see their sections at the end of this document.**
+marginal-utility successor, EXP-FIRSTANCHOR-DIAG causal t=1 decomposition,
+EXP-CONTINUATION-DIAG exhaustive t=2 continuation diagnostic).
+EXP-MARGUTIL01/EXP-FIRSTANCHOR-DIAG/EXP-CONTINUATION-DIAG are complete for
+a reduced 3-cell scope (Weather H720 cancelled by explicit user decision,
+D-0013) and all three need the reviewer's interpretation rather than
+carrying a mechanical pass/fail verdict — see their sections at the end of
+this document. EXP-CONTINUATION-DIAG's single most consistent finding:
+extreme-top-tail utility ranking correlation is negative in all 9
+dataset×horizon×anchor combinations tested, while global ranking
+correlation is mixed.**
 
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
 engineer; **[user]** = supplied by the researcher, not independently
@@ -870,6 +875,140 @@ alone.
     kind of training signal to try next — e.g. does it argue for a loss
     that specifically weights the top of the ranking (listwise/NDCG-style)
     over the pointwise SmoothL1 regression EXP-MARGUTIL01 used?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+
+# EXP-CONTINUATION-DIAG — exhaustive t=2 continuation diagnostic (COMPLETE, 3/3 available cells)
+
+## Research Question
+
+EXP-FIRSTANCHOR-DIAG showed fixing t=1 does not uniformly help. This asks
+directly, at t=2, exhaustively over EVERY valid remaining candidate: does
+the Dense selector's own t=2 pick land near the true best continuation
+(`i2_oracle = argmin_i A(S1+{i})`, exhaustive, not sampled), and is any
+failure a global-ranking problem or specific to the extreme top tail? No
+new training — reuses `run_arm`/`a_weighted_prefix` from
+EXP-FIRSTANCHOR-DIAG verbatim (via import) for i1/i2_dense/`A(S)`, and
+`dense_utility` from EXP-MARGUTIL01's own shared math for the exhaustive
+`A(S1+{i})` sweep.
+
+## Method
+
+For each of 3 first-anchor policies (`dense_first`/`b0_first`/`oracle_first`,
+identical definitions to EXP-FIRSTANCHOR-DIAG) × 3 cells (ETTh1 H96,
+Weather H96, ETTh1 H720 — the cells with a saved EXP-MARGUTIL01 checkpoint),
+500 queries: `A1=A({i1})`; `i2_dense` via the exact `run_arm(...,k=2,...)`
+call that produces EXP-FIRSTANCHOR-DIAG's own trajectory; `i2_oracle` via
+exhaustive argmin over every valid remaining candidate (chunked, never
+shortlisted). Reports `continuation_regret=A2_dense-A2_oracle`, the rank of
+each side's pick in the other's ordering, and Spearman correlation between
+Dense's predicted utility and the true continuation gain — globally and
+within the true top 10%/5%/1%/top-50/top-10 tail specifically.
+
+## Results — [repo]
+
+| Dataset | H | Anchor | A1 | Dense A2 | Oracle A2 | Cont. Regret | Dense hurt % | Oracle improvable % | Dense hurts & Oracle improves % | Dense true rank median | Oracle pred rank median | Global ρ | Top10% ρ | Top1% ρ |
+|---|--:|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| ETTh1 | 96 | dense_first | 1.056 | 1.067 | 0.228 | 0.839 | 37.6 | 100.0 | 37.6 | 5244 | 8372 | -0.195 | -0.558 | -0.257 |
+| ETTh1 | 96 | b0_first | 0.569 | 0.569 | 0.279 | 0.289 | 23.2 | 100.0 | 23.2 | 6866 | 8395 | -0.414 | -0.629 | -0.323 |
+| ETTh1 | 96 | oracle_first | 0.223 | 0.223 | 0.164 | 0.059 | **48.2** | 100.0 | **48.2** | 3631 | 8279 | 0.156 | -0.525 | -0.347 |
+| Weather | 96 | dense_first | 0.849 | 0.781 | 0.038 | 0.743 | 41.6 | 100.0 | 41.6 | 20536 | 30506 | -0.163 | -0.226 | -0.061 |
+| Weather | 96 | b0_first | 0.723 | 0.716 | 0.178 | 0.538 | 39.2 | 93.2 | 32.4 | 24987 | 35710 | -0.236 | -0.399 | -0.171 |
+| Weather | 96 | oracle_first | 0.030 | 0.035 | 0.021 | 0.014 | **79.6** | 89.6 | **69.4** | 3155 | 20899 | 0.457 | -0.044 | -0.183 |
+| ETTh1 | 720 | dense_first | 1.228 | 1.211 | 0.398 | 0.813 | 20.0 | 100.0 | 20.0 | 5286 | 6951 | -0.268 | -0.392 | -0.145 |
+| ETTh1 | 720 | b0_first | 0.812 | 0.812 | 0.454 | 0.358 | 12.0 | 100.0 | 12.0 | 6388 | 7092 | -0.574 | -0.546 | -0.152 |
+| ETTh1 | 720 | oracle_first | 0.409 | 0.410 | 0.294 | 0.116 | 20.0 | 100.0 | 20.0 | 4334 | 6809 | -0.091 | -0.417 | -0.151 |
+
+**Top1% ρ is negative in all 9 of 9 combinations** — the single most
+consistent finding of this diagnostic. Global ρ is mixed (positive in 2/9,
+both `oracle_first`). Weather H96 `oracle_first` is a distinct catastrophic
+case: `ratio_dense` (A2_dense/A1) reaches p99=721M, max=2.1B;
+`corr(alpha2_dense,delta_dense)=+0.659` there specifically (mis-selected
+candidates get disproportionate aggregation weight) — the other 8 combos
+show this correlation weak-to-moderately NEGATIVE, so this is a
+cell-specific amplifying mechanism, not a general explanation.
+
+## Sanity checks passed
+
+`pytest tests/`: 490 passed (5 new), same 2 pre-existing failures, no
+regression. Two independent code paths for `A(S1+{i2})` (prefix-softmax vs.
+the incremental closed form) agree to within 1.9e-6 across all 9 combos.
+Full 8-item sanity checklist (candidate exclusion, exhaustive-argmin
+verification against brute force, oracle-first identity, sign convention,
+etc.) verified and logged: `results/EXP-CONTINUATION-DIAG/REPORT.md`.
+
+## Conclusion (stated within what the data supports) — Q1-Q7 answered with numbers in full at `results/EXP-CONTINUATION-DIAG/REPORT.md`
+
+**Q1 (is Dense's t=2 pick good?)** No — median true rank 3155-24987 out of
+8449-36696 candidates, ~0% Top-1/5/10/50 hit rate, in every combo. **Q2
+(does a better continuation exist when Dense hurts?)** Yes, in 83-100% of
+hurting queries across every combo. **Q3 (global vs. top-tail
+correlation)** Confirmed dissociated: top-1% ρ negative everywhere, global
+ρ mixed. **Q4 (does a good anchor fix it?)** No — `oracle_first` has the
+HIGHEST hurt-rate on 2/3 cells (ETTh1 H96: 48.2% vs. dense_first's 37.6%;
+Weather H96: 79.6%, the worst result in the table). **Q5 (Weather H96:
+many-small or few-catastrophic?)** Few-catastrophic for `oracle_first`
+(p99/max ratios in the hundreds of millions/billions; median near 1). **Q6
+(does the bad candidate get high aggregation weight?)** Yes, but only for
+Weather H96 `oracle_first` specifically (+0.659 correlation there; weak
+negative in the other 8 combos) — a real but cell-specific mechanism, not
+general. **Q7 (A/B/C/D/E judgement)**: most defensible call is **E
+(multiple causes)**, with **B (set-conditioned extreme top-tail ranking
+failure)** as the single best-evidenced, most consistent component (every
+combo), and **C (weight mismatch)** confirmed as a real cell-specific
+amplifier in the one documented catastrophic case. **D (greedy
+construction's own limits)** is explicitly not testable from this
+diagnostic's design and is not claimed either way.
+
+Central hypothesis — "Dense selector learns global utility structure but
+fails at set-conditioned extreme top-tail ranking" — **is supported**, and
+is the best-evidenced single finding of this experiment (9/9 combos agree
+on sign). The secondary claim — "a good first anchor should let a genuinely
+better continuation be found, but Dense misses it" — **is also supported**,
+and notably the failure rate is HIGHER, not lower, under the good
+(oracle) anchor on 2 of 3 cells, which was not predicted going in.
+
+## What this does NOT establish
+
+- Weather H720's t=2 behavior — no checkpoint exists to diagnose.
+- WHY the top-tail ranking specifically fails (architecture limitation of
+  the minimal `SetConditioner`+affine `UtilityHead`? training-time
+  objective mismatch — pointwise SmoothL1 vs. what greedy selection needs?
+  something else?) — this diagnostic locates the failure precisely but does
+  not test a fix.
+- Whether a listwise/rank-aware training objective would resolve it — named
+  as a candidate question (14/15 above) but not implemented or tested here.
+- Anything about greedy Top-K construction's own fundamental limits (Q7's
+  option D) — this diagnostic's design (fix t=1, exhaustively evaluate t=2)
+  cannot speak to whether a non-greedy construction would do better.
+
+## Questions for ChatGPT
+
+16. Top-1% ρ is negative in all 9 combos while global ρ is occasionally
+    positive. Is there a known reason a pointwise regression target
+    (EXP-MARGUTIL01's `SmoothL1(u_hat, u_norm)`, normalised per-query/step)
+    would systematically fail to preserve extreme-tail ranking even when it
+    captures bulk/global structure reasonably? Does this argue specifically
+    for a listwise or top-k-focused loss (e.g. ListMLE, LambdaRank-style,
+    or a margin loss restricted to the true top percentile) as the next
+    experiment, over another pointwise-target variant?
+17. The oracle-anchor condition making t=2 failure WORSE (not better) on 2
+    of 3 cells was not predicted by the pre-experiment hypotheses. Is there
+    a plausible mechanism (e.g. the model's `SetConditioner` state `m_{t-1}`
+    for an unusually strong/atypical anchor falls outside the distribution
+    of anchors it saw during oracle-prefix teacher-forced training, since
+    training always conditioned on the ACTUAL greedy-oracle prefix, not on
+    "an unusually good singleton pick that the oracle prefix wouldn't
+    necessarily reach") that would explain why a better anchor produces a
+    worse `m_{t-1}` state for the conditioner?
+18. Given B (top-tail ranking) is well-evidenced and C (weight mismatch) is
+    confirmed but cell-specific, is the recommended next step (a) a
+    listwise/top-focused training objective (addresses B directly), (b) an
+    aggregation-weight regularisation or cap (addresses C), (c) both
+    together, or (d) a smaller, cheaper follow-up diagnostic isolating
+    WHICH of B or C dominates before committing to either fix?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 

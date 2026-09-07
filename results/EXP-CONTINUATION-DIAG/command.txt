@@ -1,0 +1,16 @@
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+
+# Per (cell, anchor_policy) in {ETTh1_H96,Weather_H96,ETTh1_H720} x
+# {dense_first,b0_first,oracle_first}, reusing the exact EXP-MARGUTIL01
+# checkpoint for that cell (no new training):
+python -u scripts/eval_continuation_diag.py \
+  --stage2_checkpoint "$S2_CKPT" --sequential_checkpoint "$MARGUTIL01_CKPT" \
+  --top_k 10 --query_budget 500 --chunk_size "$CHUNK" \
+  --out_dir results/EXP-CONTINUATION-DIAG --cell_name "$CELL" --anchor_policy "$ANCHOR"
+
+# Full chain: logs/exp_continuation_diag/run_continuation_chain.sh
+# query_budget=500 per (cell, anchor) -- first 500 valid queries encountered
+# in test-split order, full candidate population per query (never
+# subsampled), matching the precedent set by EXP-FIRSTANCHOR-DIAG's
+# rank_eval_queries=200 for its own per-query rank/Spearman diagnostics.

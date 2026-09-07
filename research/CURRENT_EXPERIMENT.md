@@ -1,8 +1,8 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **Both approved experiments COMPLETE for their (reduced) scope.
-No experiment currently running. Nothing running on any GPU on behalf of
-this project.**
+Status: **All three approved experiments COMPLETE for their (reduced)
+scope. No experiment currently running. Nothing running on any GPU on
+behalf of this project.**
 
 **1) EXP-MARGUTIL01 — Full-Memory Set-Conditioned Dense Marginal Utility —
 COMPLETE for 3 of 4 cells (2026-09-07).** ETTh1 H96, Weather H96, ETTh1 H720
@@ -31,6 +31,32 @@ H720; the diagnostic-only Oracle-first beats B0 outright on both ETTh1
 cells but *worsens* Weather H96. No clean single verdict. Full record:
 `research/EXPERIMENT_LOG.md` → EXP-FIRSTANCHOR-DIAG.
 
+**3) EXP-CONTINUATION-DIAG — exhaustive t=2 continuation diagnostic —
+COMPLETE for the same 3 cells (2026-09-07).** No new training; reuses
+EXP-MARGUTIL01 checkpoints and EXP-FIRSTANCHOR-DIAG's own `run_arm`/
+`a_weighted_prefix` verbatim (via import). Ran on GPU 1 (back to the
+project's default single-GPU convention, per explicit user instruction,
+after EXP-FIRSTANCHOR-DIAG's one-time GPU-0 exception). For each first
+anchor (dense_first/b0_first/oracle_first) × cell, exhaustively evaluates
+`A(S1+{i})` over EVERY valid remaining candidate (not sampled) to find the
+true best t=2 continuation and compare it against the Dense selector's own
+t=2 pick. **Central finding, the most consistent result across this whole
+diagnostic campaign: extreme-top-tail utility ranking correlation
+(Spearman within the true top 1%) is NEGATIVE in all 9 of 9
+dataset×horizon×anchor combinations tested, while global ranking
+correlation is mixed (positive in 2/9).** A good (oracle) first anchor does
+NOT fix t=2 continuation failure — on 2 of 3 cells (ETTh1 H96, Weather H96)
+it makes the failure rate WORSE than Dense's own (weaker) anchor, which was
+not predicted going in. Weather H96's `oracle_first` shows a distinct
+catastrophic-tail failure mode (aggregate can blow up by up to ~2 billion×)
+tied to a cell-specific mechanism (mis-selected candidates receiving
+disproportionate aggregation weight there specifically — not general
+across the other 8 combos). Full 7-question evidence-based breakdown (most
+defensible single-cause-vs-multi-cause judgement: multiple causes, with
+set-conditioned top-tail ranking failure as the best-evidenced single
+component): `results/EXP-CONTINUATION-DIAG/REPORT.md`. Full record:
+`research/EXPERIMENT_LOG.md` → EXP-CONTINUATION-DIAG.
+
 **No next experiment is approved.** Per this project's workflow, the next
 step is an independent review (ChatGPT/Codex reads
 `research/REVIEW_FOR_CHATGPT.md` and writes `research/NEXT_EXPERIMENT.md`);
@@ -39,7 +65,12 @@ experiment until that happens. In particular: do not automatically decide
 that "B0-first" or "Oracle-first" is a validated next method — the mixed,
 cell-dependent recovery pattern above is exactly the kind of result this
 project's workflow reserves for the reviewer's interpretation, not Claude
-Code's.
+Code's. Likewise, do not automatically implement a listwise/top-focused
+training objective (or an aggregation-weight cap) as a "fix" for
+EXP-CONTINUATION-DIAG's top-tail-ranking finding without the reviewer's/
+user's explicit approval — the finding is well-evidenced, but which fix (if
+any) to try next is exactly the kind of call this workflow reserves for the
+reviewer.
 
 **Standing constraint, unchanged:** `FULL MEMORY -> DIRECT TOP-K` (D-0010).
 Top-100/Top-M/shortlist/coarse-retrieval/reranker are not to be proposed as

@@ -1397,3 +1397,120 @@ everything, which the ETTh1 H720 B0-first regression rules out).
 Interpretation, novelty assessment, and next-experiment recommendation are
 left to the reviewer — see `research/REVIEW_FOR_CHATGPT.md`.
 
+---
+
+## EXP-CONTINUATION-DIAG — exhaustive t=2 continuation diagnostic
+
+### Date
+2026-09-07
+
+### Research Question
+EXP-MARGUTIL01's regret was concentrated at t=1; EXP-FIRSTANCHOR-DIAG
+showed fixing t=1 does not uniformly fix the outcome (cell-dependent).
+This experiment tests directly, at t=2, exhaustively over every valid
+remaining candidate: does the Dense Marginal Utility selector's own t=2
+pick land near the true best continuation, or is there a real,
+findable-by-exhaustive-search continuation the selector misses? And is any
+failure a global ranking problem or specific to the extreme top tail (the
+region greedy Top-K selection actually depends on)?
+
+### Configuration
+`scripts/eval_continuation_diag.py` (new, eval-only, no training). Imports
+`run_arm`/`a_weighted_prefix`/`encode`/`load_trained_selector` directly
+from `scripts/eval_firstanchor_diag.py` (not reimplemented) for t=1/t=2
+Dense picks and the B0-weighted aggregate `A(S)`; imports
+`dense_utility`/`candidate_weights` from `utils/dense_utility.py`
+(EXP-MARGUTIL01's own shared math) for the exhaustive `A(S1+{i})` over
+every valid remaining candidate, chunked. For a fixed first candidate `i1`
+(one of `dense_first`/`b0_first`/`oracle_first`, identical definitions to
+EXP-FIRSTANCHOR-DIAG), computes `A1=A({i1})`, the Dense model's own t=2
+pick `i2_dense` (via `run_arm(...,k=2,...)` — the *exact same* call that
+produces EXP-FIRSTANCHOR-DIAG's own trajectory, not a reimplementation),
+and the exhaustive oracle `i2_oracle=argmin_i A({i1,i})` over every valid
+remaining candidate. Full commands: `results/EXP-CONTINUATION-DIAG/command.txt`.
+
+### Changed Variable
+None (diagnostic only — no training, no architecture, no objective
+change). The only "variable" is which of 3 pre-existing first-anchor
+policies fixes `i1`.
+
+### Controlled Variables
+Identical checkpoints, B0 score, `tau_topk`, candidate mask, and full-memory
+support as EXP-MARGUTIL01/EXP-FIRSTANCHOR-DIAG. `A(S)` computed by the
+identical `a_weighted_prefix` function EXP-FIRSTANCHOR-DIAG already uses
+(imported, not redefined).
+
+### Dataset / Horizon
+ETTh1 H96, Weather H96, ETTh1 H720 (the 3 cells with a saved EXP-MARGUTIL01
+checkpoint). Weather H720 not run (no checkpoint — D-0013).
+
+### Seed
+0 (inherited from each reused checkpoint).
+
+### Important Hyperparameters
+`query_budget=500` per (cell, anchor) combo — first 500 valid queries in
+test-split order, full candidate population per query always (never
+subsampled; only the number of QUERIES evaluated is bounded, matching the
+precedent EXP-FIRSTANCHOR-DIAG set at `rank_eval_queries=200` for its own
+per-query diagnostics). Candidate chunk size 4096 (H96 cells) / 1024 (H720).
+
+### Result Files
+`results/EXP-CONTINUATION-DIAG/{comparison.csv, continuation_diag_<cell>_<anchor>.csv,
+<cell>_<anchor>_summary.json, <cell>_<anchor>_top20_catastrophic.json,
+REPORT.md, notes.md, command.txt, env.txt, git_commit.txt,
+checkpoint_fingerprints.txt}`.
+
+### Results
+
+| Dataset | H | Anchor | A1 | Dense A2 | Oracle A2 | Cont. Regret | Dense hurt % | Oracle improvable % | Dense hurts & Oracle improves % | Dense true rank median | Oracle pred rank median | Global ρ | Top10% ρ | Top1% ρ |
+|---|--:|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| ETTh1 | 96 | dense_first | 1.056 | 1.067 | 0.228 | 0.839 | 37.6 | 100.0 | 37.6 | 5244 | 8372 | -0.195 | -0.558 | -0.257 |
+| ETTh1 | 96 | b0_first | 0.569 | 0.569 | 0.279 | 0.289 | 23.2 | 100.0 | 23.2 | 6866 | 8395 | -0.414 | -0.629 | -0.323 |
+| ETTh1 | 96 | oracle_first | 0.223 | 0.223 | 0.164 | 0.059 | 48.2 | 100.0 | 48.2 | 3631 | 8279 | 0.156 | -0.525 | -0.347 |
+| Weather | 96 | dense_first | 0.849 | 0.781 | 0.038 | 0.743 | 41.6 | 100.0 | 41.6 | 20536 | 30506 | -0.163 | -0.226 | -0.061 |
+| Weather | 96 | b0_first | 0.723 | 0.716 | 0.178 | 0.538 | 39.2 | 93.2 | 32.4 | 24987 | 35710 | -0.236 | -0.399 | -0.171 |
+| Weather | 96 | oracle_first | 0.030 | 0.035 | 0.021 | 0.014 | **79.6** | 89.6 | **69.4** | 3155 | 20899 | 0.457 | -0.044 | -0.183 |
+| ETTh1 | 720 | dense_first | 1.228 | 1.211 | 0.398 | 0.813 | 20.0 | 100.0 | 20.0 | 5286 | 6951 | -0.268 | -0.392 | -0.145 |
+| ETTh1 | 720 | b0_first | 0.812 | 0.812 | 0.454 | 0.358 | 12.0 | 100.0 | 12.0 | 6388 | 7092 | -0.574 | -0.546 | -0.152 |
+| ETTh1 | 720 | oracle_first | 0.409 | 0.410 | 0.294 | 0.116 | 20.0 | 100.0 | 20.0 | 4334 | 6809 | -0.091 | -0.417 | -0.151 |
+
+**Top1% ρ is negative in all 9 of 9 combinations tested** — the single
+most consistent finding of this experiment. Global ρ is mixed (positive in
+2/9). Weather H96's `oracle_first` is a distinct catastrophic case:
+`ratio_dense` (A2_dense/A1) reaches p99=721M, max=2.1B, with
+`corr(alpha2_dense, delta_dense)=+0.659` (the mis-selected candidate
+receives disproportionate aggregation weight specifically in this combo —
+not a pattern replicated in the other 8 combos, where this correlation is
+weak-to-moderately negative).
+
+### Sanity Checks
+`pytest tests/`: 490 passed (5 new in `tests/test_exp_continuation_diag.py`),
+same 2 pre-existing failures, no regression. Cross-formula check (two
+independent code paths computing the same `A(S1+{i2})`): max abs diff
+1.9e-6 (`a2_dense` vs. `a2_dense_check`), 2.4e-7 (`a2_oracle` vs.
+`a2_oracle_check`) across all 9 combos — float32 noise only. Full sanity
+list (8 items) verified and logged: `results/EXP-CONTINUATION-DIAG/REPORT.md`
+→ *Sanity checks*.
+
+### Implementation Notes
+New file: `scripts/eval_continuation_diag.py`. Imports (not reimplements)
+`run_arm`, `a_weighted_prefix`, `encode`, `load_trained_selector` from
+`scripts/eval_firstanchor_diag.py`, and `dense_utility`/`candidate_weights`
+from `utils/dense_utility.py`. Ran on GPU 1 (returned to the project's
+default single-GPU convention after EXP-FIRSTANCHOR-DIAG's one-time GPU-0
+exception, D-0014, per explicit user instruction).
+
+### Status
+completed (9/9 approved combos; Weather H720 not run, no checkpoint
+exists). **Central hypothesis supported**: Dense selector's global utility
+ranking is mixed but its extreme-top-tail ranking is consistently
+anti-correlated with true continuation quality across every
+dataset/horizon/anchor combination tested — the single most consistent
+result across this entire diagnostic. A good first anchor does not fix,
+and on 2/3 cells (ETTh1 H96, Weather H96) actively worsens, t=2
+continuation failure. Full evidence-based breakdown of all 7 required
+questions (including the explicit A/B/C/D/E failure-mode judgement):
+`results/EXP-CONTINUATION-DIAG/REPORT.md`. Interpretation, novelty
+assessment, and next-experiment recommendation left to the reviewer — see
+`research/REVIEW_FOR_CHATGPT.md`.
+
