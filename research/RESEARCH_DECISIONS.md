@@ -262,4 +262,53 @@ confirms a decision.
   continues to govern; no shortlist/reranker reopening.
 - **Status:** active
 
+## D-0013 — EXP-MARGUTIL01 Weather H720 cancelled; scope reduced to 3 cells
+
+- **Date:** 2026-09-07
+- **Decided by:** user (explicit, direct instruction mid-session: "0번
+  스탑하자 1번에 하고, weather 720 실험은 없애버리자")
+- **Decision:** EXP-MARGUTIL01's Weather H720 cell is cancelled. It had run
+  on GPU 1 for ~2 hours without completing a single training epoch (heaviest
+  cell: 21 channels, 35448 candidates, 720-step horizon). The process was
+  killed and its (empty — never-saved) checkpoint directory removed.
+  EXP-MARGUTIL01's approved scope is reduced from 4 to 3 cells (ETTh1 H96,
+  Weather H96, ETTh1 H720). No number is reported, estimated, or
+  extrapolated for Weather H720.
+- **Evidence:** user message, 2026-09-07; process kill and empty-directory
+  removal confirmed directly (`ps`, `find` before/after).
+- **Consequence:** `research/EXPERIMENT_LOG.md`'s EXP-MARGUTIL01 entry
+  reports 3 cells as complete and Weather H720 as cancelled, not as a 4th
+  data point. The pre-registered 4-cell STRONG GO/MIXED/STOP decision rule
+  (≥2/4 cells improve ≥0.01 Stage-2 MSE, none worsen ≥0.01) cannot be
+  mechanically applied to a 3-cell result without the reviewer's/user's
+  explicit re-scoping acknowledgement; Claude Code does not unilaterally
+  reinterpret the rule for 3 cells. `EXP-FIRSTANCHOR-DIAG` (the causal
+  follow-up diagnostic, also user-approved) likewise only covers 3 cells
+  for the same reason — it reuses EXP-MARGUTIL01 checkpoints and none
+  exists for Weather H720.
+- **Status:** active
+
+## D-0014 — EXP-FIRSTANCHOR-DIAG authorised to run in parallel on GPU 0
+
+- **Date:** 2026-09-07
+- **Decided by:** user (explicit instruction, overriding this diagnostic's
+  own original spec which had said GPU 1 only / wait if busy / no other
+  GPU): "지금 실험은 weather 720 실험이 진행중일텐데, 내가 제안한 실험을
+  병렬로 실행해줘." Later corrected/clarified by the user (see D-0013 — the
+  user subsequently decided to cancel Weather H720 rather than keep both
+  running); GPU 0 usage itself is recorded here as a one-time, explicitly
+  authorised exception to the project's default single-GPU convention, not
+  a standing policy change.
+- **Decision:** `scripts/eval_firstanchor_diag.py` ran on GPU 0 while
+  EXP-MARGUTIL01's Weather H720 ran on GPU 1, per direct user instruction,
+  rather than waiting for GPU 1 to free up as the diagnostic's own written
+  spec had originally required.
+- **Evidence:** user message, 2026-09-07.
+- **Consequence:** None ongoing — the GPU-0 run completed (3/3 available
+  cells) before the user's subsequent D-0013 decision to stop GPU 1's
+  Weather H720. No standing precedent for using GPUs other than 1 without
+  equally explicit future authorisation.
+- **Status:** active (historical record of a one-time exception, not a
+  standing rule)
+
 

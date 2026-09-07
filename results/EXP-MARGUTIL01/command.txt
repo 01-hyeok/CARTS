@@ -1,0 +1,37 @@
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=1   # GPU 1 for the main run
+
+ETTH1_S1_96="checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_.../checkpoint.pth"
+ETTH1_S2_96="checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_.../checkpoint.pth"
+WEATHER_S1_96="checkpoints/soft_set_mse/stage1/custom/seq96_pred96/stage1_carts_softset_Weather_96_S0_wce_.../checkpoint.pth"
+WEATHER_S2_96="checkpoints/stage2/custom/seq96_pred96/stage2_carts_softset_s2_Weather_96_S0_wce_.../checkpoint.pth"
+ETTH1_S1_720="checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_.../checkpoint.pth"
+ETTH1_S2_720="checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_.../checkpoint.pth"
+WEATHER_S1_720="checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_.../checkpoint.pth"
+WEATHER_S2_720="checkpoints/stage2/custom/seq720_pred720/stage2_carts_softset_s2_Weather_720_S0_wce_.../checkpoint.pth"
+
+# Full paths and the exact chain: logs/exp_margutil01/run_margutil01_chain.sh
+
+# Precompute H720 teacher caches (H96 caches reused verbatim from EXP-SEQFULL01)
+python -u scripts/precompute_seqfull01_teacher.py --checkpoint "$ETTH1_S2_720" \
+  --out_dir ./cache/seqfull01_teacher --top_k 10 --tau 0.1
+python -u scripts/precompute_seqfull01_teacher.py --checkpoint "$WEATHER_S2_720" \
+  --out_dir ./cache/seqfull01_teacher --top_k 10 --tau 0.1
+
+# Per cell (name in {ETTh1_H96, Weather_H96, ETTh1_H720}; chunk_size 4096/4096/1024):
+python -u scripts/train_margutil01.py \
+  --base_ckpt "$S1_CKPT" --teacher_cache "$TEACHER_CACHE" \
+  --checkpoints checkpoints/exp_margutil01 \
+  --model_id "carts_margutil01_${CELL}" --des "margutil01_${CELL}" \
+  --top_k 10 --seed 0 --chunk_size "$CHUNK"
+
+python -u scripts/eval_margutil01_stage2.py \
+  --stage2_checkpoint "$S2_CKPT" \
+  --sequential_checkpoint "checkpoints/exp_margutil01/margutil01/<data>/seq<L>_pred<L>/carts_margutil01_${CELL}/checkpoint.pth" \
+  --teacher_cache "$TEACHER_CACHE" --top_k 10 --chunk_size "$CHUNK" --utility_eval_queries 200 \
+  --out "results/EXP-MARGUTIL01/${CELL}_stage2.json"
+
+# Weather_H720: launched, ran ~2h without completing epoch 1, then STOPPED and
+# REMOVED by explicit user decision (2026-09-07) -- see notes.md and
+# RESEARCH_DECISIONS.md D-0013. No checkpoint was ever saved for this cell
+# (best_val was never reached; the training loop never got past epoch 1).

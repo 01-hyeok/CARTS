@@ -1,0 +1,13 @@
+cell,arm,stage2_mse,delta_vs_b0,recovery_from_dense,a_weighted
+ETTh1_H96,B0,0.37312,0.0,,
+ETTh1_H96,Dense-first,0.52991,0.15679,0.0,0.9647
+ETTh1_H96,B0-first,0.43661,0.06348,0.595,0.66337
+ETTh1_H96,Oracle-first,0.21717,-0.15595,1.995,0.19665
+Weather_H96,B0,0.17553,0.0,,
+Weather_H96,Dense-first,0.33253,0.15701,0.0,0.61458
+Weather_H96,B0-first,0.21261,0.03708,0.764,0.44428
+Weather_H96,Oracle-first,0.41411,0.23859,-0.52,0.42192
+ETTh1_H720,B0,0.46827,0.0,,
+ETTh1_H720,Dense-first,0.49269,0.02442,0.0,1.16446
+ETTh1_H720,B0-first,0.51995,0.05168,-1.116,0.94954
+ETTh1_H720,Oracle-first,0.43635,-0.03192,2.307,0.44164

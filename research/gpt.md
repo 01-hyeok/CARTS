@@ -1,9 +1,21 @@
-# EXP-MARGUTIL01 — interim results (2026-09-07, Weather H720 still running)
+# EXP-MARGUTIL01 — interim results (SUPERSEDED, 2026-09-07)
 
-Status: **IN PROGRESS.** 3 of 4 cells complete; Cell 4 (Weather H720) is
-training in the background on GPU 1. This file is an informal interim
-snapshot for quick sharing -- once the run finishes, the canonical,
-complete write-up goes into `research/EXPERIMENT_LOG.md` and
+**This file is stale.** Weather H720 was subsequently cancelled by explicit
+user decision (D-0013 in `research/RESEARCH_DECISIONS.md`), and a follow-up
+causal diagnostic (EXP-FIRSTANCHOR-DIAG) has since completed. The canonical,
+current write-up is: `research/EXPERIMENT_LOG.md` (→ EXP-MARGUTIL01 and →
+EXP-FIRSTANCHOR-DIAG), `research/REVIEW_FOR_CHATGPT.md` (same two sections),
+`results/EXP-MARGUTIL01/notes.md`, `results/EXP-FIRSTANCHOR-DIAG/notes.md`.
+Read those instead of this file. Original interim snapshot preserved below
+for the historical record only.
+
+---
+
+Status (as of when this was written, now stale): **IN PROGRESS.** 3 of 4
+cells complete; Cell 4 (Weather H720) is training in the background on GPU
+1. This file is an informal interim snapshot for quick sharing -- once the
+run finishes, the canonical, complete write-up goes into
+`research/EXPERIMENT_LOG.md` and
 `research/REVIEW_FOR_CHATGPT.md` per this project's normal workflow. Treat
 this file as provisional.
 

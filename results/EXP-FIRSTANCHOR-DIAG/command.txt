@@ -1,0 +1,19 @@
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=0   # ran in PARALLEL with EXP-MARGUTIL01's Weather
+                                 # H720 on GPU 1, per explicit user instruction
+                                 # (2026-09-07) -- no new training, eval-only.
+
+# Per cell (name in {ETTh1_H96, Weather_H96, ETTh1_H720}), reusing the
+# EXP-MARGUTIL01 checkpoint for that cell exactly as-is:
+python -u scripts/eval_firstanchor_diag.py \
+  --stage2_checkpoint "$S2_CKPT" \
+  --sequential_checkpoint "checkpoints/exp_margutil01/margutil01/<data>/seq<L>_pred<L>/carts_margutil01_${CELL}/checkpoint.pth" \
+  --teacher_cache "$TEACHER_CACHE" --top_k 10 --rank_eval_queries 200 \
+  --out_dir results/EXP-FIRSTANCHOR-DIAG --cell_name "$CELL"
+
+# Full paths and chain: logs/exp_firstanchor_diag/run_firstanchor_chain.sh
+
+# Weather_H720 cell: NOT RUN. EXP-MARGUTIL01's Weather H720 training was
+# stopped and removed before completing (see EXP-MARGUTIL01/command.txt),
+# so no checkpoint exists for this diagnostic to reuse. Not a diagnostic
+# failure -- there is nothing to diagnose without the underlying checkpoint.

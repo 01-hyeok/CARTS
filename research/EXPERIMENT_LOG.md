@@ -1113,3 +1113,287 @@ backpropagation into Stage-1 in either case.** Interpretation, novelty
 assessment, and next-experiment recommendation are left to the reviewer per
 this project's role division — see `research/REVIEW_FOR_CHATGPT.md`.
 
+---
+
+## EXP-MARGUTIL01 — Full-Memory Set-Conditioned Dense Marginal Utility
+
+### Date
+2026-09-06 to 2026-09-07
+
+### Research Question
+D-0011 closed exact one-hot next-candidate-ID cross-entropy imitation. This
+experiment tests the named successor: does replacing the one-hot target with
+a DENSE per-candidate set-utility regression target,
+`u_i^(t) = -A_weighted(S*_{t-1} + {i})` for every valid remaining candidate
+at every teacher-forced step (oracle prefix `S*_{t-1}`, the cached
+`select_greedy_weighted_set` sequence), let a held-out query build a
+competitive Top-K set and reach Stage-2 Final MSE? Encoder frozen (B0's own
+weights) throughout — this experiment does not re-open the
+trainable-encoder question EXP-SEQDIAG01 already answered.
+
+- **H1 (sparse-target):** the prior objective's sparsity, not an
+  information ceiling, was the failure mode; dense supervision should raise
+  utility correlation, lower regret, improve `gap_recovery`/Stage-2.
+- **H2 (information ceiling):** even dense supervision on a frozen,
+  uncollapsed representation does not predict held-out marginal utility
+  well enough to matter downstream.
+
+### Configuration
+`scripts/train_margutil01.py` (Stage-1, dense utility regression, always
+`--frozen_encoder`-equivalent — encoder loaded from `--base_ckpt` and
+`requires_grad=False` unconditionally) then `scripts/eval_margutil01_stage2.py`
+(teacher-forced utility diagnostics + free-running Stage-2 injection via
+`RelationStage2.set_forced_selection`). New shared math:
+`utils/dense_utility.py` (chunked incremental-weighted-mean utility, same
+closed form `select_greedy_weighted_set` uses internally, exposed densely).
+New minimal head: `models/DenseUtilityRetriever.py::UtilityHead`
+(`u_hat = a*cosine(h_t,e_i)+b`, `a`/`b` the only new learnable scalars — no
+new architecture). Full commands: `results/EXP-MARGUTIL01/command.txt`.
+
+H96 teacher caches reused verbatim from EXP-SEQFULL01
+(`cache/seqfull01_teacher/{ETTh1,custom}_pred96.pt`). H720 caches newly
+built via `scripts/precompute_seqfull01_teacher.py` (existing script,
+unmodified) against the S0_wce B0 Stage-2 checkpoints for H720 (both
+datasets), which already existed in the repo.
+
+### Changed Variable
+Training target: one-hot next-candidate-ID CE (EXP-SEQFULL01/EXP-SEQDIAG01)
+→ dense per-candidate set-utility SmoothL1 regression (this experiment).
+Encoder: always frozen (no trainable-encoder arm in this experiment).
+
+### Controlled Variables
+`top_k=10`, `relation_top_n=1` (self-only), seed 0, oracle-prefix
+teacher-forcing during training (no free-running error accumulation mixed
+into the training signal), no softmax/KL loss (SmoothL1 only, per spec, to
+avoid EXP-3's full-memory probability-diffusion confound), no per-candidate
+utility weighting in the loss (plain mean over valid candidates), B0's own
+Stage-2 weighting/gate/fusion/base-forecaster/`tau_topk` completely
+unchanged — only Top-K membership differs at Stage-2.
+
+### Dataset
+ETTh1 and Weather (`custom`), self-only.
+
+### Prediction Horizon
+96 and 720. **192 and 336 explicitly out of scope** (not run, per spec).
+
+### Seed
+0.
+
+### Important Hyperparameters
+Candidate chunk size: 4096 (ETTh1/Weather H96), 1024 (ETTh1 H720), 512
+(Weather H720 — never used, see below). `tau_topk` inherited from each
+cell's own B0 checkpoint args (0.1 for the S0_wce line, confirmed identical
+between B0's saved args and the H96 teacher cache's own recorded `tau`).
+
+### Result Files
+`results/EXP-MARGUTIL01/{ETTh1_H96,Weather_H96,ETTh1_H720}_stage2.json`,
+`comparison.csv`, `notes.md`, `command.txt`, `env.txt`, `git_commit.txt`,
+`checkpoint_fingerprints.txt`. Checkpoints:
+`checkpoints/exp_margutil01/margutil01/{ETTh1,custom}/seq<L>_pred<L>/carts_margutil01_<cell>/checkpoint.pth`.
+
+### Results
+
+| Cell | B0 unforced MSE | Dense forced MSE | Delta vs B0 | gap_recovery | seq_set_recall@10 | Utility Spearman | Utility Pearson | HardAgg (seq/b0) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| ETTh1 H96 | 0.37312 | 0.52991 | **+0.157** | -1.832 | 0.00427 | 0.543 | 0.424 | 1.657 / 0.407 |
+| Weather H96 | 0.17553 | 0.33253 | **+0.157** | -1.744 | 0.00593 | 0.658 | 0.503 | 4.465 / 0.234 |
+| ETTh1 H720 | 0.46827 | 0.49269 | **+0.024** | -1.866 | 0.00147 | 0.383 | 0.413 | 1.961 / 0.572 |
+
+`duplicate_rate`/`invalid_rate` = 0.0 on all 3 cells (structural, verified
+by unit test and direct measurement). **Weather H720: no result — training
+did not complete a single epoch before being stopped and removed by
+explicit user decision (D-0013); this is a scope reduction, not a null or
+failed result, and no number is reported or estimated for this cell.**
+
+Every cell's utility Spearman is clearly above 0 (0.38-0.66): the dense
+target IS partially learnable from a frozen, past-only representation —
+H1's premise about learnability is not rejected. But `gap_recovery` is
+strongly negative and `HardAggregateMSE@10` is 3-19x worse than B0's own
+unforced selection on every cell — the learned utility does not translate
+into a competitive free-running Top-K selection, and Stage-2 Final MSE is
+worse than B0 on every cell by more than this project's pre-registered
+0.01 noise threshold (ETTh1/Weather H96: +0.157; ETTh1 H720: +0.024). This
+is a **larger Stage-2 regression than EXP-SEQDIAG01's Frozen-B0 one-hot
+arms** (ETTh1 Frozen: +0.0148; the dense-target successor is not an
+improvement over the one-hot predecessor it replaced, on any cell tested).
+
+### Sanity Checks
+`pytest tests/`: 466 (pre-EXP-MARGUTIL01 baseline) → 477 (after
+`tests/test_exp_margutil01.py`, 11 new) → 485 (after the follow-up
+`tests/test_exp_firstanchor_diag.py`, 8 new), same 2 pre-existing failures
+throughout, no regression at any point. A 1-epoch ETTh1 H96 GPU smoke run
+caught and fixed two implementation bugs before the full 3-cell run
+launched: (1) `HardAggregateMSE@10` was off by exactly the horizon `H` in
+`eval_margutil01_stage2.py`'s final division (caught by comparing against
+EXP-SEQDIAG01's already-verified `individual_oracle_mse`/`set_oracle`
+figures — the buggy output was off by a factor of 96 = H, unmistakable);
+(2) step-wise `regret` was computed against the oracle's own pick, which is
+tautologically ~0 by construction, instead of the model's own predicted
+pick under the true oracle prefix — fixed to compare the model's argmax
+pick's teacher-utility against the true best. Both fixes verified by
+re-running the sanity check and reproducing EXP-SEQDIAG01's exact
+`individual_oracle_mse`/`set_oracle_a_weighted` numbers before proceeding.
+
+### Implementation Notes
+New files: `models/DenseUtilityRetriever.py`, `utils/dense_utility.py`,
+`scripts/train_margutil01.py`, `scripts/eval_margutil01_stage2.py`,
+`tests/test_exp_margutil01.py`. Reuses `models.SequentialSetRetriever`'s
+`SetConditioner`/`EmptySetToken` verbatim, `utils.oracle_intervention`'s
+`select_greedy_weighted_set` (unmodified) for the cached teacher sequence,
+and `RelationStage2.set_forced_selection` (unmodified) for Stage-2
+injection.
+
+### Status
+**3 of 4 approved cells completed; Weather H720 cancelled by user decision
+before completing a single training epoch (D-0013).** 0 of 3 completed
+cells show meaningful Stage-2 improvement (pre-registered rule) — tracking
+toward STOP, but the pre-registered 4-cell decision rule (≥2/4 cells improve
+≥0.01, none worsen ≥0.01) cannot be mechanically applied to a 3-cell result
+without the reviewer's/user's explicit acknowledgement that the rule now
+applies to 3 cells, not 4. Reported as-is; verdict language and
+next-direction recommendation left to the reviewer — see
+`research/REVIEW_FOR_CHATGPT.md`. Immediately followed by
+`EXP-FIRSTANCHOR-DIAG` (below), a causal-decomposition diagnostic over the
+3 completed cells' checkpoints, run in parallel on a separate GPU per
+explicit user instruction.
+
+---
+
+## EXP-FIRSTANCHOR-DIAG — causal decomposition of EXP-MARGUTIL01's t=1 choice
+
+### Date
+2026-09-07
+
+### Research Question
+EXP-MARGUTIL01's step-wise regret was overwhelmingly concentrated at t=1
+(e.g. ETTh1 H96: 0.854 at t=1, dropping to 0.061 by t=2). Is the first
+(t=1) candidate choice's failure the primary cause of the whole sequence's
+downstream failure and Stage-2 regression (H1), or does the set-conditioned
+Dense selector fail on its own merits at t=2..10 even given a good t=1
+anchor (H2)? No new training: reuses each EXP-MARGUTIL01 checkpoint's
+frozen encoder, `SetConditioner`, and `UtilityHead` exactly as-is; the only
+causal variable is which rule picks candidate 1.
+
+### Configuration
+`scripts/eval_firstanchor_diag.py` (new, eval-only). Four arms per query:
+**Dense-first** (t=1 also from the Dense model's own argmax — reproduces
+EXP-MARGUTIL01's free-running result), **B0-first** (t=1 = B0's own
+production retrieval score's argmax — `RelationStage2._retrieval_score_fn()`
+/cosine, the exact scorer Stage-2 already uses, not a new score),
+**Oracle-first** (t=1 = argmin singleton future MSE, diagnostic-only, uses
+`Y_q`), **B0 baseline** (production unforced). t=2..10 for every arm use
+the identical, unmodified Dense free-running argmax — no teacher forcing
+and no oracle/B0 injection past t=1 in any arm. Verified by unit test
+(`test_intervention_affects_only_t1_dense_vs_forced_agree_from_t2`: forcing
+t=1 to the value an arm would have picked anyway reproduces the exact
+free-running trajectory).
+
+Ran **in parallel with EXP-MARGUTIL01's Weather H720 training**, on GPU 0
+while GPU 1 ran Weather H720 — an explicit user instruction issued
+mid-session, overriding this experiment's own original spec (which had said
+GPU 1 only, wait if busy). Full commands: `results/EXP-FIRSTANCHOR-DIAG/command.txt`.
+
+### Changed Variable
+t=1 selection rule only (Dense / B0 / Oracle), applied to an otherwise
+completely unmodified EXP-MARGUTIL01 checkpoint's free-running selector.
+
+### Controlled Variables
+Same B0 Stage-2 checkpoints, same teacher caches, same `tau_topk`, same
+candidate mask/full-memory support as EXP-MARGUTIL01. No training of any
+kind. Stage-2 weighting/gate/fusion/base-forecaster/aggregation completely
+unchanged — Dense utility scores are never used as a Stage-2 weight.
+
+### Dataset / Horizon
+ETTh1 H96, Weather H96, ETTh1 H720 (the 3 EXP-MARGUTIL01 cells that had a
+saved checkpoint). **Weather H720: not run — no checkpoint exists** (its
+EXP-MARGUTIL01 training was cancelled before saving one).
+
+### Seed
+0 (inherited from each reused checkpoint; no new randomness introduced by
+this diagnostic beyond none — every arm's t≥2 argmax is deterministic given
+the frozen model and the prefix so far).
+
+### Important Hyperparameters
+`rank_eval_queries=200` (t=1 rank/top-tail diagnostics subsampled to 200
+queries per cell for tractability — candidates are NEVER subsampled, every
+diagnostic ranks the FULL valid candidate population for those 200
+queries; the main Stage-2/aggregate/candidate-quality metrics run over the
+FULL test set, not the 200-query subsample).
+
+### Result Files
+`results/EXP-FIRSTANCHOR-DIAG/{cell}_summary.json`,
+`{cell}_stepwise_raw.csv`, `comparison.csv`,
+`stepwise_aggregate_trajectory.csv`, `t1_rank_diagnostics.csv`,
+`t1_candidate_quality.csv`, `notes.md`, `command.txt`, `env.txt`,
+`git_commit.txt`, `checkpoint_fingerprints.txt`.
+
+### Results
+
+Stage-2 Final MSE and Recovery-to-B0 (`= (MSE_dense - MSE_arm)/(MSE_dense - MSE_B0)`;
+0 = no recovery, 1 = fully recovers to B0, >1 = beats B0):
+
+| Cell | B0 | Dense-first | B0-first (Recovery) | Oracle-first (Recovery) |
+|---|---:|---:|---:|---:|
+| ETTh1 H96 | 0.37312 | 0.52991 | 0.43661 (**59.5%**) | 0.21717 (**199.5%**) |
+| Weather H96 | 0.17553 | 0.33253 | 0.21261 (**76.4%**) | 0.41411 (**-52.0%**) |
+| ETTh1 H720 | 0.46827 | 0.49269 | 0.51995 (**-111.6%**) | 0.43635 (**230.7%**) |
+
+**No single clean pattern across cells.** B0-first recovers strongly on
+both H96 cells (60-76%) but makes ETTh1 H720 *worse* than Dense-first.
+Oracle-first beats B0 outright on both ETTh1 cells but is markedly worse
+than Dense-first on Weather H96.
+
+**What IS consistent across all 3 cells:** the stepwise A_weighted(S_t)
+trajectory barely moves after t=1 for every arm (e.g. ETTh1 H96
+oracle-first: 0.19101 at t=1 → 0.19665 at t=10 — a 3% relative change over
+9 further steps). t=1 overwhelmingly determines each arm's final aggregate
+on every cell; the disagreement across cells is about WHICH t=1 rule is
+good, not about whether t=1 dominates the outcome.
+
+t=1 candidate quality (singleton future MSE, full test set): B0's own pick
+beats the Dense model's own t=1 pick 64-70% of the time on every cell
+measured (ETTh1 H96: 64.4%, Weather H96: 69.8%, ETTh1 H720: 66.7%), yet
+exact matches to the true oracle singleton are rare for both (B0: 1-5%,
+Dense: <0.2%). t=1 rank diagnostics (200-query subsample, full candidate
+population): the oracle-best candidate's median predicted rank (out of the
+full memory bank) is 489-1083 depending on cell — the Dense model's t=1
+ranking places the true best candidate nowhere near its own top choices
+(Top-1 hit rate 0% on every cell measured); `spearman_within_teacher_top1pct`
+is markedly lower (0.04-0.14) than the global teacher-forced Spearman
+EXP-MARGUTIL01 reported (0.38-0.66) — global ranking quality does not imply
+top-tail ranking quality, and t=1 selection depends entirely on the top
+tail.
+
+### Sanity Checks
+`pytest tests/`: 485 passed (8 new in `tests/test_exp_firstanchor_diag.py`),
+same 2 pre-existing failures, no regression. Structural invariants verified
+by test: Oracle-first's t=1 exactly equals the cached greedy oracle's own
+first pick on every query checked
+(`identity_check_singleton_oracle_eq_teacher_first: true` in every cell's
+summary json); forcing t=1 to the value an arm would have picked anyway
+reproduces the byte-identical full trajectory; `a_weighted_prefix` never
+references the Dense model's own score; `duplicate_rate`/`invalid_rate` =
+0.0 on every arm/cell.
+
+### Implementation Notes
+New file: `scripts/eval_firstanchor_diag.py`. A GPU sanity run on a real
+checkpoint (ETTh1 H96, 10-query subsample) caught one device-placement bug
+(`_ndcg_at_k`'s discount tensor was created on CPU while `rel` was on GPU)
+before the full run — fixed, re-verified.
+
+### Status
+completed (diagnostic, 3 of the intended 4 cells — Weather H720 not run,
+no checkpoint exists for it). **No uniform verdict**: t=1 dominates every
+cell's outcome (consistent finding), but whether a good t=1 anchor by
+itself is *sufficient* to make the Dense selector competitive is
+cell-dependent (B0-first: 2/3 cells help, 1/3 hurts; Oracle-first: 2/3
+cells help decisively, 1/3 hurts markedly). H1 (first-choice failure as
+primary bottleneck) is supported by the trajectory-flatness finding on
+every cell, but not by a uniformly effective fix — this sits closer to a
+qualified Case A/D (t=1 matters a great deal, deployable B0-first recovers
+meaningfully on 2 of 3 cells) than a clean Case C (t=1 is not the
+bottleneck) or an unqualified Case A (any reasonable anchor fixes
+everything, which the ETTh1 H720 B0-first regression rules out).
+Interpretation, novelty assessment, and next-experiment recommendation are
+left to the reviewer — see `research/REVIEW_FOR_CHATGPT.md`.
+

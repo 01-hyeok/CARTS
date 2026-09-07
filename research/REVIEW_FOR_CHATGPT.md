@@ -2,13 +2,15 @@
 
 Handoff for independent review. Self-contained: no log files needed.
 
-**Status: five completed experiments (EXP-1/EXP-2 Oracle Intervention,
-EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned retrieval,
-EXP-SEQFULL01 sequential set-conditioned retrieval, EXP-SEQDIAG01
-cross-dataset frozen-encoder collapse diagnostic). All four most recent
-directions (EXP-3, FRR01, SEQFULL01, SEQDIAG01) closed with verdict STOP or,
-for SEQDIAG01, a diagnostic result requiring the reviewer's interpretation
-rather than a pass/fail verdict.**
+**Status: seven completed/scoped experiments (EXP-1/EXP-2 Oracle
+Intervention, EXP-3 soft_set_mse closure, EXP-FRR01 residual-conditioned
+retrieval, EXP-SEQFULL01 sequential set-conditioned retrieval, EXP-SEQDIAG01
+cross-dataset frozen-encoder collapse diagnostic, EXP-MARGUTIL01 dense
+marginal-utility successor, EXP-FIRSTANCHOR-DIAG causal t=1 decomposition).
+EXP-MARGUTIL01 and EXP-FIRSTANCHOR-DIAG are complete for a reduced 3-cell
+scope (Weather H720 cancelled by explicit user decision, D-0013) and both
+need the reviewer's interpretation rather than carrying a mechanical
+pass/fail verdict — see their sections at the end of this document.**
 
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
 engineer; **[user]** = supplied by the researcher, not independently
@@ -661,6 +663,213 @@ out of scope.
     unweighted view) be reported as a standard companion metric going
     forward, on the reasoning that a B0-derived weighting could obscure how
     bad a candidate set's raw composition is?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+
+# EXP-MARGUTIL01 — Full-Memory Set-Conditioned Dense Marginal Utility (COMPLETE, 3/4 cells)
+
+## Research Question
+
+D-0011 closed exact one-hot next-candidate-ID imitation. This tests the
+named successor: replace the one-hot CE target with a DENSE per-candidate
+set-utility regression target, `u_i^(t) = -A_weighted(S*_{t-1} + {i})` for
+EVERY valid remaining candidate at every teacher-forced step (not just the
+argmin) — does that let a held-out query build a competitive Top-K and
+reach Stage-2? Encoder frozen (B0's weights) throughout; EXP-SEQDIAG01
+already answered the trainable-encoder question, not reopened here.
+
+## Method
+
+`u_i^(t) = -A_weighted(S*_{t-1}+{i})`, computed via the exact closed-form
+incremental-weighted-mean trick `select_greedy_weighted_set` already uses
+internally (`utils/dense_utility.py`), chunked over the candidate dimension
+for GPU memory (never a shortlist — every valid candidate still scored).
+SmoothL1 regression, minimal `SetConditioner` (reused verbatim from
+EXP-SEQFULL01) + a new affine `UtilityHead` (`a*cosine+b`, the only new
+learnable parameters — no new architecture). Oracle-prefix teacher-forcing
+during training; free-running argmax at inference. Stage-2 injection via
+`set_forced_selection`, B0's weighting/gate/fusion/base-forecaster
+unchanged. 4 cells approved (ETTh1/Weather × H96/H720); **Weather H720 was
+cancelled by the user (D-0013) after ~2h without completing epoch 1** —
+reported here as 3 cells, no number fabricated for the 4th.
+
+## Results — [repo]
+
+| Cell | B0 unforced | Dense forced | Delta vs B0 | gap_recovery | Utility Spearman | Utility Pearson | HardAgg (seq/b0) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ETTh1 H96 | 0.37312 | 0.52991 | **+0.157** | -1.832 | 0.543 | 0.424 | 1.657 / 0.407 |
+| Weather H96 | 0.17553 | 0.33253 | **+0.157** | -1.744 | 0.658 | 0.503 | 4.465 / 0.234 |
+| ETTh1 H720 | 0.46827 | 0.49269 | **+0.024** | -1.866 | 0.383 | 0.413 | 1.961 / 0.572 |
+
+`duplicate_rate`/`invalid_rate` = 0.0 on all 3 cells. Every cell's Stage-2
+MSE is worse than B0 by more than the pre-registered 0.01 noise threshold —
+**0 of 3 cells show meaningful improvement.** This is a *larger* regression
+than EXP-SEQDIAG01's one-hot Frozen-B0 arm on ETTh1 (+0.0148) — the dense
+target is not an improvement over the one-hot predecessor it replaced, on
+any cell tested.
+
+## Sanity checks passed
+
+`pytest tests/`: 466→477→485 passed across this campaign and its
+follow-up, same 2 pre-existing failures throughout, no regression. A
+1-epoch GPU smoke run caught and fixed two bugs before the full run:
+`HardAggregateMSE@10` off by exactly the horizon factor `H`, and step-wise
+`regret` computed against the oracle's own (tautologically zero) pick
+instead of the model's own predicted pick. Both caught by comparing against
+EXP-SEQDIAG01's already-verified figures before proceeding.
+
+## Conclusion (stated within what the data supports)
+
+Utility Spearman (0.38-0.66) shows the dense target IS partially learnable
+from a frozen representation — the prior objective's *sparsity* was not the
+whole story (H1's learnability premise is not rejected). But
+`gap_recovery`/`HardAggregateMSE@10`/Stage-2 show this learned utility does
+not translate into a competitive free-running Top-K selection on any cell —
+H2 (information/translation ceiling from learned-utility to good-selection)
+is the dominant finding on the 3 cells run. The immediate follow-up
+(EXP-FIRSTANCHOR-DIAG, below) decomposes why: step-wise regret concentrated
+almost entirely at t=1 pointed at the first candidate choice as a candidate
+explanation, tested directly.
+
+## What this does NOT establish
+
+- Weather H720 — no result exists; not extrapolated from the other 3 cells.
+- Whether a *weighted* SmoothL1 loss (explicitly deferred per the spec, "첫
+  pilot에서는 별도 utility weighting을 넣지 않는 것을 기본으로 한다") would
+  change the outcome — not tested.
+- Anything about `relation_top_n>1` (cross-channel) — not run.
+
+## Questions for ChatGPT
+
+11. Utility correlation (0.38-0.66) is clearly above zero but Stage-2 is
+    uniformly worse than the one-hot predecessor it replaced. Is there a
+    known failure mode where a moderately-correlated dense regression
+    target produces WORSE downstream selection than a sparse but exact
+    one-hot target, e.g. because regression errors compound differently
+    across 10 sequential argmax steps than classification errors do?
+12. Given H1's premise (learnability) held but the translation to
+    selection failed, should the next experiment target the
+    utility-to-selection translation step directly (e.g. a listwise/rank
+    loss instead of pointwise regression) rather than another supervision
+    format for the same pointwise target?
+
+---
+
+# EXP-FIRSTANCHOR-DIAG — causal decomposition of EXP-MARGUTIL01's t=1 choice (COMPLETE, 3/3 available cells)
+
+## Research Question
+
+EXP-MARGUTIL01's regret was overwhelmingly concentrated at step t=1. Is the
+first candidate's failure the primary cause of the whole sequence's
+downstream/Stage-2 failure (H1), or does the selector fail on its own
+merits at t=2..10 even given a good t=1 anchor (H2)? No new training —
+reuses each EXP-MARGUTIL01 checkpoint exactly; the only variable is which
+rule picks candidate 1.
+
+## Method
+
+Four arms: **Dense-first** (EXP-MARGUTIL01's own free-running result,
+reused), **B0-first** (t=1 = B0's own production retrieval-score argmax),
+**Oracle-first** (t=1 = argmin singleton future MSE, diagnostic-only, uses
+`Y_q`), **B0 baseline**. t=2..10 identical, unmodified, free-running Dense
+selector in every arm — no teacher forcing or oracle/B0 injection past t=1,
+verified by unit test (forcing t=1 to the value an arm would have picked
+anyway reproduces the byte-identical trajectory). Ran on GPU 0 in parallel
+with EXP-MARGUTIL01's (then-active) Weather H720 on GPU 1, per explicit
+user instruction (D-0014, a one-time exception to this project's
+single-GPU convention). Only the 3 cells with a saved EXP-MARGUTIL01
+checkpoint could be run (Weather H720 was cancelled before completing one).
+
+## Results — [repo]
+
+Stage-2 MSE and Recovery-to-B0 (`(MSE_dense-MSE_arm)/(MSE_dense-MSE_B0)`; 0=no
+recovery, 1=fully recovers to B0, >1=beats B0):
+
+| Cell | B0 | Dense-first | B0-first (Recovery) | Oracle-first (Recovery) |
+|---|---:|---:|---:|---:|
+| ETTh1 H96 | 0.37312 | 0.52991 | 0.43661 (**59.5%**) | 0.21717 (**199.5%**) |
+| Weather H96 | 0.17553 | 0.33253 | 0.21261 (**76.4%**) | 0.41411 (**-52.0%**) |
+| ETTh1 H720 | 0.46827 | 0.49269 | 0.51995 (**-111.6%**) | 0.43635 (**230.7%**) |
+
+**No single clean pattern.** B0-first: strong recovery on both H96 cells,
+but *worsens* ETTh1 H720. Oracle-first: beats B0 outright on both ETTh1
+cells, but *worsens* Weather H96.
+
+**What IS consistent:** the stepwise A_weighted(S_t) trajectory barely
+moves after t=1 on every cell/arm (e.g. ETTh1 H96 oracle-first: 0.19101 at
+t=1 → 0.19665 at t=10, a 3% relative move over 9 further steps) — **t=1
+dominates the final outcome on every cell.** The cross-cell disagreement is
+about which t=1 rule is good, not about whether t=1 dominates.
+
+t=1 candidate quality (full test set): B0's own singleton pick beats the
+Dense model's own t=1 pick 64-70% of the time on every cell. t=1 rank
+diagnostics (200-query subsample, full candidate population per query): the
+oracle-best candidate's median predicted rank is 489-1083 (out of the full
+memory bank); Top-1 hit rate 0% everywhere measured;
+`spearman_within_teacher_top1pct` (0.04-0.14) is markedly lower than
+EXP-MARGUTIL01's *global* teacher-forced Spearman (0.38-0.66) — the model's
+ranking degrades sharply in exactly the top tail that t=1 selection
+actually depends on.
+
+## Sanity checks passed
+
+`pytest tests/`: 485 passed (8 new), same 2 pre-existing failures, no
+regression. `identity_check_singleton_oracle_eq_teacher_first: true` on
+every cell (Oracle-first's t=1 exactly reproduces the cached greedy
+oracle's own first pick, per query). `duplicate_rate`/`invalid_rate` = 0.0
+everywhere.
+
+## Conclusion (stated within what the data supports)
+
+t=1 is confirmed as the dominant determinant of every cell's outcome — a
+consistent, load-bearing finding. But **no single first-candidate rule is
+uniformly sufficient**: the deployable B0-first hybrid helps substantially
+on 2 of 3 cells (both H96) and hurts on the third (ETTh1 H720); the
+non-deployable Oracle-first "ceiling" helps decisively on 2 of 3 cells
+(both ETTh1) and hurts markedly on the third (Weather H96). This is neither
+a clean "t=1 is everything, any reasonable anchor fixes it" (ruled out by
+the ETTh1 H720 B0-first regression and the Weather H96 Oracle-first
+regression) nor a clean "t=1 doesn't matter" (ruled out by the
+trajectory-flatness finding on every cell). The honest reading: **t=1
+quality is necessary everywhere, but which concrete rule delivers good t=1
+quality is dataset/horizon-dependent** — not settled by this diagnostic
+alone.
+
+## What this does NOT establish
+
+- Weather H720's FIRSTANCHOR result — no EXP-MARGUTIL01 checkpoint exists
+  to diagnose.
+- WHY B0-first regresses specifically on ETTh1 H720, or why Oracle-first
+  regresses specifically on Weather H96 — not investigated further here
+  (would need per-query case analysis of the divergent cell(s)).
+- Any claim that "B0-first anchor + Dense set-conditioning" is a validated
+  method — 1 of 3 cells contradicts it; this project's workflow reserves
+  that call for the reviewer, not Claude Code.
+
+## Questions for ChatGPT
+
+13. B0-first recovers well on H96 (both datasets) but regresses on ETTh1
+    H720; Oracle-first recovers well on ETTh1 (both horizons) but regresses
+    on Weather H96. Is there a principled explanation for this
+    cross-cutting (not simply per-dataset or per-horizon) disagreement
+    pattern, or does it suggest the "good anchor" property itself is not a
+    single scalar the way singleton MSE treats it?
+14. Given t=1 dominates every cell's aggregate but no single t=1 rule is
+    uniformly good, is the more promising next direction (a) a
+    learned/adaptive first-candidate selector conditioned on
+    dataset/horizon signals, (b) investigating why the Dense
+    set-conditioned steps t=2..10 apparently cannot correct for a bad t=1
+    (the "barely moves" trajectory finding) even when they clearly have the
+    numerical capacity to move the aggregate a lot (Dense-first's own
+    A_weighted values are far from t=1's, just not toward B0/oracle), or
+    (c) something else this diagnostic's design cannot distinguish?
+15. Is the top-tail-specific ranking failure (`spearman_within_teacher_top1pct`
+    0.04-0.14 vs. global Spearman 0.38-0.66) itself informative about what
+    kind of training signal to try next — e.g. does it argue for a loss
+    that specifically weights the top of the ranking (listwise/NDCG-style)
+    over the pointwise SmoothL1 regression EXP-MARGUTIL01 used?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 
