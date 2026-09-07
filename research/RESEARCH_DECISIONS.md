@@ -238,4 +238,28 @@ confirms a decision.
   (D-0010) continues to govern: no shortlist/reranker reopening.
 - **Status:** active
 
+## D-0012 — EXP-MARGUTIL01 commissioned by explicit user approval
+
+- **Date:** 2026-09-06
+- **Decided by:** user (explicit, detailed 30-section execution instruction
+  approving implementation and a full 4-cell run in one message)
+- **Decision:** Dense Marginal Utility (named as D-0011's candidate next
+  direction, not previously approved) is commissioned as EXP-MARGUTIL01: 4
+  cells (ETTh1/Weather × H96/H720), frozen B0 encoder throughout (no
+  trainable-encoder re-comparison), run to completion regardless of
+  intermediate scientific result. This is not a Claude Code research
+  judgement -- the direction was named by D-0011 and approved for execution
+  by the user in this message.
+- **Evidence:** user message, 2026-09-06, section 0 ("이 프롬프트는 사용자가
+  직접 승인한 실행 지시다"), section 5 (4-cell spec), section 22 ("과학적
+  negative result 때문에 4-cell을 조기 종료하지 마").
+- **Consequence:** `research/CURRENT_EXPERIMENT.md` replaced with
+  EXP-MARGUTIL01's spec (EXP-SEQDIAG01's completed status preserved in
+  `EXPERIMENT_LOG.md`/`RESEARCH_DECISIONS.md`, not overwritten). New code:
+  `models/DenseUtilityRetriever.py`, `utils/dense_utility.py`,
+  `scripts/train_margutil01.py`, `scripts/eval_margutil01_stage2.py`,
+  `tests/test_exp_margutil01.py`. `FULL MEMORY -> DIRECT TOP-K` (D-0010)
+  continues to govern; no shortlist/reranker reopening.
+- **Status:** active
+
 
