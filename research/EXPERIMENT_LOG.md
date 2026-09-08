@@ -1917,3 +1917,172 @@ mismatch) that stalls every scorer/loss arm tried this session at
 `best_epoch=1`. Full 12-point breakdown:
 `results/EXP-STRONG-SCORER-DIAG01/REPORT.md`. Per the user's explicit
 instruction, no further experiment was started.
+
+## EXP-ENCODER-UNFREEZE01 — R2 + cosine + frozen encoder vs. R2 + cosine + trainable encoder (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-08
+**Status:** completed (1 cell, C0 vs E1). No next experiment auto-started, per
+explicit user instruction.
+
+### Research Question
+
+Is the frozen B0 encoder representation itself a bottleneck for the R2
+set-conditioned utility objective (rather than the scorer or the loss,
+both already tested and rejected as the primary bottleneck in
+EXP-ASYM-SCORER01/EXP-STRONG-SCORER-DIAG01)? `C0 = R2 + cosine + FROZEN B0
+encoder` (existing EXP-TOPTAIL-RANK01/R2 checkpoint, reused verbatim) vs.
+`E1 = R2 + cosine + TRAINABLE encoder` (same architecture, initialised from
+the same B0 checkpoint), everything else held identical.
+
+### Configuration
+
+`scripts/train_encoder_unfreeze01.py` (new). Only structural change vs.
+C0/R2: `model.encoder.parameters()` set `requires_grad=True` instead of
+`False`. Query AND candidate embeddings are both re-derived from the
+CURRENT encoder parameters at every training step (`encode_raw()` always
+re-runs `model.encoder` on raw input, never a cached bank) — verified by a
+dedicated sanity test that perturbs encoder parameters and confirms
+candidate embeddings change immediately. Memory-safe streaming training
+(`encoder_unfreeze_step`): full-memory hard-negative mining in a
+`torch.no_grad()` chunked pass (exact global Top-K, `FULL MEMORY -> DIRECT
+TOP-K` unaffected); pairwise loss re-encodes only the small gathered
+positive/hard-negative candidates WITH grad, backward immediately; dense
+SmoothL1 term re-encodes the full candidate bank chunk by chunk, each
+chunk getting its own fresh encoder forward and immediate backward.
+`q`/`m` are produced by zero-arg callables (`q_fn`/`m_fn`) that rerun the
+encoder fresh on every call, generalising EXP-STRONG-SCORER-DIAG01's
+`m_fn` fix (needed only for `EmptySetToken` there) to every tensor that now
+touches the trainable encoder. `optimizer.step()` called exactly once per
+batch. Full commands: `results/EXP-ENCODER-UNFREEZE01/command.txt`.
+
+### Mandatory sanity checks (spec section 12, all before the GPU run)
+
+`tests/test_exp_encoder_unfreeze01.py`, 4/4 PASSED: (A) encoder receives a
+nonzero gradient from both query- and candidate-side branches; (B) with
+`requires_grad=False` (the C0/R2 configuration), the encoder receives
+exactly no gradient; (C) perturbing encoder parameters changes candidate
+embeddings on the next forward (no stale/cached bank); (D) unchunked vs.
+chunked streaming training from identical initial weights produce matching
+losses (atol 1e-4) and matching gradients on every encoder/SetConditioner/
+UtilityHead parameter (atol 1e-3) — this also exercises the `q_fn`/`m_fn`
+fresh-recompute-per-call contract across many chunk iterations without a
+double-backward `RuntimeError`. A real-data smoke run (1 epoch, full
+ETTh1 train/val, GPU) confirmed correct execution (97% GPU util, ~6GB mem,
+no OOM/RuntimeError) before a targeted timing probe picked
+`cand_chunk_size=2048` for the full run.
+
+### Changed Variable
+
+Encoder trainability only (frozen vs. trainable). R2's hybrid loss
+(`lambda_smooth`/`lambda_rank=1.0`), cosine `UtilityHead`, `SetConditioner`/
+`EmptySetToken`, optimizer/LR (`0.001`, single Adam over every trainable
+parameter including the encoder — no separate encoder LR or LR sweep; an
+explicit search of `exp/exp_stage1_relation.py`, `models/RelationStage1.py`,
+`run.py` found no existing "encoder LR multiplier" policy in this codebase
+before this experiment, so none was invented), `train_epochs=10`,
+`patience=5`, `batch_size=32`, checkpoint-selection criterion
+(`val_overlap@10`) all held identical between C0 and E1 (all inherited
+unmodified from the shared base checkpoint's own `args`).
+
+### Dataset / Horizon
+
+ETTh1 H96 only, seed 0. Weather, H720, 3 seeds, encoder depth/width/
+architecture sweep explicitly not run.
+
+### Result Files
+
+`results/EXP-ENCODER-UNFREEZE01/{command.txt, config.json, sanity_summary.json,
+train_summary.json, encoder_drift.csv, representation_diagnostics.json,
+t1_diagnostic.json, t2_continuation.json, train_vs_val_test.json,
+stage2_eval.json, ETTh1_H96_E1_stage2.json,
+ETTh1_H96_E1_{test,train}_summary.json,
+continuation_diag_ETTh1_H96_E1_{test,train}_dense_first.csv,
+ETTh1_H96_E1_{test,train}_dense_first_summary.json, metrics.csv, REPORT.md,
+logs/, working_tree.diff, checkpoint_fingerprints.txt, env.txt,
+git_commit.txt}`.
+
+### Results
+
+Training: `best_epoch=1` (`val_overlap@10=0.0083`, vs. C0's own
+`best_epoch=1`/`val_overlap@10=0.008228` — statistically indistinguishable
+at this metric), early-stopped at epoch 6 (patience 5). `encoder_grad_norm`
+nonzero every epoch (0.046-0.087). `wall_clock=4631.1s` (~77min),
+`peak_gpu_mem=515MiB`, no OOM.
+
+**Representation collapse** (channel 0, first 256 memory rows,
+`utils.rank_losses.embedding_geometry`):
+
+| | B0 | E1 epoch1 (selected) | E1 epoch3 | E1 epoch6 (final) |
+|---|---:|---:|---:|---:|
+| `embedding_effective_rank` | 17.48 | 2.96 | 1.89 | 1.49 |
+| `embedding_pairwise_cosine_mean` | 0.474 | 0.993 | 0.988 | 0.915 |
+
+Collapse is already severe after 1 epoch (the checkpoint actually used for
+every downstream evaluation below) and deepens monotonically for as long
+as training continues; a per-epoch drift probe corroborates this
+(`encoder_drift.csv`: L2 drift 0.826→0.931, cosine-to-B0 0.650→0.559,
+epoch 1→6).
+
+| Metric | C0 (frozen) | E1 (trainable) | Delta |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.40668 | worse |
+| gap_recovery | -0.2626 | -0.3703 | worse |
+| HardAggregate@10 (seq) | 0.5514 | 0.5466 | better (small) |
+| t1 Spearman within true top-1% (test) | 0.2128 | 0.1455 | worse |
+| t1 oracle-best predicted rank median (test) | 99 | 210 | worse |
+| t1 Top-50 containment (test) | 30.5% | 20.5% | worse |
+| t2 hurt_frac (test) | 0.232 | 0.194 | better |
+| t2 selected true rank median (test) | 1934.0 | 539.5 | better |
+| t2 oracle predicted rank median (test) | 560.0 | 318.0 | better |
+| t2 Spearman within true top-1% (test) | 0.1404 | 0.1358 | ~worse (small) |
+| t2 continuation_regret (test) | 0.3498 | 0.3987 | worse |
+
+t2 shows a mixed picture: E1 improves `hurt_frac` and both rank-median
+metrics but is worse on `continuation_regret` (the metric closest to
+realized utility loss). E1's own train-split t1/t2 diagnostics are mostly
+worse than its test-split diagnostics (same train-worse-than-test direction
+EXP-STRONG-SCORER-DIAG01's C2 showed), consistent with `best_epoch=1`
+reflecting only 1 epoch's adaptation rather than train-set overfitting.
+
+### Sanity Checks
+
+`pytest tests/`: 517 passed (4 new in `tests/test_exp_encoder_unfreeze01.py`),
+same 2 pre-existing failures, no regression.
+
+### Implementation Notes
+
+New: `scripts/train_encoder_unfreeze01.py`, `tests/test_exp_encoder_unfreeze01.py`.
+Modified: `models/DenseUtilityRetriever.py` (`UtilityHead.forward_batched`
+added, analogous to `StrongResidualPairScorer`'s own, for the streaming
+pairwise-loss step). No changes needed to `eval_margutil01_stage2.py`/
+`eval_firstanchor_diag.py`/`eval_continuation_diag.py` — these already load
+each checkpoint's own full `model_state_dict` (encoder included) and use
+`model.encoder` directly for both query and candidate encoding, so E1's
+adapted encoder is picked up automatically with zero eval-side code
+changes; verified via checkpoint-fingerprint mismatch between C0/B0's and
+E1's saved checkpoints.
+
+### Conclusion
+
+**Outcome D (representation collapse), not A/B/C.** Not Outcome A: Stage-2
+MSE and `gap_recovery` (the two metrics most tied to this project's
+"did this actually help" question) are both worse than C0. Not Outcome B:
+t1 top-tail ranking is uniformly worse, not better, so there is no
+local-ranking gain to contrast against a free-running failure. Not
+Outcome C: the encoder moved a great deal, and several metrics moved with
+it (not "flat"). **Outcome D fits the cleanest, most consistent signal**:
+`embedding_effective_rank` collapses ~83% within 1 epoch and deepens every
+epoch trained, `pairwise_cosine_mean` rises to 0.99+, replicating
+EXP-SEQDIAG01's earlier collapse finding under a different objective, now
+also under R2's more careful hybrid loss and a cosine scorer already ruled
+out as the bottleneck. The t2 rank-median improvements are real but read as
+consistent with a collapsed representation placing picks favorably in a
+degenerate space, not as evidence of a genuinely improved representation —
+`continuation_regret` and Stage-2 MSE (arguably the more decision-relevant
+metrics) both point the other way. Per the pre-registered decision rule,
+Outcome D does NOT justify an encoder depth/capacity follow-up — a bigger
+encoder trained the same (uncontrolled) way would be expected to collapse
+similarly, plausibly faster. No collapse-prevention regularisation,
+partial-layer unfreezing, or encoder-LR tuning was started in response.
+Full breakdown: `results/EXP-ENCODER-UNFREEZE01/REPORT.md`. Per the user's
+explicit instruction, no further experiment was started.

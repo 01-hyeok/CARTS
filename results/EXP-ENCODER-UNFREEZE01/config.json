@@ -1,0 +1,18 @@
+{
+  "experiment_id": "EXP-ENCODER-UNFREEZE01",
+  "base_experiment": "EXP-TOPTAIL-RANK01 R2 (hybrid loss: pairwise + 1.0*SmoothL1) + cosine UtilityHead",
+  "changed_variable": "encoder trainability only: C0=frozen B0 encoder, E1=trainable encoder (same architecture, initialised from the same B0 checkpoint)",
+  "arms": {
+    "C0": "R2 + cosine + FROZEN B0 encoder -- existing EXP-TOPTAIL-RANK01/R2 ETTh1_H96 checkpoint, reused verbatim, not retrained",
+    "E1": "R2 + cosine + TRAINABLE encoder, initialised from the same B0 Stage-1 checkpoint -- new training this experiment"
+  },
+  "scope": {"dataset": "ETTh1", "horizon": 96, "seed": 0, "top_k": 10},
+  "sanity_checks": "PASSED (tests/test_exp_encoder_unfreeze01.py, 4/4: A encoder gradient flow query+candidate side, B frozen-encoder regression receives no grad, C no stale candidate bank -- embeddings track current encoder parameters, D chunk equivalence -- unchunked vs. chunked streaming produce identical scores/losses/every gradient within tolerance)",
+  "checkpoint_selection_criterion": "val_overlap@10 (UNCHANGED from C0/R2 -- primary comparison uses this; every epoch checkpoint additionally saved via --keep_all_checkpoints for post-hoc representation-drift analysis, never used to override the selection criterion)",
+  "online_reencoding": "candidate AND query embeddings are both re-derived from the CURRENT encoder parameters at every training step (never a cached/stale bank) -- verified by sanity check C and by construction (encode_raw() always re-runs model.encoder on raw x)",
+  "memory_safety": "streaming (chunked, incremental-backward) training path for the trainable encoder: full-memory hard-negative mining in a torch.no_grad() chunked pass (exact global Top-K, never a shortlist); pairwise loss computed with grad on only the small gathered positive/hard-negative candidates, backward immediately; dense SmoothL1 term computed and backpropped per candidate chunk, each chunk re-encoding fresh with its OWN encoder forward pass, freeing the graph before the next chunk; optimizer.step() called exactly once per batch. q_fn/m_fn (zero-arg callables recomputing q/m fresh via the encoder on every call) generalise EXP-STRONG-SCORER-DIAG01's m_fn fix to every encoder-touching tensor, not just the t=0 EmptySetToken case. Verified mathematically equivalent to an unchunked reference via tests/test_exp_encoder_unfreeze01.py's chunk-equivalence test (gradient equality on every encoder/SetConditioner/UtilityHead parameter, atol=1e-3) before the real run. peak_gpu_memory_mib=515, no OOM.",
+  "explicitly_not_run": ["Weather", "H720", "3 seeds", "encoder depth/width sweep", "TCN/Transformer architecture swap",
+                          "asymmetric/strong-pair scorer", "loss/lambda changes", "SetConditioner changes",
+                          "separate encoder LR / LR sweep (confirmed no existing encoder-LR-multiplier policy in this codebase before writing this file)",
+                          "collapse-prevention regularisation", "Top-M/shortlist/reranker"]
+}

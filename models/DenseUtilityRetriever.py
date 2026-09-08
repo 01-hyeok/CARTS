@@ -36,6 +36,16 @@ class UtilityHead(nn.Module):
         cosine = torch.matmul(h_t, candidate_embeddings.transpose(0, 1))
         return self.scale * cosine + self.bias
 
+    def forward_batched(self, h_t, candidate_embeddings_batched):
+        """Per-row candidate set (e.g. a small gathered positive/hard-negative
+        pool that differs per query, as used by EXP-ENCODER-UNFREEZE01's
+        memory-safe streaming pairwise step), as opposed to `forward`'s
+        single candidate bank shared across the whole batch. `h_t`: [B,D].
+        `candidate_embeddings_batched`: [B,M,D]. Returns [B,M]. Identical
+        `a*cosine+b` formula to `forward`, just per-row candidates."""
+        cosine = (h_t.unsqueeze(1) * candidate_embeddings_batched).sum(-1)
+        return self.scale * cosine + self.bias
+
 
 class AsymmetricUtilityHead(nn.Module):
     """u_hat = a * cosine(W_q h_t, W_k e_i) + b.

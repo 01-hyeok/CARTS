@@ -1,0 +1,34 @@
+{
+  "t1_spearman_top1pct": {
+    "E1_test": 0.14545490672375308,
+    "E1_train": 0.07316822214052081
+  },
+  "t1_oracle_rank_median": {
+    "E1_test": 210,
+    "E1_train": 1218
+  },
+  "t1_top50_containment": {
+    "E1_test": 0.205,
+    "E1_train": 0.085
+  },
+  "t2_hurt_frac": {
+    "E1_test": 0.194,
+    "E1_train": 0.242
+  },
+  "t2_selected_true_rank_median": {
+    "E1_test": 539.5,
+    "E1_train": 1904.0
+  },
+  "t2_oracle_predicted_rank_median": {
+    "E1_test": 318.0,
+    "E1_train": 1109.0
+  },
+  "t2_spearman_top1pct": {
+    "E1_test": 0.13576884715259074,
+    "E1_train": 0.08197604773566126
+  },
+  "t2_continuation_regret": {
+    "E1_test": 0.398746568415314,
+    "E1_train": 0.28680085614323614
+  }
+}

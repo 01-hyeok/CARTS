@@ -1,0 +1,33 @@
+{
+  "probe": "channel 0, first 256 memory rows (exp.memory_x[:256]), utils.rank_losses.embedding_geometry -- same convention as results/EXP-SEQDIAG01/effective_rank_diagnostic.py",
+  "B0_frozen_reference": {
+    "embedding_pairwise_cosine_mean": 0.47363758087158203,
+    "embedding_effective_rank": 17.478456497192383,
+    "embedding_effective_rank_ratio": 0.1365504413843155,
+    "embedding_dead_dimension_fraction": 0.0
+  },
+  "E1_checkpoints": {
+    "epoch1_best_selected": {
+      "embedding_pairwise_cosine_mean": 0.9931730031967163,
+      "embedding_effective_rank": 2.9626076221466064,
+      "embedding_effective_rank_ratio": 0.023145372048020363,
+      "embedding_dead_dimension_fraction": 0.0
+    },
+    "epoch3": {
+      "embedding_pairwise_cosine_mean": 0.988074004650116,
+      "embedding_effective_rank": 1.8917343616485596,
+      "embedding_effective_rank_ratio": 0.014779174700379372,
+      "embedding_dead_dimension_fraction": 0.0
+    },
+    "epoch6_final_before_early_stop": {
+      "embedding_pairwise_cosine_mean": 0.91498863697052,
+      "embedding_effective_rank": 1.4946039915084839,
+      "embedding_effective_rank_ratio": 0.01167659368366003,
+      "embedding_dead_dimension_fraction": 0.0
+    }
+  },
+  "trajectory_note": "embedding_effective_rank falls monotonically and severely from B0's 17.48 to 2.96 (epoch1, the checkpoint actually SELECTED and used for every downstream evaluation below) to 1.89 (epoch3) to 1.49 (epoch6) -- collapse is already present after a single epoch and keeps deepening for as long as training continues, never stabilising or reversing within the 6 epochs trained. pairwise_cosine_mean rises from B0's 0.474 (candidates well-separated) to 0.99+ at epoch1/3 (candidates nearly indistinguishable), then partially relaxes to 0.915 at epoch6 with a much larger std (0.139 vs 0.016 at epoch3) -- consistent with the embeddings settling into a still-tiny but slightly less uniform low-dimensional subspace, not a recovery of the original representation's spread.",
+  "drift_probe_from_training_log": {
+    "note": "separate fixed 256-row probe computed DURING training (results/EXP-ENCODER-UNFREEZE01/encoder_drift.csv), reporting L2 drift and cosine-to-B0 per epoch -- both grow monotonically (drift_l2 0.826->0.931, cosine_to_b0 0.650->0.559 from epoch1 to epoch6), corroborating the embedding_geometry trajectory above: the representation moves steadily further from B0 for as long as training continues, with no sign of settling."
+  }
+}

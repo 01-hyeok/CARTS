@@ -1456,3 +1456,157 @@ arm at epoch 1 regardless of scorer capacity.
     dense-marginal-utility-target-is-a-bad-training-signal explanation?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+
+# EXP-ENCODER-UNFREEZE01 — R2 + cosine + frozen encoder vs. R2 + cosine + trainable encoder (COMPLETE: ETTh1 H96 only)
+
+## Research Question
+
+After two negative scorer-capacity results (EXP-ASYM-SCORER01,
+EXP-STRONG-SCORER-DIAG01, both leaving the frozen B0 encoder untouched):
+is the frozen encoder REPRESENTATION itself the bottleneck for R2's
+set-conditioned utility objective? `C0 = R2 + cosine + FROZEN B0 encoder`
+(existing checkpoint, reused verbatim) vs. `E1 = R2 + cosine + TRAINABLE
+encoder` (same architecture, initialised from the same B0 checkpoint).
+
+## Method
+
+Only structural change: `requires_grad=True` on the encoder (vs. `False`
+for C0). Query AND candidate embeddings are both re-derived from the
+current encoder parameters at every training step (no cached/stale bank,
+verified by a dedicated sanity test). A memory-safe streaming training
+design generalises EXP-STRONG-SCORER-DIAG01's OOM fix so every
+encoder-touching tensor (not just the scorer head) uses a fresh per-call
+forward pass, verified mathematically equivalent to an unchunked reference
+(gradient equality on every encoder/SetConditioner/UtilityHead parameter)
+before the real run. Loss, scorer, SetConditioner, LR, epochs, patience,
+batch size, and checkpoint-selection criterion (`val_overlap@10`) all held
+identical to C0/R2. No separate encoder LR or LR sweep (confirmed no
+existing policy for this in the codebase). ETTh1 H96 only, per
+pre-registered scope.
+
+## Results
+
+Training: `best_epoch=1` (`val_overlap@10=0.0083`, essentially identical to
+C0's own 0.008228), early-stopped at epoch 6 (patience 5). Encoder gradient
+nonzero every epoch (0.046-0.087) — wiring confirmed correct, not a dead
+gradient.
+
+**Representation collapse**, already severe after 1 epoch and deepening
+every epoch trained:
+
+| | B0 | E1 epoch1 (selected) | E1 epoch3 | E1 epoch6 (final) |
+|---|---:|---:|---:|---:|
+| `embedding_effective_rank` (of d_model=128) | 17.48 | 2.96 | 1.89 | 1.49 |
+| `embedding_pairwise_cosine_mean` | 0.474 | 0.993 | 0.988 | 0.915 |
+
+| Metric | C0 (frozen) | E1 (trainable) | Delta |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.40668 | worse |
+| gap_recovery | -0.2626 | -0.3703 | worse |
+| HardAggregate@10 (seq) | 0.5514 | 0.5466 | better (small) |
+| t1 Spearman top-1% (test) | 0.2128 | 0.1455 | worse |
+| t1 oracle rank median (test) | 99 | 210 | worse |
+| t1 Top-50 containment (test) | 30.5% | 20.5% | worse |
+| t2 hurt_frac (test) | 0.232 | 0.194 | better |
+| t2 selected true rank median (test) | 1934.0 | 539.5 | better |
+| t2 oracle predicted rank median (test) | 560.0 | 318.0 | better |
+| t2 continuation_regret (test) | 0.3498 | 0.3987 | worse |
+
+E1's train-split t1/t2 diagnostics are mostly worse than its own test-split
+diagnostics — the same direction EXP-STRONG-SCORER-DIAG01's C2 showed,
+plausibly explained the same way (`best_epoch=1` reflects only 1 epoch of
+adaptation, not train-set overfitting).
+
+## Sanity checks passed
+
+`pytest tests/`: 517 passed (4 new), same 2 pre-existing failures, no
+regression. Encoder gradient flow (query+candidate side), frozen-encoder
+regression (exactly zero grad), no-stale-candidate-bank, and unchunked-vs-
+chunked full gradient equivalence all verified before the GPU run — full
+checklist in `results/EXP-ENCODER-UNFREEZE01/REPORT.md`.
+
+## Conclusion (stated within what the data supports)
+
+**Outcome D (representation collapse), not A/B/C.** The two metrics this
+project treats as most decision-relevant (Stage-2 MSE, `gap_recovery`) are
+both worse than the frozen baseline, ruling out Outcome A. t1 top-tail
+ranking is uniformly worse (not better), ruling out Outcome B's
+"local ranking improves but free-running doesn't" pattern. The encoder
+moved substantially and several metrics moved with it, ruling out
+Outcome C's "flat" pattern. The cleanest, most internally consistent
+signal is severe representation collapse: `embedding_effective_rank` falls
+~83% within a single epoch and never stabilises across 6 epochs of
+training, `pairwise_cosine_mean` rises to 0.99+ (nearly all candidates
+become indistinguishable) — this replicates EXP-SEQDIAG01's earlier
+collapse finding (found under a different, one-hot objective) now also
+under R2's more careful hybrid ranking+regression loss and a scorer already
+independently ruled out as the bottleneck by the two prior experiments.
+The t2 rank-median improvements are real but are read as consistent with a
+collapsed representation placing the free-running selector's picks
+favorably within an otherwise degenerate space, not as evidence the
+representation genuinely improved — `continuation_regret` and Stage-2 MSE,
+arguably the more decision-relevant of the mixed t2/HardAggregate signals,
+both point the other way.
+
+Per the pre-registered decision rule, **this result does NOT justify an
+encoder depth/capacity follow-up**: the evidence indicates instability
+under this specific end-to-end training regime, not insufficient capacity
+in the frozen representation. No collapse-prevention regularisation,
+partial-layer unfreezing, or encoder-LR tuning was added in response.
+
+## What this does NOT establish
+
+- Whether a smaller/decayed learning rate specifically for the encoder
+  (untested — no such policy exists in this codebase and none was
+  invented, per the pre-registered controlled-variable design) would avoid
+  or slow the collapse.
+- Whether partial-layer unfreezing (e.g. only the last encoder layer) would
+  behave differently — not tested, and not authorised to test
+  automatically per the spec's stopping rule.
+- Whether an explicit anti-collapse regularizer (e.g. a variance/
+  covariance penalty, analogous to VICReg-style losses) would let the
+  encoder adapt usefully without collapsing — not tested, also gated by
+  the stopping rule.
+- Weather H96/H720 behavior — not run.
+- Whether the t2 rank-median improvements reflect anything reusable, or
+  are purely an artifact of the collapsed geometry — not disentangled here.
+
+## Questions for ChatGPT
+
+28. Three independent representation/capacity-direction experiments now
+    point away from "the encoder/scorer needs more expressive power" and
+    toward "the sequential/teacher-forced training signal itself is
+    unstable or a poor fit" (EXP-ASYM-SCORER01, EXP-STRONG-SCORER-DIAG01 on
+    the scorer side; this experiment on the encoder side, where letting the
+    SAME architecture adapt caused rapid representation collapse rather
+    than improvement). Does this pattern make a strong enough case to
+    retire the "representation/capacity" line of investigation entirely in
+    favor of investigating the training SIGNAL (dense marginal utility
+    target, weighted-set greedy oracle supervision, teacher-forcing/
+    free-running mismatch) as this session's REVIEW_FOR_CHATGPT.md
+    (EXP-STRONG-SCORER-DIAG01 section, question 27) already proposed?
+29. The collapse here happens even though the loss includes a pairwise
+    ranking term (not just a pointwise regression term, which could
+    theoretically be satisfied by a degenerate space more directly) — is a
+    pairwise/ranking loss theoretically expected to be MORE or LESS prone
+    to encoder collapse than a pure regression loss, when both the query
+    and candidate sides of the comparison are produced by the SAME
+    trainable encoder (as opposed to two separately-parameterised
+    encoders)? Is "collapse toward the training signal's own invariances"
+    a known failure mode specifically for this shared-encoder pairwise-loss
+    configuration?
+30. Given `best_epoch=1` is essentially tied between C0 (0.008228) and E1
+    (0.0083) on `val_overlap@10`, yet the underlying representations are
+    already drastically different by that epoch (effective_rank 17.48 vs.
+    2.96), is `val_overlap@10` simply blind to representation collapse
+    entirely (measuring only whether the TOP-10 SET happens to overlap,
+    which a collapsed-but-differently-biased space could still achieve by
+    chance)? Should this project add a lightweight representation-health
+    check (e.g. a coarse effective-rank threshold) to its early-stopping/
+    checkpoint-selection criterion going forward, given collapse has now
+    been observed in two independent trainable-encoder experiments
+    (EXP-SEQDIAG01, this one) under two different objectives?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.

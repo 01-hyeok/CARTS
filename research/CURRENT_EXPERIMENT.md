@@ -1,6 +1,6 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **All six approved experiments COMPLETE for their (reduced)
+Status: **All seven approved experiments COMPLETE for their (reduced)
 scope. No experiment currently running. Nothing running on any GPU on
 behalf of this project.**
 
@@ -117,6 +117,35 @@ train-fits/test-fails story. `best_epoch=1`-then-decline on `val_overlap@10`
 now replicates across every scorer/loss arm tried this session (R1, R2, C1,
 C2). Full record: `research/EXPERIMENT_LOG.md` → EXP-STRONG-SCORER-DIAG01,
 full report: `results/EXP-STRONG-SCORER-DIAG01/REPORT.md`.
+
+**7) EXP-ENCODER-UNFREEZE01 — R2+cosine+frozen encoder vs. R2+cosine+
+trainable encoder — COMPLETE, ETTh1 H96 only (2026-09-08).** Tests whether
+the frozen B0 encoder representation, not the scorer/loss, is the
+bottleneck: `E1 = R2 + cosine + TRAINABLE encoder` (initialised from the
+same B0 checkpoint, encoder architecture unchanged) vs. `C0 = R2 + cosine +
+FROZEN encoder` (existing EXP-TOPTAIL-RANK01/R2 checkpoint, reused
+verbatim). Encoder gradient flow (query- and candidate-side) and a
+"no stale candidate bank" invariant were verified by 4 mandatory sanity
+tests before the GPU run; a memory-safe streaming re-encoding design
+(generalising EXP-STRONG-SCORER-DIAG01's OOM fix so every encoder-touching
+tensor, not just the scorer head, uses a fresh per-call forward) trained
+to completion with `peak_gpu_mem=515MiB`, no OOM. **Result: severe,
+monotonically-deepening representation collapse** — `embedding_effective_rank`
+falls from B0's 17.48 to 2.96 after 1 epoch (the checkpoint actually
+selected, `best_epoch=1` matching every other arm this session) to 1.49 by
+epoch 6, `pairwise_cosine_mean` rising to 0.99+ (candidates nearly
+indistinguishable), replicating EXP-SEQDIAG01's earlier collapse finding
+under a different (one-hot) objective, now also under R2's more careful
+hybrid loss. Stage-2 MSE and `gap_recovery` are both worse than C0
+(0.39526→0.40668, gap_recovery -0.263→-0.370); t1 top-tail ranking is
+uniformly worse; t2 continuation shows a mixed picture (some rank-median
+metrics better, `continuation_regret` worse). Verdict: **Outcome D**
+(representation collapse) — not Outcome A/B/C, and per the pre-registered
+stopping rule this does NOT justify an encoder depth/capacity follow-up
+(a bigger encoder trained the same uncontrolled way would be expected to
+collapse the same way, plausibly faster); no collapse-prevention
+regularisation was added. Full record: `research/EXPERIMENT_LOG.md` →
+EXP-ENCODER-UNFREEZE01, full report: `results/EXP-ENCODER-UNFREEZE01/REPORT.md`.
 
 **No next experiment is approved.** Per this project's workflow, the next
 step is an independent review (ChatGPT/Codex reads
