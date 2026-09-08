@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+"""EXP-ONPOLICY-CHOICE01: fills the last cell of Track A's 2x2 table
+(prefix source x loss) -- does combining EXP-ORACLE-CHOICE01 (D1: Oracle-
+Choice CE, oracle prefix) with EXP-ONPOLICY-PREFIX01 (T1: R2 loss,
+on-policy prefix) beat T1 alone, and does it beat B0?
+
+|               | R2 loss      | Oracle-Choice CE |
+|---------------|-------------:|-----------------:|
+| Oracle prefix | C0 = 0.39526 |     D1 = 0.38916 |
+| On-policy     | T1 = 0.37455 |    OPC1 = (this) |
+
+Design: IDENTICAL to T1 (`scripts/train_onpolicy_prefix01.py`) in every
+respect -- frozen B0 encoder, on-policy (model-generated) prefix at every
+step, `argmax` selection always detached/no_grad -- except the loss: R2's
+SmoothL1+pairwise is replaced by D1's Oracle-Choice CE (`oracle_choice_step_loss`,
+imported from `scripts/train_oracle_choice01.py`, not reimplemented),
+applied to the CURRENT on-policy state's freshly-recomputed dense utility
+target (`i_t* = argmax_i u_i(S_hat_{t-1} + {i})`), never the fixed Oracle
+trajectory's own target.
+
+Reused, not reimplemented: `run_sequence_onpolicy`'s pattern for on-policy
+prefix construction (this file's own `run_sequence_onpolicy_choice` mirrors
+it, swapping the loss), `oracle_choice_step_loss` (D1's CE loss, unmodified),
+`dense_utility`/`candidate_weights` (unmodified). `tau` defaults to the base
+checkpoint's own `tau_topk`, matching D1's own precedent -- no sweep.
+"""
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+import torch
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from models.DenseUtilityRetriever import UtilityHead
+from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+from scripts.train_margutil01 import build_experiment, encode, memory_value
+from scripts.train_oracle_choice01 import oracle_choice_step_loss
+from scripts.train_toptail_rank01 import overlap_at_k
+from utils.dense_utility import candidate_weights, dense_utility
+
+
+def run_sequence_onpolicy_choice(q, E, cand_mask, set_conditioner, empty_token, utility_head,
+                                  futures, query_future, tau_topk, tau_choice, k, chunk_size):
+    """K steps, ON-POLICY prefix (identical construction to
+    `train_onpolicy_prefix01.run_sequence_onpolicy`) + Oracle-Choice CE loss
+    at each step (identical loss to `train_oracle_choice01.oracle_choice_step_loss`),
+    evaluated against the CURRENT on-policy state's own recomputed target.
+
+    Returns (losses: list[scalar tensor], diags: list[dict], picks [B,K],
+    a_dense_steps: list[B,N] for optional regret diagnostics).
+    """
+    bsz, device, dtype = q.size(0), q.device, q.dtype
+    w = candidate_weights(torch.matmul(q, E.transpose(0, 1)), cand_mask, tau_topk)
+    selected_mask = torch.zeros_like(cand_mask)
+    picks = []
+    losses, diags, a_dense_steps = [], [], []
+    for t in range(k):
+        if t == 0:
+            m = empty_token(bsz, device, dtype)
+            prefix = torch.zeros(bsz, 0, dtype=torch.long, device=device)
+        else:
+            prefix = torch.stack(picks, dim=1).detach()
+            m = E[prefix].mean(dim=1)
+        h = set_conditioner(q, m)
+        u_hat = utility_head(h, E)  # s_i^(t)
+        valid_now = cand_mask & ~selected_mask
+
+        with torch.no_grad():
+            a_dense = dense_utility(prefix, w, futures, query_future, chunk_size=chunk_size)
+            u_target = -a_dense
+        a_dense_steps.append(a_dense)
+
+        loss_t, diag_t = oracle_choice_step_loss(u_hat, u_target, valid_now, tau_choice)
+        losses.append(loss_t)
+        diags.append(diag_t)
+
+        u_masked = u_hat.masked_fill(~valid_now, float('-inf'))
+        nxt = u_masked.argmax(dim=-1, keepdim=True).detach()  # model's OWN pick, never the Oracle's
+        picks.append(nxt.squeeze(-1).detach())
+        selected_mask = selected_mask.scatter(1, nxt, True)
+    return losses, diags, torch.stack(picks, dim=1), a_dense_steps
+
+
+def run_epoch_onpolicy_choice(exp, args, model, set_conditioner, empty_token, utility_head, teacher, loader,
+                               split, train, channel_list, k, tau_topk, tau_choice, chunk_size, optimizer, device):
+    set_conditioner.train(train)
+    empty_token.train(train)
+    utility_head.train(train)
+    total_loss, n_batches = 0.0, 0
+    overlap_sum, overlap_n = 0.0, 0
+    sc_grad_norm = 0.0
+    diag_sums = {}
+    diag_n = 0
+
+    def teacher_rows(batch_start_idx, channel, split_name):
+        rows = [teacher['splits'][split_name]['start_to_row'][int(s)] for s in batch_start_idx.tolist()]
+        return teacher['splits'][split_name]['teacher_idx'][channel][rows].to(device)
+
+    ctx = torch.enable_grad() if train else torch.no_grad()
+    with ctx:
+        for batch_x, batch_y, batch_start_idx in loader:
+            batch_x = batch_x.float().to(device)
+            batch_y = batch_y.float().to(device)
+            cand_mask, counts = exp._candidate_mask(batch_start_idx)
+            if train:
+                optimizer.zero_grad()
+            batch_loss = 0.0
+            for c in channel_list:
+                E = encode(model, exp.memory_x, c)
+                q = encode(model, batch_x, c)
+                memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
+                futures = memory_c + offset_c.view(-1, 1, 1)
+                query_future = batch_y[:, :, c]
+
+                teacher_idx = teacher_rows(batch_start_idx, c, split)
+                query_valid = teacher_idx[:, 0] != -1
+
+                losses, diags, picks, a_dense_steps = run_sequence_onpolicy_choice(
+                    q, E, cand_mask, set_conditioner, empty_token, utility_head,
+                    futures, query_future, tau_topk, tau_choice, k, chunk_size)
+                for t, loss_t in enumerate(losses):
+                    for kk, vv in diags[t].items():
+                        if vv == vv:
+                            diag_sums[kk] = diag_sums.get(kk, 0.0) + vv
+                    diag_n += 1
+                batch_loss = batch_loss + sum(losses) / k
+
+                if not train:
+                    overlap_sum += overlap_at_k(picks, teacher_idx, query_valid) * int(query_valid.sum())
+                    overlap_n += int(query_valid.sum())
+
+            batch_loss = batch_loss / len(channel_list)
+            if train:
+                batch_loss.backward()
+                assert all(p.grad is None for p in model.encoder.parameters()), \
+                    'encoder must stay frozen -- an encoder parameter received a gradient'
+                sc_grads = [p.grad for p in set_conditioner.parameters() if p.grad is not None]
+                sc_grad_norm = sum(g.norm().item() ** 2 for g in sc_grads) ** 0.5 if sc_grads else 0.0
+                optimizer.step()
+            total_loss += float(batch_loss.detach())
+            n_batches += 1
+    overlap = overlap_sum / max(overlap_n, 1)
+    diag_means = {kk: vv / max(diag_n, 1) for kk, vv in diag_sums.items()}
+    return {'loss': total_loss / max(n_batches, 1), 'overlap_at_k': overlap,
+            'set_conditioner_grad_norm': sc_grad_norm, 'diag': diag_means}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--base_ckpt', required=True)
+    ap.add_argument('--teacher_cache', required=True)
+    ap.add_argument('--checkpoints', default='checkpoints/exp_onpolicy_choice01')
+    ap.add_argument('--model_id', default='carts_onpolicy_choice01_main')
+    ap.add_argument('--des', default='onpolicy_choice01_main')
+    ap.add_argument('--top_k', type=int, default=10)
+    ap.add_argument('--train_epochs', type=int, default=0)
+    ap.add_argument('--patience', type=int, default=0)
+    ap.add_argument('--chunk_size', type=int, default=4096)
+    ap.add_argument('--seed', type=int, default=0)
+    ap.add_argument('--tau_choice', type=float, default=None, help='defaults to base_ckpt args.tau_topk, no sweep')
+    ap.add_argument('--keep_all_checkpoints', action='store_true')
+    cli = ap.parse_args()
+
+    overrides = {
+        'is_training': 1, 'model_id': cli.model_id, 'des': cli.des,
+        'checkpoints': cli.checkpoints, 'seed': cli.seed, 'top_k': cli.top_k,
+        'stage1_residual_teacher': 0, 'stage1_query_base_conditioning': 0,
+        'stage1_candidate_residual_conditioning': 0, 'stage1_retrieval_metric': 'cosine',
+        'stage1_full_memory_gradient_mode': 'full_online',
+    }
+    if cli.train_epochs:
+        overrides['train_epochs'] = cli.train_epochs
+    if cli.patience:
+        overrides['patience'] = cli.patience
+
+    exp, args = build_experiment(cli.base_ckpt, overrides)
+    torch.manual_seed(args.seed)
+    device = exp.device
+    model = exp.model.module if hasattr(exp.model, 'module') else exp.model
+    k = int(cli.top_k)
+    tau_topk = float(args.tau_topk)
+    tau_choice = float(cli.tau_choice) if cli.tau_choice is not None else tau_topk
+
+    b0_ckpt = torch.load(cli.base_ckpt, map_location='cpu')
+    model.load_state_dict(b0_ckpt['model_state_dict'], strict=True)
+    for p in model.encoder.parameters():
+        p.requires_grad = False
+    model.encoder.eval()
+    print(f'[onpolicy_choice01] frozen encoder loaded from {cli.base_ckpt}, '
+          f'tau_topk={tau_topk} tau_choice={tau_choice}')
+
+    exp._ensure_memory()
+    channels = list(model.target_channels())
+    for c in channels:
+        sources = model.source_channels(c)
+        if len(sources) != 1 or int(sources[0]) != int(c):
+            raise ValueError(f'EXP-ONPOLICY-CHOICE01 is self-only; channel {c} has sources {sources}')
+    teacher = torch.load(cli.teacher_cache, map_location='cpu')
+    if teacher['meta']['top_k'] != k:
+        raise ValueError(f"teacher cache top_k={teacher['meta']['top_k']} != --top_k={k}")
+
+    d_model = int(args.d_model)
+    set_conditioner = SetConditioner(d_model).to(device)
+    empty_token = EmptySetToken(d_model).to(device)
+    utility_head = UtilityHead().to(device)
+    trainable_params = (list(set_conditioner.parameters()) + list(empty_token.parameters())
+                         + list(utility_head.parameters()))
+    n_params = sum(p.numel() for p in trainable_params)
+    print(f'[onpolicy_choice01] trainable_params={n_params} '
+          f'(SetConditioner={sum(p.numel() for p in set_conditioner.parameters())}, '
+          f'EmptySetToken={sum(p.numel() for p in empty_token.parameters())}, '
+          f'UtilityHead={sum(p.numel() for p in utility_head.parameters())})')
+    optimizer = torch.optim.Adam(trainable_params, lr=float(args.learning_rate))
+
+    ckpt_dir = Path(cli.checkpoints) / 'onpolicy_choice01' / args.data / f'seq{args.seq_len}_pred{args.pred_len}' / args.model_id
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    best_val = -1.0
+    best_epoch = -1
+    patience_left = int(args.patience)
+
+    history = []
+    wall_start = time.time()
+    for epoch in range(int(args.train_epochs)):
+        t0 = time.time()
+        _, train_loader = exp._get_data(flag='train', shuffle=True)
+        _, val_loader = exp._get_data(flag='val', shuffle=False)
+        train_metrics = run_epoch_onpolicy_choice(exp, args, model, set_conditioner, empty_token, utility_head,
+                                                    teacher, train_loader, 'train', True, channels, k,
+                                                    tau_topk, tau_choice, cli.chunk_size, optimizer, device)
+        val_metrics = run_epoch_onpolicy_choice(exp, args, model, set_conditioner, empty_token, utility_head,
+                                                  teacher, val_loader, 'val', False, channels, k,
+                                                  tau_topk, tau_choice, cli.chunk_size, optimizer, device)
+        dt = time.time() - t0
+        history.append({'epoch': epoch + 1, 'train': train_metrics, 'val': val_metrics, 'seconds': dt})
+        vd = val_metrics['diag']
+        print(f"[onpolicy_choice01] epoch {epoch+1} train_loss={train_metrics['loss']:.5f} "
+              f"val_loss={val_metrics['loss']:.5f} val_overlap@{k}={val_metrics['overlap_at_k']:.4f} "
+              f"val_top1_acc={vd.get('top1_acc', float('nan')):.4f} "
+              f"val_pred_rank_mean={vd.get('pred_rank_mean', float('nan')):.2f} "
+              f"val_margin={vd.get('top1_top2_margin_mean', float('nan')):.5f} "
+              f"sc_grad_norm={train_metrics['set_conditioner_grad_norm']:.5f} time={dt:.1f}s")
+        if train_metrics['set_conditioner_grad_norm'] == 0.0:
+            print('[onpolicy_choice01][FAIL] SetConditioner gradient norm is exactly 0 -- STOP')
+            break
+
+        ckpt_payload = {
+            'model_state_dict': model.state_dict(),
+            'set_conditioner_state_dict': set_conditioner.state_dict(),
+            'empty_token_state_dict': empty_token.state_dict(),
+            'utility_head_state_dict': utility_head.state_dict(),
+            'args': vars(args), 'epoch': epoch + 1, 'val_overlap_at_k': val_metrics['overlap_at_k'],
+            'frozen_encoder_source_ckpt': cli.base_ckpt, 'loss_mode': 'onpolicy_choice_ce', 'scorer_mode': 'cosine',
+            'tau_choice': tau_choice, 'val_diag': vd,
+        }
+        if cli.keep_all_checkpoints:
+            torch.save(ckpt_payload, ckpt_dir / f'checkpoint_epoch{epoch+1}.pth')
+        if val_metrics['overlap_at_k'] > best_val:
+            best_val = val_metrics['overlap_at_k']
+            best_epoch = epoch + 1
+            patience_left = int(args.patience)
+            torch.save(ckpt_payload, ckpt_dir / 'checkpoint.pth')
+        else:
+            patience_left -= 1
+            if patience_left <= 0:
+                print(f'[onpolicy_choice01] early stop at epoch {epoch+1} (best={best_epoch})')
+                break
+
+    wall_time = time.time() - wall_start
+    peak_mem = torch.cuda.max_memory_allocated(device) / 2**20 if device.type == 'cuda' else 0.0
+    summary = {'best_epoch': best_epoch, 'best_val_overlap_at_k': best_val,
+               'wall_clock_seconds': wall_time, 'peak_gpu_memory_mib': peak_mem,
+               'history': history, 'args': vars(args), 'checkpoint': str(ckpt_dir / 'checkpoint.pth'),
+               'loss_mode': 'onpolicy_choice_ce', 'scorer_mode': 'cosine', 'trainable_params': n_params,
+               'tau_choice': tau_choice}
+    with open(ckpt_dir / 'summary.json', 'w') as fh:
+        json.dump(summary, fh, indent=2, default=str)
+    print(f'[onpolicy_choice01] done. best_epoch={best_epoch} best_val_overlap_at_k={best_val:.4f} '
+          f'wall_clock={wall_time:.1f}s peak_gpu_mem={peak_mem:.0f}MiB')
+    print(f'[onpolicy_choice01] summary written to {ckpt_dir / "summary.json"}')
+
+
+if __name__ == '__main__':
+    main()

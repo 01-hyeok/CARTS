@@ -1,0 +1,5 @@
+{
+  "tests": "tests/test_exp_correction_oracle01.py (reused unmodified -- see config.json)",
+  "result": "9 passed, 0 failed",
+  "note": "diag_correction_oracle01.py's evaluate() function gained an optional `channel` parameter for this experiment (defaults to channels[0], preserving EXP-CORRECTION-ORACLE-DIAG01's own original behaviour exactly); the parametrization was re-verified against the full pytest suite (563 passed, same 2 pre-existing failures, no regression) after the change."
+}

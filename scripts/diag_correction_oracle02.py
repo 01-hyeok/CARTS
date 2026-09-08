@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""EXP-CORRECTION-ORACLE-DIAG02 (Track B1): does the channel-0 Correction
+Set Oracle advantage found in EXP-CORRECTION-ORACLE-DIAG01 (Track B, now
+"B0" of Track B) reproduce across the FULL ETTh1 multivariate setting (all
+7 channels), not just channel 0? No training -- calls
+`diag_correction_oracle01.evaluate()` once per channel (that function's
+`channel` parameter, added for this experiment, defaults to `channels[0]`
+so EXP-CORRECTION-ORACLE-DIAG01's own original single-channel behaviour is
+unmodified/unaffected by this file) and aggregates per-channel + overall
+results. Same B0 checkpoint, same scope (ETTh1 H96 seed 0, self-only, full
+memory), same sanity guarantees (already covered by
+`tests/test_exp_correction_oracle01.py`, reused unmodified since the
+underlying math/leakage rules do not change per channel).
+"""
+import argparse
+import csv
+import json
+import sys
+from pathlib import Path
+
+import torch
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.diag_correction_oracle01 import evaluate
+from utils.retrieval_diagnostics import load_stage2, unwrap
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--stage2_checkpoint', required=True)
+    ap.add_argument('--top_k', type=int, default=10)
+    ap.add_argument('--tau', type=float, default=None)
+    ap.add_argument('--chunk_size', type=int, default=2048)
+    ap.add_argument('--n_queries', type=int, default=200)
+    ap.add_argument('--split', default='test', choices=['train', 'val', 'test'])
+    ap.add_argument('--out_dir', required=True)
+    args = ap.parse_args()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    near_tie_thresholds = [0.001, 0.01, 0.05]
+    eps_thresholds = [0.001, 0.01, 0.05]
+
+    # Determine channel list once (cheap: no memory bank load needed for this).
+    b0_exp, b0_args = load_stage2(args.stage2_checkpoint, device=device)
+    channels = list(unwrap(b0_exp.model).target_channels())
+    del b0_exp
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    per_channel = {}
+    for c in channels:
+        print(f'[correction_oracle_diag02] === channel {c} ===')
+        result, _, _ = evaluate(args.stage2_checkpoint, args.top_k, args.tau, args.chunk_size,
+                                 args.n_queries, near_tie_thresholds, eps_thresholds, device,
+                                 args.split, channel=c)
+        per_channel[int(c)] = result
+        with open(out_dir / f'summary_channel{c}.json', 'w') as fh:
+            json.dump(result, fh, indent=2, default=str)
+        print(json.dumps(result['downstream'], indent=2))
+
+    # ---- aggregate across channels ----
+    def mean_over_channels(path_fn):
+        vals = [path_fn(per_channel[c]) for c in per_channel]
+        vals = [v for v in vals if v == v]  # drop NaN
+        return sum(vals) / max(len(vals), 1)
+
+    agg = {
+        'channels': list(per_channel.keys()),
+        'b0_mse_mean': mean_over_channels(lambda r: r['downstream']['b0_mse']),
+        'future_oracle_final_mse_mean': mean_over_channels(lambda r: r['downstream']['future_oracle_final_mse']),
+        'correction_oracle_final_mse_mean': mean_over_channels(lambda r: r['downstream']['correction_oracle_final_mse']),
+        'gain_future_vs_b0_mean': mean_over_channels(lambda r: r['downstream']['gain_future_vs_b0']),
+        'gain_correction_vs_b0_mean': mean_over_channels(lambda r: r['downstream']['gain_correction_vs_b0']),
+        'future_mean_rank_mean': mean_over_channels(lambda r: r['future_oracle']['mean_rank']),
+        'correction_mean_rank_mean': mean_over_channels(lambda r: r['correction_oracle']['mean_rank']),
+        'future_ndcg10_mean': mean_over_channels(lambda r: r['future_oracle']['ndcg10_mean']),
+        'correction_ndcg10_mean': mean_over_channels(lambda r: r['correction_oracle']['ndcg10_mean']),
+        'future_margin_abs_mean': mean_over_channels(lambda r: r['future_oracle']['margin_abs_mean']),
+        'correction_margin_abs_mean': mean_over_channels(lambda r: r['correction_oracle']['margin_abs_mean']),
+        'n_channels_correction_beats_future': sum(
+            1 for c in per_channel
+            if per_channel[c]['downstream']['correction_oracle_final_mse'] < per_channel[c]['downstream']['future_oracle_final_mse']
+        ),
+        'n_channels_total': len(per_channel),
+    }
+
+    with open(out_dir / 'summary_aggregate.json', 'w') as fh:
+        json.dump(agg, fh, indent=2, default=str)
+
+    with open(out_dir / 'per_channel_metrics.csv', 'w', newline='') as fh:
+        writer = csv.writer(fh)
+        writer.writerow(['channel', 'b0_mse', 'future_oracle_mse', 'correction_oracle_mse',
+                          'gain_future_vs_b0', 'gain_correction_vs_b0',
+                          'future_mean_rank', 'correction_mean_rank',
+                          'future_ndcg10', 'correction_ndcg10',
+                          'future_margin_abs', 'correction_margin_abs',
+                          'correction_beats_future'])
+        for c, r in per_channel.items():
+            d = r['downstream']
+            writer.writerow([
+                c, d['b0_mse'], d['future_oracle_final_mse'], d['correction_oracle_final_mse'],
+                d['gain_future_vs_b0'], d['gain_correction_vs_b0'],
+                r['future_oracle']['mean_rank'], r['correction_oracle']['mean_rank'],
+                r['future_oracle']['ndcg10_mean'], r['correction_oracle']['ndcg10_mean'],
+                r['future_oracle']['margin_abs_mean'], r['correction_oracle']['margin_abs_mean'],
+                d['correction_oracle_final_mse'] < d['future_oracle_final_mse'],
+            ])
+
+    print(json.dumps(agg, indent=2))
+    print(f'[correction_oracle_diag02] written to {out_dir}')
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,17 @@
+{
+  "experiment_id": "EXP-ONPOLICY-CHOICE01",
+  "base_experiment": "EXP-ONPOLICY-PREFIX01 (T1) + EXP-ORACLE-CHOICE01 (D1)",
+  "changed_variable": "T1's on-policy prefix + D1's Oracle-Choice CE loss, combined -- the last cell of Track A's 2x2 (prefix source x loss) table",
+  "arms": {
+    "C0": "Oracle-prefix + R2 loss -- existing, reused, MSE=0.39526",
+    "D1": "Oracle-prefix + Oracle-Choice CE -- existing, reused, MSE=0.38916",
+    "T1": "On-policy prefix + R2 loss -- existing, reused, MSE=0.37455",
+    "OPC1": "On-policy prefix + Oracle-Choice CE -- new training this experiment"
+  },
+  "scope": {"dataset": "ETTh1", "horizon": 96, "seed": 0, "top_k": 10, "tau_choice": "= base checkpoint's own tau_topk, no sweep"},
+  "sanity_checks": "PASSED (tests/test_exp_onpolicy_choice01.py, 11/11)",
+  "checkpoint_selection_criterion": "val_overlap@10 (UNCHANGED from C0/D1/T1)",
+  "decision_thresholds": {"case_A": "OPC1 < 0.37312 (beats B0)", "case_B": "0.37312 <= OPC1 < 0.37455 (beats T1, not B0)", "case_C": "OPC1 >= 0.37455 (does not even beat T1)"},
+  "explicitly_not_run": ["soft Oracle", "temperature sweep", "encoder unfreeze", "Track B correction combination",
+                          "scheduled sampling", "DAgger", "additional loss sweep", "Weather", "H720", "3 seeds"]
+}

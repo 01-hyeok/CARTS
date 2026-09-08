@@ -1,0 +1,24 @@
+{
+  "channels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "b0_mse_mean": 0.6467320446139972,
+  "future_oracle_final_mse_mean": 0.10303407216253042,
+  "correction_oracle_final_mse_mean": 0.09536023356913477,
+  "gain_future_vs_b0_mean": 0.5436979724514669,
+  "gain_correction_vs_b0_mean": 0.5513718110448625,
+  "future_mean_rank_mean": 1506.9237857142855,
+  "correction_mean_rank_mean": 2312.9252857142856,
+  "future_ndcg10_mean": 0.6560115659737161,
+  "correction_ndcg10_mean": 0.6986620455416185,
+  "future_margin_abs_mean": 0.004038938451757921,
+  "correction_margin_abs_mean": 0.0027876663072134503,
+  "n_channels_correction_beats_future": 4,
+  "n_channels_total": 7
+}

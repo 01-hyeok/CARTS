@@ -1,0 +1,40 @@
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+ETTH1_S1_96="checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth"
+ETTH1_S2_96="checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth"
+TEACHER="cache/seqfull01_teacher/ETTh1_pred96.pt"
+
+# OPC1: on-policy prefix (T1's own construction) + Oracle-Choice CE (D1's
+# own loss), frozen encoder. No SmoothL1/pairwise/soft-Oracle/aux loss.
+python -u scripts/train_onpolicy_choice01.py \
+  --base_ckpt "$ETTH1_S1_96" --teacher_cache "$TEACHER" \
+  --checkpoints checkpoints/exp_onpolicy_choice01 \
+  --model_id carts_opc1_ETTh1_H96 --des opc1_ETTh1_H96 \
+  --top_k 10 --seed 0 --chunk_size 4096 --keep_all_checkpoints
+
+OPC1_CKPT="checkpoints/exp_onpolicy_choice01/onpolicy_choice01/ETTh1/seq96_pred96/carts_opc1_ETTh1_H96/checkpoint.pth"
+
+python -u scripts/eval_margutil01_stage2.py \
+  --stage2_checkpoint "$ETTH1_S2_96" --sequential_checkpoint "$OPC1_CKPT" \
+  --teacher_cache "$TEACHER" --top_k 10 --chunk_size 2048 --utility_eval_queries 200 \
+  --out results/EXP-ONPOLICY-CHOICE01/ETTh1_H96_OPC1_stage2.json
+
+for SPLIT in test train; do
+  python -u scripts/eval_firstanchor_diag.py \
+    --stage2_checkpoint "$ETTH1_S2_96" --sequential_checkpoint "$OPC1_CKPT" \
+    --teacher_cache "$TEACHER" --top_k 10 --rank_eval_queries 200 --split "$SPLIT" \
+    --out_dir results/EXP-ONPOLICY-CHOICE01 --cell_name "ETTh1_H96_OPC1_${SPLIT}"
+
+  python -u scripts/eval_continuation_diag.py \
+    --stage2_checkpoint "$ETTH1_S2_96" --sequential_checkpoint "$OPC1_CKPT" \
+    --top_k 10 --query_budget 500 --chunk_size 2048 --split "$SPLIT" \
+    --out_dir results/EXP-ONPOLICY-CHOICE01 --cell_name "ETTh1_H96_OPC1_${SPLIT}" --anchor_policy dense_first
+done
+
+# Fills the last cell of Track A's 2x2 table (prefix x loss). C0/D1/T1
+# reused verbatim (not retrained).
+# Ran in PARALLEL with Track B1 (EXP-CORRECTION-ORACLE-DIAG02) and Track B2
+# (EXP-CORRECTION-STAGE2-SEMANTICS01), per the user's explicit parallel-
+# execution requirement -- touches none of their code/checkpoints/results.

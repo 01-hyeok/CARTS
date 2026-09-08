@@ -2668,3 +2668,189 @@ target) MIGHT be worth considering -- explicitly not started automatically.
 Full breakdown: `results/EXP-CORRECTION-ORACLE-DIAG01/REPORT.md`. Per the
 spec's STOP rule: no selector, encoder, residual encoder, or Stage-2 gate
 was trained. `EXP-CORRECTION-SELECTOR01`'s execution is not decided here.
+
+## EXP-ONPOLICY-CHOICE01 — On-policy prefix + Oracle-Choice CE, combined (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-08
+**Status:** completed. Fills the last cell of Track A's 2x2 (prefix x
+loss) table. Ran in parallel with Track B1/B2. Per the user's explicit
+STOP rule, no further experiment auto-started.
+
+### Research Question
+
+D1 (Oracle-prefix + Oracle-Choice CE) and T1 (on-policy prefix + R2 loss)
+were both independent positive single-variable interventions. Does
+combining them (on-policy prefix + Oracle-Choice CE, learning the greedy
+Oracle best action AT THE STATES THE MODEL ACTUALLY VISITS) beat T1 alone
+and cross B0?
+
+### Configuration
+
+New script `scripts/train_onpolicy_choice01.py`. `run_sequence_onpolicy_choice`
+mirrors `train_onpolicy_prefix01.run_sequence_onpolicy`'s on-policy prefix
+construction exactly, substituting `oracle_choice_step_loss` (from
+`scripts/train_oracle_choice01.py`, unmodified) for R2's SmoothL1+pairwise
+at the single loss-computation site -- the target is recomputed from the
+CURRENT on-policy state (`u_i^(t) = -A_weighted(S_hat_{t-1}+{i})`), never
+the fixed Oracle trajectory's own precomputed target. Frozen B0 encoder,
+tau_choice = base checkpoint's own tau_topk (no sweep). 11/11 mandatory
+sanity checks passed before the GPU run. Full commands:
+`results/EXP-ONPOLICY-CHOICE01/command.txt`.
+
+### Result Files
+
+`results/EXP-ONPOLICY-CHOICE01/{command.txt, config.json, sanity_summary.json,
+train_summary.json, stage2_eval.json, ETTh1_H96_OPC1_stage2.json,
+t1_diagnostic.json, t2_continuation.json, per_step_metrics.csv,
+utility_margin_diagnostics.csv, metrics.csv, REPORT.md, logs/,
+working_tree.diff, checkpoint_fingerprints.txt, env.txt, git_commit.txt}`.
+
+### Results
+
+Training: `best_epoch=4`, early-stopped at epoch 9, `wall_clock=2085.1s`,
+`peak_gpu_mem=579MiB`, no OOM. `val_top1_acc` reached 5.2% (higher than
+D1's own oracle-prefix ~1.3% at t=1 / ~0.36% mean) -- the on-policy state's
+utility landscape gives a sharper choice signal than the fixed Oracle
+trajectory's states.
+
+| Arm | Stage-2 MSE | gap_recovery | HardAggregate | t2 selected rank median | t2 regret |
+|---|---:|---:|---:|---:|---:|
+| B0 | 0.37312 | -- | -- | -- | -- |
+| C0 | 0.39526 | -0.2626 | 0.5514 | 1934.0 | 0.3498 |
+| D1 | 0.38916 | -0.2317 | 0.5480 | 88.0 | 0.1964 |
+| T1 | 0.37455 | -0.0100 | 0.4096 | 135.5 | 0.2303 |
+| **OPC1** | **0.37340** | **-0.0091** | 0.4110 | **47.0** | **0.1422** |
+
+OPC1 beats T1 on Stage-2, gap_recovery, t2 rank, and t2 regret; is
+essentially tied with T1 on HardAggregate; t1/t2 metrics are the best or
+near-best of every arm this session.
+
+### Sanity Checks
+
+`pytest tests/`: 563 passed (11 new in `tests/test_exp_onpolicy_choice01.py`,
+plus Track B1/B2's own new tests -- see their entries), same 2 pre-existing
+failures, no regression.
+
+### Conclusion
+
+**Case B**: `0.37312 <= 0.37340 < 0.37455`. Beats T1, does not beat B0
+(0.00028 short). D1's and T1's gains are combinable but SUB-additive
+(0.02186 combined Stage-2 gain vs. 0.02071+0.00610=0.02681 naive sum of
+individual gains) -- real, diminishing-but-positive returns from stacking
+both fixes, not a failure to combine. H2 (hard Choice CE brittle on-policy)
+is not supported -- training was stable throughout, no near-tie-driven
+degradation observed. This is the closest ANY arm has come to B0 this
+entire session. Full breakdown: `results/EXP-ONPOLICY-CHOICE01/REPORT.md`.
+
+---
+
+## EXP-CORRECTION-ORACLE-DIAG02 (Track B1) — multivariate Correction Set Oracle diagnostic (COMPLETE: diagnostic only, no training)
+
+**Date:** 2026-09-08
+**Status:** completed. Extends EXP-CORRECTION-ORACLE-DIAG01's channel-0
+diagnostic to all 7 ETTh1 channels. Ran in parallel with Track A and B2.
+
+### Configuration
+
+`diag_correction_oracle01.evaluate()` gained an optional `channel`
+parameter (defaults to `channels[0]`, preserving the original single-
+channel behaviour exactly); new driver `scripts/diag_correction_oracle02.py`
+calls it once per channel and aggregates. Reuses
+`tests/test_exp_correction_oracle01.py`'s 9/9 sanity checks unmodified.
+
+### Results
+
+| Metric | Future Oracle (mean) | Correction Oracle (mean) |
+|---|---:|---:|
+| Gain vs B0 | 0.5437 | **0.5514** |
+| Mean rank | **1506.9** | 2312.9 |
+| NDCG@10 | 0.656 | **0.699** |
+| Margin abs | **0.00404** | 0.00279 |
+| Channels where Correction wins on MSE | -- | **4 / 7** |
+
+Correction Oracle wins on the cross-channel mean gain and on a majority
+(4/7) of individual channels, but loses on 3 channels (3, 5, 6) -- all
+three among the easiest-to-forecast (lowest B0 MSE) channels. NDCG now
+favors Correction on the cross-channel mean (a REVERSAL from the
+channel-0-only result), while mean rank/margin still favor Future --
+learnability signals disagree with each other, not just with the exact-
+choice metrics as in the channel-0 diagnostic.
+
+### Sanity Checks
+
+`pytest tests/`: 563 passed (0 new -- reuses `test_exp_correction_oracle01.py`
+unmodified), same 2 pre-existing failures, no regression.
+
+### Conclusion
+
+Nuances, without overturning, `EXP-CORRECTION-ORACLE-DIAG01`'s Outcome
+B-B: the modest downstream advantage generalizes on average and on a
+majority of channels but is not universal, concentrated among
+harder-to-forecast channels; the negative learnability signal is now
+mixed (NDCG reverses direction) rather than uniformly negative. Full
+breakdown: `results/EXP-CORRECTION-ORACLE-DIAG02/REPORT.md`.
+
+---
+
+## EXP-CORRECTION-STAGE2-SEMANTICS01 (Track B2) — correction-aligned Stage-2 fusion, fixed reference retrieval (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-08
+**Status:** completed. Ran in parallel with Track A and B1.
+
+### Research Question
+
+Given the SAME reference retrieval (Top-K + alpha, from B0's own existing
+production score -- no new selector), does fusing the historical
+CORRECTION aggregate beat the existing FUTURE aggregate fusion Stage-2
+already uses?
+
+### Configuration
+
+New script `scripts/train_correction_stage2_semantics01.py`. No new
+retrieval selector trained; B0/base_forecast/retrieval score stay frozen.
+`layers/retrieval_gate.py::RetrievalGate` (existing, unmodified) reused
+for both C0 (`fixed_lambda=1.0`, no training) and C1 (`fixed_lambda=-1.0`,
+newly trained per channel on TRAIN, selected on VAL). `B_q`/`C_ret`/`Y_q`
+precomputed once per split (frozen, gate-independent) for fast gate
+training. 7/7 mandatory sanity checks passed, including a positive-control
+test confirming the gate training loop can recover a known gamma=0.5 on
+synthetic data.
+
+A bug (F0 MSE accumulated from the unsliced multivariate output, giving
+the same 0.37312-scale number for every channel) was caught and fixed
+before trusting results.
+
+### Results
+
+| Arm | Aggregate MSE |
+|---|---:|
+| F0 (existing) | **0.37312** |
+| C1 (learned gate) | 0.38337 |
+| C0 (fixed gamma=1) | 0.39056 |
+
+F0 beats both C0 and C1 on 6 of 7 individual channels and on the
+cross-channel aggregate. C1 consistently beats C0 on every channel
+(adaptive correction strength helps over a naive full correction), and
+the gate's gamma values (0.263-0.983) show real per-channel variation, not
+a degenerate collapse -- confirming the gate training itself worked. Only
+channel 6 (lowest B0 MSE, easiest to forecast) shows C1 beating F0.
+
+### Sanity Checks
+
+`pytest tests/`: 563 passed (7 new in
+`tests/test_exp_correction_stage2_semantics01.py`), same 2 pre-existing
+failures, no regression.
+
+### Conclusion
+
+**Outcome B2-D** on the aggregate and 6/7 channels. Per the pre-registered
+interpretation rule, this does NOT reject the Correction retrieval
+hypothesis overall -- read together with Track B1 (which found real
+oracle-level headroom for the Correction VALUE using the TRUE query
+future), the likely explanation is that reusing the EXISTING
+future-oriented Top-K (rather than a retrieval process aligned with the
+correction objective) hands the correction fusion the wrong candidates,
+independent of whether the correction value itself has merit. Full
+breakdown: `results/EXP-CORRECTION-STAGE2-SEMANTICS01/REPORT.md`. Per the
+user's explicit STOP rule, no Correction Selector training or further
+experiment was auto-started.

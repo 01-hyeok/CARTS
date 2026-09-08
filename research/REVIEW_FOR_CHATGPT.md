@@ -2123,3 +2123,81 @@ re-run, `EXP-CORRECTION-SELECTOR01`, or anything else) is started
 automatically.** Both pre-approved tracks are complete; results are ready
 for independent review (`research/NEXT_EXPERIMENT.md`) and the user's own
 next decision.
+
+---
+
+# EXP-ONPOLICY-CHOICE01 — On-policy prefix + Oracle-Choice CE, combined (COMPLETE: last cell of Track A's 2x2 table)
+
+## Research Question
+
+D1 (Oracle-prefix + Oracle-Choice CE, MSE=0.38916) and T1 (on-policy
+prefix + R2 loss, MSE=0.37455) were independent positive single-variable
+interventions. Does combining them -- learning the greedy Oracle best
+action AT THE STATES THE MODEL ACTUALLY VISITS during inference -- beat T1
+alone and finally cross B0 (0.37312)?
+
+## Method
+
+`run_sequence_onpolicy_choice` = T1's own on-policy prefix construction +
+D1's own `oracle_choice_step_loss`, substituted at the single loss call
+site (no other change). Target recomputed from the CURRENT on-policy
+state at every step, never the fixed Oracle trajectory's target. Frozen
+encoder, `tau_choice` = base checkpoint's `tau_topk` (no sweep). 11/11
+sanity checks passed before the GPU run.
+
+## Results
+
+| Arm | Stage-2 MSE | gap_recovery | HardAggregate | t2 selected rank median | t2 regret |
+|---|---:|---:|---:|---:|---:|
+| B0 | 0.37312 | -- | -- | -- | -- |
+| C0 | 0.39526 | -0.2626 | 0.5514 | 1934.0 | 0.3498 |
+| D1 | 0.38916 | -0.2317 | 0.5480 | 88.0 | 0.1964 |
+| T1 | 0.37455 | -0.0100 | 0.4096 | 135.5 | 0.2303 |
+| **OPC1** | **0.37340** | **-0.0091** | 0.4110 | **47.0** | **0.1422** |
+
+OPC1 beats T1 on Stage-2 (by 0.00115), gap_recovery, t2 selected rank, and
+t2 continuation regret -- the best combined-metric result of the entire
+session, and the closest ANY arm has come to B0 (0.00028 short). `val_top1_acc`
+reached 5.2% during training, notably higher than D1's own oracle-prefix
+accuracy (~0.36% mean) -- the on-policy utility landscape gives a sharper
+choice signal.
+
+## Conclusion
+
+**Case B**: beats T1, does not (quite) beat B0. D1's and T1's Stage-2
+gains combine SUB-additively (combined gain 0.02186 vs. naive sum
+0.02071+0.00610=0.02681) -- real but diminishing returns from stacking
+both fixes, not a failed combination. H2 (hard Choice CE brittle
+on-policy) is not supported; training was stable throughout.
+
+## Sanity checks passed
+
+`pytest tests/`: 563 passed (11 new), same 2 pre-existing failures, no
+regression.
+
+## What this does NOT establish
+
+- Whether the remaining 0.00028 gap to B0 reflects a genuine ceiling for
+  this architecture/objective family, or would close with a longer
+  training budget, different tau_choice, or another combination not yet
+  tried (all explicitly gated by this experiment's STOP rule).
+- Whether the sub-additivity pattern (combined gain < sum of individual
+  gains) would hold at other horizons/datasets.
+
+## Questions for ChatGPT
+
+44. OPC1's Stage-2 gain from combining D1+T1 is sub-additive (0.02186 vs.
+    a naive-sum expectation of 0.02681). Is sub-additivity here more likely
+    a sign of a shared underlying mechanism (both fixes partially address
+    the SAME root cause, so their benefits overlap) or of a genuine
+    trade-off between exact-choice supervision and on-policy exploration
+    (e.g. a harder, noisier target early in on-policy training)?
+45. OPC1 falls only 0.00028 short of B0 on Stage-2 MSE -- within plausible
+    seed-to-seed noise for this project's scale. Is a small (e.g. 3-seed)
+    confirmation run of OPC1 specifically (not a new intervention, just a
+    variance check) a reasonable next step before concluding whether a
+    learned set-aware selector can reliably match or beat B0, or would that
+    be premature given the STOP rule and the need for independent review
+    first?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.

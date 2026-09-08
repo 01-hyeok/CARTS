@@ -1,0 +1,18 @@
+{
+  "tests": "tests/test_exp_onpolicy_choice01.py",
+  "result": "11 passed, 0 failed",
+  "checks": {
+    "1_t0_state_matches_T1": "PASSED -- t=1 picks identical between T1's own on-policy construction and this experiment's, confirming only the loss differs",
+    "2_model_selected_t1_enters_prefix_at_t2": "PASSED",
+    "3_oracle_action_never_forced_into_prefix": "PASSED",
+    "4_recomputed_utility_matches_brute_force": "PASSED",
+    "5_no_duplicate_selection": "PASSED",
+    "6_invalid_candidate_never_selected": "PASSED",
+    "7_full_memory_candidate_count_invariant_to_chunking": "PASSED",
+    "8_choice_target_equals_current_state_utility_argmax": "PASSED",
+    "9_no_gradient_through_argmax_trajectory": "PASSED",
+    "10_ce_gradient_flows_to_setconditioner_and_utilityhead": "PASSED",
+    "11_frozen_encoder_has_no_role_in_this_module": "PASSED (structural -- no encoder forward inside run_sequence_onpolicy_choice at all)"
+  },
+  "item_12_diff_vs_T1_touches_only_loss_path": "verified by code review: scripts/train_onpolicy_choice01.py's run_sequence_onpolicy_choice is structurally identical to scripts/train_onpolicy_prefix01.py's run_sequence_onpolicy (same prefix construction, same argmax-detached next-state selection) with oracle_choice_step_loss (imported from scripts/train_oracle_choice01.py, unmodified) substituted for step_losses/pairwise_step_loss at the single loss-computation call site"
+}

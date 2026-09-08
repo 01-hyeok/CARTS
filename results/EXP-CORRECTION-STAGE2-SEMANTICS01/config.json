@@ -1,0 +1,14 @@
+{
+  "experiment_id": "EXP-CORRECTION-STAGE2-SEMANTICS01",
+  "question": "Given the SAME reference retrieval (Top-K + alpha, from B0's own existing production score, no new selector), does fusing the historical CORRECTION aggregate (residual value) beat the existing FUTURE aggregate fusion?",
+  "arms": {
+    "F0": "existing production Stage-2, unforced (value=Y_i, current fusion) -- b0_exp.model()'s own unforced forward, no new code",
+    "C0": "value=r_i=Y_i-B_i, fusion Y_final=B_q+1.0*C_ret (fixed gamma=1, RetrievalGate(fixed_lambda=1.0), no training)",
+    "C1": "value=r_i, fusion Y_final=B_q+gamma*C_ret, gamma a NEW RetrievalGate(fixed_lambda=-1.0) trained per channel on TRAIN, selected on VAL, evaluated on TEST"
+  },
+  "scope": {"dataset": "ETTh1", "horizon": 96, "seed": 0, "top_k": 10, "channels": "all 7, self-only"},
+  "critical_control": "no new retrieval selector trained; Top-K membership and alpha weights are IDENTICAL across F0/C0/C1 (computed once per batch from B0's own existing production score, before branching into the three value/fusion combinations)",
+  "sanity_checks": "PASSED (tests/test_exp_correction_stage2_semantics01.py, 7/7: residual exactness, candidate-own-past independence, fixed-gamma=1 reduces to B_q+C_ret exactly, zero-correction reduces to B0 exactly, gate input is exactly [B_q,C_ret] by construction, no gradient leak to frozen B0/selector, a positive-control test confirming the gate CAN learn a correct gamma=0.5 on a clean synthetic signal)",
+  "bug_found_and_fixed": "F0 MSE was initially accumulated from the full multivariate y_final/batch_y tensors instead of being sliced to the current channel, producing the same 0.37312-scale number for every channel regardless of c; fixed and re-run before trusting results",
+  "explicitly_not_run": ["horizon-specific gate", "multiple gate architecture sweep", "new selector training", "Weather", "H720", "3 seeds"]
+}

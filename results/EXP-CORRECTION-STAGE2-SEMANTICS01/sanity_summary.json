@@ -1,0 +1,18 @@
+{
+  "tests": "tests/test_exp_correction_stage2_semantics01.py",
+  "result": "7 passed, 0 failed",
+  "checks": {
+    "1_residual_exactness": "PASSED",
+    "2_candidate_base_forecast_independent_of_query": "PASSED",
+    "3_fixed_gamma_one_gives_base_plus_correction": "PASSED",
+    "3b_zero_correction_reduces_to_b0": "PASSED",
+    "4_gate_input_is_exactly_b_q_and_c_ret": "PASSED (verified by source inspection of RetrievalGate.forward)",
+    "6_and_7_no_gradient_leaks_to_frozen_pieces": "PASSED",
+    "positive_control_gate_learns_clean_gamma": "PASSED -- on a synthetic Y_q=B_q+0.5*C_ret+noise signal, the trained gate recovers gamma within 0.15 of the true 0.5 and beats both gamma=0 and gamma=1 baselines, confirming the training loop CAN learn a correct gate when the underlying relationship is real"
+  },
+  "items_verified_by_code_review_not_separate_unit_tests": {
+    "5_no_old_future_stage2_checkpoint_loaded": "C1's RetrievalGate is freshly constructed (`RetrievalGate(pred_len, fixed_lambda=-1.0)`) inside train_gate_c1() -- no checkpoint load call exists anywhere in this path",
+    "8_and_9_identical_topk_and_weights_across_arms": "topk_idx/alpha computed ONCE per batch inside precompute_channel_features() from learned_ref, before branching into C_ret/Y_ret -- F0's own topk/alpha come from the SAME learned_ref inside the production model forward, since B0's key_bank/score are unchanged",
+    "10_no_train_val_test_leakage": "precompute_channel_features() is called once per split with that split's own loader; gate training in train_gate_c1() only ever sees feats_train/feats_val; test features are touched only for the final, single, post-hoc evaluation"
+  }
+}

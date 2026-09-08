@@ -1,15 +1,63 @@
 # CURRENT_EXPERIMENT.md
 
 Status: **Track A (EXP-ENCODER-ANCHOR01 -> EXP-ORACLE-CHOICE01 ->
-EXP-TEACHER-FORCING-DIAG01 -> EXP-ONPOLICY-PREFIX01) is now FULLY
-COMPLETE (2026-09-08). Track B (EXP-CORRECTION-ORACLE-DIAG01, diagnostic
-only, run in parallel, touching none of Track A's code/checkpoints/
-results) is also COMPLETE.** Both sequences were pre-approved by the user
-to run in full regardless of each step's individual result (only a
-genuine technical/validity problem -- sanity failure, NaN, wrong candidate
-universe -- was grounds to stop early; none occurred). **STOP. No further
-experiment without new user approval.** Eleven experiments COMPLETE this
-session (below); results ready for independent review.
+EXP-TEACHER-FORCING-DIAG01 -> EXP-ONPOLICY-PREFIX01 -> EXP-ONPOLICY-CHOICE01,
+the last cell of the 2x2 prefix x loss table) is now FULLY COMPLETE
+(2026-09-08). Track B (EXP-CORRECTION-ORACLE-DIAG01 ->
+EXP-CORRECTION-ORACLE-DIAG02 [B1, multivariate] +
+EXP-CORRECTION-STAGE2-SEMANTICS01 [B2, correction-aligned fusion, ran in
+parallel with B1], all diagnostic/gate-only, no new selector) is also
+FULLY COMPLETE.** All experiments were pre-approved by the user to run in
+full regardless of each step's individual result (only a genuine
+technical/validity problem -- sanity failure, NaN, wrong candidate
+universe -- was grounds to stop early; none occurred; two implementation
+bugs were caught and fixed mid-flight, see EXPERIMENT_LOG.md). **STOP. No
+further experiment without new user approval** -- explicitly excluded:
+Correction Selector training, value-aware residual selector, Track A+B
+combination, soft Oracle, block-wise routing, new gate architecture
+sweep, encoder unfreeze, shortlist/reranker, additional datasets/horizons.
+Fourteen experiments COMPLETE this session (below); results ready for
+independent review.
+
+## Joint interpretation of Track A and Track B (2026-09-08)
+
+**Track A: Case 1-leaning result.** `EXP-ONPOLICY-CHOICE01` (OPC1, on-policy
+prefix + Oracle-Choice CE combined) reached Stage-2 MSE=0.37340 -- Case B
+(beats T1's 0.37455, does not quite beat B0's 0.37312, short by only
+0.00028) -- the closest ANY arm has come to B0 this entire session, and
+the best combined-metric result overall (best-or-near-best on gap_recovery,
+t2 selected rank, t2 regret, t1/t2 Spearman). D1's and T1's individual
+gains combine sub-additively but positively (combined gain 0.02186 vs.
+naive-sum 0.02681).
+
+**Track B: modest, direction-dependent evidence.** B1 (multivariate Correction
+Oracle diagnostic) confirms the Correction Set Oracle's downstream
+advantage on the cross-channel MEAN and on 4/7 individual channels, with
+NDCG now favoring Correction (reversed from the channel-0 result) while
+rank/margin still favor Future. B2 (correction-aligned Stage-2 fusion,
+SAME fixed future-oriented reference retrieval) is clearly negative on
+6/7 channels and the aggregate (Outcome B2-D) -- the existing future-value
+fusion still wins when the Top-K itself is not re-aligned to the
+correction objective.
+
+**Reading against the user's pre-registered Case 1/2/3/4 framework**: this
+outcome does not map cleanly onto any single pre-registered case --
+**Track A succeeded strongly (Case 1's own criterion: OPC1<B0) is
+NOT satisfied exactly (OPC1 is 0.00028 above B0)**, so Case 1's clean
+"Track A wins outright" framing is close but not literal; at the same
+time Track B is not "weak/negative" uniformly either (B1 is real and
+positive on average; B2 is negative). The most defensible reading,
+stated without forcing a single bucket: **Track A (the training-dynamics
+axis: loss surrogate + prefix distribution) is the dominant, best-evidenced
+lever for closing the gap to B0, coming within a hair's breadth of doing
+so; Track B (the retrieval-target-semantics axis) shows a real but
+smaller, and implementation-dependent (retrieval-alignment-sensitive),
+signal that is not yet realized in an actual Stage-2 improvement.**
+Per the user's explicit instruction, Track A and Track B results are
+NOT automatically combined into a new experiment -- this joint reading is
+handed to the independent reviewer alongside both tracks' own files
+(`research/REVIEW_FOR_CHATGPT.md`, `research/REVIEW_FOR_CHATGPTB.md`) for
+the next-direction decision.
 
 ## EXP-ENCODER-ANCHOR01 — COMPLETE (2026-09-08)
 
@@ -319,6 +367,37 @@ despite a somewhat better mean rank. Verdict: **Outcome B-B** -- real but
 modest downstream headroom gain, mixed-to-worse learnability, not strong
 enough evidence on its own to justify `EXP-CORRECTION-SELECTOR01`
 automatically. Full report: `results/EXP-CORRECTION-ORACLE-DIAG01/REPORT.md`.
+
+**13) EXP-ONPOLICY-CHOICE01 — on-policy prefix + Oracle-Choice CE,
+combined — COMPLETE, ETTh1 H96 only (2026-09-08).** Fills the last cell of
+Track A's 2x2 table. `OPC1 = T1's on-policy prefix + D1's Oracle-Choice
+CE`, frozen encoder. Stage-2 MSE=**0.37340** -- beats T1 (0.37455) and
+D1 (0.38916), 0.00028 short of B0 (0.37312), the closest of any arm this
+session. gap_recovery=-0.0091, t2 selected rank median=47.0, t2
+continuation regret=0.1422 -- best or near-best of every arm tried.
+Verdict: **Case B** (beats T1, does not quite beat B0). D1's/T1's gains
+combine sub-additively but positively. Full report:
+`results/EXP-ONPOLICY-CHOICE01/REPORT.md`.
+
+**14a) EXP-CORRECTION-ORACLE-DIAG02 (Track B1) — multivariate Correction
+Oracle diagnostic — COMPLETE, diagnostic only (2026-09-08).** Extends #12
+to all 7 channels. Correction Oracle wins on the cross-channel mean gain
+and 4/7 channels; NDCG now favors Correction (reversed from #12's
+channel-0 result), rank/margin still favor Future. Nuances, without
+overturning, Outcome B-B. Full report:
+`results/EXP-CORRECTION-ORACLE-DIAG02/REPORT.md`.
+
+**14b) EXP-CORRECTION-STAGE2-SEMANTICS01 (Track B2) — correction-aligned
+Stage-2 fusion, fixed reference retrieval — COMPLETE, ETTh1 H96 only
+(2026-09-08).** No new selector; only a small per-channel gate
+(`layers/retrieval_gate.py::RetrievalGate`, reused unmodified) newly
+trained. F0 (existing future-value fusion) beats both C0 (fixed γ=1) and
+C1 (learned γ) on 6/7 channels and the aggregate (F0=0.37312 <
+C1=0.38337 < C0=0.39056). Verdict: **Outcome B2-D** -- does not reject the
+Correction hypothesis overall (Track B1 shows real oracle-level headroom),
+but the EXISTING future-oriented Top-K likely hands the correction fusion
+the wrong candidates. Full report:
+`results/EXP-CORRECTION-STAGE2-SEMANTICS01/REPORT.md`.
 
 Per this project's workflow, the next
 step is an independent review (ChatGPT/Codex reads

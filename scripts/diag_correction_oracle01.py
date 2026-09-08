@@ -67,7 +67,7 @@ def _spearman(a, b):
 
 @torch.no_grad()
 def evaluate(s2_ckpt, k, tau_override, chunk_size, n_queries, near_tie_thresholds,
-             eps_thresholds, device, split='test'):
+             eps_thresholds, device, split='test', channel=None):
     b0_exp, b0_args = load_stage2(s2_ckpt, device=device)
     b0_exp.model.to(device)
     b0_exp._ensure_memory()
@@ -98,7 +98,10 @@ def evaluate(s2_ckpt, k, tau_override, chunk_size, n_queries, near_tie_threshold
         sources = b0_model.source_channels(c)
         if len(sources) != 1 or int(sources[0]) != int(c):
             raise ValueError(f'EXP-CORRECTION-ORACLE-DIAG01 is self-only; channel {c} has sources {sources}')
-    c0 = channels[0]  # single channel, matching this project's diagnostic convention
+    c0 = channel if channel is not None else channels[0]  # single channel per call;
+    # EXP-CORRECTION-ORACLE-DIAG02 calls evaluate() once per channel and
+    # aggregates -- this default (channels[0]) preserves EXP-CORRECTION-
+    # ORACLE-DIAG01's original single-channel behaviour unmodified.
 
     agg = {
         'b0_se': 0.0, 'ref_se': 0.0, 'future_final_se': 0.0, 'correction_final_se': 0.0, 'n': 0.0,
