@@ -1,6 +1,6 @@
 # CURRENT_EXPERIMENT.md
 
-Status: **All five approved experiments COMPLETE for their (reduced)
+Status: **All six approved experiments COMPLETE for their (reduced)
 scope. No experiment currently running. Nothing running on any GPU on
 behalf of this project.**
 
@@ -87,6 +87,36 @@ tested/not concluded: whether different hyperparameters or regularisation
 on the growing `cond(W_k)` would change this outcome. Full record:
 `research/EXPERIMENT_LOG.md` → EXP-ASYM-SCORER01, full 7-question
 evidence-based breakdown: `results/EXP-ASYM-SCORER01/REPORT.md`.
+
+**6) EXP-STRONG-SCORER-DIAG01 — R2+cosine vs. R2+much-stronger nonlinear
+residual pair scorer — COMPLETE, ETTh1 H96 only (2026-09-07).** Ceiling
+probe: `C2 = R2 + StrongResidualPairScorer` (cosine + zero-init nonlinear
+MLP residual over `[h,e,h⊙e,|h-e|]`, `trainable_params=378243`, ~87% of
+which is the new scorer head) vs. `C0 = R2 + cosine` (existing
+EXP-TOPTAIL-RANK01/R2 checkpoint, reused verbatim). Zero-init check
+`max_abs_score_deviation=0.0`. Small-N positive control PASSED (scorer/loss/
+training loop can fit a known synthetic utility landscape). Mid-experiment,
+the original training path OOM'd on GPU 1 due to holding the full autograd
+graph across all K steps x channels x candidate chunks before a single
+backward; rewritten to a memory-safe streaming design (chunked, incremental
+backward, exactly one `optimizer.step()` per batch, `FULL MEMORY -> DIRECT
+TOP-K` semantics unchanged), verified mathematically equivalent to the
+original via a dedicated gradient-equality unit test, before the real run
+(peak_gpu_mem dropped from OOM to 504MiB). **Result: no clean fit to any of
+the 3 pre-registered outcomes.** C2 shows small, real, consistent
+improvements over C0 on t1 (test) and several t2 (test) top-tail ranking
+metrics (t1 Spearman 0.213→0.225, t1 oracle rank median 99→97, t2 Spearman
+0.140→0.182), but Stage-2 MSE, `gap_recovery`, HardAggregateMSE, and the
+metrics closest to realized selector behavior (`selected true rank`,
+`continuation_regret`) are flat-to-worse (Stage-2 0.39526→0.39708,
+HardAgg 0.551→0.622). C2's train-split t1/t2 diagnostics are notably WORSE
+than its own test-split diagnostics (opposite of classic overfitting),
+consistent with `best_epoch=1` (checkpoint barely displaced from the C0
+initialization before `val_overlap@10` starts declining) rather than with a
+train-fits/test-fails story. `best_epoch=1`-then-decline on `val_overlap@10`
+now replicates across every scorer/loss arm tried this session (R1, R2, C1,
+C2). Full record: `research/EXPERIMENT_LOG.md` → EXP-STRONG-SCORER-DIAG01,
+full report: `results/EXP-STRONG-SCORER-DIAG01/REPORT.md`.
 
 **No next experiment is approved.** Per this project's workflow, the next
 step is an independent review (ChatGPT/Codex reads

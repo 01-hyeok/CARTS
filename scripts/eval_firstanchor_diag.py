@@ -36,7 +36,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from exp.exp_stage1_relation import Exp_Stage1_Relation
-from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
+from models.DenseUtilityRetriever import AsymmetricUtilityHead, StrongResidualPairScorer, UtilityHead
 from models.SequentialSetRetriever import EmptySetToken, SetConditioner
 from utils.retrieval_diagnostics import load_stage2
 
@@ -55,8 +55,11 @@ def load_trained_selector(seq_ckpt_path, device):
     empty_token = EmptySetToken(d_model).to(device)
     empty_token.load_state_dict(ckpt['empty_token_state_dict'])
     empty_token.eval()
-    if ckpt.get('scorer_mode') == 'asymmetric':
+    scorer_mode = ckpt.get('scorer_mode')
+    if scorer_mode == 'asymmetric':
         utility_head = AsymmetricUtilityHead(d_model).to(device)
+    elif scorer_mode == 'strong_pair':
+        utility_head = StrongResidualPairScorer(d_model).to(device)
     else:
         utility_head = UtilityHead().to(device)
     utility_head.load_state_dict(ckpt['utility_head_state_dict'])
@@ -133,7 +136,7 @@ def _ndcg_at_k(rel, k):
 
 
 @torch.no_grad()
-def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device):
+def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device, split='test'):
     b0_exp, b0_args = load_stage2(s2_ckpt)
     b0_exp._ensure_memory()
     b0_exp._build_key_bank()
@@ -149,7 +152,7 @@ def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device
 
     memory_x = torch.from_numpy(b0_exp.memory_bank.memory_x).float().to(device)
     teacher = torch.load(teacher_cache_path, map_location='cpu')
-    _, loader = b0_exp._get_data(flag='test', shuffle=False)
+    _, loader = b0_exp._get_data(flag=split, shuffle=False)
     channels = list(b0_model.target_channels())
 
     arms = ['dense_first', 'b0_first', 'oracle_first']
@@ -184,13 +187,13 @@ def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device
         batch_y = batch_y.float().to(device)
         cand_mask, counts = b0_exp._candidate_mask(batch_start_idx)
         valid_query = counts.to(device) >= k
-        rows = [teacher['splits']['test']['start_to_row'][int(s)] for s in batch_start_idx.tolist()]
+        rows = [teacher['splits'][split]['start_to_row'][int(s)] for s in batch_start_idx.tolist()]
 
         forced = {a: {} for a in arms}
         for c in channels:
             E = encode(seq_model, memory_x, c)
             q = encode(seq_model, batch_x, c)
-            teacher_idx_c = teacher['splits']['test']['teacher_idx'][int(c)][rows].to(device)
+            teacher_idx_c = teacher['splits'][split]['teacher_idx'][int(c)][rows].to(device)
             vq = valid_query & (teacher_idx_c[:, 0] != -1)
 
             memory_c, offset_c = b0_model._memory_value(batch_x, memory_y, memory_x_last, c)
@@ -413,10 +416,11 @@ def main():
     ap.add_argument('--rank_eval_queries', type=int, default=200)
     ap.add_argument('--out_dir', required=True)
     ap.add_argument('--cell_name', required=True)
+    ap.add_argument('--split', default='test', choices=['train', 'val', 'test'])
     args = ap.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     out = evaluate(args.stage2_checkpoint, args.sequential_checkpoint,
-                    args.teacher_cache, args.top_k, args.rank_eval_queries, device)
+                    args.teacher_cache, args.top_k, args.rank_eval_queries, device, split=args.split)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

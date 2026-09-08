@@ -1743,3 +1743,177 @@ Mahalanobis, encoder unfreezing, SetConditioner changes) was started.
 Interpretation, novelty assessment, and next-experiment recommendation
 left to the reviewer — see `research/REVIEW_FOR_CHATGPT.md`.
 
+
+## EXP-STRONG-SCORER-DIAG01 — R2 + cosine vs. R2 + strong nonlinear residual pair scorer (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-07
+**Status:** completed (1 cell, C0 vs C2). No next experiment auto-started, per
+explicit user instruction.
+
+### Research Question
+
+Is R2's remaining top-tail/continuation ranking failure and Stage-2 gap
+caused by the cosine scorer's limited expressiveness, as opposed to the
+encoder or loss? `C0 = R2 + cosine` (`UtilityHead`, existing
+EXP-TOPTAIL-RANK01/R2 checkpoint, reused verbatim) vs. `C2 = R2 +
+StrongResidualPairScorer` (`u_hat = a*cos(h_t,e_i)+b + Delta_phi(h_t,e_i)`,
+`Delta_phi` a nonlinear MLP over `[h,e,h⊙e,|h-e|]`, zero-init final layer so
+C2 ≡ C0 at construction), everything else held identical.
+
+### Configuration
+
+`models/DenseUtilityRetriever.py::StrongResidualPairScorer` added (zero-init
+final MLP layer; `forward` for the full-memory bank, `forward_batched` for
+the small per-row gathered pairwise-loss pool). `scripts/train_toptail_rank01.py`
+gained `--scorer_mode {cosine,asymmetric,strong_pair}` / `--scorer_chunk_size`
+(default `cosine`, prior behaviour unchanged); `strong_pair` runs a zero-init
+equivalence check before training (abort if `max_abs_score_deviation >=
+1e-6`). Eval scripts (`eval_margutil01_stage2.py`, `eval_firstanchor_diag.py`,
+`eval_continuation_diag.py`) read the checkpoint's own `scorer_mode` to
+instantiate the matching head; old checkpoints default to `UtilityHead`,
+unaffected. `--split {train,val,test}` (default `test`) added to
+`eval_firstanchor_diag.py`/`eval_continuation_diag.py` for the mandatory
+train-vs-test generalization diagnostic. Full commands:
+`results/EXP-STRONG-SCORER-DIAG01/command.txt`.
+
+### OOM fix (mid-experiment, reported to and approved by the user before the full run)
+
+The original `strong_pair` training path held the full autograd graph across
+all K teacher-forced steps x channels x candidate chunks before a single
+`.backward()`, which OOM'd on GPU 1 (compounded by, but not solely caused by,
+concurrent external GPU 1 usage from another user's job). Rewritten to a
+memory-safe streaming design: full-memory hard negatives mined in a chunked
+`torch.no_grad()` pass (global Top-K, never a shortlist — `FULL MEMORY ->
+DIRECT TOP-K` unaffected); the pairwise loss computed with grad on only the
+small gathered positive/hard-negative pool and backpropped immediately; the
+dense SmoothL1 term computed and backpropped per candidate chunk, freeing
+each chunk's graph before the next; `optimizer.step()` called exactly once
+per batch by the caller (`run_epoch`), never inside `strong_pair_step()`.
+`SetConditioner`'s `h_t` is recomputed fresh per chunk via a zero-arg `m_fn`
+callable (not a precomputed tensor) — necessary because the precomputed-
+tensor version double-backwards through the trainable `EmptySetToken`'s
+shared graph segment at t=0 (`RuntimeError: Trying to backward through the
+graph a second time`), caught only on real data; a dedicated regression test
+using a real `EmptySetToken` was added
+(`test_streaming_with_trainable_m_source_does_not_double_backward`).
+Mathematical equivalence to the original unchunked implementation verified
+BEFORE the real run by
+`tests/test_exp_strong_scorer_streaming.py::test_streaming_gradients_match_unchunked_reference`
+(gradient equality on every `SetConditioner`/scorer parameter, `atol=1e-4`).
+Loss normalization (chunk-sum / global valid count) and lambda weighting
+unchanged from the original R2 hybrid math. After the fix: sanity run
+completed in 33min with `peak_gpu_mem=504MiB`, no OOM (previously could not
+even complete a sanity epoch).
+
+### Changed Variable
+
+Scorer capacity only (cosine vs. cosine + zero-init nonlinear MLP residual).
+R2's hybrid loss (`lambda_smooth=1.0`), all other hyperparameters, and
+checkpoint-selection criterion (`val_overlap@10`) held identical.
+
+### Controlled Variables
+
+Frozen B0 encoder (same checkpoint), `SetConditioner`/`EmptySetToken`,
+teacher cache/definition/normalization, positive/hard-negative definition
+and sampling counts, optimizer/lr/batch/epochs/patience/seed, candidate
+validity mask, K=10, full-memory support, free-running inference, Stage-2
+architecture/aggregation/gate/fusion, evaluation scripts and query
+subsets — all identical between C0 and C2. `trainable_params`: C0=49794,
+C2=378243 (`SetConditioner`=49664, `EmptySetToken`=128,
+`StrongResidualPairScorer`=328451).
+
+### Dataset / Horizon
+
+ETTh1 H96 only, seed 0. Weather, H720, architecture sweep, encoder
+unfreezing explicitly not run.
+
+### Positive Control
+
+PASSED: `tests/test_exp_strong_scorer_diag01.py::test_smalln_positive_control_fits_known_utility_landscape`
+— `StrongResidualPairScorer` trained with the real `pairwise_step_loss` fits
+a synthetic known utility landscape (16 queries, 256 candidates, 400 steps)
+to mean oracle-best predicted rank < 20/256.
+
+### Result Files
+
+`results/EXP-STRONG-SCORER-DIAG01/{command.txt, config.json, smalln_summary.json,
+stage2_eval.json, ETTh1_H96_C2_stage2.json, t1_diagnostic.json,
+t2_continuation.json, train_vs_val_test.json, metrics.csv,
+ETTh1_H96_C2_{test,train}_summary.json,
+continuation_diag_ETTh1_H96_C2_{test,train}_dense_first.csv,
+ETTh1_H96_C2_{test,train}_dense_first_summary.json, train_summary.json,
+REPORT.md, logs/, working_tree.diff, checkpoint_fingerprints.txt, env.txt,
+git_commit.txt}`.
+
+### Results
+
+Zero-init check: `max_abs_score_deviation = 0.000e+00`. Training:
+`best_epoch=1` (`val_overlap@10=0.0098`), early-stopped at epoch 6; epoch-by-
+epoch `val_overlap@10`: 0.0098→0.0047→0.0073→0.0059→0.0057→0.0041 (monotonic
+decline after epoch 1, matching R1/R2/C1's own pattern). `wall_clock=8936.2s`,
+`peak_gpu_mem=504MiB`.
+
+| Metric | C0 (cosine) | C2 (strong pair) | Delta |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.39708 | worse (+0.00182) |
+| Delta vs B0 | +0.02214 | +0.02396 | worse |
+| gap_recovery | -0.2626 | -0.3392 | worse |
+| HardAggregate@10 (seq) | 0.5514 | 0.6224 | worse |
+| t1 Spearman within true top-1% (test) | 0.2128 | 0.2251 | **better** |
+| t1 oracle-best predicted rank median (test) | 99 | 97 | **better** |
+| t1 Top-50 containment (test) | 30.5% | 32.0% | **better** |
+| t1 Spearman within true top-1% (train, C2 only) | — | 0.1250 | (worse than C2-test) |
+| t1 oracle-best predicted rank median (train, C2 only) | — | 654 | (worse than C2-test) |
+| t2 hurt_frac (test) | 0.232 | 0.214 | **better** |
+| t2 selected true rank median (test) | 1934.0 | 3859.5 | worse |
+| t2 oracle predicted rank median (test) | 560.0 | 442.0 | **better** |
+| t2 Spearman within true top-1% (test) | 0.1404 | 0.1818 | **better** |
+| t2 continuation_regret (test) | 0.3498 | 0.3657 | worse |
+| t2 hurt_frac / spearman / regret (train, C2 only) | — | 0.324 / 0.058 / 0.294 | (worse than C2-test on hurt_frac, spearman) |
+
+C2 shows small, consistent improvements over C0 on t1 (test) and several t2
+(test) top-tail ranking metrics, but Stage-2 MSE, `gap_recovery`,
+HardAggregateMSE, `selected true rank`, and `continuation_regret` (the
+metrics closest to realized free-running selector behavior) are
+flat-to-worse. C2's own train-split t1/t2 diagnostics are notably WORSE than
+its test-split diagnostics — the opposite of classic overfitting — consistent
+with `best_epoch=1` leaving the checkpoint barely displaced from the C0
+initialization before `val_overlap@10` begins declining.
+
+### Sanity Checks
+
+`pytest tests/`: 513 passed (final full sweep after all docs assembled; 6 new in `tests/test_exp_strong_scorer_diag01.py`
++ 6 in `tests/test_exp_strong_scorer_streaming.py`, +1 shared fixture change
+elsewhere), same 2 pre-existing failures, no regression. Small-N positive
+control, zero-init equivalence, chunked==unchunked scoring equivalence,
+streaming-vs-unchunked gradient equivalence, and the `EmptySetToken`
+double-backward regression test all verified — full checklist in
+`results/EXP-STRONG-SCORER-DIAG01/REPORT.md`.
+
+### Implementation Notes
+
+New class: `models/DenseUtilityRetriever.py::StrongResidualPairScorer`.
+Modified: `scripts/train_toptail_rank01.py` (`--scorer_mode strong_pair`,
+`mine_pairs()` factored out, `strong_pair_step()` streaming path,
+`run_epoch()` streaming branch), `scripts/eval_margutil01_stage2.py`,
+`scripts/eval_firstanchor_diag.py`, `scripts/eval_continuation_diag.py`
+(scorer-mode-aware loading; `--split` support). New tests:
+`tests/test_exp_strong_scorer_diag01.py`,
+`tests/test_exp_strong_scorer_streaming.py`.
+
+### Conclusion
+
+No clean fit to any of the 3 pre-registered outcomes (A: capacity bottleneck
+confirmed; B: train fits but generalization fails; C: even a strong scorer
+can't fit/use supervision). The positive control (§ above) rules out C. The
+mixed test-split result (small ranking-metric gains, flat-to-worse Stage-2/
+HardAggregate/realized-selection metrics) combined with `best_epoch=1` and
+train-worse-than-test on C2's own diagnostics does not match A or a classic
+B either — the more parsimonious reading is that the bottleneck is not
+per-candidate scorer expressiveness, but something in the sequential
+teacher-forced training signal itself (dense marginal utility target,
+weighted-set greedy oracle supervision, or train/inference distribution
+mismatch) that stalls every scorer/loss arm tried this session at
+`best_epoch=1`. Full 12-point breakdown:
+`results/EXP-STRONG-SCORER-DIAG01/REPORT.md`. Per the user's explicit
+instruction, no further experiment was started.

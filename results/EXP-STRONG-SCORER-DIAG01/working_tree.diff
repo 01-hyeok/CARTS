@@ -1,0 +1,534 @@
+diff --git a/models/DenseUtilityRetriever.py b/models/DenseUtilityRetriever.py
+index a138ec0..5e6c403 100644
+--- a/models/DenseUtilityRetriever.py
++++ b/models/DenseUtilityRetriever.py
+@@ -54,3 +54,72 @@ class AsymmetricUtilityHead(nn.Module):
+     def forward(self, h_t, candidate_embeddings):
+         cosine = self.metric.score(h_t, candidate_embeddings)
+         return self.scale * cosine + self.bias
++
++
++class StrongResidualPairScorer(nn.Module):
++    """EXP-STRONG-SCORER-DIAG01: s_i = a*cos(h_t,e_i) + b + Delta_phi(h_t,e_i).
++
++    `Delta_phi` is a pairwise nonlinear MLP over `[h, e, h*e, |h-e|]`
++    (4D input), zero-initialised at its final layer so this is numerically
++    identical to `UtilityHead` at construction -- verified by
++    `scripts/train_toptail_rank01.py`'s startup check
++    (`max_abs_score_deviation < 1e-6`). This is a diagnostic ceiling probe,
++    not a proposed production scorer: does substantially more pairwise
++    capacity, ADDED ON TOP OF the already-best R2 cosine solution rather
++    than trained from scratch, let held-out top-tail utility be learned at
++    all? `candidate_embeddings` is always the FULL memory bank (or a chunk
++    of it the caller passes in for its own reasons, e.g.
++    `utils.dense_utility`'s chunking) -- this module chunks internally over
++    the candidate dimension purely for GPU memory (`chunk_size`), never to
++    reduce the candidate universe; every valid candidate is still scored.
++    """
++
++    def __init__(self, dim, chunk_size=1024):
++        super().__init__()
++        self.scale = nn.Parameter(torch.tensor(1.0))
++        self.bias = nn.Parameter(torch.tensor(0.0))
++        d4 = 4 * dim
++        self.mlp = nn.Sequential(
++            nn.Linear(d4, d4), nn.GELU(),
++            nn.Linear(d4, dim), nn.GELU(),
++            nn.Linear(dim, 1),
++        )
++        nn.init.zeros_(self.mlp[-1].weight)
++        nn.init.zeros_(self.mlp[-1].bias)
++        self.chunk_size = int(chunk_size)
++
++    def _delta(self, h_t, candidate_embeddings):
++        bsz, dim = h_t.shape
++        n = candidate_embeddings.size(0)
++        cs = self.chunk_size
++        out = h_t.new_empty(bsz, n)
++        for start in range(0, n, cs):
++            end = min(start + cs, n)
++            e_chunk = candidate_embeddings[start:end]
++            c = e_chunk.size(0)
++            h_exp = h_t.unsqueeze(1).expand(bsz, c, dim)
++            e_exp = e_chunk.unsqueeze(0).expand(bsz, c, dim)
++            feat = torch.cat([h_exp, e_exp, h_exp * e_exp, (h_exp - e_exp).abs()], dim=-1)
++            out[:, start:end] = self.mlp(feat).squeeze(-1)
++        return out
++
++    def forward(self, h_t, candidate_embeddings):
++        base = self.scale * torch.matmul(h_t, candidate_embeddings.transpose(0, 1)) + self.bias
++        return base + self._delta(h_t, candidate_embeddings)
++
++    def forward_batched(self, h_t, candidate_embeddings_batched):
++        """Per-row candidate set (e.g. a small gathered positive/hard-negative
++        pool that differs per query), as opposed to `forward`'s single
++        candidate bank shared across the whole batch. `h_t`: [B,D].
++        `candidate_embeddings_batched`: [B,M,D]. Returns [B,M]. Used only for
++        the small pairwise-loss forward in the memory-safe streaming training
++        path (`scripts/train_toptail_rank01.py`'s strong_pair step) -- the
++        base+delta formula is identical to `forward`, just per-row candidates
++        instead of a shared bank, so no shortcut/approximation is introduced.
++        """
++        base = self.scale * (h_t.unsqueeze(1) * candidate_embeddings_batched).sum(-1) + self.bias
++        h_exp = h_t.unsqueeze(1).expand_as(candidate_embeddings_batched)
++        e = candidate_embeddings_batched
++        feat = torch.cat([h_exp, e, h_exp * e, (h_exp - e).abs()], dim=-1)
++        delta = self.mlp(feat).squeeze(-1)
++        return base + delta
+diff --git a/scripts/eval_continuation_diag.py b/scripts/eval_continuation_diag.py
+index 9d4347c..805f722 100644
+--- a/scripts/eval_continuation_diag.py
++++ b/scripts/eval_continuation_diag.py
+@@ -53,7 +53,7 @@ def _rank_of(value_idx, order):
+ 
+ 
+ @torch.no_grad()
+-def evaluate_cell(s2_ckpt, seq_ckpt, anchor_policy, k, query_budget, chunk_size, device):
++def evaluate_cell(s2_ckpt, seq_ckpt, anchor_policy, k, query_budget, chunk_size, device, split='test'):
+     b0_exp, b0_args = load_stage2(s2_ckpt)
+     b0_exp._ensure_memory()
+     b0_exp._build_key_bank()
+@@ -64,7 +64,7 @@ def evaluate_cell(s2_ckpt, seq_ckpt, anchor_policy, k, query_budget, chunk_size,
+ 
+     seq_model, set_cond, empty_token, utility_head, seq_args = load_trained_selector(seq_ckpt, device)
+     tau = float(seq_args.tau_topk)
+-    _, loader = b0_exp._get_data(flag='test', shuffle=False)
++    _, loader = b0_exp._get_data(flag=split, shuffle=False)
+     channels = list(b0_model.target_channels())
+ 
+     rows = []
+@@ -306,12 +306,13 @@ def main():
+     ap.add_argument('--out_dir', required=True)
+     ap.add_argument('--cell_name', required=True)
+     ap.add_argument('--anchor_policy', required=True, choices=['dense_first', 'b0_first', 'oracle_first'])
++    ap.add_argument('--split', default='test', choices=['train', 'val', 'test'])
+     args = ap.parse_args()
+     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+ 
+     rows, sanity = evaluate_cell(args.stage2_checkpoint, args.sequential_checkpoint,
+                                   args.anchor_policy, args.top_k, args.query_budget,
+-                                  args.chunk_size, device)
++                                  args.chunk_size, device, split=args.split)
+     summary = summarize(rows)
+     summary['_sanity'] = sanity
+ 
+diff --git a/scripts/eval_firstanchor_diag.py b/scripts/eval_firstanchor_diag.py
+index ea93f6b..60ac586 100644
+--- a/scripts/eval_firstanchor_diag.py
++++ b/scripts/eval_firstanchor_diag.py
+@@ -36,7 +36,7 @@ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+ 
+ from exp.exp_stage1_relation import Exp_Stage1_Relation
+-from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
++from models.DenseUtilityRetriever import AsymmetricUtilityHead, StrongResidualPairScorer, UtilityHead
+ from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+ from utils.retrieval_diagnostics import load_stage2
+ 
+@@ -55,8 +55,11 @@ def load_trained_selector(seq_ckpt_path, device):
+     empty_token = EmptySetToken(d_model).to(device)
+     empty_token.load_state_dict(ckpt['empty_token_state_dict'])
+     empty_token.eval()
+-    if ckpt.get('scorer_mode') == 'asymmetric':
++    scorer_mode = ckpt.get('scorer_mode')
++    if scorer_mode == 'asymmetric':
+         utility_head = AsymmetricUtilityHead(d_model).to(device)
++    elif scorer_mode == 'strong_pair':
++        utility_head = StrongResidualPairScorer(d_model).to(device)
+     else:
+         utility_head = UtilityHead().to(device)
+     utility_head.load_state_dict(ckpt['utility_head_state_dict'])
+@@ -133,7 +136,7 @@ def _ndcg_at_k(rel, k):
+ 
+ 
+ @torch.no_grad()
+-def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device):
++def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device, split='test'):
+     b0_exp, b0_args = load_stage2(s2_ckpt)
+     b0_exp._ensure_memory()
+     b0_exp._build_key_bank()
+@@ -149,7 +152,7 @@ def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device
+ 
+     memory_x = torch.from_numpy(b0_exp.memory_bank.memory_x).float().to(device)
+     teacher = torch.load(teacher_cache_path, map_location='cpu')
+-    _, loader = b0_exp._get_data(flag='test', shuffle=False)
++    _, loader = b0_exp._get_data(flag=split, shuffle=False)
+     channels = list(b0_model.target_channels())
+ 
+     arms = ['dense_first', 'b0_first', 'oracle_first']
+@@ -184,13 +187,13 @@ def evaluate(s2_ckpt, seq_ckpt, teacher_cache_path, k, rank_eval_queries, device
+         batch_y = batch_y.float().to(device)
+         cand_mask, counts = b0_exp._candidate_mask(batch_start_idx)
+         valid_query = counts.to(device) >= k
+-        rows = [teacher['splits']['test']['start_to_row'][int(s)] for s in batch_start_idx.tolist()]
++        rows = [teacher['splits'][split]['start_to_row'][int(s)] for s in batch_start_idx.tolist()]
+ 
+         forced = {a: {} for a in arms}
+         for c in channels:
+             E = encode(seq_model, memory_x, c)
+             q = encode(seq_model, batch_x, c)
+-            teacher_idx_c = teacher['splits']['test']['teacher_idx'][int(c)][rows].to(device)
++            teacher_idx_c = teacher['splits'][split]['teacher_idx'][int(c)][rows].to(device)
+             vq = valid_query & (teacher_idx_c[:, 0] != -1)
+ 
+             memory_c, offset_c = b0_model._memory_value(batch_x, memory_y, memory_x_last, c)
+@@ -413,10 +416,11 @@ def main():
+     ap.add_argument('--rank_eval_queries', type=int, default=200)
+     ap.add_argument('--out_dir', required=True)
+     ap.add_argument('--cell_name', required=True)
++    ap.add_argument('--split', default='test', choices=['train', 'val', 'test'])
+     args = ap.parse_args()
+     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+     out = evaluate(args.stage2_checkpoint, args.sequential_checkpoint,
+-                    args.teacher_cache, args.top_k, args.rank_eval_queries, device)
++                    args.teacher_cache, args.top_k, args.rank_eval_queries, device, split=args.split)
+ 
+     out_dir = Path(args.out_dir)
+     out_dir.mkdir(parents=True, exist_ok=True)
+diff --git a/scripts/eval_margutil01_stage2.py b/scripts/eval_margutil01_stage2.py
+index 7587773..aa4893f 100644
+--- a/scripts/eval_margutil01_stage2.py
++++ b/scripts/eval_margutil01_stage2.py
+@@ -34,7 +34,7 @@ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+ 
+ from exp.exp_stage1_relation import Exp_Stage1_Relation
+-from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
++from models.DenseUtilityRetriever import AsymmetricUtilityHead, StrongResidualPairScorer, UtilityHead
+ from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+ from scripts.train_margutil01 import run_sequence_dense
+ from utils.dense_utility import candidate_weights, dense_utility
+@@ -55,8 +55,11 @@ def load_trained_selector(seq_ckpt_path, device):
+     empty_token = EmptySetToken(d_model).to(device)
+     empty_token.load_state_dict(ckpt['empty_token_state_dict'])
+     empty_token.eval()
+-    if ckpt.get('scorer_mode') == 'asymmetric':
++    scorer_mode = ckpt.get('scorer_mode')
++    if scorer_mode == 'asymmetric':
+         utility_head = AsymmetricUtilityHead(d_model).to(device)
++    elif scorer_mode == 'strong_pair':
++        utility_head = StrongResidualPairScorer(d_model).to(device)
+     else:
+         utility_head = UtilityHead().to(device)
+     utility_head.load_state_dict(ckpt['utility_head_state_dict'])
+diff --git a/scripts/train_toptail_rank01.py b/scripts/train_toptail_rank01.py
+index 0e8e9d8..1011651 100644
+--- a/scripts/train_toptail_rank01.py
++++ b/scripts/train_toptail_rank01.py
+@@ -35,7 +35,7 @@ if str(REPO_ROOT) not in sys.path:
+     sys.path.insert(0, str(REPO_ROOT))
+ 
+ from exp.exp_stage1_relation import Exp_Stage1_Relation
+-from models.DenseUtilityRetriever import AsymmetricUtilityHead, UtilityHead
++from models.DenseUtilityRetriever import AsymmetricUtilityHead, StrongResidualPairScorer, UtilityHead
+ from models.SequentialSetRetriever import EmptySetToken, SetConditioner
+ from scripts.train_margutil01 import build_experiment, encode, memory_value, run_sequence_dense
+ from utils.dense_utility import candidate_weights, dense_utility, normalize_utility
+@@ -172,6 +172,142 @@ def step_losses(u_hat_steps, u_target_steps, valid_steps, query_valid, loss_mode
+     return losses, diags
+ 
+ 
++def mine_pairs(u_target, u_hat_nograd, valid_mask, top_pct=0.01, min_pos=10,
++               predicted_top_h_min=50, num_pos_samples=16, num_hard_neg_samples=32):
++    """Global full-memory positive/hard-negative index mining, factored out
++    of `pairwise_step_loss` so the memory-safe streaming path
++    (`strong_pair_step`) can mine indices from a no-grad full-memory
++    predicted-score pass, then build a small per-row gathered forward graph
++    from just those indices -- never holding a graph over the full N.
++    Returns (pos_idx [B,P], neg_idx [B,cap], neg_valid [B,cap])."""
++    bsz, n = u_hat_nograd.shape
++    neg_inf = torch.finfo(u_target.dtype).min / 4
++    valid_count = valid_mask.sum(dim=-1)
++    median_valid = int(valid_count.float().median().clamp_min(2))
++
++    n_pos = min(max(min_pos, int(median_valid * top_pct + 0.999999)), median_valid, n)
++    predicted_top_h = min(max(predicted_top_h_min, n_pos), median_valid, n)
++
++    target_masked = u_target.masked_fill(~valid_mask, neg_inf)
++    pos_idx = torch.topk(target_masked, n_pos, dim=-1).indices
++    positive_mask = torch.zeros_like(valid_mask).scatter(1, pos_idx, True)
++
++    pred_masked = u_hat_nograd.masked_fill(~valid_mask, neg_inf)
++    pred_top_idx = torch.topk(pred_masked, predicted_top_h, dim=-1).indices
++    pred_top_is_positive = positive_mask.gather(1, pred_top_idx)
++    pred_top_scores = u_hat_nograd.gather(1, pred_top_idx)
++    hard_neg_priority = pred_top_scores.masked_fill(pred_top_is_positive, neg_inf)
++    cap = min(num_hard_neg_samples, predicted_top_h)
++    kept_local = torch.topk(hard_neg_priority, cap, dim=-1)
++    neg_idx = pred_top_idx.gather(1, kept_local.indices)
++    neg_valid = kept_local.values > (neg_inf / 2)
++    pos_idx = pos_idx[:, :min(num_pos_samples, n_pos)]
++    return pos_idx, neg_idx, neg_valid
++
++
++def strong_pair_step(q, h_state_inputs, E, cand_mask, set_conditioner, utility_head,
++                      u_target, valid_now, tau, lambda_rank, grad_scale, chunk_size, train):
++    """Memory-safe streaming computation of ONE teacher-forced step's hybrid
++    loss for `scorer_mode=strong_pair`, replacing `step_losses`'s
++    hold-the-whole-graph approach for this (expensive) scorer only --
++    `cosine`/`asymmetric` are untouched and still use the original path.
++
++    Never holds an autograd graph over the full candidate bank: (1) mines
++    global positive/hard-negative indices from a NO-GRAD full-memory
++    predicted-score pass (chunked internally by the scorer itself, but no
++    graph retained since no_grad); (2) the pairwise loss is a small forward
++    on just the gathered positive/hard-negative candidates (WITH grad,
++    backward immediately, `retain_graph=False`); (3) the dense SmoothL1
++    target is matched chunk-by-chunk, each chunk getting its OWN fresh
++    `h_t = SetConditioner(...)` forward (never sharing/retaining one h_t's
++    graph across chunks) and its own immediate backward. `optimizer.step()`
++    is never called here -- only `.backward()`, so gradients accumulate
++    exactly as they would from a single full-batch backward (linearity of
++    differentiation), and the caller calls `optimizer.step()` once after
++    every step/channel/chunk in the batch has contributed.
++
++    `grad_scale` folds in the 1/K and 1/num_channels normalisation the
++    original `run_epoch` applied before its single backward() call, so the
++    accumulated gradient here is mathematically identical to that call.
++
++    `h_state_inputs = (q, m_fn)`: `m_fn` is a ZERO-ARG CALLABLE returning a
++    FRESH set-state summary tensor on every call, not a precomputed tensor.
++    This matters specifically at t=1 (empty selected set), where `m` comes
++    from `EmptySetToken` -- a TRAINABLE module. A precomputed `m` tensor
++    reused across multiple `set_conditioner(q, m)` forward+immediate-backward
++    calls would silently share that upstream (EmptySetToken) portion of the
++    graph across calls, and the second `.backward()` on it would raise
++    ("Trying to backward through the graph a second time") -- caught by a
++    real-data GPU run before the full experiment started; `m_fn()` gives
++    every chunk/pair-forward its own independent graph all the way back
++    through EmptySetToken, exactly like `set_conditioner`'s own fresh
++    per-chunk forward already did. For t>1, `m` has no trainable upstream
++    (mean of frozen candidate embeddings at fixed oracle-prefix indices), so
++    `m_fn` recomputing it is a cheap no-op recomputation, not a correctness
++    requirement -- but using the same callable for both cases keeps this
++    function's contract uniform and correct regardless of t.
++
++    Returns a diagnostics dict (python floats only, no tensors retained).
++    """
++    q_state, m_fn = h_state_inputs
++    bsz, n = u_target.shape
++
++    with torch.no_grad():
++        h_nograd = set_conditioner(q_state, m_fn())
++        u_hat_nograd = utility_head(h_nograd, E)
++        u_norm = normalize_utility(u_target, valid_now)
++        pos_idx, neg_idx, neg_valid = mine_pairs(u_target, u_hat_nograd, valid_now)
++        valid_count_row = valid_now.sum(dim=-1).clamp_min(1).float()
++        pos_scores_ng = u_hat_nograd.gather(1, pos_idx)
++        neg_scores_ng = u_hat_nograd.gather(1, neg_idx)
++        margin_val = float((pos_scores_ng.mean(dim=-1) - neg_scores_ng.mean(dim=-1)).mean())
++        valid_vals = u_hat_nograd[valid_now]
++        score_std_val = float(valid_vals.std()) if valid_vals.numel() > 1 else float('nan')
++
++    # ---- (2) pairwise: small per-row gathered forward, WITH grad ----
++    pos_e = E[pos_idx]  # [B, P, D]
++    neg_e = E[neg_idx]  # [B, cap, D]
++    h_pair = set_conditioner(q_state, m_fn())
++    pos_scores = utility_head.forward_batched(h_pair, pos_e)
++    neg_scores = utility_head.forward_batched(h_pair, neg_e)
++    diff = pos_scores.unsqueeze(-1) - neg_scores.unsqueeze(1)  # [B, P, cap]
++    pair_valid = neg_valid.unsqueeze(1).expand_as(diff) & (valid_count_row.unsqueeze(-1).unsqueeze(-1) >= 2)
++    loss_terms = F.softplus(-diff)
++    weight = pair_valid.float()
++    wsum = weight.sum(dim=(1, 2))
++    row_has_pairs = wsum > 0
++    pairwise_loss_val = float('nan')
++    if bool(row_has_pairs.any()):
++        per_row = (loss_terms * weight).sum(dim=(1, 2)) / wsum.clamp_min(1.0)
++        pair_loss = per_row[row_has_pairs].mean()
++        pairwise_loss_val = float(pair_loss.detach())
++        if train:
++            (lambda_rank * grad_scale * pair_loss).backward()
++
++    # ---- (3) SmoothL1: chunked, fresh h_t per chunk, immediate backward ----
++    smoothl1_total = 0.0
++    for start in range(0, n, chunk_size):
++        end = min(start + chunk_size, n)
++        e_chunk = E[start:end]
++        h_chunk = set_conditioner(q_state, m_fn())
++        u_hat_chunk = utility_head(h_chunk, e_chunk)
++        target_chunk = u_norm[:, start:end]
++        valid_chunk = valid_now[:, start:end]
++        diff_chunk = F.smooth_l1_loss(u_hat_chunk, target_chunk, reduction='none')
++        weight_chunk = valid_chunk.float()
++        chunk_partial = (diff_chunk * weight_chunk).sum(dim=-1)  # [B]
++        chunk_loss = (chunk_partial / valid_count_row).mean()
++        smoothl1_total += float(chunk_loss.detach())
++        if train:
++            (grad_scale * chunk_loss).backward()
++
++    return {
++        'pairwise_loss': pairwise_loss_val, 'smoothl1_loss': smoothl1_total,
++        'pos_score_mean': float(pos_scores_ng.mean()), 'neg_score_mean': float(neg_scores_ng.mean()),
++        'margin': margin_val, 'score_std': score_std_val,
++    }
++
++
+ def overlap_at_k(picks, teacher_idx, query_valid):
+     k = picks.size(1)
+     overlaps = []
+@@ -196,10 +332,16 @@ def main():
+     ap.add_argument('--seed', type=int, default=0)
+     ap.add_argument('--loss_mode', required=True, choices=['smoothl1', 'pairwise', 'hybrid'])
+     ap.add_argument('--lambda_rank', type=float, default=1.0)
+-    ap.add_argument('--scorer_mode', default='cosine', choices=['cosine', 'asymmetric'],
++    ap.add_argument('--scorer_mode', default='cosine', choices=['cosine', 'asymmetric', 'strong_pair'],
+                      help='EXP-ASYM-SCORER01: cosine (default, UtilityHead, EXP-TOPTAIL-RANK01 '
+-                          'unchanged) or asymmetric (AsymmetricUtilityHead, identity-init-equivalent '
+-                          'to cosine at step 0 -- verified before training starts).')
++                          'unchanged), asymmetric (AsymmetricUtilityHead), or strong_pair '
++                          '(EXP-STRONG-SCORER-DIAG01: StrongResidualPairScorer, a zero-init '
++                          'nonlinear residual ON TOP OF the base cosine score). All non-cosine '
++                          'modes are identity/zero-init-equivalent to cosine at step 0 -- verified '
++                          'before training starts.')
++    ap.add_argument('--scorer_chunk_size', type=int, default=1024,
++                     help='strong_pair only: candidate-dimension chunk size for the pairwise MLP '
++                          '(GPU-memory optimisation only -- every valid candidate is still scored).')
+     cli = ap.parse_args()
+ 
+     overrides = {
+@@ -247,6 +389,21 @@ def main():
+             raise RuntimeError(
+                 f'asymmetric scorer is not identity-initialised to cosine (deviation={deviation:.3e} '
+                 f'>= 1e-6) -- refusing to start an expensive training run on a broken controlled variable')
++    elif cli.scorer_mode == 'strong_pair':
++        utility_head = StrongResidualPairScorer(d_model, chunk_size=cli.scorer_chunk_size).to(device)
++        gen = torch.Generator(device=device).manual_seed(args.seed)
++        h_probe = torch.nn.functional.normalize(torch.randn(32, d_model, device=device, generator=gen), dim=-1)
++        e_probe = torch.nn.functional.normalize(torch.randn(256, d_model, device=device, generator=gen), dim=-1)
++        with torch.no_grad():
++            base_probe = utility_head.scale * torch.matmul(h_probe, e_probe.transpose(0, 1)) + utility_head.bias
++            full_probe = utility_head(h_probe, e_probe)
++            deviation = float((full_probe - base_probe).abs().max())
++        print(f'[toptail_rank01] scorer_mode=strong_pair zero-init check: '
++              f'max_abs_score_deviation={deviation:.3e} (must be < 1e-6)')
++        if deviation >= 1e-6:
++            raise RuntimeError(
++                f'strong_pair residual is not zero-initialised (deviation={deviation:.3e} >= 1e-6) '
++                f'-- refusing to start an expensive training run on a broken controlled variable')
+     else:
+         utility_head = UtilityHead().to(device)
+     trainable_params = (list(set_conditioner.parameters()) + list(empty_token.parameters())
+@@ -299,18 +456,70 @@ def main():
+                     teacher_idx = teacher_rows(batch_start_idx, c, split)
+                     query_valid = teacher_idx[:, 0] != -1
+ 
+-                    u_hat_steps, u_target_steps, valid_steps, _ = run_sequence_dense(
+-                        q, E, cand_mask, set_conditioner, empty_token, utility_head,
+-                        futures, query_future, tau, k, cli.chunk_size,
+-                        teacher_idx=teacher_idx)
+-                    losses, diags = step_losses(u_hat_steps, u_target_steps, valid_steps,
+-                                                 query_valid, cli.loss_mode, cli.lambda_rank)
+-                    batch_loss = batch_loss + sum(losses) / k
+-                    for d in diags:
+-                        for kk, vv in d.items():
+-                            if vv == vv:  # skip NaN
+-                                diag_sums[kk] = diag_sums.get(kk, 0.0) + vv
+-                    diag_n += sum(1 for d in diags if d)
++                    if cli.scorer_mode == 'strong_pair' and train:
++                        # Memory-safe streaming path (see strong_pair_step's
++                        # own docstring): never holds an autograd graph over
++                        # the full candidate bank across K steps/chunks.
++                        # backward() is called incrementally inside
++                        # strong_pair_step; batch_loss stays a float for
++                        # logging only, optimizer.step() still happens once
++                        # below, after every step/channel/chunk in this
++                        # batch has contributed its gradient.
++                        w_fixed = candidate_weights(torch.matmul(q, E.transpose(0, 1)), cand_mask, tau)
++                        selected_mask = torch.zeros_like(cand_mask)
++                        step_loss_sum = 0.0
++                        for t in range(k):
++                            with torch.no_grad():
++                                prefix = teacher_idx[:, :t].clamp_min(0)
++                                a_dense = dense_utility(prefix, w_fixed, futures, query_future, chunk_size=cli.chunk_size)
++                                u_target = -a_dense
++                                valid_now = cand_mask & ~selected_mask
++                            u_target_v = u_target[query_valid]
++                            valid_v = valid_now[query_valid]
++                            q_v = q[query_valid]
++                            bsz_v = q_v.size(0)
++
++                            def m_fn(t=t, bsz_v=bsz_v):
++                                # Fresh graph every call -- see strong_pair_step's
++                                # docstring: a precomputed m tensor reused across
++                                # multiple backward() calls double-frees the
++                                # EmptySetToken portion of the graph at t=0.
++                                if t == 0:
++                                    return empty_token(bsz_v, device, q.dtype)
++                                return E[teacher_idx[query_valid][:, :t]].mean(dim=1)
++
++                            step_diag = {}
++                            if bsz_v > 0:
++                                step_diag = strong_pair_step(
++                                    q_v, (q_v, m_fn), E, cand_mask[query_valid], set_conditioner,
++                                    utility_head, u_target_v, valid_v, tau, cli.lambda_rank,
++                                    grad_scale=1.0 / k / len(channel_list),
++                                    chunk_size=cli.scorer_chunk_size, train=True)
++                                step_loss_sum += step_diag.get('smoothl1_loss', 0.0) + (
++                                    cli.lambda_rank * step_diag.get('pairwise_loss', 0.0)
++                                    if step_diag.get('pairwise_loss', float('nan')) == step_diag.get('pairwise_loss', float('nan'))
++                                    else 0.0)
++                            for kk, vv in step_diag.items():
++                                if vv == vv:
++                                    diag_sums[kk] = diag_sums.get(kk, 0.0) + vv
++                            if step_diag:
++                                diag_n += 1
++                            nxt = teacher_idx[:, t:t + 1].clamp_min(0)
++                            selected_mask = selected_mask.scatter(1, nxt, True)
++                        batch_loss = batch_loss + step_loss_sum / k
++                    else:
++                        u_hat_steps, u_target_steps, valid_steps, _ = run_sequence_dense(
++                            q, E, cand_mask, set_conditioner, empty_token, utility_head,
++                            futures, query_future, tau, k, cli.chunk_size,
++                            teacher_idx=teacher_idx)
++                        losses, diags = step_losses(u_hat_steps, u_target_steps, valid_steps,
++                                                     query_valid, cli.loss_mode, cli.lambda_rank)
++                        batch_loss = batch_loss + sum(losses) / k
++                        for d in diags:
++                            for kk, vv in d.items():
++                                if vv == vv:  # skip NaN
++                                    diag_sums[kk] = diag_sums.get(kk, 0.0) + vv
++                        diag_n += sum(1 for d in diags if d)
+ 
+                     if not train:
+                         with torch.no_grad():
+@@ -319,15 +528,30 @@ def main():
+                                 futures, query_future, tau, k, cli.chunk_size, teacher_idx=None)
+                         overlap_sum += overlap_at_k(picks, teacher_idx, query_valid) * int(query_valid.sum())
+                         overlap_n += int(query_valid.sum())
+-                batch_loss = batch_loss / len(channel_list)
+-                if train:
+-                    batch_loss.backward()
+-                    assert all(p.grad is None for p in model.encoder.parameters()), (
+-                        'encoder must stay frozen -- an encoder parameter received a gradient')
+-                    sc_grads = [p.grad for p in set_conditioner.parameters() if p.grad is not None]
+-                    sc_grad_norm = sum(g.norm().item() ** 2 for g in sc_grads) ** 0.5 if sc_grads else 0.0
+-                    optimizer.step()
+-                total_loss += float(batch_loss.detach())
++                streaming = (cli.scorer_mode == 'strong_pair' and train)
++                if streaming:
++                    # strong_pair_step already called .backward() incrementally
++                    # per step/chunk with grad_scale=1/k/len(channel_list)
++                    # baked in -- batch_loss is a plain float here, nothing
++                    # left to backward.
++                    batch_loss_value = batch_loss / len(channel_list)
++                    if train:
++                        assert all(p.grad is None for p in model.encoder.parameters()), (
++                            'encoder must stay frozen -- an encoder parameter received a gradient')
++                        sc_grads = [p.grad for p in set_conditioner.parameters() if p.grad is not None]
++                        sc_grad_norm = sum(g.norm().item() ** 2 for g in sc_grads) ** 0.5 if sc_grads else 0.0
++                        optimizer.step()
++                else:
++                    batch_loss = batch_loss / len(channel_list)
++                    if train:
++                        batch_loss.backward()
++                        assert all(p.grad is None for p in model.encoder.parameters()), (
++                            'encoder must stay frozen -- an encoder parameter received a gradient')
++                        sc_grads = [p.grad for p in set_conditioner.parameters() if p.grad is not None]
++                        sc_grad_norm = sum(g.norm().item() ** 2 for g in sc_grads) ** 0.5 if sc_grads else 0.0
++                        optimizer.step()
++                    batch_loss_value = float(batch_loss.detach())
++                total_loss += batch_loss_value
+                 n_batches += 1
+         overlap = overlap_sum / max(overlap_n, 1)
+         diag_means = {kk: vv / max(diag_n, 1) for kk, vv in diag_sums.items()}

@@ -1,0 +1,15 @@
+{
+  "experiment_id": "EXP-STRONG-SCORER-DIAG01",
+  "base_experiment": "EXP-TOPTAIL-RANK01 R2 (hybrid loss: pairwise + 1.0*SmoothL1)",
+  "changed_variable": "scorer capacity only: C0=cosine (a*cos(h,e)+b), C2=cosine + zero-init nonlinear residual MLP (StrongResidualPairScorer)",
+  "arms": {
+    "C0": "R2 + cosine (UtilityHead) -- existing EXP-TOPTAIL-RANK01/R2 ETTh1_H96 checkpoint, reused verbatim, not retrained",
+    "C2": "R2 + strong residual pair scorer -- new training this experiment, zero-init so identical to C0 at step 0"
+  },
+  "scope": {"dataset": "ETTh1", "horizon": 96, "seed": 0, "top_k": 10},
+  "positive_control": "PASSED (tests/test_exp_strong_scorer_diag01.py::test_smalln_positive_control_fits_known_utility_landscape, mean oracle-best predicted rank < 20/256 after 400 steps on a synthetic known utility landscape)",
+  "checkpoint_selection_criterion": "val_overlap@10 (UNCHANGED from R0/R1/R2 -- primary comparison uses this; additional val top-tail diagnostics computed post-hoc for interpretation only, never used to pick the checkpoint)",
+  "oom_fix": "streaming (chunked, incremental-backward) training path added for scorer_mode=strong_pair only; verified mathematically equivalent to the original hold-the-whole-graph implementation via tests/test_exp_strong_scorer_streaming.py (gradient equality on every SetConditioner/scorer parameter, atol=1e-4)",
+  "explicitly_not_run": ["Weather", "H720", "3 seeds", "architecture sweep", "encoder unfreezing",
+                          "SetConditioner modification", "Top-M/shortlist/reranker"]
+}

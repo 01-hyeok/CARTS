@@ -53,7 +53,7 @@ def _rank_of(value_idx, order):
 
 
 @torch.no_grad()
-def evaluate_cell(s2_ckpt, seq_ckpt, anchor_policy, k, query_budget, chunk_size, device):
+def evaluate_cell(s2_ckpt, seq_ckpt, anchor_policy, k, query_budget, chunk_size, device, split='test'):
     b0_exp, b0_args = load_stage2(s2_ckpt)
     b0_exp._ensure_memory()
     b0_exp._build_key_bank()
@@ -64,7 +64,7 @@ def evaluate_cell(s2_ckpt, seq_ckpt, anchor_policy, k, query_budget, chunk_size,
 
     seq_model, set_cond, empty_token, utility_head, seq_args = load_trained_selector(seq_ckpt, device)
     tau = float(seq_args.tau_topk)
-    _, loader = b0_exp._get_data(flag='test', shuffle=False)
+    _, loader = b0_exp._get_data(flag=split, shuffle=False)
     channels = list(b0_model.target_channels())
 
     rows = []
@@ -306,12 +306,13 @@ def main():
     ap.add_argument('--out_dir', required=True)
     ap.add_argument('--cell_name', required=True)
     ap.add_argument('--anchor_policy', required=True, choices=['dense_first', 'b0_first', 'oracle_first'])
+    ap.add_argument('--split', default='test', choices=['train', 'val', 'test'])
     args = ap.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     rows, sanity = evaluate_cell(args.stage2_checkpoint, args.sequential_checkpoint,
                                   args.anchor_policy, args.top_k, args.query_budget,
-                                  args.chunk_size, device)
+                                  args.chunk_size, device, split=args.split)
     summary = summarize(rows)
     summary['_sanity'] = sanity
 

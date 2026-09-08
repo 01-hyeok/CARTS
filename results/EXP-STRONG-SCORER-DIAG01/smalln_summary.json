@@ -1,0 +1,16 @@
+{
+  "test": "tests/test_exp_strong_scorer_diag01.py::test_smalln_positive_control_fits_known_utility_landscape",
+  "purpose": "Mandatory pre-GPU positive control: verify StrongResidualPairScorer CAN fit a known utility landscape via the real pairwise_step_loss, before trusting a negative result on the real ETTh1 task.",
+  "setup": {
+    "n_queries": 16,
+    "n_candidates": 256,
+    "landscape": "synthetic, known closed-form utility function of (h_t, e_i)",
+    "training_steps": 400,
+    "loss": "pairwise_step_loss (same function used in R1/R2/C2 training)"
+  },
+  "result": "PASSED",
+  "metric": "mean oracle-best predicted rank across queries",
+  "threshold": "< 20 / 256",
+  "observed": "< 20 / 256 (assertion satisfied; see test file for exact value at last run)",
+  "interpretation": "StrongResidualPairScorer + pairwise_step_loss has enough capacity and the training loop is wired correctly to fit a top-tail ranking signal when one exists in the input features. A negative/mixed result on the real ETTh1 C2 run is therefore not attributable to a broken scorer or broken training loop."
+}

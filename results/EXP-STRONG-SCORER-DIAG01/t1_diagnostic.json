@@ -1,0 +1,28 @@
+{
+  "test": {
+    "rows": 200,
+    "oracle_rank_mean": 505.235,
+    "oracle_rank_median": 97,
+    "oracle_percentile_rank_mean": 0.059805279356060594,
+    "top1_hit_rate": 0.0,
+    "top5_containment": 0.035,
+    "top10_containment": 0.095,
+    "top50_containment": 0.32,
+    "spearman_within_teacher_top1pct": 0.2250797994621098,
+    "ndcg10_utility_at_predicted_rank": 0.9744479608535767,
+    "ndcg50_utility_at_predicted_rank": 0.9764505675435067
+  },
+  "train": {
+    "rows": 200,
+    "oracle_rank_mean": 1190.38,
+    "oracle_rank_median": 654,
+    "oracle_percentile_rank_mean": 0.1444110122205066,
+    "top1_hit_rate": 0.005,
+    "top5_containment": 0.005,
+    "top10_containment": 0.01,
+    "top50_containment": 0.12,
+    "spearman_within_teacher_top1pct": 0.12501462821252063,
+    "ndcg10_utility_at_predicted_rank": 0.9748741498589516,
+    "ndcg50_utility_at_predicted_rank": 0.9749018928408623
+  }
+}

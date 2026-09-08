@@ -1301,3 +1301,158 @@ specific training run worse, not better.
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 
+
+---
+
+# EXP-STRONG-SCORER-DIAG01 — R2 + cosine vs. R2 + much-stronger nonlinear residual pair scorer (COMPLETE: ETTh1 H96 only)
+
+## Research Question
+
+Following EXP-ASYM-SCORER01's negative result for a modest capacity increase
+(asymmetric bilinear scorer), is the remaining top-tail/continuation
+ranking failure and Stage-2 gap explained by scorer expressiveness at ALL,
+or does it persist even with a much stronger, nonlinear scorer added on top
+of the already-best R2 cosine solution? `C0 = R2 + cosine` (`UtilityHead`,
+existing checkpoint, reused verbatim) vs. `C2 = R2 + StrongResidualPairScorer`
+(`u_hat = a*cos(h_t,e_i)+b + Delta_phi(h_t,e_i)`, `Delta_phi` a 3-layer MLP
+over `[h,e,h⊙e,|h-e|]`, zero-init final layer so C2 ≡ C0 at construction;
+`trainable_params`: C0=49794 vs C2=378243, ~87% of C2's parameters are the
+new scorer head).
+
+## Method
+
+Zero-init equivalence verified before training
+(`max_abs_score_deviation=0.0`, threshold 1e-6). Mandatory small-N positive
+control PASSED before any GPU training (scorer/loss/training loop can fit a
+known synthetic utility landscape to oracle-rank < 20/256). Same R2 hybrid
+loss, same checkpoint-selection criterion (`val_overlap@10`), same
+evaluation scripts. ETTh1 H96 only, per pre-registered scope. A mid-
+experiment implementation bug (the training path held the full autograd
+graph across all steps/channels/chunks before backward, causing GPU OOM)
+was found and fixed with a memory-safe streaming rewrite, proven
+mathematically equivalent to the original by a dedicated gradient-equality
+unit test before the real run was trusted; `FULL MEMORY -> DIRECT TOP-K`
+semantics were unaffected (chunking is a pure memory optimization, not a
+candidate-count reduction). Both a test-split and, for the first time in
+this campaign, a **train-split** evaluation were run for C2, to distinguish
+a training-signal-fits-but-doesn't-generalize story from a doesn't-fit-at-all
+story.
+
+## Results
+
+Training: `best_epoch=1` (`val_overlap@10=0.0098`), declining every epoch
+after (0.0098→0.0047→0.0073→0.0059→0.0057→0.0041) — the same
+best-epoch-1-then-decline pattern seen in every scorer/loss arm this
+session (R1, R2, C1, C2).
+
+| Metric | C0 (cosine) | C2 (strong pair) | Delta |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.39708 | worse |
+| gap_recovery | -0.2626 | -0.3392 | worse |
+| HardAggregate@10 (seq) | 0.5514 | 0.6224 | worse |
+| t1 Spearman within true top-1% (test) | 0.2128 | 0.2251 | **better** |
+| t1 oracle-best predicted rank median (test) | 99 | 97 | **better** |
+| t1 Top-50 containment (test) | 30.5% | 32.0% | **better** |
+| t2 hurt_frac (test) | 0.232 | 0.214 | **better** |
+| t2 selected true rank median (test) | 1934.0 | 3859.5 | worse |
+| t2 oracle predicted rank median (test) | 560.0 | 442.0 | **better** |
+| t2 Spearman within true top-1% (test) | 0.1404 | 0.1818 | **better** |
+| t2 continuation_regret (test) | 0.3498 | 0.3657 | worse |
+
+Train vs. test (C2 only — C0 is reused/not retrained, no C0-train
+evaluation exists):
+
+| Metric | C2 test | C2 train |
+|---|---:|---:|
+| t1 Spearman top1% | 0.2251 | 0.1250 |
+| t1 oracle-best rank median | 97 | 654 |
+| t1 Top-50 containment | 32.0% | 12.0% |
+| t2 Spearman top1% | 0.1818 | 0.0576 |
+| t2 oracle predicted rank median | 442.0 | 2266.5 |
+| t2 hurt_frac | 0.214 | 0.324 |
+| t2 continuation_regret | 0.3657 | 0.2937 |
+
+**Train is consistently WORSE than test** — opposite of classic
+overfitting. Combined with `best_epoch=1`, the most consistent reading is
+that the selected checkpoint is barely displaced from the C0/cosine
+initialization, so what's measured here is closer to two noisy evaluations
+of a near-C0 model on different query subsets than a genuine
+fits-train/fails-test generalization gap.
+
+For reference, C1 (EXP-ASYM-SCORER01, asymmetric scorer, smaller capacity
+increase) was worse than both C0 and C2 on every metric it was evaluated on
+(Stage-2=0.41257, gap_recovery=-0.488, HardAgg=0.690, t1 Spearman=0.159, t1
+oracle rank median=180). Capacity ordering on Stage-2/HardAggregate:
+**C0 > C2 > C1**.
+
+## Sanity checks passed
+
+`pytest tests/`: 513 passed (final full sweep; includes new tests from this experiment), same 2 pre-existing failures, no
+regression. Full checklist (positive control, zero-init equivalence,
+chunked==unchunked, streaming-gradient equivalence, EmptySetToken
+double-backward regression) in `results/EXP-STRONG-SCORER-DIAG01/REPORT.md`.
+
+## Conclusion (stated within what the data supports)
+
+**No clean fit to any of the 3 pre-registered outcomes.** The positive
+control rules out "scorer/loss/loop can't fit anything." The mixed result —
+small, real, consistent top-tail ranking improvements (t1/t2, test split)
+alongside flat-to-worse Stage-2 MSE, `gap_recovery`, HardAggregateMSE, and
+the metrics closest to actual realized selector behavior
+(`selected true rank`, `continuation_regret`) — does not match a clean
+capacity-bottleneck-confirmed story (Outcome A) or a classic
+train-fits-but-generalization-fails story (Outcome B, ruled out by train
+being worse than test, not better). Combined with `best_epoch=1` replicating
+across R1/R2/C1/C2, the more parsimonious explanation is that scorer
+expressiveness at the per-candidate level is **not** the primary bottleneck;
+something in the sequential teacher-forced training signal itself (the
+dense marginal utility target, the weighted-set greedy oracle supervision,
+or teacher-forcing/free-running distribution mismatch) is what stalls every
+arm at epoch 1 regardless of scorer capacity.
+
+## What this does NOT establish
+
+- Whether a longer training budget, different LR, or different
+  `lambda_rank` for the strong scorer specifically would change the
+  `best_epoch=1` pattern — not swept (would require deviating from the
+  "reuse R2's exact hyperparameters" controlled-variable design).
+- Weather H96/H720 behavior under the strong scorer — not run.
+- Whether the train-worse-than-test pattern would persist with a checkpoint
+  from a later epoch (deliberately not evaluated — checkpoint selection
+  stayed on `val_overlap@10` per the pre-registered protocol, to avoid
+  test-metric hacking).
+- A causal test of the "sequential training signal is the bottleneck"
+  hypothesis — this experiment is evidence consistent with it, not a direct
+  test of it.
+
+## Questions for ChatGPT
+
+25. Two independent scorer-capacity increases now (C1 asymmetric, C2 strong
+    nonlinear residual) both fail to improve Stage-2/HardAggregate/realized-
+    selection metrics, while `best_epoch=1`-then-decline on `val_overlap@10`
+    replicates in every one of R1/R2/C1/C2. Does this pattern (a proxy
+    metric that peaks almost immediately and then degrades, regardless of
+    scorer capacity or loss formulation) more likely indicate (a) the
+    training signal itself is the bottleneck, (b) `val_overlap@10` is not a
+    trustworthy checkpoint-selection criterion for this model family (per
+    question 22, still open), or (c) something about the teacher-forced
+    training regime causing rapid overfitting to a proxy that doesn't
+    track top-tail ranking or realized selection quality?
+26. C2's train-split top-tail diagnostics are consistently worse than its
+    test-split diagnostics — the opposite of overfitting. Is the
+    "checkpoint barely displaced from C0 initialization at best_epoch=1"
+    explanation sufficient, or could this indicate something else (e.g. a
+    systematic difference in query/candidate difficulty between the ETTh1
+    train and test splits that happens to favor test, independent of
+    training)? Would evaluating both C0 and C2 on train (not just C2) be
+    the right next diagnostic to disambiguate a model effect from a split
+    effect?
+27. Given two negative-for-realized-metrics scorer-capacity experiments now,
+    is it time to retire the "scorer capacity" hypothesis and move to the
+    "sequential/teacher-forced training signal" hypothesis this report's
+    conclusion points toward — and if so, what is the smallest diagnostic
+    experiment (not yet full retraining) that would distinguish a
+    teacher-forcing/free-running mismatch explanation from a
+    dense-marginal-utility-target-is-a-bad-training-signal explanation?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.

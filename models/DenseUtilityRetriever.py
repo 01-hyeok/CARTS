@@ -54,3 +54,72 @@ class AsymmetricUtilityHead(nn.Module):
     def forward(self, h_t, candidate_embeddings):
         cosine = self.metric.score(h_t, candidate_embeddings)
         return self.scale * cosine + self.bias
+
+
+class StrongResidualPairScorer(nn.Module):
+    """EXP-STRONG-SCORER-DIAG01: s_i = a*cos(h_t,e_i) + b + Delta_phi(h_t,e_i).
+
+    `Delta_phi` is a pairwise nonlinear MLP over `[h, e, h*e, |h-e|]`
+    (4D input), zero-initialised at its final layer so this is numerically
+    identical to `UtilityHead` at construction -- verified by
+    `scripts/train_toptail_rank01.py`'s startup check
+    (`max_abs_score_deviation < 1e-6`). This is a diagnostic ceiling probe,
+    not a proposed production scorer: does substantially more pairwise
+    capacity, ADDED ON TOP OF the already-best R2 cosine solution rather
+    than trained from scratch, let held-out top-tail utility be learned at
+    all? `candidate_embeddings` is always the FULL memory bank (or a chunk
+    of it the caller passes in for its own reasons, e.g.
+    `utils.dense_utility`'s chunking) -- this module chunks internally over
+    the candidate dimension purely for GPU memory (`chunk_size`), never to
+    reduce the candidate universe; every valid candidate is still scored.
+    """
+
+    def __init__(self, dim, chunk_size=1024):
+        super().__init__()
+        self.scale = nn.Parameter(torch.tensor(1.0))
+        self.bias = nn.Parameter(torch.tensor(0.0))
+        d4 = 4 * dim
+        self.mlp = nn.Sequential(
+            nn.Linear(d4, d4), nn.GELU(),
+            nn.Linear(d4, dim), nn.GELU(),
+            nn.Linear(dim, 1),
+        )
+        nn.init.zeros_(self.mlp[-1].weight)
+        nn.init.zeros_(self.mlp[-1].bias)
+        self.chunk_size = int(chunk_size)
+
+    def _delta(self, h_t, candidate_embeddings):
+        bsz, dim = h_t.shape
+        n = candidate_embeddings.size(0)
+        cs = self.chunk_size
+        out = h_t.new_empty(bsz, n)
+        for start in range(0, n, cs):
+            end = min(start + cs, n)
+            e_chunk = candidate_embeddings[start:end]
+            c = e_chunk.size(0)
+            h_exp = h_t.unsqueeze(1).expand(bsz, c, dim)
+            e_exp = e_chunk.unsqueeze(0).expand(bsz, c, dim)
+            feat = torch.cat([h_exp, e_exp, h_exp * e_exp, (h_exp - e_exp).abs()], dim=-1)
+            out[:, start:end] = self.mlp(feat).squeeze(-1)
+        return out
+
+    def forward(self, h_t, candidate_embeddings):
+        base = self.scale * torch.matmul(h_t, candidate_embeddings.transpose(0, 1)) + self.bias
+        return base + self._delta(h_t, candidate_embeddings)
+
+    def forward_batched(self, h_t, candidate_embeddings_batched):
+        """Per-row candidate set (e.g. a small gathered positive/hard-negative
+        pool that differs per query), as opposed to `forward`'s single
+        candidate bank shared across the whole batch. `h_t`: [B,D].
+        `candidate_embeddings_batched`: [B,M,D]. Returns [B,M]. Used only for
+        the small pairwise-loss forward in the memory-safe streaming training
+        path (`scripts/train_toptail_rank01.py`'s strong_pair step) -- the
+        base+delta formula is identical to `forward`, just per-row candidates
+        instead of a shared bank, so no shortcut/approximation is introduced.
+        """
+        base = self.scale * (h_t.unsqueeze(1) * candidate_embeddings_batched).sum(-1) + self.bias
+        h_exp = h_t.unsqueeze(1).expand_as(candidate_embeddings_batched)
+        e = candidate_embeddings_batched
+        feat = torch.cat([h_exp, e, h_exp * e, (h_exp - e).abs()], dim=-1)
+        delta = self.mlp(feat).squeeze(-1)
+        return base + delta
