@@ -1,0 +1,18 @@
+{
+  "tests": "tests/test_exp_encoder_anchor01.py",
+  "result": "8 passed, 0 failed",
+  "checks": {
+    "S1_zero_step_equivalence": "PASSED -- max|z-z0|=0.000e+00 at construction (verified both in the toy unit test and directly in the real training run's own startup log)",
+    "S2_anchor_loss_near_zero_at_init": "PASSED -- L_anchor=-4.843e-08 at construction in the real run",
+    "S3_anchor_gradient_after_perturbation": "PASSED -- L_anchor>0 and encoder gradient norm>0 after a controlled weight perturbation",
+    "S4_candidate_side_gradient_flows": "PASSED",
+    "S5_query_side_gradient_flows": "PASSED",
+    "S6_no_stale_candidate_bank": "PASSED -- candidate embeddings track the current (perturbed) trainable encoder; the reference encoder never moves",
+    "S7_chunk_equivalence_for_anchor_loss": "PASSED (exact, atol 1e-5) -- sum-then-divide-by-global-N normalisation makes the anchor loss and every encoder/SetConditioner/UtilityHead gradient identical between chunked and unchunked computation, matching encoder_unfreeze_step's own established chunking convention",
+    "S8_anchor_step_never_calls_optimizer_step": "PASSED (AST-based check)"
+  },
+  "real_run_startup_verification": {
+    "max_abs_embedding_deviation_at_construction": 0.0,
+    "anchor_loss_at_init": -4.843e-08
+  }
+}

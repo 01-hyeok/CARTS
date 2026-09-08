@@ -1,0 +1,666 @@
+diff --git a/scripts/train_encoder_anchor01.py b/scripts/train_encoder_anchor01.py
+new file mode 100644
+index 0000000..d7d2830
+--- /dev/null
++++ b/scripts/train_encoder_anchor01.py
+@@ -0,0 +1,477 @@
++#!/usr/bin/env python3
++"""EXP-ENCODER-ANCHOR01: does anchoring the trainable encoder to the frozen
++B0 representation prevent EXP-ENCODER-UNFREEZE01's representation collapse,
++and if so, does that let encoder adaptation actually beat C0 on Stage-2?
++
++E1 (EXP-ENCODER-UNFREEZE01, reused, not retrained here) showed that letting
++the encoder train under R2's set-conditioned objective causes rapid,
++monotonically-deepening representation collapse (embedding_effective_rank
++17.48 -> 2.96 within 1 epoch -> 1.49 by epoch 6) and a WORSE Stage-2 MSE
++than the frozen baseline C0 (0.39526 -> 0.40668).
++
++E2 (this script, the only new training here) is IDENTICAL to E1 except for
++one addition: a B0-anchor regularizer,
++
++    L_anchor = 1 - cos(normalize(f_theta(x)), normalize(f_{theta_0}(x)))
++
++added to R2's loss as `L_E2 = L_R2 + lambda_anchor * L_anchor`, where
++`f_{theta_0}` is a SEPARATE, permanently frozen/eval/no_grad copy of the
++same B0-initialised encoder (never updated, never touched by the
++optimizer). B0 is not assumed optimal -- it is simply the last known
++representation that did NOT collapse under this project's full-memory
++sequential objectives (this experiment's own reference point, and
++EXP-SEQDIAG01's). This is a single, isolated mechanism test: no VICReg, no
++covariance/variance regularisers, no EMA, no stop-gradient trick, no
++separate encoder LR -- exactly E1 plus this one term.
++
++Everything else -- data, seed, K=10, R2 hybrid loss (pairwise + SmoothL1,
++lambda_rank=1.0), cosine UtilityHead, SetConditioner, EmptySetToken,
++optimizer/LR, epochs/patience, checkpoint-selection criterion
++(val_overlap@10), full-memory candidate support, memory-safe streaming
++design -- is byte-identical to `scripts/train_encoder_unfreeze01.py`
++(imported from, not reimplemented, except where the anchor requires new
++code); that script is left completely unmodified so EXP-ENCODER-UNFREEZE01
++remains exactly reproducible.
++
++Anchor implementation, keeping the SAME memory-safe streaming principles
++EXP-STRONG-SCORER-DIAG01/EXP-ENCODER-UNFREEZE01 established:
++  - the anchor loss is evaluated ONCE per (batch, channel) -- not once per
++    K=10 teacher-forced step, since it does not depend on t -- covering the
++    query batch AND the FULL candidate bank (chunked purely for GPU memory,
++    `FULL MEMORY -> DIRECT TOP-K` unaffected: every valid candidate is
++    still anchored, none is skipped);
++  - each chunk (and the query pass) gets its own fresh encoder forward pass
++    through `model.encoder` (trainable) and a SEPARATE fresh forward
++    through `encoder_ref` (frozen, no_grad) for the SAME raw input, then an
++    immediate backward -- no chunk's graph is held simultaneously with
++    another's;
++  - `optimizer.step()` is still called exactly once per batch, after the
++    R2 K-step loop AND the anchor pass have both contributed their
++    gradient -- anchor gradient accumulates additively into the SAME
++    `.grad` tensors R2 already populated, never a separate optimizer call.
++
++`lambda_anchor` is fixed (no sweep) -- chosen via a small fixed-batch
++gradient-norm-ratio diagnostic against the EXISTING EXP-ENCODER-UNFREEZE01
++epoch-1 checkpoint (never against test Stage-2), recorded in
++`results/EXP-ENCODER-ANCHOR01/notes.md`.
++"""
++import argparse
++import copy
++import json
++import sys
++import time
++from pathlib import Path
++
++import torch
++import torch.nn.functional as F
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++if str(REPO_ROOT) not in sys.path:
++    sys.path.insert(0, str(REPO_ROOT))
++
++from models.DenseUtilityRetriever import UtilityHead
++from models.SequentialSetRetriever import EmptySetToken, SetConditioner
++from scripts.train_encoder_unfreeze01 import (_encode_candidates_nograd,
++    encode_raw, encoder_unfreeze_step)
++from scripts.train_margutil01 import build_experiment, memory_value, run_sequence_dense
++from scripts.train_toptail_rank01 import overlap_at_k, step_losses
++from utils.dense_utility import candidate_weights, dense_utility
++from utils.rank_losses import embedding_geometry
++
++
++def encode_with(encoder_module, model, x_raw, c, grad):
++    """Like `encode_raw`, but through an EXPLICIT encoder module (either the
++    trainable `model.encoder` or the frozen `encoder_ref`) rather than
++    always `model.encoder`. `model._relation_tensor` does not depend on
++    which encoder consumes its output, so it is shared."""
++    ctx = torch.no_grad() if not grad else torch.enable_grad()
++    with ctx:
++        z = encoder_module(model._relation_tensor(x_raw, c, c))
++        return F.normalize(z, dim=-1)
++
++
++def anchor_step(model, encoder_ref, c, memory_x, batch_x_v, lambda_anchor,
++                 grad_scale, cand_chunk_size, train):
++    """ONE (batch, channel)'s B0-anchor loss: query + full candidate bank,
++    chunked, each chunk/query pass re-encoded fresh through BOTH the
++    trainable encoder (grad) and the frozen encoder_ref (no_grad), backward
++    immediately. Does not depend on t, so called once per (batch, channel),
++    not once per K=10 step.
++
++    Candidate-side chunking uses the SAME sum-then-divide-by-GLOBAL-count
++    pattern `encoder_unfreeze_step`'s SmoothL1 term uses (per
++    EXP-STRONG-SCORER-DIAG01's normalisation requirement): each chunk
++    backwards `chunk_sum / N` (N = the FULL candidate count, fixed across
++    chunks, not the chunk's own size), so summing the per-chunk backward
++    calls reproduces exactly the gradient (and, since these are Python
++    floats logged via `.detach()`, exactly the loss value too) of a single
++    unchunked pass over all N candidates -- verified by
++    `tests/test_exp_encoder_anchor01.py::test_S7_chunk_equivalence_for_anchor_loss`.
++    A naive per-chunk MEAN would silently over-weight a smaller final chunk
++    whenever N is not a multiple of `cand_chunk_size`.
++
++    Returns a diagnostics dict (python floats): `anchor_loss` is the query
++    term plus the exact full-candidate-bank mean, `anchor_loss_query` and
++    `anchor_loss_candidates` are reported separately too.
++    """
++    n = memory_x.size(0)
++
++    z_q = encode_with(model.encoder, model, batch_x_v, c, grad=True)
++    with torch.no_grad():
++        z0_q = encode_with(encoder_ref, model, batch_x_v, c, grad=False)
++    anchor_q = (1.0 - (z_q * z0_q).sum(-1)).mean()
++    anchor_q_val = float(anchor_q.detach())
++    if train:
++        (grad_scale * lambda_anchor * anchor_q).backward()
++
++    cand_total = 0.0
++    for start in range(0, n, cand_chunk_size):
++        end = min(start + cand_chunk_size, n)
++        x_chunk = memory_x[start:end]
++        z_c = encode_with(model.encoder, model, x_chunk, c, grad=True)
++        with torch.no_grad():
++            z0_c = encode_with(encoder_ref, model, x_chunk, c, grad=False)
++        diff_c = 1.0 - (z_c * z0_c).sum(-1)  # [chunk_size]
++        anchor_c = diff_c.sum() / n  # global-N normalisation, not chunk-size
++        cand_total += float(anchor_c.detach())
++        if train:
++            (grad_scale * lambda_anchor * anchor_c).backward()
++
++    return {'anchor_loss': anchor_q_val + cand_total,
++            'anchor_loss_query': anchor_q_val, 'anchor_loss_candidates': cand_total}
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument('--base_ckpt', required=True)
++    ap.add_argument('--teacher_cache', required=True)
++    ap.add_argument('--checkpoints', default='checkpoints/exp_encoder_anchor01')
++    ap.add_argument('--model_id', default='carts_encoder_anchor01_main')
++    ap.add_argument('--des', default='encoder_anchor01_main')
++    ap.add_argument('--top_k', type=int, default=10)
++    ap.add_argument('--train_epochs', type=int, default=0)
++    ap.add_argument('--patience', type=int, default=0)
++    ap.add_argument('--chunk_size', type=int, default=4096)
++    ap.add_argument('--cand_chunk_size', type=int, default=2048)
++    ap.add_argument('--seed', type=int, default=0)
++    ap.add_argument('--lambda_rank', type=float, default=1.0)
++    ap.add_argument('--lambda_anchor', type=float, required=True,
++                     help='fixed (no sweep) -- see results/EXP-ENCODER-ANCHOR01/notes.md for how this was chosen')
++    ap.add_argument('--keep_all_checkpoints', action='store_true')
++    ap.add_argument('--probe_out', default=None)
++    cli = ap.parse_args()
++
++    overrides = {
++        'is_training': 1, 'model_id': cli.model_id, 'des': cli.des,
++        'checkpoints': cli.checkpoints, 'seed': cli.seed, 'top_k': cli.top_k,
++        'stage1_residual_teacher': 0, 'stage1_query_base_conditioning': 0,
++        'stage1_candidate_residual_conditioning': 0, 'stage1_retrieval_metric': 'cosine',
++        'stage1_full_memory_gradient_mode': 'full_online',
++    }
++    if cli.train_epochs:
++        overrides['train_epochs'] = cli.train_epochs
++    if cli.patience:
++        overrides['patience'] = cli.patience
++
++    exp, args = build_experiment(cli.base_ckpt, overrides)
++    torch.manual_seed(args.seed)
++    device = exp.device
++    model = exp.model.module if hasattr(exp.model, 'module') else exp.model
++    k = int(cli.top_k)
++    tau = float(args.tau_topk)
++
++    b0_ckpt = torch.load(cli.base_ckpt, map_location='cpu')
++    model.load_state_dict(b0_ckpt['model_state_dict'], strict=True)
++
++    # ---- S1: build the frozen reference encoder BEFORE unfreezing
++    # model.encoder -- an exact deepcopy of the same B0-initialised weights,
++    # so at construction time (before ANY optimizer step) the trainable
++    # encoder and the reference encoder are numerically identical. ----
++    encoder_ref = copy.deepcopy(model.encoder).to(device)
++    encoder_ref.eval()
++    for p in encoder_ref.parameters():
++        p.requires_grad = False
++
++    for p in model.encoder.parameters():
++        p.requires_grad = True
++    model.encoder.train()
++    n_encoder_params = sum(p.numel() for p in model.encoder.parameters())
++    print(f'[encoder_anchor01] encoder loaded from {cli.base_ckpt}, TRAINABLE '
++          f'({n_encoder_params} params) + FROZEN reference encoder (same init), '
++          f'lambda_anchor={cli.lambda_anchor}')
++
++    exp._ensure_memory()
++    channels = list(model.target_channels())
++    for c in channels:
++        sources = model.source_channels(c)
++        if len(sources) != 1 or int(sources[0]) != int(c):
++            raise ValueError(f'EXP-ENCODER-ANCHOR01 is self-only; channel {c} has sources {sources}')
++    teacher = torch.load(cli.teacher_cache, map_location='cpu')
++    if teacher['meta']['top_k'] != k:
++        raise ValueError(f"teacher cache top_k={teacher['meta']['top_k']} != --top_k={k}")
++
++    d_model = int(args.d_model)
++    set_conditioner = SetConditioner(d_model).to(device)
++    empty_token = EmptySetToken(d_model).to(device)
++    utility_head = UtilityHead().to(device)
++
++    # ---- S1 (verified) / S2: zero-step equivalence + anchor~0 at init ----
++    # Both encoders must be compared in the SAME (eval) mode: model.encoder
++    # was just switched to .train() above, and this project's RelationEncoder
++    # has dropout (though no BatchNorm) -- comparing a .train()-mode forward
++    # (stochastic dropout) against encoder_ref's permanent .eval() forward
++    # would show a spurious "deviation" from dropout noise, not a real
++    # weight mismatch (this exact ~5e-2 magnitude was already seen and
++    # documented as dropout-sensitivity-only in EXP-ENCODER-UNFREEZE01's own
++    # train/eval-mode check). Restore model.encoder.train() immediately
++    # after this probe.
++    model.encoder.eval()
++    with torch.no_grad():
++        probe_x = exp.memory_x[:64]
++        probe_c = channels[0]
++        z_trainable = encode_with(model.encoder, model, probe_x, probe_c, grad=False)
++        z_ref = encode_with(encoder_ref, model, probe_x, probe_c, grad=False)
++    model.encoder.train()
++    max_abs_embedding_deviation = float((z_trainable - z_ref).abs().max())
++    anchor_at_init = float((1.0 - (z_trainable * z_ref).sum(-1)).mean())
++    print(f'[encoder_anchor01] S1 zero-step equivalence: max|z-z0|={max_abs_embedding_deviation:.3e} '
++          f'(must be ~0)')
++    print(f'[encoder_anchor01] S2 anchor loss at init: L_anchor={anchor_at_init:.3e} (must be ~0)')
++    if max_abs_embedding_deviation >= 1e-5:
++        raise RuntimeError(f'S1 FAILED: trainable and reference encoders disagree at construction '
++                            f'(max_abs_embedding_deviation={max_abs_embedding_deviation:.3e}) -- refusing to train')
++
++    trainable_params = (list(set_conditioner.parameters()) + list(empty_token.parameters())
++                         + list(utility_head.parameters()) + list(model.encoder.parameters()))
++    n_params = sum(p.numel() for p in trainable_params)
++    print(f'[encoder_anchor01] trainable_params={n_params} '
++          f'(SetConditioner={sum(p.numel() for p in set_conditioner.parameters())}, '
++          f'EmptySetToken={sum(p.numel() for p in empty_token.parameters())}, '
++          f'UtilityHead={sum(p.numel() for p in utility_head.parameters())}, '
++          f'Encoder={n_encoder_params})')
++    optimizer = torch.optim.Adam(trainable_params, lr=float(args.learning_rate))
++
++    probe_idx_fixed = torch.arange(min(256, exp.memory_x.size(0)))
++    probe_channel = channels[0]
++    with torch.no_grad():
++        b0_probe_embed = encode_with(encoder_ref, model, exp.memory_x[probe_idx_fixed], probe_channel, grad=False).clone()
++
++    ckpt_dir = Path(cli.checkpoints) / 'encoder_anchor01' / args.data / f'seq{args.seq_len}_pred{args.pred_len}' / args.model_id
++    ckpt_dir.mkdir(parents=True, exist_ok=True)
++    best_val = -1.0
++    best_epoch = -1
++    patience_left = int(args.patience)
++
++    def teacher_rows(batch_start_idx, channel, split):
++        rows = [teacher['splits'][split]['start_to_row'][int(s)] for s in batch_start_idx.tolist()]
++        return teacher['splits'][split]['teacher_idx'][channel][rows].to(device)
++
++    def run_epoch(loader, split, train, channel_list):
++        set_conditioner.train(train)
++        empty_token.train(train)
++        utility_head.train(train)
++        model.encoder.train(train)
++        total_loss, n_batches = 0.0, 0
++        overlap_sum, overlap_n = 0.0, 0
++        enc_grad_norm_r2 = enc_grad_norm_anchor = enc_grad_norm_total = 0.0
++        diag_sums = {}
++        diag_n = 0
++        anchor_sum, anchor_n = 0.0, 0
++        ctx = torch.enable_grad() if train else torch.no_grad()
++        with ctx:
++            for batch_x, batch_y, batch_start_idx in loader:
++                batch_x = batch_x.float().to(device)
++                batch_y = batch_y.float().to(device)
++                cand_mask, counts = exp._candidate_mask(batch_start_idx)
++                if train:
++                    optimizer.zero_grad()
++                batch_loss = 0.0
++                per_channel_valid = []
++                for c in channel_list:
++                    E_nograd = _encode_candidates_nograd(model, exp.memory_x, c, cli.cand_chunk_size)
++                    q_nograd = encode_raw(model, batch_x, c, grad=False)
++                    memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
++                    futures = memory_c + offset_c.view(-1, 1, 1)
++                    query_future = batch_y[:, :, c]
++
++                    teacher_idx = teacher_rows(batch_start_idx, c, split)
++                    query_valid = teacher_idx[:, 0] != -1
++                    if int(query_valid.sum()) == 0:
++                        continue
++                    batch_x_v = batch_x[query_valid]
++                    teacher_idx_v = teacher_idx[query_valid]
++                    cand_mask_v = cand_mask[query_valid]
++                    per_channel_valid.append((c, batch_x_v))
++
++                    w_fixed = candidate_weights(torch.matmul(q_nograd, E_nograd.transpose(0, 1)), cand_mask, tau)
++                    w_fixed_v = w_fixed[query_valid]
++                    futures_v = futures[query_valid]
++                    query_future_v = query_future[query_valid]
++
++                    if train:
++                        selected_mask_v = torch.zeros_like(cand_mask_v)
++                        step_loss_sum = 0.0
++                        for t in range(k):
++                            with torch.no_grad():
++                                prefix = teacher_idx_v[:, :t].clamp_min(0)
++                                a_dense = dense_utility(prefix, w_fixed_v, futures_v, query_future_v, chunk_size=cli.chunk_size)
++                                u_target = -a_dense
++                                valid_now = cand_mask_v & ~selected_mask_v
++                            step_diag = encoder_unfreeze_step(
++                                model, c, exp.memory_x, batch_x_v, set_conditioner, empty_token,
++                                utility_head, teacher_idx_v, E_nograd, u_target, valid_now,
++                                cli.lambda_rank, grad_scale=1.0 / k / len(channel_list),
++                                cand_chunk_size=cli.cand_chunk_size, t=t, train=True)
++                            step_loss_sum += step_diag.get('smoothl1_loss', 0.0) + (
++                                cli.lambda_rank * step_diag.get('pairwise_loss', 0.0)
++                                if step_diag.get('pairwise_loss', float('nan')) == step_diag.get('pairwise_loss', float('nan'))
++                                else 0.0)
++                            for kk, vv in step_diag.items():
++                                if vv == vv:
++                                    diag_sums[kk] = diag_sums.get(kk, 0.0) + vv
++                            diag_n += 1
++                            nxt = teacher_idx_v[:, t:t + 1].clamp_min(0)
++                            selected_mask_v = selected_mask_v.scatter(1, nxt, True)
++                        batch_loss = batch_loss + step_loss_sum / k
++                    else:
++                        u_hat_steps, u_target_steps, valid_steps, picks = run_sequence_dense(
++                            q_nograd, E_nograd, cand_mask, set_conditioner, empty_token, utility_head,
++                            futures, query_future, tau, k, cli.chunk_size, teacher_idx=teacher_idx)
++                        _, diags = step_losses(u_hat_steps, u_target_steps, valid_steps,
++                                                query_valid, 'hybrid', cli.lambda_rank)
++                        for d in diags:
++                            for kk, vv in d.items():
++                                if vv == vv:
++                                    diag_sums[kk] = diag_sums.get(kk, 0.0) + vv
++                        diag_n += sum(1 for d in diags if d)
++                        _, _, _, picks = run_sequence_dense(
++                            q_nograd, E_nograd, cand_mask, set_conditioner, empty_token, utility_head,
++                            futures, query_future, tau, k, cli.chunk_size, teacher_idx=None)
++                        overlap_sum += overlap_at_k(picks, teacher_idx, query_valid) * int(query_valid.sum())
++                        overlap_n += int(query_valid.sum())
++                        z_probe = encode_raw(model, batch_x_v[:1], c, grad=False) if batch_x_v.size(0) else None
++                        z0_probe = encode_with(encoder_ref, model, batch_x_v[:1], c, grad=False) if batch_x_v.size(0) else None
++                        if z_probe is not None:
++                            anchor_sum += float((1.0 - (z_probe * z0_probe).sum(-1)).mean())
++                            anchor_n += 1
++
++                if train:
++                    enc_grad_r2_snapshot = {}
++                    for name, p in model.encoder.named_parameters():
++                        enc_grad_r2_snapshot[name] = p.grad.clone() if p.grad is not None else torch.zeros_like(p)
++                    r2_sq = sum(g.norm().item() ** 2 for g in enc_grad_r2_snapshot.values())
++                    enc_grad_norm_r2 = r2_sq ** 0.5
++
++                    for c, batch_x_v in per_channel_valid:
++                        adiag = anchor_step(model, encoder_ref, c, exp.memory_x, batch_x_v, cli.lambda_anchor,
++                                             grad_scale=1.0 / len(channel_list), cand_chunk_size=cli.cand_chunk_size,
++                                             train=True)
++                        anchor_sum += adiag['anchor_loss']
++                        anchor_n += 1
++
++                    total_sq = 0.0
++                    anchor_only_sq = 0.0
++                    for name, p in model.encoder.named_parameters():
++                        g_total = p.grad if p.grad is not None else torch.zeros_like(p)
++                        total_sq += g_total.norm().item() ** 2
++                        g_anchor_only = g_total - enc_grad_r2_snapshot[name]
++                        anchor_only_sq += g_anchor_only.norm().item() ** 2
++                    enc_grad_norm_total = total_sq ** 0.5
++                    enc_grad_norm_anchor = anchor_only_sq ** 0.5
++
++                    optimizer.step()
++                    batch_loss_value = float(batch_loss) / len(channel_list) if isinstance(batch_loss, (int, float)) else float(batch_loss.detach()) / len(channel_list)
++                else:
++                    batch_loss_value = 0.0
++                total_loss += batch_loss_value
++                n_batches += 1
++        overlap = overlap_sum / max(overlap_n, 1)
++        diag_means = {kk: vv / max(diag_n, 1) for kk, vv in diag_sums.items()}
++        return {'loss': total_loss / max(n_batches, 1), 'overlap_at_k': overlap,
++                'encoder_grad_norm_r2': enc_grad_norm_r2, 'encoder_grad_norm_anchor': enc_grad_norm_anchor,
++                'encoder_grad_norm_total': enc_grad_norm_total,
++                'anchor_loss_mean': anchor_sum / max(anchor_n, 1), 'diag': diag_means}
++
++    probe_rows = []
++    history = []
++    wall_start = time.time()
++    for epoch in range(int(args.train_epochs)):
++        t0 = time.time()
++        _, train_loader = exp._get_data(flag='train', shuffle=True)
++        _, val_loader = exp._get_data(flag='val', shuffle=False)
++        train_metrics = run_epoch(train_loader, 'train', True, channels)
++        val_metrics = run_epoch(val_loader, 'val', False, channels)
++        dt = time.time() - t0
++        history.append({'epoch': epoch + 1, 'train': train_metrics, 'val': val_metrics, 'seconds': dt})
++        print(f"[encoder_anchor01] epoch {epoch+1} train_loss={train_metrics['loss']:.5f} "
++              f"val_loss={val_metrics['loss']:.5f} val_overlap@{k}={val_metrics['overlap_at_k']:.4f} "
++              f"enc_grad_r2={train_metrics['encoder_grad_norm_r2']:.5f} "
++              f"enc_grad_anchor={train_metrics['encoder_grad_norm_anchor']:.5f} "
++              f"enc_grad_total={train_metrics['encoder_grad_norm_total']:.5f} "
++              f"train_anchor_loss={train_metrics['anchor_loss_mean']:.5f} "
++              f"val_anchor_loss={val_metrics['anchor_loss_mean']:.5f} time={dt:.1f}s")
++
++        with torch.no_grad():
++            probe_embed = encode_raw(model, exp.memory_x[probe_idx_fixed], probe_channel, grad=False)
++            drift_l2 = float((probe_embed - b0_probe_embed).norm(dim=-1).mean())
++            drift_cos = float((probe_embed * b0_probe_embed).sum(-1).mean())
++            geom = embedding_geometry(probe_embed)
++            model.encoder.train()
++        probe_row = {'epoch': epoch + 1, 'drift_l2_mean': drift_l2, 'cosine_to_b0_mean': drift_cos,
++                     'anchor_loss': val_metrics['anchor_loss_mean'],
++                     'encoder_grad_norm_r2': train_metrics['encoder_grad_norm_r2'],
++                     'encoder_grad_norm_anchor': train_metrics['encoder_grad_norm_anchor'],
++                     'encoder_grad_norm_total': train_metrics['encoder_grad_norm_total']}
++        probe_row.update({kk: float(vv) for kk, vv in geom.items()})
++        probe_rows.append(probe_row)
++        print(f"[encoder_anchor01] epoch {epoch+1} probe drift_l2={drift_l2:.5f} cos_to_b0={drift_cos:.5f} "
++              f"effective_rank={geom.get('embedding_effective_rank', float('nan')):.3f}")
++
++        ckpt_payload = {
++            'model_state_dict': model.state_dict(),
++            'set_conditioner_state_dict': set_conditioner.state_dict(),
++            'empty_token_state_dict': empty_token.state_dict(),
++            'utility_head_state_dict': utility_head.state_dict(),
++            'args': vars(args), 'epoch': epoch + 1, 'val_overlap_at_k': val_metrics['overlap_at_k'],
++            'frozen_encoder_source_ckpt': cli.base_ckpt, 'loss_mode': 'hybrid', 'scorer_mode': 'cosine',
++            'encoder_trainable': True, 'lambda_anchor': cli.lambda_anchor,
++        }
++        if cli.keep_all_checkpoints:
++            torch.save(ckpt_payload, ckpt_dir / f'checkpoint_epoch{epoch+1}.pth')
++        if val_metrics['overlap_at_k'] > best_val:
++            best_val = val_metrics['overlap_at_k']
++            best_epoch = epoch + 1
++            patience_left = int(args.patience)
++            torch.save(ckpt_payload, ckpt_dir / 'checkpoint.pth')
++        else:
++            patience_left -= 1
++            if patience_left <= 0:
++                print(f'[encoder_anchor01] early stop at epoch {epoch+1} (best={best_epoch})')
++                break
++
++    wall_time = time.time() - wall_start
++    peak_mem = torch.cuda.max_memory_allocated(device) / 2**20 if device.type == 'cuda' else 0.0
++    summary = {'best_epoch': best_epoch, 'best_val_overlap_at_k': best_val,
++               'wall_clock_seconds': wall_time, 'peak_gpu_memory_mib': peak_mem,
++               'history': history, 'args': vars(args), 'checkpoint': str(ckpt_dir / 'checkpoint.pth'),
++               'loss_mode': 'hybrid', 'scorer_mode': 'cosine', 'trainable_params': n_params,
++               'lambda_anchor': cli.lambda_anchor,
++               'max_abs_embedding_deviation_at_construction': max_abs_embedding_deviation,
++               'anchor_loss_at_init': anchor_at_init}
++    with open(ckpt_dir / 'summary.json', 'w') as fh:
++        json.dump(summary, fh, indent=2, default=str)
++    if cli.probe_out:
++        Path(cli.probe_out).parent.mkdir(parents=True, exist_ok=True)
++        with open(cli.probe_out, 'w') as fh:
++            if probe_rows:
++                keys = list(probe_rows[0].keys())
++                fh.write(','.join(keys) + '\n')
++                for row in probe_rows:
++                    fh.write(','.join(str(row[kk]) for kk in keys) + '\n')
++    print(f'[encoder_anchor01] done. best_epoch={best_epoch} best_val_overlap_at_k={best_val:.4f} '
++          f'wall_clock={wall_time:.1f}s peak_gpu_mem={peak_mem:.0f}MiB')
++    print(f'[encoder_anchor01] summary written to {ckpt_dir / "summary.json"}')
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/tests/test_exp_encoder_anchor01.py b/tests/test_exp_encoder_anchor01.py
+new file mode 100644
+index 0000000..79dbf88
+--- /dev/null
++++ b/tests/test_exp_encoder_anchor01.py
+@@ -0,0 +1,177 @@
++"""EXP-ENCODER-ANCHOR01 mandatory pre-GPU sanity checks (S1-S8 in the
++approved spec):
++S1  zero-step equivalence (trainable encoder == frozen reference at init)
++S2  anchor loss ~= 0 at initialization
++S3  anchor gradient check (after a perturbation, L_anchor>0, grad>0)
++S4  candidate-side gradient flows through the anchor term
++S5  query-side gradient flows through the anchor term
++S6  no stale candidate bank (embeddings track the current encoder)
++S7  full-memory invariance / chunk equivalence for the anchor loss
++S8  anchor_step never calls optimizer.step() itself
++"""
++import ast
++import copy
++import inspect
++import sys
++from pathlib import Path
++
++import torch
++import torch.nn as nn
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++if str(REPO_ROOT) not in sys.path:
++    sys.path.insert(0, str(REPO_ROOT))
++
++from scripts.train_encoder_anchor01 import anchor_step, encode_with
++
++
++class ToyEncoder(nn.Module):
++    def __init__(self, seq_len, n_ch, d_model):
++        super().__init__()
++        self.net = nn.Sequential(
++            nn.Linear(seq_len * n_ch, 2 * d_model), nn.GELU(), nn.Linear(2 * d_model, d_model))
++
++    def forward(self, x):
++        return self.net(x.reshape(x.size(0), -1))
++
++
++class ToyModel:
++    def __init__(self, encoder):
++        self.encoder = encoder
++
++    def _relation_tensor(self, x, target_channel, source_channel):
++        return x
++
++
++def _setup(seed=0, n=23, seq_len=8, n_ch=3, d_model=16, bsz=5):
++    torch.manual_seed(seed)
++    encoder = ToyEncoder(seq_len, n_ch, d_model)
++    model = ToyModel(encoder)
++    encoder_ref = copy.deepcopy(encoder)
++    encoder_ref.eval()
++    for p in encoder_ref.parameters():
++        p.requires_grad = False
++    memory_x = torch.randn(n, seq_len, n_ch)
++    batch_x_v = torch.randn(bsz, seq_len, n_ch)
++    return model, encoder, encoder_ref, memory_x, batch_x_v
++
++
++def test_S1_zero_step_equivalence():
++    model, encoder, encoder_ref, memory_x, batch_x_v = _setup()
++    with torch.no_grad():
++        z = encode_with(model.encoder, model, memory_x[:10], 0, grad=False)
++        z0 = encode_with(encoder_ref, model, memory_x[:10], 0, grad=False)
++    assert torch.allclose(z, z0, atol=1e-6), 'trainable and reference encoders must match exactly at construction'
++
++
++def test_S2_anchor_loss_near_zero_at_init():
++    model, encoder, encoder_ref, memory_x, batch_x_v = _setup()
++    diag = anchor_step(model, encoder_ref, 0, memory_x, batch_x_v, lambda_anchor=1.0,
++                        grad_scale=1.0, cand_chunk_size=7, train=False)
++    assert abs(diag['anchor_loss']) < 1e-5, f"anchor loss should be ~0 at init, got {diag['anchor_loss']}"
++
++
++def test_S3_anchor_gradient_after_perturbation():
++    model, encoder, encoder_ref, memory_x, batch_x_v = _setup()
++    with torch.no_grad():
++        for p in encoder.parameters():
++            p.add_(0.3 * torch.randn_like(p))
++    diag = anchor_step(model, encoder_ref, 0, memory_x, batch_x_v, lambda_anchor=1.0,
++                        grad_scale=1.0, cand_chunk_size=7, train=True)
++    assert diag['anchor_loss'] > 0.0, 'anchor loss should be > 0 after the encoder drifts from the reference'
++    grads = [p.grad for p in encoder.parameters()]
++    assert all(g is not None for g in grads)
++    total_norm = sum(g.norm().item() ** 2 for g in grads) ** 0.5
++    assert total_norm > 0.0, 'anchor gradient norm must be nonzero after perturbation'
++
++
++def test_S4_candidate_side_gradient_flows():
++    model, encoder, encoder_ref, memory_x, batch_x_v = _setup()
++    with torch.no_grad():
++        for p in encoder.parameters():
++            p.add_(0.3 * torch.randn_like(p))
++    # Isolate the candidate-side contribution: query batch is empty-ish by
++    # using a batch of size 0 is not supported by nn.Linear cleanly, so
++    # instead we confirm the SAME grad tensors receive contributions from
++    # BOTH the query pass and the candidate-chunk loop by comparing a
++    # candidate-only variant (chunk covering all memory_x) against the
++    # query-only anchor term computed separately.
++    encoder.zero_grad()
++    z_c = encode_with(model.encoder, model, memory_x, 0, grad=True)
++    with torch.no_grad():
++        z0_c = encode_with(encoder_ref, model, memory_x, 0, grad=False)
++    (1.0 - (z_c * z0_c).sum(-1)).mean().backward()
++    cand_only_grads = {n: p.grad.clone() for n, p in encoder.named_parameters()}
++    assert any(g.abs().sum() > 0 for g in cand_only_grads.values()), 'candidate-side anchor term produced no gradient'
++
++
++def test_S5_query_side_gradient_flows():
++    model, encoder, encoder_ref, memory_x, batch_x_v = _setup()
++    with torch.no_grad():
++        for p in encoder.parameters():
++            p.add_(0.3 * torch.randn_like(p))
++    encoder.zero_grad()
++    z_q = encode_with(model.encoder, model, batch_x_v, 0, grad=True)
++    with torch.no_grad():
++        z0_q = encode_with(encoder_ref, model, batch_x_v, 0, grad=False)
++    (1.0 - (z_q * z0_q).sum(-1)).mean().backward()
++    query_only_grads = {n: p.grad.clone() for n, p in encoder.named_parameters()}
++    assert any(g.abs().sum() > 0 for g in query_only_grads.values()), 'query-side anchor term produced no gradient'
++
++
++def test_S6_no_stale_bank_under_anchor_path():
++    model, encoder, encoder_ref, memory_x, batch_x_v = _setup()
++    with torch.no_grad():
++        e_before = encode_with(model.encoder, model, memory_x, 0, grad=False).clone()
++        for p in encoder.parameters():
++            p.add_(0.2 * torch.randn_like(p))
++        e_after = encode_with(model.encoder, model, memory_x, 0, grad=False)
++    assert not torch.allclose(e_before, e_after), 'candidate embeddings must track the current (perturbed) encoder'
++    # the reference encoder must NOT have moved
++    with torch.no_grad():
++        z0 = encode_with(encoder_ref, model, memory_x, 0, grad=False)
++        z0_again = encode_with(encoder_ref, model, memory_x, 0, grad=False)
++    assert torch.allclose(z0, z0_again), 'reference encoder must stay frozen'
++
++
++def test_S7_chunk_equivalence_for_anchor_loss():
++    torch.manual_seed(0)
++    encoder_a = ToyEncoder(8, 3, 16)
++    model_a = ToyModel(encoder_a)
++    ref_a = copy.deepcopy(encoder_a)
++    ref_a.eval()
++    for p in ref_a.parameters():
++        p.requires_grad = False
++
++    encoder_b = copy.deepcopy(encoder_a)
++    model_b = ToyModel(encoder_b)
++    ref_b = copy.deepcopy(ref_a)
++
++    torch.manual_seed(1)
++    memory_x = torch.randn(23, 8, 3)
++    batch_x_v = torch.randn(5, 8, 3)
++    with torch.no_grad():
++        for p in encoder_a.parameters():
++            p.add_(0.2 * torch.randn_like(p))
++        for pb, pa in zip(encoder_b.parameters(), encoder_a.parameters()):
++            pb.copy_(pa)
++
++    diag_a = anchor_step(model_a, ref_a, 0, memory_x, batch_x_v, lambda_anchor=1.0,
++                          grad_scale=1.0, cand_chunk_size=1000, train=True)
++    diag_b = anchor_step(model_b, ref_b, 0, memory_x, batch_x_v, lambda_anchor=1.0,
++                          grad_scale=1.0, cand_chunk_size=5, train=True)
++    assert abs(diag_a['anchor_loss'] - diag_b['anchor_loss']) < 1e-5, \
++        f"chunked vs unchunked anchor loss mismatch: {diag_a['anchor_loss']} vs {diag_b['anchor_loss']}"
++    for (na, pa), (nb, pb) in zip(encoder_a.named_parameters(), encoder_b.named_parameters()):
++        assert na == nb
++        ga = pa.grad if pa.grad is not None else torch.zeros_like(pa)
++        gb = pb.grad if pb.grad is not None else torch.zeros_like(pb)
++        assert torch.allclose(ga, gb, atol=1e-3, rtol=1e-2), f'encoder.{na} gradient mismatch (chunked vs unchunked anchor)'
++
++
++def test_S8_anchor_step_never_calls_optimizer_step():
++    src = inspect.getsource(anchor_step)
++    tree = ast.parse(src)
++    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
++    step_calls = [c for c in calls if isinstance(c.func, ast.Attribute) and c.func.attr == 'step']
++    assert not step_calls, 'anchor_step must never call .step() itself'

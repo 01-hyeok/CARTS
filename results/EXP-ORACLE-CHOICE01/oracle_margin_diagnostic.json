@@ -1,0 +1,74 @@
+{
+  "t1": {
+    "n": 200,
+    "abs_margin_mean": 0.051013107150793074,
+    "rel_margin_mean": 0.13612009167807246,
+    "near_tie_frac": 0.085,
+    "top5_spread_mean": 0.1571419470757246
+  },
+  "t2": {
+    "n": 200,
+    "abs_margin_mean": 0.017788779959082603,
+    "rel_margin_mean": 0.06343528610557411,
+    "near_tie_frac": 0.145,
+    "top5_spread_mean": 0.03759462028741836
+  },
+  "t3": {
+    "n": 200,
+    "abs_margin_mean": 0.006927798576653004,
+    "rel_margin_mean": 0.03028341458152834,
+    "near_tie_frac": 0.325,
+    "top5_spread_mean": 0.014550996720790863
+  },
+  "t4": {
+    "n": 200,
+    "abs_margin_mean": 0.003456209860742092,
+    "rel_margin_mean": 0.015086482953986378,
+    "near_tie_frac": 0.545,
+    "top5_spread_mean": 0.007047773040831089
+  },
+  "t5": {
+    "n": 200,
+    "abs_margin_mean": 0.0018181582540273667,
+    "rel_margin_mean": 0.008037177198990615,
+    "near_tie_frac": 0.73,
+    "top5_spread_mean": 0.003929831497371197
+  },
+  "t6": {
+    "n": 200,
+    "abs_margin_mean": 0.0012108580768108368,
+    "rel_margin_mean": 0.005613117340627774,
+    "near_tie_frac": 0.82,
+    "top5_spread_mean": 0.0025658731162548063
+  },
+  "t7": {
+    "n": 200,
+    "abs_margin_mean": 0.0007501683384180069,
+    "rel_margin_mean": 0.0035452510264971293,
+    "near_tie_frac": 0.89,
+    "top5_spread_mean": 0.001622268445789814
+  },
+  "t8": {
+    "n": 200,
+    "abs_margin_mean": 0.00040010809898376464,
+    "rel_margin_mean": 0.0020956275417493104,
+    "near_tie_frac": 0.97,
+    "top5_spread_mean": 0.0009508910402655601
+  },
+  "t9": {
+    "n": 200,
+    "abs_margin_mean": 0.00027623489499092104,
+    "rel_margin_mean": 0.0014455798492387887,
+    "near_tie_frac": 0.98,
+    "top5_spread_mean": 0.0005892583355307579
+  },
+  "t10": {
+    "n": 200,
+    "abs_margin_mean": 0.0001662270724773407,
+    "rel_margin_mean": 0.0008381805259960384,
+    "near_tie_frac": 0.99,
+    "top5_spread_mean": 0.0003802361711859703
+  },
+  "n_queries": 200,
+  "split": "test"
+}

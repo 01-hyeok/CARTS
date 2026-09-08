@@ -1,0 +1,10 @@
+{
+  "tests": "tests/test_exp_oracle_choice01.py",
+  "result": "4 passed, 0 failed",
+  "checks": {
+    "1_and_2_softmax_covers_all_valid_invalid_prob_zero": "PASSED -- every valid candidate's probability sums to 1 per row; invalid positions get exactly 0 probability mass, never silently dropped from the denominator",
+    "3_oracle_label_is_argmax_true_utility": "PASSED -- i_t* == argmax_valid(u_target), matches the internal loss computation exactly",
+    "4_smalln_positive_control": "PASSED -- oracle_choice_step_loss trained via the real training loop's own gradient path fits a synthetic known-utility landscape to >90% top-1 accuracy after 300 steps",
+    "5_dense_utility_chunking_invariance": "PASSED -- chunked vs unchunked dense_utility target produces identical logits/loss (atol 1e-6)"
+  }
+}

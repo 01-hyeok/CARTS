@@ -1,0 +1,33 @@
+source /data/pjh_workspace/ts-env/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+ETTH1_S2_96="checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth"
+
+# NO NEW TRAINING (diagnostic only). Reuses the existing B0 Stage-2
+# checkpoint (frozen base_head + retrieval encoder) verbatim; nothing is
+# trained, no selector, no encoder, no gate.
+python -u scripts/diag_correction_oracle01.py \
+  --stage2_checkpoint "$ETTH1_S2_96" \
+  --top_k 10 --chunk_size 2048 --n_queries 200 --split test \
+  --out_dir results/EXP-CORRECTION-ORACLE-DIAG01
+
+# Track A (EXP-ENCODER-ANCHOR01 -> EXP-ORACLE-CHOICE01 ->
+# EXP-TEACHER-FORCING-DIAG01 -> EXP-ONPOLICY-PREFIX01) ran independently
+# and in parallel; this script/results directory does not touch Track A's
+# checkpoints, code, or results in any way.
+#
+# SCOPE LIMITATION (documented, matches EXP-TEACHER-FORCING-DIAG01's own
+# precedent): this diagnostic evaluates channel 0 only (self-only,
+# relation_top_n=1). Its downstream MSE numbers (b0_mse=1.4496,
+# future_oracle_final_mse=0.2109, correction_oracle_final_mse=0.1818) are
+# THIS CHANNEL's own true-future-vs-prediction MSE, computed directly from
+# base_forecast()/select_greedy_weighted_set() outputs -- NOT the
+# multi-channel-averaged Stage-2 MSE (0.37312 for B0) every Track A
+# experiment reports, which averages over all 7 channels through the full
+# Stage-2 model forward pass. The two numbers are NOT directly comparable
+# in absolute terms. Only the RELATIVE comparison among {B0, Future
+# Oracle, Correction Oracle} within this diagnostic (same channel-0 scope
+# for all three) is used for this experiment's conclusions.
+#
+# Full log: logs/exp_correction_oracle_diag01/run_test.log

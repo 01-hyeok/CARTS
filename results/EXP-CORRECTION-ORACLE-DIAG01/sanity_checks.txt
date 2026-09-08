@@ -1,0 +1,14 @@
+EXP-CORRECTION-ORACLE-DIAG01 sanity checks
+tests/test_exp_correction_oracle01.py: 9 passed, 0 failed
+1. residual = future - base_prediction exactness: PASSED
+2. MSE(B_q+C,Y_q) == MSE(C,r_q): PASSED (unit test AND runtime assertion in diag_correction_oracle01.py::evaluate, checked every batch)
+3. empty correction -> final == B0 exactly: PASSED
+4. K=1 brute-force argmin matches select_greedy_weighted_set: PASSED
+5. small-N greedy K-step matches exhaustive stepwise dense_utility argmin: PASSED
+6. invalid/duplicate candidate never selected: PASSED
+7. full-memory candidate count unaffected by chunking: PASSED (unit test) + runtime assert n_cand==8449==memory_y.shape[0] (real run)
+8. B0 parameters carry no gradient: PASSED (unit test) + runtime assert in evaluate() over every b0_model parameter
+9. candidate residual uses only candidate's own past, never query: PASSED (unit test) + structural: base_forecast(memory_x) call site never receives batch_y/batch_x
+
+Online consistency (real data, not a pre-registered numbered sanity item but an extra cross-check):
+argmax(dense_utility-derived per-candidate utility) matched select_greedy_weighted_set's own picks at every step for both oracles, mismatch rate <= 4.5% at t=10 (floating-point/near-tie boundary noise), 0% at t=1..4.

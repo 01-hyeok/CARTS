@@ -1,0 +1,13 @@
+{
+  "tests": "tests/test_exp_onpolicy_prefix01.py",
+  "result": "7 passed, 0 failed",
+  "checks": {
+    "1_t0_state_matches_oracle_prefix": "PASSED -- identical q/E/SetConditioner/EmptySetToken at t=0 (empty prefix) produce identical u_hat between the oracle-prefix and on-policy code paths",
+    "2_selected_index_enters_prefix": "PASSED",
+    "3_selected_candidate_removed_next_valid_set": "PASSED -- also verifies no duplicate picks within a query",
+    "4_target_recomputed_from_model_prefix": "PASSED -- step-2 target verified to match dense_utility recomputed directly from the model's own step-1 pick, not the oracle's",
+    "5_no_gradient_through_argmax_selection": "PASSED",
+    "6_r2_gradient_flows_to_setconditioner_and_utilityhead": "PASSED",
+    "7_full_memory_every_valid_candidate_considered": "PASSED"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "experiment_id": "EXP-ENCODER-ANCHOR01",
+  "base_experiment": "EXP-ENCODER-UNFREEZE01 (E1: R2 + cosine + trainable encoder, no anchor -- found severe representation collapse)",
+  "changed_variable": "B0-anchor regularizer only: E1 = R2 + cosine + trainable encoder (no anchor); E2 = SAME + lambda_anchor * (1 - cos(f_theta(x), f_theta0(x))) added to the loss",
+  "arms": {
+    "C0": "R2 + cosine + FROZEN B0 encoder -- existing EXP-TOPTAIL-RANK01/R2 checkpoint, reused verbatim, not retrained",
+    "E1": "R2 + cosine + TRAINABLE encoder, no anchor -- existing EXP-ENCODER-UNFREEZE01 checkpoint, reused verbatim, not retrained",
+    "E2": "R2 + cosine + TRAINABLE encoder + B0-anchor (lambda_anchor=0.16) -- new training this experiment"
+  },
+  "scope": {"dataset": "ETTh1", "horizon": 96, "seed": 0, "top_k": 10},
+  "lambda_anchor": {
+    "value": 0.16,
+    "selection_method": "single fixed-batch gradient-norm-ratio diagnostic (not a sweep, not chosen by looking at test Stage-2) -- see notes.md and lambda_selection_probe.py",
+    "measured_ratio": 0.1628
+  },
+  "sanity_checks": "PASSED (tests/test_exp_encoder_anchor01.py, 8/8: S1 zero-step equivalence, S2 anchor loss ~0 at init, S3 anchor gradient after perturbation, S4 candidate-side gradient, S5 query-side gradient, S6 no stale candidate bank, S7 chunk equivalence for the anchor loss (exact, sum/global-N normalisation), S8 anchor_step never calls optimizer.step() itself)",
+  "checkpoint_selection_criterion": "val_overlap@10 (UNCHANGED from C0/E1)",
+  "encoder_reference": "encoder_ref = deepcopy(model.encoder) taken immediately after loading B0 weights, BEFORE requires_grad=True is set on model.encoder -- permanently frozen/eval/no_grad, never touched by the optimizer",
+  "bug_found_and_fixed_during_development": [
+    "S1 zero-step-equivalence initially failed (max|z-z0|=5.478e-02) because model.encoder was compared in .train() mode (dropout=0.1 active) against encoder_ref's permanent .eval() mode; fixed by evaluating S1 in eval mode on both sides before restoring model.encoder.train().",
+    "anchor_step's candidate-chunk loss initially averaged each chunk's own mean rather than sum-then-divide-by-global-N, causing a chunk-size-dependent bias (caught by the S7 chunk-equivalence test failing at 0.0013, just above the original 1e-3 tolerance); fixed to match encoder_unfreeze_step's own sum/global-N chunking convention, re-verified exact (atol 1e-5)."
+  ],
+  "explicitly_not_run": ["Weather", "H720", "3 seeds", "encoder depth/width sweep", "VICReg/covariance/variance regularizer",
+                          "EMA", "stop-gradient trick", "separate encoder LR / LR sweep", "lambda_anchor sweep",
+                          "scorer change", "Stage-2 fusion change", "Top-M/shortlist/reranker"]
+}

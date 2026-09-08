@@ -1,0 +1,13 @@
+{
+  "probe": "channel 0, first 256 memory rows, utils.rank_losses.embedding_geometry -- same probe as EXP-ENCODER-UNFREEZE01",
+  "B0_frozen_reference": {"embedding_effective_rank": 17.478, "embedding_pairwise_cosine_mean": 0.4736},
+  "three_way_trajectory": {
+    "epoch1": {"E1_effective_rank": 2.963, "E2_effective_rank": 15.704, "E2_cos_to_b0": 0.99741, "E2_drift_l2": 0.07043},
+    "epoch2": {"E1_effective_rank": null, "E2_effective_rank": 16.056, "E2_cos_to_b0": 0.99772, "E2_drift_l2": 0.06634},
+    "epoch3": {"E1_effective_rank": 1.892, "E2_effective_rank": 16.122, "E2_cos_to_b0": 0.99750, "E2_drift_l2": 0.06913},
+    "epoch4": {"E1_effective_rank": null, "E2_effective_rank": 16.112, "E2_cos_to_b0": 0.99732, "E2_drift_l2": 0.07121},
+    "epoch5": {"E1_effective_rank": null, "E2_effective_rank": 16.560, "E2_cos_to_b0": 0.99651, "E2_drift_l2": 0.08070},
+    "epoch6_final": {"E1_effective_rank": 1.495, "E2_effective_rank": 16.232, "E2_cos_to_b0": 0.99758, "E2_drift_l2": 0.06815}
+  },
+  "interpretation": "E1 (no anchor) collapses monotonically and severely (17.478 -> 2.96 -> 1.89 -> 1.49, never recovering). E2 (with anchor) stays close to B0's own 17.478 throughout all 6 epochs (15.70-16.56, no downward trend, no collapse at any point trained) -- collapse is clearly PREVENTED. However E2's cos_to_b0 stays extremely high (0.9965-0.9977) and drift_l2 stays small (0.066-0.081) throughout, with NO clear monotonic drift-away-from-B0 trend across epochs (unlike E1, which drifted further from B0 every single epoch) -- E2's representation moves a small, roughly constant amount and does not continue moving further as training proceeds, unlike E1's runaway drift. This pattern is consistent with the anchor successfully preventing collapse, but leaves open whether the resulting representation has moved meaningfully enough to differ functionally from C0's frozen B0 encoder -- addressed via the downstream metrics in REPORT.md, not resolved by this diagnostic alone."
+}

@@ -1,0 +1,30 @@
+{
+  "t1_spearman_top1pct": {
+    "E2_test": 0.2441700103133917,
+    "E2_train": 0.15429086254909635
+  },
+  "t1_oracle_rank_median": {
+    "E2_test": 86,
+    "E2_train": 546
+  },
+  "t1_top50_containment": {
+    "E2_test": 0.315,
+    "E2_train": 0.125
+  },
+  "t2_hurt_frac": {
+    "E2_test": 0.216,
+    "E2_train": 0.276
+  },
+  "t2_selected_rank_median": {
+    "E2_test": 1929.5,
+    "E2_train": 3611.5
+  },
+  "t2_spearman_top1pct": {
+    "E2_test": 0.16563783843815327,
+    "E2_train": 0.03778976318519563
+  },
+  "t2_continuation_regret": {
+    "E2_test": 0.31768389041349293,
+    "E2_train": 0.33992877560853957
+  }
+}

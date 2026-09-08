@@ -1,0 +1,15 @@
+metric,oracle_prefix,free_running
+rank_mean/N.A.,1148.7775,N/A
+top1_acc,0.0025,N/A
+top5_containment,0.018,N/A
+top10_containment,0.0325,N/A
+top50_containment,0.122,N/A
+ndcg10_mean,0.7675644174814225,N/A
+ndcg50_mean,0.7895810202807187,N/A
+spearman_top1pct_mean,0.27947554088916876,N/A
+mean_step_regret,0.2543579241409898,0.37569596189260485
+mean_divergence_rate,N/A,0.995
+first_divergence_step_mean,N/A,0.01
+mean_prefix_overlap,N/A,0.027135912698412815
+final_A_weighted_mean,0.24585892744362353,0.8688203226029872
+stage2_final_mse (single-channel scope),0.3223842717709068,0.3765572148652691

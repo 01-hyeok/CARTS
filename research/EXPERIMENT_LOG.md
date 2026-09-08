@@ -2086,3 +2086,585 @@ similarly, plausibly faster. No collapse-prevention regularisation,
 partial-layer unfreezing, or encoder-LR tuning was started in response.
 Full breakdown: `results/EXP-ENCODER-UNFREEZE01/REPORT.md`. Per the user's
 explicit instruction, no further experiment was started.
+
+## EXP-ENCODER-ANCHOR01 — R2 + cosine + trainable encoder + B0-anchor regularizer (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-08
+**Status:** completed (1 cell, C0 vs E1 vs E2). Per user's explicit
+pre-approval, EXP-ORACLE-CHOICE01 (D1), EXP-TEACHER-FORCING-DIAG01, and
+EXP-ONPOLICY-PREFIX01 (T1) proceed next in sequence regardless of this
+result.
+
+### Research Question
+
+`EXP-ENCODER-UNFREEZE01` (E1) found that letting the encoder train under
+R2's objective causes severe, monotonically-deepening representation
+collapse and worse Stage-2 than the frozen baseline C0. Does adding a
+B0-anchor regularizer to the SAME trainable-encoder setup PREVENT the
+collapse, and if so, does that let encoder adaptation actually beat C0 on
+Stage-2 -- or was collapse never the primary bottleneck?
+
+### Configuration
+
+New script `scripts/train_encoder_anchor01.py` (does not modify
+`scripts/train_encoder_unfreeze01.py`, preserving E1's own reproducibility).
+`encoder_ref = copy.deepcopy(model.encoder)` taken immediately after loading
+B0 weights, before `requires_grad=True`; permanently frozen/eval/no_grad,
+never touched by the optimizer. Anchor loss `L_anchor = 1 - cos(f_theta(x),
+f_theta0(x))` evaluated once per (batch, channel) over the query batch and
+the FULL candidate bank (chunked purely for memory, sum-then-divide-by-
+global-N normalisation so chunking is exactly loss/gradient-equivalent to
+an unchunked pass), added to R2's loss with `lambda_anchor=0.16` (fixed, no
+sweep -- selected via a single fixed-batch gradient-norm-ratio diagnostic
+on the EXISTING E1 epoch-1 checkpoint, comparing R2-only vs. anchor-only
+encoder gradient magnitude; measured ratio 0.1628, rounded to 0.16; see
+`results/EXP-ENCODER-ANCHOR01/notes.md` and `lambda_selection_probe.py`).
+Every other hyperparameter/architecture/protocol identical to E1 (same
+optimizer/LR/epochs/patience, checkpoint-selection criterion
+`val_overlap@10`, full-memory memory-safe streaming design, Stage-2
+architecture/gate/fusion unchanged). Full commands:
+`results/EXP-ENCODER-ANCHOR01/command.txt`.
+
+### Mandatory sanity checks (S1-S8, all before the GPU run)
+
+`tests/test_exp_encoder_anchor01.py`, 8/8 PASSED: S1 zero-step equivalence
+(trainable encoder == frozen reference at construction), S2 anchor loss ~0
+at init, S3 anchor gradient nonzero after a controlled perturbation, S4
+candidate-side gradient flows, S5 query-side gradient flows, S6 no stale
+candidate bank, S7 chunk equivalence for the anchor loss (exact, atol
+1e-5), S8 `anchor_step` never calls `optimizer.step()` itself.
+
+Two bugs caught and fixed during development, before the real run: (1) S1
+initially failed (max|z-z0|=5.478e-02) because `model.encoder` was compared
+in `.train()` mode (dropout=0.1 active) against `encoder_ref`'s permanent
+`.eval()` mode -- fixed by evaluating S1 in eval mode on both sides before
+restoring `model.encoder.train()`. (2) S7 initially failed at a 0.0013
+discrepancy because the candidate-chunk anchor loss averaged each chunk's
+own mean rather than sum-then-divide-by-global-N, silently over-weighting
+a smaller final chunk -- fixed to match `encoder_unfreeze_step`'s own
+established chunking convention, re-verified exact (atol 1e-5).
+
+### Changed Variable
+
+The B0-anchor regularizer only (added on top of E1, which is otherwise
+unchanged). `lambda_anchor=0.16` fixed, no sweep.
+
+### Dataset / Horizon
+
+ETTh1 H96 only, seed 0. Weather, H720, 3 seeds, lambda_anchor sweep,
+VICReg/covariance/variance regularizers, EMA, stop-gradient, separate
+encoder LR, encoder depth/width sweep all explicitly not run.
+
+### Result Files
+
+`results/EXP-ENCODER-ANCHOR01/{command.txt, config.json, sanity_summary.json,
+notes.md, lambda_selection_probe.py, train_summary.json, stage2_eval.json,
+ETTh1_H96_E2_stage2.json, representation_probe.csv,
+representation_diagnostics.json, t1_diagnostic.json, t2_continuation.json,
+train_vs_val_test.json, ETTh1_H96_E2_{test,train}_summary.json,
+continuation_diag_ETTh1_H96_E2_{test,train}_dense_first.csv,
+ETTh1_H96_E2_{test,train}_dense_first_summary.json, metrics.csv, REPORT.md,
+logs/, working_tree.diff, checkpoint_fingerprints.txt, env.txt,
+git_commit.txt}`.
+
+### Results
+
+Training: `best_epoch=1` (`val_overlap@10=0.0094`, best of C0/E1/E2 on
+this proxy), early-stopped at epoch 6, `wall_clock=8609.7s`,
+`peak_gpu_mem=516MiB`, no OOM.
+
+**Collapse prevented**: `embedding_effective_rank` stayed 15.70-16.56
+across all 6 epochs (vs B0's 17.48, vs E1's own collapse to 2.96 at
+epoch1 -> 1.49 at epoch6). `cos_to_b0` stayed 0.9965-0.9977 (small,
+roughly stable displacement, no runaway drift unlike E1's monotonic
+0.650->0.559 decline).
+
+| Metric | C0 (frozen) | E1 (trainable, no anchor) | E2 (trainable + anchor) |
+|---|---:|---:|---:|
+| Stage-2 MSE | 0.39526 | 0.40668 | 0.40418 |
+| gap_recovery | -0.2626 | -0.3703 | -0.3594 |
+| HardAggregate@10 (seq) | 0.5514 | 0.5466 | 0.6768 |
+| t1 Spearman top-1% (test) | 0.2128 | 0.1455 | 0.2442 |
+| t1 oracle rank median (test) | 99 | 210 | 86 |
+| t1 Top-50 containment (test) | 30.5% | 20.5% | 31.5% |
+| t2 hurt_frac (test) | 0.232 | 0.194 | 0.216 |
+| t2 selected true rank median (test) | 1934.0 | 539.5 | 1929.5 |
+| t2 continuation_regret (test) | 0.3498 | 0.3987 | 0.3177 |
+
+E2 is the BEST of all three arms on t1 (every metric) and most of t2
+(hurt_frac, oracle rank, Spearman, continuation_regret), but WORSE than C0
+on Stage-2 (though slightly better than E1) and WORST OF ALL THREE arms on
+HardAggregateMSE.
+
+### Sanity Checks
+
+`pytest tests/`: 536 passed (8 new in `tests/test_exp_encoder_anchor01.py`
+plus 4+7 for D1/T1 prepared in parallel -- see their own entries), same 2
+pre-existing failures, no regression.
+
+### Implementation Notes
+
+New: `scripts/train_encoder_anchor01.py`, `tests/test_exp_encoder_anchor01.py`.
+No changes needed to `eval_margutil01_stage2.py`/`eval_firstanchor_diag.py`/
+`eval_continuation_diag.py` (E2's checkpoint carries its own adapted
+encoder in `model_state_dict`, loaded automatically, same as E1).
+
+### Conclusion
+
+**Outcome B (collapse prevented, downstream Stage-2 does not improve),
+with an unresolved internal metric disagreement.** Not Outcome A (Stage-2
+worse than C0). Not Outcome C (collapse plainly did not persist). Not a
+clean Outcome D either (the encoder moved a real amount and several
+metrics changed substantially, not "flat"). The Stage-2/HardAggregate vs.
+t1/t2 disagreement (E2 best of all three on top-tail ranking, worst of all
+three on HardAggregate, still worse than C0 on the primary Stage-2 metric)
+is reported as-is rather than resolved. **The STRONG version of "collapse
+fully explains E1's failure" is refuted** (preventing it only closed a
+small fraction of the Stage-2 gap and made HardAggregate worse); a WEAK
+version ("collapse was a real, partial contributing factor, alongside
+something else visible as a per-step-ranking vs. free-running-aggregate
+disconnect") is left open. Full breakdown:
+`results/EXP-ENCODER-ANCHOR01/REPORT.md`. Per the pre-registered stopping
+rule, no larger anchor-strength sweep or different anchor form was
+started; per the user's explicit pre-approval, EXP-ORACLE-CHOICE01 (D1)
+proceeds next.
+
+## EXP-ORACLE-CHOICE01 — R2 (SmoothL1+pairwise) vs. Oracle-Choice Cross-Entropy (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-08
+**Status:** completed (1 cell, C0 vs D1). Per user's explicit pre-approval,
+EXP-TEACHER-FORCING-DIAG01 (diagnostic, no training) and
+EXP-ONPOLICY-PREFIX01 (T1) proceed next in sequence.
+
+### Research Question
+
+Does R2's SmoothL1+pairwise surrogate insufficiently target the Set
+Oracle's actual greedy next choice, such that training the model to
+directly predict `i_t* = argmax_i u_i^(t)` improves free-running selection
+and Stage-2?
+
+### Configuration
+
+New script `scripts/train_oracle_choice01.py`. Loss:
+`L_choice^(t) = -log p_{i_t*}^(t)`, masked full-memory softmax over valid
+candidates only, `tau=0.1` (base checkpoint's own `tau_topk`, no sweep).
+SmoothL1 and pairwise terms REMOVED entirely -- Oracle-Choice CE only, per
+the spec's explicit prohibition on mixing auxiliary losses. Frozen B0
+encoder unchanged (same checkpoint as C0), same `SetConditioner`/
+`EmptySetToken`/`UtilityHead`/optimizer/LR/epochs/patience/checkpoint-
+selection criterion (`val_overlap@10`). No memory-safe streaming needed
+(encoder frozen, same simple single-backward design as R0/R1/R2). Full
+commands: `results/EXP-ORACLE-CHOICE01/command.txt`.
+
+### Mandatory pre-training diagnostic
+
+`scripts/diag_oracle_margin01.py` (`oracle_margin_diagnostic.json`), run
+BEFORE training, interpretive only: the Oracle's true top-1-vs-top-2
+utility margin collapses sharply as the selected set grows --
+`near_tie_frac` rises from 8.5% at t=1 to 99.0% at t=10, `rel_margin_mean`
+falls from 0.136 to 0.0008. Per spec, this is recorded as a LIMITATION on
+one-hot Oracle-Choice CE (later steps' "true" label is often an arbitrary
+tie-break), not acted on -- no automatic switch to multi-positive/soft/KL
+targets.
+
+### Mandatory sanity checks
+
+`tests/test_exp_oracle_choice01.py`, 4/4 PASSED: full-memory masked CE
+includes every valid candidate with invalid probability exactly 0; oracle
+label equals `argmax` of the true dense utility exactly; a synthetic
+small-N positive control fits >90% top-1 accuracy; `dense_utility`
+chunking does not change the resulting logits/loss.
+
+### Changed Variable
+
+Loss only (SmoothL1+pairwise -> Oracle-Choice CE). Encoder, scorer,
+SetConditioner, optimizer/LR, checkpoint-selection criterion all identical
+to C0.
+
+### Dataset / Horizon
+
+ETTh1 H96 only, seed 0. Weather, H720, 3 seeds, temperature sweep,
+multi-positive/soft/KL target change, combination with on-policy prefix,
+encoder unfreezing all explicitly not run.
+
+### Result Files
+
+`results/EXP-ORACLE-CHOICE01/{command.txt, config.json, sanity_summary.json,
+notes.md, oracle_margin_diagnostic.json, train_summary.json, stage2_eval.json,
+ETTh1_H96_D1_stage2.json, t1_diagnostic.json, t2_continuation.json,
+ETTh1_H96_D1_{test,train}_summary.json,
+continuation_diag_ETTh1_H96_D1_{test,train}_dense_first.csv,
+ETTh1_H96_D1_{test,train}_dense_first_summary.json,
+oracle_choice_diag_{test,train}.json, metrics.csv, REPORT.md, logs/,
+working_tree.diff, checkpoint_fingerprints.txt, env.txt, git_commit.txt}`.
+
+### Results
+
+Training: `best_epoch=10` (the max configured epoch, NEVER early-stopped
+-- `val_overlap@10` improved every single epoch, 0.0119->0.0146, unlike
+every other arm this session which peaked at epoch 1). `wall_clock=2099.2s`
+(~35 min), `peak_gpu_mem=593MiB`, no OOM.
+
+Teacher-forced exact next-choice accuracy stayed low throughout (mean
+top1_acc=0.36% across K=10 steps, t1=1.34%, consistent with the near-tie
+diagnostic above) -- but every downstream/decision-relevant metric
+improved:
+
+| Metric | C0 (R2) | D1 (Oracle-Choice CE) | Delta |
+|---|---:|---:|---|
+| Stage-2 MSE | 0.39526 | **0.38916** | **better** (FIRST arm this session to beat C0) |
+| gap_recovery | -0.2626 | -0.2317 | better |
+| HardAggregate@10 (seq) | 0.5514 | 0.5480 | better |
+| t1 Spearman top-1% (test) | 0.2128 | 0.2832 | better |
+| t1 oracle rank median (test) | 99 | 47 | better |
+| t1 Top-50 containment (test) | 30.5% | 52.0% | better |
+| t2 hurt_frac (test) | 0.232 | 0.122 | better |
+| t2 selected true rank median (test) | 1934.0 | 88.0 | much better |
+| t2 Spearman top-1% (test) | 0.1404 | 0.3294 | much better |
+| t2 continuation_regret (test) | 0.3498 | 0.1964 | much better |
+
+Every single decision-relevant metric measured improves for D1 over C0 --
+the first arm this entire session where every intermediate diagnostic and
+the primary Stage-2 metric point the same direction.
+
+### Sanity Checks
+
+`pytest tests/`: 536 passed (4 new in `tests/test_exp_oracle_choice01.py`),
+same 2 pre-existing failures, no regression.
+
+### Implementation Notes
+
+New: `scripts/train_oracle_choice01.py`, `scripts/diag_oracle_margin01.py`,
+`scripts/eval_oracle_choice_diag.py` (per-step teacher-forced top1/5/10
+accuracy, predicted rank, and step regret on the best checkpoint, reusing
+`oracle_choice_step_loss` directly), `tests/test_exp_oracle_choice01.py`.
+No changes needed to `eval_margutil01_stage2.py`/`eval_firstanchor_diag.py`/
+`eval_continuation_diag.py` (D1's checkpoint uses the default `cosine`
+`UtilityHead`, already handled).
+
+### Conclusion
+
+**Outcome L-A.** R2's SmoothL1+pairwise surrogate was insufficiently
+aligned with the Set Oracle's actual greedy decision; a more direct
+choice-prediction objective (Oracle-Choice CE) recovers real, consistent
+Stage-2 and downstream-decision value, DESPITE a demonstrable and
+explained limitation (near-tie labels at later steps making exact
+teacher-forced accuracy low). This is evidence that loss/surrogate
+mismatch was a real, and the largest-yet-found, contributing factor to
+this project's set-aware retrieval underperforming B0. D1 still does not
+close the full gap to B0 (0.38916 vs 0.37312). Full breakdown:
+`results/EXP-ORACLE-CHOICE01/REPORT.md`. Per the user's explicit
+pre-approval, EXP-TEACHER-FORCING-DIAG01 (diagnostic, no training)
+proceeds next, followed by EXP-ONPOLICY-PREFIX01 (T1).
+
+## EXP-TEACHER-FORCING-DIAG01 — Oracle-prefix vs. free-running evaluation of the SAME C0/R2 checkpoint (COMPLETE: ETTh1 H96, diagnostic only, no training)
+
+**Date:** 2026-09-08
+**Status:** completed (diagnostic only). Per user's explicit pre-approval,
+EXP-ONPOLICY-PREFIX01 (T1) proceeds next.
+
+### Research Question
+
+Before committing to on-policy retraining, does the EXISTING C0/R2
+checkpoint reproduce the Set Oracle's actual next choice well when GIVEN
+the correct oracle prefix, and how does that compare to its own
+free-running behavior?
+
+### Method
+
+`scripts/diag_teacher_forcing01.py` (new, no training). Two evaluation
+modes on the SAME frozen C0/R2 checkpoint: (A) Oracle-prefix — state and
+target both from the oracle's own prefix at every step; (B) Free-running —
+the model's own argmax prefix. Channel 0 only. Stage-2 MSE (within this
+single-channel scope) accumulated over the FULL test split; detailed
+per-step rank/NDCG/regret/divergence diagnostics subsampled to 200 valid
+queries. A bug in the first version (early loader break, producing a
+Stage-2 MSE on a tiny non-representative subset) was caught and fixed
+before trusting the result — re-run on the full split.
+
+**Scope limitation (documented)**: this diagnostic forces only channel 0
+into Stage-2 for both arms, unlike the project's official all-7-channel
+Stage-2 evaluations — its Stage-2 numbers are NOT comparable in absolute
+terms to C0's canonical 0.39526; only the relative oracle-prefix-vs-
+free-running comparison (same scope both arms) is valid.
+
+### Results
+
+| Metric | Oracle-prefix | Free-running |
+|---|---:|---:|
+| Oracle next-choice rank mean | 1148.8 | — |
+| Top-1 accuracy | 0.25% | — |
+| Top-10 containment | 3.25% | — |
+| NDCG@10 | 0.768 | — |
+| Spearman (true top-1%) | 0.279 | — |
+| mean step regret | 0.254 | 0.376 |
+| mean divergence rate | — | 99.5% |
+| first divergence step (mean) | — | ~0 |
+| mean prefix overlap | — | 2.7% |
+| Stage-2 MSE (single-channel scope) | 0.322 | 0.377 |
+
+Per-step: t1 rank_mean=120.3/NDCG@10=0.965; t2 rank_mean=488.5/NDCG@10=0.756;
+t10 rank_mean=2299.2/NDCG@10=0.712 -- rank degrades sharply with t while
+NDCG stays comparatively high throughout.
+
+### Case classification
+
+**Mixed -- elements of Case A, B, and C all present, not forced into one.**
+Case C (NDCG-high, exact-rank-poor) strongly and clearly present at every
+step, reproducing EXP-FIRSTANCHOR-DIAG's original finding on the SAME
+checkpoint family. Case A partial support: oracle-prefix performance is
+not "good" in absolute terms (Top-1 acc ~0.25%, rank balloons past 1000 by
+mid-sequence even with the correct prefix). Case B also has real support:
+within this diagnostic's own paired comparison, oracle-prefix beats
+free-running on every comparable metric, and free-running diverges from
+the oracle's own trajectory almost immediately (99.5% divergence,
+overlap collapsing to 2.7%). Net reading: teacher-forcing/exposure-bias
+mismatch is a real, independently-evidenced contributor, operating
+ALONGSIDE a surrogate/decision-resolution weakness (Case C) that is at
+least as severe -- consistent with, and complementary to,
+EXP-ORACLE-CHOICE01's finding that a more direct choice-aligned loss
+recovers real value.
+
+### Result Files
+
+`results/EXP-TEACHER-FORCING-DIAG01/{REPORT.md, metrics.csv,
+oracle_prefix_summary_test.json, free_running_summary_test.json,
+full_result_test.json, step_metrics_test.csv, command.txt, env.txt,
+checkpoint_fingerprints.txt, working_tree.diff, logs/, git_commit.txt}`.
+
+### Implementation Notes
+
+New: `scripts/diag_teacher_forcing01.py` (reuses `load_trained_selector`/
+`encode`/`a_weighted_prefix`/`hard_agg`/`_ndcg_at_k` from
+`eval_firstanchor_diag.py`, `load_stage2` from `utils.retrieval_diagnostics`,
+`dense_utility`/`candidate_weights` from `utils.dense_utility` -- no
+reimplementation of existing diagnostic primitives). No dedicated pytest
+file (matches this project's convention for other no-training, read-only
+diagnostic scripts like `eval_firstanchor_diag.py` itself); correctness
+verified via the full pytest suite (no regression) plus the internal
+consistency fix (early-break bug caught and corrected before trusting
+results).
+
+### Conclusion
+
+Diagnostic complete; per the user's explicit pre-approval,
+`EXP-ONPOLICY-PREFIX01` (T1) proceeds next as the final step of the
+pre-approved 3-step sequence (D1 -> this diagnostic -> T1), after which no
+further experiment is auto-started.
+
+## EXP-ONPOLICY-PREFIX01 — R2 loss unchanged, Oracle prefix vs. on-policy (model-generated) prefix (COMPLETE: ETTh1 H96 only)
+
+**Date:** 2026-09-08
+**Status:** completed (1 cell, C0 vs T1). This was the LAST step of the
+user's pre-approved 3-experiment sequence (D1 -> teacher-forcing
+diagnostic -> T1). Sequence now COMPLETE; no further experiment auto-started.
+
+### Research Question
+
+Is R2's free-running failure caused, at least in part, by the train-time
+Oracle-prefix / inference-time model-prefix state-distribution mismatch
+(teacher-forcing/exposure bias), independent of the loss formula itself?
+
+### Configuration
+
+New script `scripts/train_onpolicy_prefix01.py`. Loss formula UNCHANGED
+from C0/R2 (SmoothL1 + `lambda_rank=1.0` * pairwise) -- deliberately NOT
+combined with EXP-ORACLE-CHOICE01's Oracle-Choice CE, per the
+pre-registered single-variable design. Only the prefix source changes:
+at every teacher-forced step, both the `SetConditioner` state AND the
+dense-utility TARGET are built from the model's own on-policy pick
+history (`argmax` under `torch.no_grad()`/detached, never differentiated
+through), not the Oracle's sequence. Frozen B0 encoder unchanged (same
+checkpoint as C0). Full commands: `results/EXP-ONPOLICY-PREFIX01/command.txt`.
+
+### Mandatory sanity checks
+
+`tests/test_exp_onpolicy_prefix01.py`, 7/7 PASSED (t=0 state identity,
+selected index enters prefix, candidate removed from next valid set,
+target recomputed from the model's own prefix, no gradient through
+argmax, R2 gradient flows normally, full-memory semantics preserved).
+
+### Changed Variable
+
+Prefix source only (Oracle -> on-policy). Loss, encoder, scorer,
+SetConditioner, optimizer/LR, checkpoint-selection criterion all identical
+to C0.
+
+### Dataset / Horizon
+
+ETTh1 H96 only, seed 0. Weather, H720, 3 seeds, scheduled sampling,
+DAgger, curriculum, combination with Oracle-Choice CE all explicitly not run.
+
+### Result Files
+
+`results/EXP-ONPOLICY-PREFIX01/{command.txt, config.json, sanity_summary.json,
+notes.md, train_summary.json, stage2_eval.json, ETTh1_H96_T1_stage2.json,
+t1_diagnostic.json, t2_continuation.json,
+ETTh1_H96_T1_{test,train}_summary.json,
+continuation_diag_ETTh1_H96_T1_{test,train}_dense_first.csv,
+ETTh1_H96_T1_{test,train}_dense_first_summary.json, metrics.csv, REPORT.md,
+logs/, working_tree.diff, checkpoint_fingerprints.txt, env.txt,
+git_commit.txt}`.
+
+### Results
+
+Training: `best_epoch=4` (`val_overlap@10=0.0091`), early-stopped at
+epoch 9. `wall_clock=1932.8s` (~32min), `peak_gpu_mem=729MiB`, no OOM.
+Training-time state diagnostics showed `prefix_overlap` with the Oracle's
+own sequence staying near-zero throughout (0.004-0.009) with no improving
+trend, and per-step regret against the model's own best continuation
+rising slightly (0.755->0.852) -- looked concerning in isolation but was
+NOT predictive of the downstream result (see Conclusion).
+
+| Metric | C0 (Oracle prefix) | T1 (on-policy prefix) | Delta |
+|---|---:|---:|---|
+| Stage-2 MSE | 0.39526 | **0.37455** | **much better -- best of the whole session** |
+| gap_recovery | -0.2626 | **-0.0100** | **much better -- best of the whole session** |
+| HardAggregate@10 (seq) | 0.5514 | **0.4096** | **much better -- best of the whole session** |
+| t1 Spearman top-1% (test) | 0.2128 | 0.1650 | worse |
+| t1 oracle rank median (test) | 99 | 144 | worse |
+| t2 hurt_frac (test) | 0.232 | 0.264 | worse |
+| t2 selected true rank median (test) | 1934.0 | 135.5 | much better |
+| t2 Spearman top-1% (test) | 0.1404 | 0.4086 | much better |
+| t2 continuation_regret (test) | 0.3498 | 0.2303 | better |
+
+Mixed on t1/t2 Oracle-agreement metrics (several worse), but dramatically
+and unambiguously better on Stage-2, HardAggregate, gap_recovery, and t2
+rank/Spearman/regret -- the metrics closest to actual realized sequential
+decision quality. **T1's Stage-2 MSE (0.37455) is within 0.00143 of B0's
+own unforced floor (0.37312) and beats EXP-ORACLE-CHOICE01's own D1
+result (0.38916), the best prior arm this session.**
+
+### Sanity Checks
+
+`pytest tests/`: 545 passed (7 new in `tests/test_exp_onpolicy_prefix01.py`,
+plus Track B's 9 new sanity tests run in parallel -- see that experiment's
+own entry), same 2 pre-existing failures, no regression.
+
+### Implementation Notes
+
+New: `scripts/train_onpolicy_prefix01.py` (`run_sequence_onpolicy`
+generalises `run_sequence_dense`'s free-running branch to ALSO compute a
+fresh dense-utility target from the model's own growing prefix at every
+step, reusing `dense_utility`/`candidate_weights`/`step_losses` from
+`utils.dense_utility`/`scripts.train_toptail_rank01` unmodified),
+`tests/test_exp_onpolicy_prefix01.py`. No memory-safe streaming needed
+(encoder stays frozen, same simple single-backward design as R0/R1/R2/D1).
+
+### Conclusion
+
+**Outcome T-A.** Per the pre-registered priority order (Stage-2 >
+HardAggregate/gap_recovery > realized regret > Oracle choice/rank/top-tail
+> training proxy), the three HIGHEST-priority criteria are unambiguous,
+large wins; only the LOWEST-priority criterion (agreement with the
+Oracle's specific choices/ranking) is worse. **Train-time Oracle-prefix /
+inference-time model-prefix state-distribution mismatch was a real, and
+by Stage-2/HardAggregate magnitude the LARGEST-YET-FOUND, contributing
+factor to this project's set-aware retrieval underperforming B0** -- this
+is the strongest positive result the entire session has produced, on the
+metric this project has always treated as primary. The t1/t2
+Oracle-agreement regression is best read as a natural consequence of T1
+never being trained to match the Oracle's specific choices at all --
+consistent with, not contradicting, the Stage-2 result. Full breakdown:
+`results/EXP-ONPOLICY-PREFIX01/REPORT.md`. **This completes the user's
+pre-approved 3-experiment sequence (D1 -> teacher-forcing diagnostic ->
+T1). No further experiment in this sequence is started; results go to
+independent review next**, per the standing project workflow.
+
+## EXP-CORRECTION-ORACLE-DIAG01 (Track B) — Future Set Oracle vs. Correction Set Oracle (COMPLETE: diagnostic only, no training)
+
+**Date:** 2026-09-08
+**Status:** completed. Ran in parallel with Track A
+(EXP-ENCODER-ANCHOR01 -> EXP-ORACLE-CHOICE01 -> EXP-TEACHER-FORCING-DIAG01
+-> EXP-ONPOLICY-PREFIX01); touches none of Track A's code, checkpoints, or
+results.
+
+### Research Question
+
+Stage-2's actual fusion is `Y_final = B_q + gamma * Y_ret` (a residual
+correction, not a from-scratch reconstruction). Does retrieving candidates
+whose OWN frozen-B0 forecast ERROR (`r_i = Y_i - B_i`) resembles the
+query's own error better match this downstream semantics than the
+existing Future Set Oracle (which retrieves by realized-future similarity)?
+Is the Correction target more learnable from a past-only score?
+
+### Method
+
+New script `scripts/diag_correction_oracle01.py`. `B_i = base_head(X_i)`
+computed for the full candidate bank ONCE (candidate's own past only,
+frozen B0, no_grad); `r_i = Y_i - B_i` in the candidate's OWN frame (no
+query-offset transplant, unlike the existing Future Oracle's `_memory_value`
+convention -- a residual is already scale-appropriate as an error).
+`select_greedy_weighted_set` (existing, unmodified) called twice: once
+with raw futures (Future Oracle, faithful reproduction) and once with
+residuals (Correction Oracle) -- the function is agnostic to what the
+value tensor means. `dense_utility` (existing, unmodified) used for
+per-step rank/NDCG/margin/epsilon-optimal diagnostics, cross-checked
+online against `select_greedy_weighted_set`'s own picks (0% mismatch at
+t=1-4, <=4.5% at t=10). Same B0 checkpoint, same past-only reference score
+for weighting, self-only, channel 0.
+
+**Scope limitation**: channel-0-only diagnostic; its MSE numbers are NOT
+comparable in absolute terms to Track A's multi-channel Stage-2 numbers.
+
+### Mandatory sanity checks
+
+`tests/test_exp_correction_oracle01.py`, 9/9 PASSED (residual exactness,
+`MSE(B_q+C,Y_q)==MSE(C,r_q)` equivalence -- also asserted at runtime on
+every real batch, empty correction reduces to B0 exactly, K=1 brute-force
+match, small-N exhaustive stepwise match, no invalid/duplicate selection,
+chunking-invariant candidate count, no B0 gradient, residual independence
+from the query).
+
+Two implementation bugs caught and fixed before trusting results: a
+dict-indexing bug (per-step rows looked up on the wrong dict), and a
+shared-selected-mask bug (Future and Correction Oracles pick different
+candidates per step and need independent "already selected" trajectories,
+not one shared mask).
+
+### Result Files
+
+`results/EXP-CORRECTION-ORACLE-DIAG01/{REPORT.md, summary.json,
+future_oracle_metrics.csv, correction_oracle_metrics.csv,
+utility_margin_diagnostics.csv, epsilon_optimal_metrics.csv,
+oracle_overlap.csv, per_step_metrics.csv, sanity_checks.txt, command.txt,
+env.txt, checkpoint_fingerprints.txt, working_tree.diff, logs/, git_commit.txt}`.
+
+### Results
+
+| Metric | B0 | Future Set Oracle | Correction Set Oracle |
+|---|---:|---:|---:|
+| Final MSE (channel-0 scope) | 1.4496 | 0.2109 | 0.1818 |
+| Gain vs B0 | -- | 1.2387 | 1.2678 |
+| Mean Oracle rank (past-only score) | -- | 757.8 | 632.1 |
+| NDCG@10 | -- | 0.524 | 0.513 |
+| Top1-Top2 margin (abs) | -- | 0.00838 | 0.00573 |
+| Set overlap between the two oracles | -- | 22-28% across all 10 steps |
+
+Correction Oracle: modestly lower downstream MSE, genuinely different
+candidate set from Future Oracle, but consistently HIGHER near-tie
+fraction and smaller margin at every step (worse separability), and mixed
+(mostly worse) NDCG/containment despite a somewhat better mean rank.
+Epsilon-optimality is very low for BOTH oracles at every threshold tested
+-- the past-only reference score rarely lands near either oracle's true
+best pick.
+
+### Sanity Checks
+
+`pytest tests/`: 545 passed (9 new in `tests/test_exp_correction_oracle01.py`),
+same 2 pre-existing failures, no regression.
+
+### Conclusion
+
+**Outcome B-B.** Real but modest downstream headroom gain from the
+Correction target, alongside consistently mixed-to-worse learnability
+signals (higher near-tie fraction, smaller margin) than the existing
+Future Oracle. Not strong enough evidence on its own for the spec's clean
+Outcome B-A ("proceed to `EXP-CORRECTION-SELECTOR01`" recommendation), nor
+does it match B-C (no gain) or B-D (near-identical oracles). Read as weak,
+mixed evidence that a future VALUE-AWARE selector (adding `v_i=g(r_i)` as
+new observable candidate information, not just changing the retrieval
+target) MIGHT be worth considering -- explicitly not started automatically.
+Full breakdown: `results/EXP-CORRECTION-ORACLE-DIAG01/REPORT.md`. Per the
+spec's STOP rule: no selector, encoder, residual encoder, or Stage-2 gate
+was trained. `EXP-CORRECTION-SELECTOR01`'s execution is not decided here.
