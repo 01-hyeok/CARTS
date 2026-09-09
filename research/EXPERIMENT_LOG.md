@@ -2854,3 +2854,135 @@ independent of whether the correction value itself has merit. Full
 breakdown: `results/EXP-CORRECTION-STAGE2-SEMANTICS01/REPORT.md`. Per the
 user's explicit STOP rule, no Correction Selector training or further
 experiment was auto-started.
+
+---
+
+## EXP-CORRECTION-SELECTOR01 (Track B3) — selector trained directly toward the correction objective
+
+### Date
+2026-09-09
+
+### Research Question
+Track B1 found real (mixed, modest) Correction Set Oracle headroom over
+the Future Set Oracle. Track B2 found reusing the EXISTING
+future-oriented Top-K for a correction-value fusion does NOT realize that
+headroom (F0=0.37312 beats B2-C0=0.39056/B2-C1=0.38337 on 6/7 channels).
+Does training a NEW selector DIRECTLY toward the correction objective
+(Choice CE against `u_i^(t) = -MSE(B_q + C(S_{t-1}+{i}), Y_q)`,
+recomputed from the model's own on-policy prefix at every step --
+mirroring `EXP-ONPOLICY-CHOICE01`'s (OPC1, Track A) pattern exactly)
+recover that headroom, isolating whether B2's negative result was a
+SELECTION mismatch rather than a flaw in the correction value itself?
+
+### Configuration
+New script `scripts/train_correction_selector01.py`. Frozen Stage-2
+checkpoint (`checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_.../checkpoint.pth`,
+the SAME checkpoint used throughout Track B1/B2) supplies encoder
+embeddings, `base_forecast`, and the reference retrieval score. ETTh1
+H96, seed 0, all 7 channels, K=10, self-only, full-memory (no shortlist).
+Ran on GPU 1 in parallel with, independently of, Track A's
+`EXP-ONPOLICY-CHOICE-GENERALIZATION01`; separate checkpoints/logs/results
+directories throughout.
+
+### Changed Variable
+Selector training objective's utility target only: Choice CE against the
+CORRECTION utility (`dense_utility` called with residuals `r_i`/`r_q`
+instead of futures -- exact reuse of existing math, no new function),
+built from the model's own on-policy prefix. Scorer input UNCHANGED
+(frozen encoder embeddings only; residuals never reach the scorer).
+
+### Controlled Variables
+SetConditioner/EmptySetToken/UtilityHead architecture (49,794 trainable
+params, identical to Track A's own T1/OPC1 selectors); frozen B0/Stage-2
+throughout; full-memory scoring; on-policy prefix construction and
+no-grad argmax (identical pattern to `train_onpolicy_choice01.py`).
+
+### Dataset
+ETTh1
+
+### Prediction Horizon
+96
+
+### Seed
+0
+
+### Important Hyperparameters
+`tau_topk=0.1` (from checkpoint), `tau_choice=0.1` (no sweep, matching
+D1/OPC1's own precedent), `lr=0.001` (from checkpoint), `train_epochs=15`,
+`patience=5` (never exhausted -- loss was still falling at cutoff), gate
+training `epochs=200/patience=20/lr=0.01` (matching Track B2's own gate
+recipe).
+
+### Result Files
+`results/EXP-CORRECTION-SELECTOR01/` (`REPORT.md`, `summary.json`,
+`channel{0..6}_gate_history.json`, `command.txt`, `config.json`,
+`env.txt`, `checkpoint_fingerprints.txt`, `git_commit.txt`,
+`working_tree.diff`, `smoke/` (1-epoch pipeline-validation run)). Training
+log: `logs/exp_correction_selector01/run.log`.
+
+### Results
+
+Aggregate (mean across 7 channels, test split):
+
+| Arm | MSE |
+|---|---:|
+| F0 (Track B2, reference) | 0.37312 |
+| CorrSelector-Gate | 0.38299 |
+| B2-C1 (Track B2, reference) | 0.38337 |
+| B2-C0 (Track B2, reference) | 0.39056 |
+| CorrSelector-Fixed | 0.39352 |
+
+`CorrSelector-Fixed < B2-C0` on 1/7 channels (channel 0 only).
+`CorrSelector-Gate < B2-C1` on 5/7 channels (small aggregate improvement,
+0.38337 -> 0.38299) but `< F0` on only 1/7 (channel 6, the same exception
+B2's own C1 showed). Gate gain does NOT correlate with Track B1's own
+per-channel Oracle-headroom measurements (largest gain on channel 3,
+where B1's Future Oracle actually won; a regression on channel 4, which
+had real B1 headroom). Selector training diagnostics: `val_top1_acc`
+0.047->0.054, `val_pred_rank_mean` 242->223, `val_top10_acc` 0.322->0.360
+over 15 still-improving epochs (train_epochs cap reached, patience never
+exhausted).
+
+### Sanity Checks
+`tests/test_exp_correction_selector01.py`: 18/18 PASSED (choice target ==
+`dense_utility` correction argmax recomputed from the current on-policy
+prefix at every step; no duplicate picks; on-policy state uses the
+model's own pick, never a separate oracle sequence; no gradient through
+argmax; gradient reaches only trainable modules; scorer never receives
+`r_i`/`r_q`; full-memory, no shortlist; runtime equivalence check
+`MSE(B_q+C,Y_q)==MSE(C,r_q)` holds on synthetic data and is caught by a
+negative control; gate positive control recovers a known gamma=0.5).
+`pytest tests/`: 581 passed, same 2 pre-existing failures, no regression.
+Runtime equivalence check asserted after every training epoch (TRAIN/VAL)
+and during inference (TRAIN/VAL/TEST, every channel): max observed error
+1.91e-06 across the entire run, far under the 1e-3 threshold.
+
+### Implementation Notes
+New files only: `scripts/train_correction_selector01.py`,
+`tests/test_exp_correction_selector01.py` (18 tests). Reuses, not
+reimplements: `oracle_choice_step_loss` (D1/OPC1), `dense_utility`/
+`candidate_weights` (Track A's marginal-utility math, agnostic to value
+tensor meaning), `base_forecast`/`load_stage2`/`unwrap` (Track B1/B2's own
+base), `SetConditioner`/`EmptySetToken`/`UtilityHead`, `RetrievalGate`
+(fresh instance, does NOT reuse Track B2's own gate checkpoint per the
+spec's explicit instruction). An initial smoke-test attempt hit a
+400s shell-timeout with zero output under heavy multi-tenant GPU-1
+contention (not a code bug -- confirmed by a second attempt with proper
+background logging, which progressed normally, just slowly); the process
+was actively computing (state R, 100%+ CPU) throughout, never hung.
+
+### Status
+completed. **Outcome B3-C**: `CorrSelector-Fixed >= B2-C0` on the
+aggregate -- the selection-mismatch hypothesis (H1) is NOT well
+supported. The gate mechanism itself works (replicates B2's own
+C0-vs-C1 finding) and yields a small aggregate improvement over B2's own
+gate, but this does not close the gap to F0 and does not track B1's
+headroom per channel -- read together with the selector's own weak
+top-1/rank diagnostics, more consistent with H3 (information-
+insufficiency) than H1. Per the pre-registered STOP rule, no value-aware
+selector, residual scorer feature, new scorer/loss, encoder change, or
+additional-horizon/dataset run was started automatically. Training was
+capped at 15 epochs and had NOT converged (loss still falling every
+epoch) -- these numbers are a lower bound on this approach's ceiling, not
+a converged result. Full breakdown:
+`results/EXP-CORRECTION-SELECTOR01/REPORT.md`.

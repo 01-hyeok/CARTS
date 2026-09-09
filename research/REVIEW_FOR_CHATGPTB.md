@@ -232,3 +232,99 @@ regression.
     the Correction hypothesis's remaining value is locked up?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+# EXP-CORRECTION-SELECTOR01 (Track B3) — a selector trained directly toward the correction objective (COMPLETE)
+
+## Research Question
+
+B1 found real (if modest, mixed) Correction Set Oracle headroom over the
+Future Set Oracle. B2 found reusing the EXISTING future-oriented Top-K
+for a correction-value fusion does NOT realize that headroom (F0=0.37312
+beats B2-C0=0.39056/B2-C1=0.38337 on 6/7 channels). Does training a NEW
+selector DIRECTLY toward the correction objective (Choice CE against
+`-MSE(B_q+C(S_{t-1}+{i}), Y_q)`, recomputed from the model's own
+on-policy prefix every step -- mirroring `EXP-ONPOLICY-CHOICE01`'s (OPC1,
+Track A) pattern exactly) recover that headroom, isolating whether B2's
+negative result was a SELECTION mismatch rather than a flaw in the
+correction value itself?
+
+## Method
+
+New script `scripts/train_correction_selector01.py`. Scorer input
+UNCHANGED from every other arm (frozen encoder's own embeddings);
+residuals never enter the scorer, only the Choice-CE target (via
+`dense_utility`, reused unmodified with residuals substituted for
+futures) and the retrieved value. Two evaluation arms after training,
+both using the NEW selector's OWN on-policy Top-K: CorrSelector-Fixed
+(gamma=1) and CorrSelector-Gate (a FRESH `RetrievalGate`, does not reuse
+B2's own gate checkpoint). 18/18 sanity checks passed; the mandatory
+runtime equivalence check (`MSE(B_q+C,Y_q)==MSE(C,r_q)`) held to <2e-6
+throughout training and inference on every split/channel.
+
+## Results (aggregate, 7-channel mean, test split)
+
+| Arm | MSE |
+|---|---:|
+| F0 (Track B2, reference) | 0.37312 |
+| CorrSelector-Gate | 0.38299 |
+| B2-C1 (Track B2, reference) | 0.38337 |
+| B2-C0 (Track B2, reference) | 0.39056 |
+| CorrSelector-Fixed | 0.39352 |
+
+`CorrSelector-Fixed < B2-C0` on 1/7 channels only (channel 0). `CorrSelector-
+Gate < B2-C1` on 5/7 channels (a small, consistent aggregate improvement,
+0.38337->0.38299) but `< F0` on only 1/7 (channel 6, the same exception B2's
+own C1 showed). Gain does NOT correlate with Track B1's own per-channel
+Oracle-headroom measurements -- e.g. channel 3 (where Future Oracle
+actually WON in B1) shows the single largest gate gain here, while channel
+4 (real, moderate Correction headroom in B1) regresses. Selector training
+diagnostics (`val_top1_acc` capped near 5%, `pred_rank_mean`~223 even
+after 15 still-improving epochs) show only weak ability to predict the
+best correction-utility candidate from past-only observable information.
+
+## Conclusion
+
+**Outcome B3-C**: `CorrSelector-Fixed >= B2-C0` on the aggregate -- the
+selection-mismatch hypothesis (H1) is NOT well supported. The gate
+mechanism itself works (replicates B2's own C0-vs-C1 finding) and yields
+a small aggregate improvement over B2's own gate, but this does not close
+the gap to F0 and does not track B1's headroom per channel. Read together
+with the selector's own weak top-1/rank diagnostics, this is more
+consistent with H3 (information-insufficiency: past-only residuals are
+genuinely hard to predict, not merely mistargeted) than H1. Per the
+pre-registered STOP rule, no value-aware selector, residual scorer
+feature, or further sweep is started automatically. Training was capped
+at 15 epochs and had NOT converged (loss still falling) -- these numbers
+are a lower bound on this approach's ceiling, not a final result.
+
+## Sanity checks passed
+
+`tests/test_exp_correction_selector01.py`: 18/18 PASSED. `pytest tests/`:
+581 passed, same 2 pre-existing failures, no regression.
+
+## Questions for ChatGPT
+
+48. B3's own selector shows the gate mechanism works (replicates B2's
+    C0-vs-C1 finding) but the SELECTOR itself only weakly predicts
+    correction utility (top1_acc ~5%, still improving at the 15-epoch
+    cutoff). Given this, is it premature to read Outcome B3-C
+    (information-insufficiency) as settled, or should a longer training
+    budget be run first to rule out simple undertraining before drawing
+    that conclusion?
+49. Gate gains do not correlate with Track B1's own per-channel Oracle-
+    headroom measurements (the largest gain is on a channel where B1's
+    Future Oracle actually won). Does this null correlation itself count
+    as evidence against the "correction retrieval has real, channel-
+    dependent value" story from B1, independent of the selector's own
+    undertraining?
+50. Given B1 (real headroom, mixed learnability) -> B2 (existing
+    retrieval fails to realize it) -> B3 (a correction-aligned selector
+    also fails to clearly realize it, more consistent with information-
+    insufficiency than selection-mismatch) -- does Track B's overall
+    trajectory now argue for closing this line of investigation (in favor
+    of Track A's larger, cleaner wins) rather than pursuing a
+    value-aware selector next?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+

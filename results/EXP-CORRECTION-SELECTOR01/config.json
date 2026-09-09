@@ -1,0 +1,19 @@
+{
+  "stage2_checkpoint": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+  "top_k": 10,
+  "chunk_size": 2048,
+  "train_epochs": 15,
+  "patience": 5,
+  "gate_epochs": 200,
+  "gate_patience": 20,
+  "gate_lr": 0.01,
+  "seed": 0,
+  "tau_choice": 0.1,
+  "lr": 0.001,
+  "trainable_params": 49794,
+  "checkpoints": "checkpoints/exp_correction_selector01",
+  "model_id": "carts_corrsel01_main",
+  "des": "corrsel01_main",
+  "out_dir": "results/EXP-CORRECTION-SELECTOR01",
+  "device": "cuda:1"
+}
