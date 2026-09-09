@@ -2474,3 +2474,135 @@ Stage-2 MSE win over Individual -- the aggregate rank_fraction metric
 itself is dominated by the "easy" t>=2 steps and obscures a real,
 large t=1 bottleneck.
 
+
+---
+
+# EXP-ORACLE-RANK-GAIN01 — Epoch0-vs-Best ranking gain, Individual/Set x Teacher-Forcing/On-policy x Cosine/Asymmetric (IN PROGRESS: ETTh1 H96 complete, H720 running, Weather not started)
+
+## Research Question
+
+Full 8-arm scratch-encoder matrix (Individual/Set Oracle x Teacher-Forcing/
+On-policy prefix x Cosine/Asymmetric scorer), across ETTh1 and Weather,
+H96 and H720. Central questions: (1) how far can a completely random-init
+Stage-1 encoder raise Oracle next-choice ranking, measured against its OWN
+pre-training (Epoch 0) state; (2) how does that ranking gain differ between
+Teacher-Forcing and On-policy prefix construction. All 8 arms in a
+dataset/horizon cell share ONE freshly-generated encoder init (a new,
+stricter protocol than `EXP-ORACLE-SCRATCH01`/`-TF01`, which used two
+DIFFERENT inits between experiments -- per the user's explicit choice to
+retrain everything for full init-consistency rather than mix results).
+
+## Method
+
+`scripts/train_oracle_rank_gain01.py` (unified 4-combo Stage-1 trainer;
+the only genuinely new sequence function is `run_sequence_individual_
+onpolicy` -- the other 3 combos reuse `train_oracle_scratch01.
+run_sequence_individual`/`run_sequence_set` and `train_oracle_scratch_tf01.
+run_sequence_set_teacher_forced` unmodified). A full checkpoint
+(`checkpoint_epoch0.pth`) is saved immediately after the shared init is
+loaded, BEFORE any `optimizer.step()` -- verified by both a unit test
+(asserting the save call precedes the training loop in source order) and
+by construction (the checkpoint payload literally comes from the
+freshly-built, untrained model object). `scripts/eval_oracle_rank_gain01.py`
+evaluates Epoch0 and Best with the IDENTICAL code path. Stage-2 reuses
+`scripts/train_oracle_scratch01_stage2.py` unchanged (lr=0.001/epochs=10/
+patience=5, the project's own established defaults -- not modified after
+an earlier unauthorized-hyperparameter incident in `EXP-ORACLE-SCRATCH01`).
+
+## Results: ETTh1 H96 (COMPLETE)
+
+| Arm | Ep0 RankFrac | Best RankFrac | Rel.Gain | Ep0 t1 | Best t1 | Ep0 t>=2 | Best t>=2 | Stage-2 MSE |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Individual+TF+Cosine | 0.1518 | 0.0539 | 64.5% | 0.1484 | 0.0435 | 0.1522 | 0.0551 | 0.38137 |
+| Individual+TF+Asymmetric | 0.1518 | 0.0454 | 70.1% | 0.1484 | 0.0378 | 0.1522 | 0.0463 | **0.38059** |
+| Individual+Onpolicy+Cosine | 0.1496 | 0.0495 | 66.9% | 0.1484 | 0.0491 | 0.1497 | 0.0496 | 0.38131 |
+| Individual+Onpolicy+Asymmetric | 0.1496 | 0.0488 | 67.4% | 0.1484 | 0.0485 | 0.1497 | 0.0488 | 0.38045 |
+| Set+TF+Cosine | 0.3531 | 0.1090 | 69.1% | 0.1484 | 0.0550 | 0.3758 | 0.1150 | 0.38388 |
+| Set+TF+Asymmetric | 0.3554 | 0.1136 | 68.0% | 0.1484 | 0.0487 | 0.3784 | 0.1208 | 0.38740 |
+| Set+Onpolicy+Cosine | 0.0236 | 0.0183 | 22.5% | 0.1484 | **0.1727** | 0.0097 | 0.0011 | 0.38811 |
+| Set+Onpolicy+Asymmetric | 0.0246 | 0.0179 | 27.4% | 0.1484 | **0.1590** | 0.0108 | 0.0022 | 0.38564 |
+| Base Forecaster only | -- | -- | -- | -- | -- | -- | -- | 0.39298 |
+
+All 8 arms beat the Base-only control (0.39298); Stage-2 MSE differences
+between arms are small (0.3805-0.3874, within this project's usual
+seed-noise range). Individual+Asymmetric arms lead marginally at H96,
+replicating `EXP-ORACLE-SCRATCH01`'s own H96 finding under a completely
+independent (fresh-init, both-prefix-policy) protocol.
+
+## A methodological finding this experiment surfaced: on-policy's Epoch0 t>=2 number is a measurement artifact, not real capability
+
+Set+Onpolicy's Epoch0 t>=2 rank_fraction (0.0097-0.0108) looked
+implausibly good for an UNTRAINED, randomly-initialised model -- better
+than the TRAINED Set+TF arms' own Best t>=2 (0.115-0.121). Verified
+directly against the saved `checkpoint_epoch0.pth`:
+
+- `cos_sim(SetConditioner output h_t, raw query embedding z_q) = 0.858`
+  -- at random init, the residual-connected SetConditioner (`h = norm(q +
+  net(q,m))`) is close to a no-op, since `net`'s randomly-initialised
+  output is small.
+- `cos_sim(conditioned score at t>=2, base score b_i used at t=1) = 0.995`
+  -- confirming t>=2's "conditioned" ranking is at Epoch0 essentially
+  identical to the UNCONDITIONED base score.
+
+Mechanism: the Set Oracle's aggregate weighting (`alpha_i = softmax(b_i/
+tau_topk)`, `tau_topk=0.1`, fairly sharp) is dominated by `b_i` --the SAME
+quantity the model's own on-policy prefix is ALSO built from (since
+`s_hat approx b_i` at init). This creates a **self-referential loop**: the
+model picks its on-policy prefix by `b_i`, and the Oracle's own "next best"
+target (which depends heavily on which candidate has high `b_i`, via the
+weighting) tends to agree with that same `b_i`-driven choice -- REGARDLESS
+of whether `b_i` (a fully random encoder's cosine similarity) has any
+genuine relationship to future forecast quality. Teacher Forcing does NOT
+fall into this trap, because its prefix comes from the TRUE query future,
+independent of `b_i`, so its Epoch0 t>=2 (0.376-0.378) is an honest,
+near-chance baseline.
+
+**Direct confirmation this is not just an evaluation artifact but actually
+misleads checkpoint selection**: both Set+Onpolicy arms stopped after only
+6 epochs with `best_epoch=1` -- val rank_fraction NEVER improved past
+epoch 1. Critically, **t=1's OWN rank_fraction got WORSE from Epoch0 to
+"Best"** (0.1484 -> 0.1727 cosine, 0.1484 -> 0.1590 asymmetric) while t>=2
+barely moved (already near its self-referential floor) -- the aggregate
+metric's tiny apparent improvement (0.0236 -> 0.0183) is driven entirely
+by an already-degenerate t>=2 number, while the metric that actually
+reflects genuine learning (t=1, unconditioned, comparable across all 8
+arms) got WORSE. **The current checkpoint-selection metric actively
+rewards LESS-trained Set+Onpolicy checkpoints and penalizes real
+training**, because real training moves the SetConditioner away from its
+artifact-producing near-identity initial state.
+
+## Status
+
+IN PROGRESS. ETTh1 H96 complete (8 Stage-1 + 16 eval + 9 Stage-2 runs).
+ETTh1 H720 Stage-1 complete (8/8 arms, same `best_epoch=1` pattern
+reproduced for both Set+Onpolicy arms -- the artifact is horizon-
+independent), eval in progress. Weather (H96, H720) not yet started.
+Full cross-dataset/cross-horizon REPORT.md deferred until all 4 cells
+complete, per the pre-registered plan.
+
+## Questions for ChatGPT
+
+50. The Set+Onpolicy self-referential artifact (on-policy prefix and
+    Oracle aggregate weighting both keying off the SAME untrained `b_i`)
+    means the current `mean_oracle_rank_fraction` checkpoint-selection
+    metric is actively misleading for this specific arm -- it rewards an
+    undertrained checkpoint. Given the STOP rule (no mid-experiment metric
+    changes), should the reported Set+Onpolicy numbers be flagged as
+    unreliable/uninterpretable rather than analyzed at face value, or is
+    there a valid reading of them despite the artifact?
+51. Despite this, Set+Onpolicy's Stage-2 MSE (0.38564-0.38811) is still
+    competitive with the other 6 non-artifact-affected arms and beats
+    Base-only -- is that itself informative (the free-running/Stage-2
+    evaluation path, which does NOT share the artifact's self-reference,
+    suggests the ENCODER partially transfers useful signal regardless of
+    how Stage-1's own on-policy training metric behaved), or is this more
+    likely coincidental given how close all 8 arms already are?
+52. Now that `EXP-ORACLE-SCRATCH01`'s original Individual-Oracle-wins-H96/
+    Set-Oracle-wins-H720 cross-horizon flip has been independently
+    replicated under a stricter same-init protocol (Individual+Asymmetric
+    leads at H96 again here), does this strengthen confidence that the
+    flip is a real horizon-dependent phenomenon rather than an artifact of
+    EXP-ORACLE-SCRATCH01's own (different) initialization or its
+    hyperparameter-correction incident?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
