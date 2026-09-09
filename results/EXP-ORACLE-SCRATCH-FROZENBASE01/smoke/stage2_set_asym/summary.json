@@ -1,0 +1,30 @@
+{
+  "best_epoch": 2,
+  "best_val_mse": 0.700589172266544,
+  "test_mse": 0.398208930216315,
+  "wall_clock_seconds": 2.668487787246704,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse": 0.43240104305813304,
+      "val_mse": 0.7279310860903515,
+      "seconds": 0.9848012924194336
+    },
+    {
+      "epoch": 2,
+      "train_mse": 0.3682605008752209,
+      "val_mse": 0.700589172266544,
+      "seconds": 0.7527379989624023
+    },
+    {
+      "epoch": 3,
+      "train_mse": 0.3613268807345219,
+      "val_mse": 0.7061031082802229,
+      "seconds": 0.8340694904327393
+    }
+  ],
+  "checkpoint": "checkpoints/exp_oracle_scratch_frozenbase01_smoke/stage2/smoke_stage2_set_asym_h96/checkpoint.pth",
+  "retrieval_cache_dir": "/tmp/smoke_cache_set_asym_h96",
+  "no_retrieval": false,
+  "trainable_params": 34145
+}

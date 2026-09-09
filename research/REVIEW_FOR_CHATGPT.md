@@ -2201,3 +2201,168 @@ regression.
     first?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+---
+
+# EXP-ORACLE-SCRATCH01 — Individual Oracle vs Set Oracle, scratch Stage-1 encoder (IN PROGRESS: H96 complete, H720 running)
+
+## Research Question
+
+Trained a Stage-1 encoder completely FROM SCRATCH (no pretrained/frozen
+checkpoint, random init shared across all 4 arms per horizon) against two
+different Oracle targets: **Individual Oracle** (`u_i = -MSE(Y_i, Y_q)`,
+sequential Choice-CE, deterministic oracle-ordered masking) vs **Set
+Oracle** (`u_i^(t) = -MSE(Aggregate(S_hat_{t-1}+{i}), Y_q)`, on-policy,
+recomputed every step via `dense_utility`, reused unmodified). Crossed
+with Cosine vs Asymmetric scorer (`layers.retrieval_metric.RetrievalMetric`,
+identity-initialised). Then Stage-2 (`BaseForecastHead`+`RetrievalGate`,
+`gate_mode='scalar'`, `fusion_mode='residual'`) is retrained FROM SCRATCH
+per arm, sharing one random init across the 4 arms + a Base-Forecaster-only
+control, so the ONLY difference between arms is which frozen Stage-1
+retriever supplies Top-K.
+
+**Important protocol note**: this is a DIFFERENT protocol from
+`EXP-ASYM-SCORER01` (which forced a new Top-K selection into an
+ALREADY-CONVERGED production Stage-2 checkpoint, no retraining) -- here
+Stage-2 is fully retrained from scratch per arm, per the user's explicit
+instruction not to reuse a mature checkpoint for this comparison. Absolute
+MSE values are therefore NOT directly comparable to production B0
+(0.37312) or to EXP-ASYM-SCORER01's numbers (0.39526/0.41257) -- only the
+relative ordering AMONG this experiment's own 5 arms is meaningful.
+
+**Process note, for transparency**: Stage-2's first run used
+unauthorized hyperparameters (lr=0.01, epochs=50, patience=10) chosen
+without approval; caught by the user, and H96's Stage-2 was fully retracted
+and retrained from a fresh shared init with the project's own established
+defaults (lr=0.001, epochs=10, patience=5, matching every other Stage-2
+run in this repo). The numbers below are the CORRECTED run only. The
+faulty run showed the opposite ranking (Set beating Individual) -- a
+reminder that this comparison is sensitive to Stage-2 training regime.
+
+## Results (H96, corrected hyperparameters)
+
+### Stage-1 (val rank fraction, lower=better)
+
+| Arm | val_rank_fraction | best_epoch |
+|---|---:|---:|
+| Individual + Cosine | 0.11895 | 8 |
+| Individual + Asymmetric | 0.11663 | 10 |
+| Set + Cosine | 0.02200 | 1 |
+| Set + Asymmetric | 0.02199 | 1 |
+
+Set Oracle's rank fraction is ~5x lower (better) than Individual's --
+plausibly a structural effect of the aggregate target being easier to
+rank well (averaging smooths the target), not necessarily "easier
+retrieval" in a downstream sense. t>=2 rank fraction (~0.002) is far
+better than t=1 (~0.20-0.26) for Set arms, suggesting the SetConditioner
+genuinely helps once given a real (even if just one-candidate) starting
+point.
+
+### Stage-2 (test MSE, corrected hyperparameters)
+
+| Arm | Stage-2 Test MSE |
+|---|---:|
+| Individual + Asymmetric | **0.38060** |
+| Individual + Cosine | 0.38166 |
+| Set + Asymmetric | 0.38461 |
+| Set + Cosine | 0.38564 |
+| Base Forecaster only | 0.39298 |
+
+**Individual Oracle beats Set Oracle on Stage-2 MSE at H96** -- the
+OPPOSITE of what Stage-1's own rank-fraction metric would predict. Both
+retrieval arms beat the no-retrieval Base Forecaster control. Cosine vs
+Asymmetric: Asymmetric slightly better for both targets, but the gap
+(<0.002) is small relative to this project's ~0.01 seed-noise reference.
+
+## H720 (in progress)
+
+Stage-1 Individual+Cosine (val_rank_frac=0.19751, best_epoch=1) and
+Individual+Asymmetric (val_rank_frac=0.18419, best_epoch=1) complete; Set
+arms still training. Stage-2 for H720 not yet run.
+
+## Preliminary read (H96 only, H720 pending)
+
+Item **G** from the pre-registered interpretation questions (does
+Stage-1 ranking improvement track Stage-2 MSE improvement?) reads
+NEGATIVELY at H96: Set's much better Stage-1 rank fraction does NOT
+translate into a better Stage-2 result -- Individual wins downstream
+despite worse upstream ranking. This is consistent with this project's
+repeatedly-observed retrieval-quality/downstream-quality decoupling
+pattern (Recall@K vs Stage-2 MSE dissociation, first established in the
+EXP-C01 campaign), now reproduced at the Oracle-target level.
+
+## Status
+
+IN PROGRESS -- H720 Stage-1 still running (2/4 arms complete). Full
+REPORT.md with all interpretation questions (A-G) deferred until both
+horizons complete.
+
+
+## Additional H96 diagnostics (per spec's required metric list)
+
+### Encoder representation health (no collapse in any arm)
+
+| Arm | Effective rank (of 128) | Pairwise cosine mean | Dead dim frac |
+|---|---:|---:|---:|
+| Individual + Cosine | 20.5 | 0.276 | 0.0 |
+| Individual + Asymmetric | 26.2 | 0.194 | 0.0 |
+| Set + Cosine | 58.7 | 0.003 | 0.0 |
+| Set + Asymmetric | 42.4 | 0.160 | 0.0 |
+
+No representation collapse anywhere. Set arms end up with substantially
+HIGHER effective rank than Individual arms (58.7/42.4 vs 20.5/26.2) --
+the opposite of what a "Set is an easier/degenerate target" story would
+predict.
+
+### Asymmetric scorer drift from cosine (final, not init)
+
+| Arm | \|\|Wq-I\|\| | \|\|Wk-I\|\| | cond(Wq) | cond(Wk) | final cosine deviation |
+|---|---:|---:|---:|---:|---:|
+| Individual + Asymmetric | 4.66 | 4.84 | 77.2 | 35.2 | 0.187 |
+| Set + Asymmetric | 4.02 | 3.57 | 29.7 | 193.4 | 0.140 |
+
+Both drift substantially from identity (confirmed at init: deviation
+0.0 exactly, per the mandatory pre-training check) -- `cond(Wk)` for the
+Set arm grows especially large (193), echoing `EXP-ASYM-SCORER01`'s own
+finding that the candidate-side projection tends toward an increasingly
+anisotropic transformation during training.
+
+### t=1 (encoder+scorer alone) vs t>=2 (encoder+SetConditioner+scorer), test split
+
+| Arm | t1 rank_frac | t1 top10 | t>=2 rank_frac | t>=2 top10 | Choice CE |
+|---|---:|---:|---:|---:|---:|
+| Individual + Cosine | 0.0416 | 10.4% | 0.0526 | 6.9% | 6.641 |
+| Individual + Asymmetric | 0.0373 | 12.1% | 0.0460 | 8.2% | 6.531 |
+| Set + Cosine | 0.1644 | 6.0% | **0.0011** | **71.1%** | 4.537 |
+| Set + Asymmetric | 0.1610 | 5.4% | **0.0020** | **52.0%** | 4.747 |
+
+**Key asymmetry**: Set's t=1 (no conditioner, same target definition as
+Individual's whole-sequence target) is WORSE than Individual's own
+dedicated t1 ranking -- makes sense, since Individual spends all K loss
+terms sharpening this one static target while Set only sees it at t=1.
+But Set's t>=2 (once the conditioner sees even one prior pick) is
+DRAMATICALLY better than anything Individual achieves at any step
+(top10 containment 71.1% vs Individual's best of 12.1%).
+
+### Set arms: does that excellent t>=2 local ranking survive into the full trajectory? NO.
+
+| Arm | Full-memory greedy Set Oracle aggregate MSE | Model's own on-policy final aggregate MSE | Gap |
+|---|---:|---:|---:|
+| Set + Cosine | 0.10238 | 0.36012 | **0.25774** |
+| Set + Asymmetric | 0.09793 | 0.35758 | **0.25964** |
+
+This is the most important diagnostic this experiment has produced: even
+though the SetConditioner ranks candidates ALMOST PERFECTLY once given a
+reasonable prefix (t>=2 top10 containment 52-71%), the model's own
+sequentially-constructed final aggregate is still ~0.26 MSE WORSE than
+the true greedy Set Oracle's own aggregate -- a huge, uncompensated gap.
+The likely mechanism: t=1's poor start (rank_frac 0.16, i.e. the single
+worst-ranked step of the whole sequence) compounds through every
+subsequent on-policy step, and no amount of t>=2 local excellence can
+recover a trajectory that started from a bad first pick. This directly
+explains why Set's excellent Stage-1 rank_fraction (0.022 aggregate,
+driven almost entirely by the t>=2 numbers) does NOT translate into a
+Stage-2 MSE win over Individual -- the aggregate rank_fraction metric
+itself is dominated by the "easy" t>=2 steps and obscures a real,
+large t=1 bottleneck.
+
