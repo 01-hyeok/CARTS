@@ -2986,3 +2986,133 @@ capped at 15 epochs and had NOT converged (loss still falling every
 epoch) -- these numbers are a lower bound on this approach's ceiling, not
 a converged result. Full breakdown:
 `results/EXP-CORRECTION-SELECTOR01/REPORT.md`.
+
+---
+
+## EXP-ORACLE-SCRATCH01 — Individual Oracle vs Set Oracle, scratch Stage-1 encoder (H96 + H720)
+
+### Date
+2026-09-09
+
+### Research Question
+Trained a Stage-1 encoder completely from scratch (no pretrained/frozen
+checkpoint) against two Oracle targets -- Individual Oracle (per-candidate
+future MSE, deterministic Oracle-ordered masking) vs Set Oracle (greedy
+weighted-set aggregate MSE, on-policy prefix) -- crossed with Cosine vs
+Asymmetric scorer, then retrained Stage-2 (BaseForecastHead+RetrievalGate)
+fully from a shared scratch init per arm. Does Set Oracle's Stage-1
+ranking advantage translate into better Stage-2 forecasting than
+Individual Oracle, and does either beat a no-retrieval Base Forecaster?
+
+### Configuration
+`scripts/train_oracle_scratch01.py` (Stage-1), `scripts/eval_oracle_
+scratch01.py` (diagnostics + free-running retrieval cache), `scripts/
+train_oracle_scratch01_stage2.py` (Stage-2, joint Base+Gate). ETTh1 H96
+and H720, seed 0, self-only, full-memory, `top_k=10`, `tau_topk=0.1`.
+4 Stage-1 arms per horizon (Individual/Set x Cosine/Asymmetric) sharing
+one random encoder init per horizon; 4 Stage-2 retrieval arms + 1
+Base-only control per horizon sharing one random Base/Gate init.
+Full commands: `scripts/run_oracle_scratch01.sh`.
+
+### Changed Variable
+Stage-1 Oracle target (Individual vs Set) x scorer kind (Cosine vs
+Asymmetric), per horizon (H96, H720).
+
+### Controlled Variables
+Encoder architecture (`relation_encoder_type=mlp`, `d_model=128`), shared
+random init per horizon, `top_k=10`, `tau_topk=0.1`, full-memory
+self-only support, Stage-2 architecture/hyperparameters
+(`lr=0.001`/`epochs=10`/`patience=5`/`batch_size=32`, corrected after an
+initial unauthorized-hyperparameter run -- see Errata below), checkpoint
+selection (Stage-1: best val `mean_oracle_rank_fraction`; Stage-2: best
+val forecasting MSE, never test).
+
+### Dataset / Horizon / Seed
+ETTh1, H96 and H720, seed 0.
+
+### Result Files
+`results/EXP-ORACLE-SCRATCH01/{H96,H720}/{arm}/diagnostics.json`,
+`{arm}/stage2/summary.json` (H96 corrected reruns under `stage2_fixed/`),
+`base_only(_fixed)/summary.json`. Checkpoints under
+`checkpoints/exp_oracle_scratch01/`. Logs under `logs/exp_oracle_scratch01/`.
+
+### Results
+
+**Stage-1 (val rank fraction, lower=better):**
+
+| Arm | H96 | H720 |
+|---|---:|---:|
+| Individual + Cosine | 0.11895 | 0.19751 |
+| Individual + Asymmetric | 0.11663 | 0.18419 |
+| Set + Cosine | 0.02200 | 0.02780 |
+| Set + Asymmetric | 0.02199 | 0.02765 |
+
+**Stage-2 test MSE (corrected hyperparameters):**
+
+| Arm | H96 | H720 |
+|---|---:|---:|
+| Individual + Cosine | 0.38166 | 0.76144 |
+| Individual + Asymmetric | **0.38060** | 0.76953 |
+| Set + Cosine | 0.38564 | 0.72582 |
+| Set + Asymmetric | 0.38461 | **0.66269** |
+| Base Forecaster only | 0.39298 | 0.76928 |
+
+**The Individual-vs-Set Stage-2 ranking FLIPS between horizons**:
+Individual wins at H96, Set wins decisively at H720. At both horizons,
+Set's much better aggregate Stage-1 rank_fraction is driven almost
+entirely by t>=2 (near-perfect once the SetConditioner has any prefix,
+top10 containment 36-71%) while t=1 (encoder+scorer alone) is Set's own
+weakest step (rank_frac 0.13-0.21) -- worse than Individual's own
+dedicated t1 ranking in most cells. The model's own free-running realized
+aggregate MSE is far worse than the true greedy Set Oracle's own
+aggregate at both horizons (gap 0.258-0.260 at H96, 0.286-0.409 at H720),
+consistent with a bad t=1 propagating through the whole greedy sequence.
+No representation collapse in any arm (effective rank 19-59 of 128, dead
+dimension fraction 0.0 throughout). Full breakdown, per-step tables, and
+scorer-drift diagnostics: `research/REVIEW_FOR_CHATGPT.md`.
+
+### Sanity Checks
+`tests/test_exp_oracle_scratch01.py`: 13/13 passed (encoder scratch-init
+verification, no-pretrained-weight-leak check, gradient-flow checks, Set
+t=1 conditioner-bypass, Set t=1 target == Individual t=1 target,
+no-duplicate-picks, asymmetric identity-init match, Base-Predictor-freeze
+negative control). `pytest tests/`: 620 passed at time of this entry, same
+2 pre-existing failures, no regression.
+
+### Errata (2026-09-09)
+Stage-2's FIRST run used unauthorized hyperparameters (`lr=0.01`,
+`epochs=50`, `patience=10`) chosen without approval -- caught by the user.
+H96's Stage-2 (all 5 configs) was fully retracted and retrained from a
+fresh shared init with the project's own established Stage-2 defaults
+(`lr=0.001`/`epochs=10`/`patience=5`, matching every other Stage-2 run in
+this repo); H720's Stage-2 ran correctly from the start since the
+orchestration script was fixed before H720 reached that stage. The faulty
+H96 run showed the OPPOSITE ranking (Set beating Individual) from the
+corrected run -- a reminder that this comparison is sensitive to the
+Stage-2 training regime. The faulty run's own artifacts were preserved
+(not deleted) under a separate path for transparency, not used in any
+reported conclusion.
+
+### Implementation Notes
+New files only: `scripts/train_oracle_scratch01.py`, `scripts/eval_oracle_
+scratch01.py`, `scripts/train_oracle_scratch01_stage2.py`, `scripts/
+train_oracle_scratch01_base_only.py` (unused by the final protocol, kept
+for the record), `scripts/train_oracle_scratch_frozenbase01_stage2.py`
+(an earlier frozen-Base variant, superseded by the user's revision to
+jointly retrain Base+Gate -- kept, not deleted), `scripts/run_oracle_
+scratch01.sh`, `scripts/rerun_stage2_h96.sh` (the corrective rerun),
+`tests/test_exp_oracle_scratch01.py`. Reuses `layers.retrieval_metric.
+RetrievalMetric`/`oracle_rank_statistics`/`cosine_init_deviation`,
+`models.RelationStage1.relation_bank_collapse_metrics`,
+`models.RelationStage2.BaseForecastHead`, `layers.retrieval_gate.
+RetrievalGate`, `utils.dense_utility.dense_utility`/`candidate_weights`,
+`scripts.train_margutil01.build_experiment`/`memory_value`,
+`scripts.train_oracle_choice01.oracle_choice_step_loss` -- all unmodified.
+
+### Status
+completed (H96 + H720). Central open finding (ranking flips by horizon,
+likely rooted in a t=1 bottleneck common to both) not yet explained --
+follow-up `EXP-ORACLE-SCRATCH-TF01` (teacher-forced Set training) is
+running to test whether the t=1 weakness is an on-policy-training
+artifact or persists under teacher forcing. Interpretation and next-step
+recommendation left to the reviewer -- see `research/REVIEW_FOR_CHATGPT.md`.

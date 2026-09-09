@@ -2274,28 +2274,136 @@ retrieval arms beat the no-retrieval Base Forecaster control. Cosine vs
 Asymmetric: Asymmetric slightly better for both targets, but the gap
 (<0.002) is small relative to this project's ~0.01 seed-noise reference.
 
-## H720 (in progress)
+## H720 (COMPLETE)
 
-Stage-1 Individual+Cosine (val_rank_frac=0.19751, best_epoch=1) and
-Individual+Asymmetric (val_rank_frac=0.18419, best_epoch=1) complete; Set
-arms still training. Stage-2 for H720 not yet run.
+### Stage-1 (val rank fraction, lower=better)
 
-## Preliminary read (H96 only, H720 pending)
+| Arm | val_rank_fraction | best_epoch |
+|---|---:|---:|
+| Individual + Cosine | 0.19751 | 1 |
+| Individual + Asymmetric | 0.18419 | 1 |
+| Set + Cosine | 0.02780 | 1 |
+| Set + Asymmetric | 0.02765 | 4 |
 
-Item **G** from the pre-registered interpretation questions (does
-Stage-1 ranking improvement track Stage-2 MSE improvement?) reads
-NEGATIVELY at H96: Set's much better Stage-1 rank fraction does NOT
-translate into a better Stage-2 result -- Individual wins downstream
-despite worse upstream ranking. This is consistent with this project's
-repeatedly-observed retrieval-quality/downstream-quality decoupling
-pattern (Recall@K vs Stage-2 MSE dissociation, first established in the
-EXP-C01 campaign), now reproduced at the Oracle-target level.
+### Stage-2 (test MSE)
+
+| Arm | Stage-2 Test MSE |
+|---|---:|
+| Individual + Cosine | 0.76144 |
+| Individual + Asymmetric | 0.76953 |
+| Set + Cosine | 0.72582 |
+| **Set + Asymmetric** | **0.66269** |
+| Base Forecaster only | 0.76928 |
+
+**At H720, Set clearly beats Individual** (0.663-0.726 vs 0.761-0.770) --
+the OPPOSITE ranking from H96, where Individual won (0.3806-0.3817 vs
+0.3846-0.3856). Both Set arms beat the Base-Forecaster-only control at
+H720; Individual arms are statistically indistinguishable from the Base
+control (0.761-0.770 vs 0.769).
+
+### t=1 vs t>=2, encoder collapse, and the free-running/greedy-Oracle gap (H720, test)
+
+| Arm | t1 rank_frac | t1 top10 | t>=2 rank_frac | t>=2 top10 | Choice CE | Effective rank |
+|---|---:|---:|---:|---:|---:|---:|
+| Individual + Cosine | 0.1146 | 2.4% | 0.1207 | 1.9% | 7.517 | 19.1 |
+| Individual + Asymmetric | 0.0915 | 14.0% | 0.1002 | 9.6% | 7.123 | 24.7 |
+| Set + Cosine | 0.2113 | 3.5% | **0.0020** | **55.6%** | 4.853 | 41.2 |
+| Set + Asymmetric | 0.1806 | 2.2% | **0.0039** | **36.2%** | 4.992 | 20.8 |
+
+| Arm | Free-running aggregate MSE | Greedy Set Oracle MSE | Gap |
+|---|---:|---:|---:|
+| Set + Cosine | 0.48185 | 0.19547 | 0.28638 |
+| Set + Asymmetric | 0.59803 | 0.18938 | **0.40866** |
+
+Same qualitative pattern as H96 (t>=2 dramatically better than t=1 once
+the conditioner has ANY prefix; large, uncompensated gap between the
+model's own realized aggregate and the true greedy Oracle's aggregate) --
+but the gap is even LARGER at H720 for Set+Asymmetric (0.409 vs H96's
+0.260) despite Set beating Individual downstream at this horizon. No
+representation collapse anywhere (effective rank 19-41 of 128, dead
+dimension fraction 0.0 in every arm). Asymmetric scorer drift from
+identity is more extreme at H720: `cond(Wk)=3909` for Individual+Asymmetric
+(vs 35 at H96) -- a striking, unexplained jump worth flagging.
+
+## Cross-horizon summary and the central open question
+
+| | H96 winner | H720 winner |
+|---|---|---|
+| Stage-2 Test MSE | **Individual** (0.3806) | **Set** (0.6627) |
+
+**The Individual-vs-Set ranking FLIPS between horizons.** This is the
+single most important finding of this experiment and needs explanation,
+not just reporting. The working hypothesis (developed in conversation,
+not yet independently verified): Set's aggregate Stage-1 rank_fraction
+metric is misleading at BOTH horizons -- it is dominated by t>=2's
+near-perfect local ranking (top10 containment 36-71%) while t=1 (no
+conditioner, encoder+scorer alone) is consistently the weakest step of
+the whole sequence (rank_frac 0.13-0.21, worse than Individual's own t1 in
+3 of 4 horizon x scorer combinations). Because retrieval is sequential and
+greedy, a bad t=1 propagates through the entire on-policy trajectory,
+producing a large, uncompensated gap between the model's realized
+aggregate and the TRUE greedy Set Oracle's aggregate (0.26-0.41 MSE) at
+BOTH horizons. What differs is whether this t=1-driven degradation is
+still enough to beat Individual's OWN (uniformly worse, ~0.09-0.20 rank
+fraction at every step) ranking once it reaches Stage-2 -- apparently not
+at H96, but yes at H720. Why the balance flips is NOT yet explained by
+anything measured here (candidate pool size differs 8449 vs 7201, horizon
+itself differs 96 vs 720, individual arms' absolute quality also degrades
+more at H720) -- this is the primary question for the next research
+cycle, not something this experiment's own data resolves.
 
 ## Status
 
-IN PROGRESS -- H720 Stage-1 still running (2/4 arms complete). Full
-REPORT.md with all interpretation questions (A-G) deferred until both
-horizons complete.
+**COMPLETE** (H96 and H720, all 8 Stage-1 arms + 8 eval runs + 10 Stage-2
+runs). A follow-up experiment, `EXP-ORACLE-SCRATCH-TF01` (teacher-forced
+Set training, removing the on-policy/deterministic-ordering asymmetry
+between Individual and Set), is currently running to test whether Set's
+t=1 weakness is specifically an on-policy-training artifact or persists
+under teacher forcing too -- not yet complete, results to follow
+separately.
+
+## Questions for ChatGPT
+
+46. Set's aggregate Stage-1 rank_fraction is dramatically better than
+    Individual's at both horizons, driven almost entirely by t>=2 (once
+    the SetConditioner has ANY prefix, ranking is near-perfect) while t=1
+    (encoder+scorer alone, no conditioner) is Set's own weakest step and
+    often worse than Individual's dedicated t1 ranking. Is this evidence
+    that the SetConditioner is doing real, useful work but t=1's
+    information (encoder alone, no aggregate) is fundamentally
+    insufficient for THIS specific greedy Set-Oracle target -- or is this
+    more likely an artifact of Set's training effort being diluted across
+    9 "easy" t>=2 steps and only 1 "hard" t=1 step per sequence (10x less
+    training signal on the hard part)?
+47. The Individual-vs-Set Stage-2 ranking flips between H96 (Individual
+    wins) and H720 (Set wins), while the underlying t=1-bottleneck /
+    large free-running-vs-greedy-Oracle-gap pattern looks qualitatively
+    the same at both horizons. What horizon-dependent factor is most
+    likely responsible -- candidate pool size (8449 vs 7201), the
+    increased difficulty of the Individual task itself at longer horizons
+    (its own rank_fraction is also worse at H720), or something about how
+    error compounds differently over a 720-step future vs a 96-step one?
+48. This experiment's Stage-2 protocol (fully retrained Base+Gate from a
+    shared scratch init, `lr=0.001`/`epochs=10`/`patience=5`) is
+    deliberately different from `EXP-ASYM-SCORER01`'s protocol (forced
+    selection into an already-converged production Stage-2). Given that
+    and the absolute MSE gap to production B0 (0.373), how much weight
+    should the relative Individual-vs-Set ordering found here carry for
+    decisions about the ACTUAL production retrieval target, versus being
+    read as a lower-fidelity signal that would need reproducing under the
+    production Stage-2 architecture (raft_concat + relation_mixer) before
+    acting on it?
+49. `EXP-ORACLE-SCRATCH-TF01` (teacher-forced Set, in progress) is designed
+    to isolate whether Set's t=1 weakness is an on-policy-training
+    artifact (teacher forcing should fix it, since t=1's target is
+    identical to Individual's own target regardless) or a genuinely harder
+    learning problem for this scorer/encoder architecture (teacher forcing
+    would NOT fix it). Is this the right next experiment to prioritize
+    before trying anything else (e.g. weighting t=1's loss term more
+    heavily, or a dedicated t=1 warm-start), or is there a cheaper
+    diagnostic that would answer the same question first?
+
+Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 
 
 ## Additional H96 diagnostics (per spec's required metric list)
