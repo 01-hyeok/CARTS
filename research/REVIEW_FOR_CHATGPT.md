@@ -2571,14 +2571,10 @@ rewards LESS-trained Set+Onpolicy checkpoints and penalizes real
 training**, because real training moves the SetConditioner away from its
 artifact-producing near-identity initial state.
 
-## Status
+## Status (superseded -- see the ETTh1 H720 section and final Status below)
 
-IN PROGRESS. ETTh1 H96 complete (8 Stage-1 + 16 eval + 9 Stage-2 runs).
-ETTh1 H720 Stage-1 complete (8/8 arms, same `best_epoch=1` pattern
-reproduced for both Set+Onpolicy arms -- the artifact is horizon-
-independent), eval in progress. Weather (H96, H720) not yet started.
-Full cross-dataset/cross-horizon REPORT.md deferred until all 4 cells
-complete, per the pre-registered plan.
+ETTh1 H96 complete as of this checkpoint in the writeup; H720 results
+follow further down this document.
 
 ## Questions for ChatGPT
 
@@ -2675,3 +2671,67 @@ structure** -- the t>=2 "containment" numbers for this arm pair should be
 read as a measurement artifact at every checkpoint, not just Epoch0, and
 should NOT be cited as evidence of Set+Onpolicy's ranking quality in any
 summary that also includes the other 6 arms.
+
+## Results: ETTh1 H720 (COMPLETE)
+
+### Stage-1 ranking gain + Stage-2 MSE
+
+| Arm | Ep0 RankFrac | Best RankFrac | Rel.Gain | Ep0 t1 | Best t1 | Ep0 t>=2 | Best t>=2 | Stage-2 MSE |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Individual+TF+Cosine | 0.2628 | 0.1260 | 52.0% | 0.2469 | 0.1190 | 0.2645 | 0.1268 | 0.49921 |
+| Individual+TF+Asymmetric | 0.2628 | 0.0901 | 65.7% | 0.2469 | 0.0817 | 0.2645 | 0.0910 | 0.52448 |
+| Individual+Onpolicy+Cosine | 0.2471 | 0.1009 | 59.2% | 0.2469 | 0.1014 | 0.2472 | 0.1009 | 0.51417 |
+| Individual+Onpolicy+Asymmetric | 0.2471 | 0.0754 | 69.5% | 0.2469 | 0.0747 | 0.2472 | 0.0755 | 0.55656 |
+| Set+TF+Cosine | 0.3677 | 0.1415 | 61.5% | 0.2469 | 0.1499 | 0.3811 | 0.1406 | 0.52519 |
+| Set+TF+Asymmetric | 0.3655 | 0.1192 | 67.4% | 0.2469 | 0.0957 | 0.3787 | 0.1218 | 0.51813 |
+| Set+Onpolicy+Cosine | 0.0315 | 0.0218 | 30.8% | 0.2469 | 0.2014 | 0.0076 | 0.0018 | 0.54370 |
+| Set+Onpolicy+Asymmetric | 0.0318 | 0.0190 | 40.4% | 0.2469 | 0.1667 | 0.0079 | 0.0026 | **0.49553** |
+| Base Forecaster only | -- | -- | -- | -- | -- | -- | -- | **0.48279** |
+
+### Top-10 containment (overall)
+
+| Arm | Epoch0 Top10 | Best Top10 | Abs. Gain |
+|---|---:|---:|---:|
+| Individual+TF+Cosine | 0.0171 | 0.0163 | **-0.0008** |
+| Individual+TF+Asymmetric | 0.0171 | 0.0926 | +0.0755 |
+| Individual+Onpolicy+Cosine | 0.0186 | 0.0282 | +0.0096 |
+| Individual+Onpolicy+Asymmetric | 0.0186 | 0.0619 | +0.0433 |
+| Set+TF+Cosine | 0.0046 | 0.0170 | +0.0124 |
+| Set+TF+Asymmetric | 0.0046 | 0.0215 | +0.0169 |
+| Set+Onpolicy+Cosine | 0.2496 | 0.5219 | +0.2723 (artifact, see above) |
+| Set+Onpolicy+Asymmetric | 0.2508 | 0.4277 | +0.1769 (artifact, see above) |
+
+Full per-step (t=1..10) CSV: `results/EXP-ORACLE-RANK-GAIN01/ETTh1/H720/
+top_k_per_step.csv`; same artifact pattern reproduced at H720 (Set+Onpolicy
+t>=2 rank_frac 0.0076->0.0018, implausibly good vs Set+TF's genuinely-
+trained 0.3811->0.1406; Set+Onpolicy's own t1 stays the worst step, and
+its Top-10 again balloons far beyond every other arm's).
+
+## IMPORTANT: at H720, under this experiment's protocol, EVERY retrieval arm is WORSE than Base-only
+
+`Base Forecaster only = 0.48279`. All 8 retrieval arms are WORSE
+(0.499-0.557) -- the best retrieval arm, Set+Onpolicy+Asymmetric
+(0.49553), is still 0.0127 worse than no retrieval at all, and Individual
++Onpolicy+Asymmetric is the worst (0.55656, +0.074 vs Base). Individual
++TF+Asymmetric leads H96 clearly (0.38059) but its OWN H720 arm
+(0.52448) is mediocre among these 8 -- no arm here shows a clean win
+pattern at H720 at all.
+
+**This directly CONTRADICTS `EXP-ORACLE-SCRATCH01`'s own H720 finding**
+(Set+Asymmetric=0.66269 clearly beat Base=0.76928 there). Absolute scales
+also differ substantially between the two experiments (0.48-0.56 here vs
+0.66-0.77 in `EXP-ORACLE-SCRATCH01`) despite both using the same
+architecture/hyperparameters -- most likely attributable to the
+DIFFERENT random Base-Predictor/Gate initialization each experiment drew
+(this experiment's own H720 cell used a freshly-generated init, per the
+user's explicit choice not to reuse `EXP-ORACLE-SCRATCH01`'s), which
+apparently matters a great deal for this small, scratch-trained
+`BaseForecastHead`'s absolute quality at H720. This has NOT been
+independently re-verified beyond the sanity tests already run (no
+additional GPU work was done to confirm this is not a bug) -- flagged
+here explicitly as a surprising result requiring scrutiny, not
+asserted as settled.
+
+## Status
+
+ETTh1 H96 and H720 both COMPLETE. Weather (H96, H720) currently running.
