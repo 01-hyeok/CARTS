@@ -2606,3 +2606,72 @@ complete, per the pre-registered plan.
     hyperparameter-correction incident?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
+
+## ETTh1 H96 — Top-K containment (added retroactively, same Epoch0/Best checkpoints, no retraining)
+
+Computed directly from the already-saved `diagnostics_epoch0.json`/
+`diagnostics_best.json` for all 8 arms (test split) -- these files already
+contained Top-1/5/10 per step, just not yet surfaced in this document.
+Full per-step (t=1..10) CSV: `results/EXP-ORACLE-RANK-GAIN01/ETTh1/H96/
+top_k_per_step.csv`; overall/t1/t>=2 breakdown: `top_k_detail.csv`;
+this section's summary table: `top_k_summary.csv`.
+
+### Summary (overall Top-10 containment, PPT table)
+
+| Arm | Epoch0 Top10 | Best Top10 | Absolute Gain |
+|---|---:|---:|---:|
+| Individual+TF+Cosine | 0.0383 | 0.0700 | +0.0316 |
+| Individual+TF+Asymmetric | 0.0383 | 0.0920 | +0.0537 |
+| Individual+Onpolicy+Cosine | 0.0522 | 0.0909 | +0.0387 |
+| Individual+Onpolicy+Asymmetric | 0.0522 | 0.0843 | +0.0321 |
+| Set+TF+Cosine | 0.0080 | 0.0347 | +0.0266 |
+| Set+TF+Asymmetric | 0.0083 | 0.0340 | +0.0257 |
+| **Set+Onpolicy+Cosine** | 0.2294 | **0.6415** | **+0.4122** |
+| **Set+Onpolicy+Asymmetric** | 0.2174 | **0.4597** | **+0.2422** |
+
+### Overall / t1 / t>=2 breakdown (Top-1, Top-5, Top-10; Epoch0 -> Best)
+
+| Arm | Scope | Top1 | Top5 | Top10 |
+|---|---|---|---|---|
+| Individual+TF+Cosine | overall | 0.0043->0.0070 | 0.0208->0.0359 | 0.0383->0.0700 |
+| Individual+TF+Cosine | t1 | 0.0053->0.0106 | 0.0279->0.0483 | 0.0544->0.1002 |
+| Individual+TF+Cosine | t>=2 | 0.0042->0.0066 | 0.0200->0.0345 | 0.0366->0.0666 |
+| Individual+TF+Asymmetric | overall | 0.0043->0.0135 | 0.0208->0.0532 | 0.0383->0.0920 |
+| Individual+TF+Asymmetric | t1 | 0.0053->0.0240 | 0.0279->0.0801 | 0.0544->0.1306 |
+| Individual+TF+Asymmetric | t>=2 | 0.0042->0.0123 | 0.0200->0.0502 | 0.0366->0.0878 |
+| Individual+Onpolicy+Cosine | overall | 0.0058->0.0106 | 0.0282->0.0479 | 0.0522->0.0909 |
+| Individual+Onpolicy+Cosine | t1 | 0.0053->0.0123 | 0.0279->0.0541 | 0.0544->0.0968 |
+| Individual+Onpolicy+Cosine | t>=2 | 0.0059->0.0104 | 0.0282->0.0472 | 0.0519->0.0902 |
+| Individual+Onpolicy+Asymmetric | overall | 0.0058->0.0104 | 0.0282->0.0466 | 0.0522->0.0843 |
+| Individual+Onpolicy+Asymmetric | t1 | 0.0053->0.0142 | 0.0279->0.0564 | 0.0544->0.0982 |
+| Individual+Onpolicy+Asymmetric | t>=2 | 0.0059->0.0100 | 0.0282->0.0455 | 0.0519->0.0828 |
+| Set+TF+Cosine | overall | 0.0007->0.0052 | 0.0039->0.0198 | 0.0080->0.0347 |
+| Set+TF+Cosine | t1 | 0.0053->0.0112 | 0.0279->0.0477 | 0.0544->0.0806 |
+| Set+TF+Cosine | t>=2 | 0.0002->0.0046 | 0.0012->0.0167 | 0.0029->0.0296 |
+| Set+TF+Asymmetric | overall | 0.0007->0.0044 | 0.0042->0.0186 | 0.0083->0.0340 |
+| Set+TF+Asymmetric | t1 | 0.0053->0.0075 | 0.0279->0.0446 | 0.0544->0.0815 |
+| Set+TF+Asymmetric | t>=2 | 0.0002->0.0040 | 0.0016->0.0157 | 0.0032->0.0287 |
+| **Set+Onpolicy+Cosine** | overall | 0.0329->0.1175 | 0.1353->0.4319 | 0.2294->0.6415 |
+| Set+Onpolicy+Cosine | t1 | 0.0053->0.0078 | 0.0279->0.0346 | 0.0544->0.0611 |
+| **Set+Onpolicy+Cosine** | t>=2 | 0.0360->0.1297 | 0.1473->0.4760 | 0.2488->0.7060 |
+| **Set+Onpolicy+Asymmetric** | overall | 0.0291->0.0720 | 0.1265->0.2847 | 0.2174->0.4597 |
+| Set+Onpolicy+Asymmetric | t1 | 0.0053->0.0056 | 0.0279->0.0271 | 0.0544->0.0499 |
+| **Set+Onpolicy+Asymmetric** | t>=2 | 0.0317->0.0793 | 0.1375->0.3133 | 0.2355->0.5052 |
+
+### This strengthens, not weakens, the self-referential-artifact reading
+
+Set+Onpolicy's t>=2 Top-10 containment reaches **0.706 / 0.505 at Best** --
+5-10x every other arm's Top-10 (0.03-0.13), including the TRAINED Set+TF
+arms. Critically, this is NOT just an Epoch0 measurement artifact that
+training leaves alone: it GROWS substantially further during training
+(0.249->0.706 cosine, 0.236->0.505 asymmetric) even as `best_epoch=1`'s
+own val-rank_fraction selection criterion showed no improvement past
+epoch 1 (see the section above). Combined with t1 Top-10 barely moving or
+regressing (0.0544->0.0611 cosine, 0.0544->0.0499 asymmetric -- the
+asymmetric arm's t1 Top-10 literally gets WORSE), the picture is
+consistent: **On-policy Set training amplifies the self-referential
+b_i-vs-b_i loop identified above rather than learning genuine Set-Oracle
+structure** -- the t>=2 "containment" numbers for this arm pair should be
+read as a measurement artifact at every checkpoint, not just Epoch0, and
+should NOT be cited as evidence of Set+Onpolicy's ranking quality in any
+summary that also includes the other 6 arms.
