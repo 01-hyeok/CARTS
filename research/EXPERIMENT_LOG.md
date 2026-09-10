@@ -3049,6 +3049,10 @@ ETTh1, H96 and H720, seed 0.
 
 **Stage-2 test MSE (corrected hyperparameters):**
 
+*[POINTER, added 2026-09-10: the "corrected hyperparameters" label is
+accurate for the H96 column ONLY. The entire H720 column is retracted —
+see ERRATUM (2026-09-10) at the end of this entry.]*
+
 | Arm | H96 | H720 |
 |---|---:|---:|
 | Individual + Cosine | 0.38166 | 0.76144 |
@@ -3116,3 +3120,67 @@ follow-up `EXP-ORACLE-SCRATCH-TF01` (teacher-forced Set training) is
 running to test whether the t=1 weakness is an on-policy-training
 artifact or persists under teacher forcing. Interpretation and next-step
 recommendation left to the reviewer -- see `research/REVIEW_FOR_CHATGPT.md`.
+
+### ERRATUM (2026-09-10) — EXP-ORACLE-SCRATCH01 H720 Stage-2 results are RETRACTED
+
+A correctness audit (`research/AUDIT_ORACLE_RANK_GAIN01.md`) established
+that **every H720 Stage-2 number recorded in this entry was produced with
+the unauthorized hyperparameters** (`lr=0.01`, `train_epochs=50`,
+`patience=10`), NOT the corrected defaults (`lr=0.001`/`10`/`5`) that this
+entry's table header claims. The H96 column is unaffected and remains
+valid (it was re-run separately via `scripts/rerun_stage2_h96.sh`, a
+newly-invoked script).
+
+**Why the mid-run fix did not apply to H720.** The runner file was
+corrected at 10:57:57 (commit `f47b2ea`), but the H720 results were
+written at 14:38:07 by the orchestrator process launched *before* that
+edit. Bash parses a shell function's entire body into memory when the
+definition is read; `run_horizon()` is defined at the top of
+`run_oracle_scratch01.sh` and invoked at the bottom, so both the H96 and
+H720 loop bodies were already fixed in memory at launch and the `sed`
+edit could only affect *future* invocations. Reproduced with a minimal
+bash demo during the audit. Evidence in the artifacts themselves: every
+H720 arm ran 20-25 epochs (consistent with `epochs=50`/`patience=10`) with
+divergent validation curves (val MSE ranges up to [1.91, 23.16], including
+`val_mse=20.599` at epoch 9 of the base-only arm).
+
+**Causal proof.** With identical saved Base/Gate init, identical cache and
+identical Stage-2 code, varying only the protocol reproduces both numbers
+bit-exactly (every epoch's train/val MSE matching):
+
+| Protocol | test MSE | reproduces |
+|---|---:|---|
+| lr=0.001 / 10 ep / patience 5 | 0.48279 | EXP-ORACLE-RANK-GAIN01's H720 base-only |
+| lr=0.01 / 50 ep / patience 10 | 0.76928 | this entry's H720 base-only |
+
+The Base init tensors, Gate init tensors and cache `batch_x`/`Y_q` of the
+two experiments were verified **bit-identical** (`torch.equal` = True,
+max_abs_diff 0.0), so initialization and data are ruled out as causes.
+
+**Corrected H720 Stage-2 numbers** (this entry's own Stage-1 arms/caches,
+re-run under the correct protocol during the audit):
+
+| Arm | RETRACTED | Corrected |
+|---|---:|---:|
+| Individual + Cosine | 0.76144 | 0.51373 |
+| Individual + Asymmetric | 0.76953 | 0.53339 |
+| Set + Cosine | 0.72582 | 0.52239 |
+| Set + Asymmetric | 0.66269 | 0.56679 |
+| Base Forecaster only | 0.76928 | 0.48279 |
+
+**Consequences for this entry's stated conclusions.**
+1. "**The Individual-vs-Set Stage-2 ranking FLIPS between horizons**" is
+   **RETRACTED**. Under a consistent protocol, Individual >= Set at BOTH
+   horizons. What actually varies with horizon is whether retrieval helps
+   at all: at H96 all arms beat the no-retrieval control (0.380-0.386 vs
+   0.393); at H720 none of them does (0.514-0.567 vs 0.483).
+2. The Stage-1 ranking results in this entry are **unaffected** — the
+   defect is confined to Stage-2 and no Stage-1 artifact was involved.
+3. The corrected H720 column above independently corroborates
+   `EXP-ORACLE-RANK-GAIN01`'s finding that retrieval fails to beat the
+   Base Forecaster at H720, on a second, differently-trained set of
+   Stage-1 encoders.
+
+The corrected runs were computed into `/tmp/audit_rg01/` during the audit
+and have NOT been archived into a permanent `stage2_fixed/` path; doing so
+is proposed but not yet approved.

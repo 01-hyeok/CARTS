@@ -2287,19 +2287,43 @@ Asymmetric: Asymmetric slightly better for both targets, but the gap
 
 ### Stage-2 (test MSE)
 
-| Arm | Stage-2 Test MSE |
-|---|---:|
-| Individual + Cosine | 0.76144 |
-| Individual + Asymmetric | 0.76953 |
-| Set + Cosine | 0.72582 |
-| **Set + Asymmetric** | **0.66269** |
-| Base Forecaster only | 0.76928 |
+> **RETRACTED — DO NOT CITE THE FIRST COLUMN.** A correctness audit
+> (`research/AUDIT_ORACLE_RANK_GAIN01.md`, 2026-09-10) established that
+> **every H720 Stage-2 number in this experiment was produced with
+> unauthorized hyperparameters** (`lr=0.01`, `train_epochs=50`,
+> `patience=10`) instead of the project's own defaults
+> (`lr=0.001`/`10`/`5`). The runner file was corrected at 10:57:57, but
+> these results were written at 14:38:07 by an orchestrator process that
+> had **already parsed its shell function body into memory at launch**, so
+> the edit never reached the running H720 loop (mechanism reproduced in
+> the audit). The H96 numbers quoted earlier in this section ARE the
+> corrected ones (`stage2_fixed/`), so this section previously compared
+> corrected-H96 against uncorrected-H720.
+>
+> The affected runs show divergent optimisation (val MSE ranges up to
+> [1.91, 23.16], e.g. `val_mse=20.599` at epoch 9 followed by `2.033` at
+> epoch 10), i.e. the "best" checkpoint is whichever epoch of a random
+> walk happened to land lowest.
 
-**At H720, Set clearly beats Individual** (0.663-0.726 vs 0.761-0.770) --
-the OPPOSITE ranking from H96, where Individual won (0.3806-0.3817 vs
-0.3846-0.3856). Both Set arms beat the Base-Forecaster-only control at
-H720; Individual arms are statistically indistinguishable from the Base
-control (0.761-0.770 vs 0.769).
+| Arm | RETRACTED (lr=0.01/50ep/pat10) | **Corrected (lr=0.001/10ep/pat5)** |
+|---|---:|---:|
+| Individual + Cosine | ~~0.76144~~ | 0.51373 |
+| Individual + Asymmetric | ~~0.76953~~ | 0.53339 |
+| Set + Cosine | ~~0.72582~~ | 0.52239 |
+| Set + Asymmetric | ~~0.66269~~ | 0.56679 |
+| Base Forecaster only | ~~0.76928~~ | **0.48279** |
+
+**Corrected reading: at H720, ALL four retrieval arms are WORSE than the
+Base-Forecaster-only control (0.48279).** The previous claim -- "Set
+clearly beats Individual, both Set arms beat Base" -- was entirely an
+artifact of the divergent `lr=0.01` training and does not survive the
+corrected protocol.
+
+(The corrected column was computed during the audit from this
+experiment's own saved Stage-1 caches and shared Base/Gate init, using the
+unmodified Stage-2 script. Those runs currently live in `/tmp/audit_rg01/`
+and have NOT yet been archived into a permanent `stage2_fixed/` path --
+that re-run is proposed but not yet approved.)
 
 ### t=1 vs t>=2, encoder collapse, and the free-running/greedy-Oracle gap (H720, test)
 
@@ -2325,32 +2349,34 @@ dimension fraction 0.0 in every arm). Asymmetric scorer drift from
 identity is more extreme at H720: `cond(Wk)=3909` for Individual+Asymmetric
 (vs 35 at H96) -- a striking, unexplained jump worth flagging.
 
-## Cross-horizon summary and the central open question
+## Cross-horizon summary (CORRECTED 2026-09-10)
 
-| | H96 winner | H720 winner |
+> **The previously-stated "cross-horizon flip" conclusion is RETRACTED.**
+> It compared corrected-H96 numbers against uncorrected-H720 numbers (see
+> the retraction box above). Under a consistent, correct protocol at both
+> horizons the flip does not exist.
+
+| | H96 (corrected) | H720 (corrected) |
 |---|---|---|
-| Stage-2 Test MSE | **Individual** (0.3806) | **Set** (0.6627) |
+| Best retrieval arm | Individual+Asymmetric **0.38059** | Individual+Cosine **0.51373** |
+| Base Forecaster only | 0.39298 | **0.48279** |
+| Does retrieval beat Base? | **Yes** (all arms) | **No** (no arm) |
 
-**The Individual-vs-Set ranking FLIPS between horizons.** This is the
-single most important finding of this experiment and needs explanation,
-not just reporting. The working hypothesis (developed in conversation,
-not yet independently verified): Set's aggregate Stage-1 rank_fraction
-metric is misleading at BOTH horizons -- it is dominated by t>=2's
-near-perfect local ranking (top10 containment 36-71%) while t=1 (no
-conditioner, encoder+scorer alone) is consistently the weakest step of
-the whole sequence (rank_frac 0.13-0.21, worse than Individual's own t1 in
-3 of 4 horizon x scorer combinations). Because retrieval is sequential and
-greedy, a bad t=1 propagates through the entire on-policy trajectory,
-producing a large, uncompensated gap between the model's realized
-aggregate and the TRUE greedy Set Oracle's aggregate (0.26-0.41 MSE) at
-BOTH horizons. What differs is whether this t=1-driven degradation is
-still enough to beat Individual's OWN (uniformly worse, ~0.09-0.20 rank
-fraction at every step) ranking once it reaches Stage-2 -- apparently not
-at H96, but yes at H720. Why the balance flips is NOT yet explained by
-anything measured here (candidate pool size differs 8449 vs 7201, horizon
-itself differs 96 vs 720, individual arms' absolute quality also degrades
-more at H720) -- this is the primary question for the next research
-cycle, not something this experiment's own data resolves.
+**Corrected finding: Individual >= Set at BOTH horizons on Stage-2 MSE.**
+What actually changes with horizon is not *which Oracle wins*, but
+*whether retrieval helps at all*: at H96 every arm beats the no-retrieval
+control, at H720 none of them does.
+
+The t=1-bottleneck observation still stands on its own evidence and is
+unaffected by the retraction: Set's aggregate Stage-1 rank_fraction is
+dominated by t>=2 while t=1 (no conditioner, encoder+scorer alone) is
+consistently the weakest step (rank_frac 0.13-0.21), and the model's
+realized free-running aggregate stays 0.26-0.41 MSE away from the true
+greedy Set-Oracle aggregate at both horizons. **However**, see the audit's
+§4.3-4.4: the Set arms' t>=2 numbers are measured against a
+checkpoint-dependent target and, for the On-policy arms, an endogenous
+self-referential one -- so they should not be read as a clean measure of
+"how well the Set Oracle rule was learned".
 
 ## Status
 
@@ -2375,14 +2401,18 @@ separately.
     more likely an artifact of Set's training effort being diluted across
     9 "easy" t>=2 steps and only 1 "hard" t=1 step per sequence (10x less
     training signal on the hard part)?
-47. The Individual-vs-Set Stage-2 ranking flips between H96 (Individual
-    wins) and H720 (Set wins), while the underlying t=1-bottleneck /
-    large free-running-vs-greedy-Oracle-gap pattern looks qualitatively
-    the same at both horizons. What horizon-dependent factor is most
-    likely responsible -- candidate pool size (8449 vs 7201), the
-    increased difficulty of the Individual task itself at longer horizons
-    (its own rank_fraction is also worse at H720), or something about how
-    error compounds differently over a 720-step future vs a 96-step one?
+47. **[REVISED after the 2026-09-10 audit — the original version of this
+    question assumed a cross-horizon "flip" that has since been retracted;
+    there is no flip.]** The corrected picture is that Individual >= Set at
+    BOTH horizons, and what changes with horizon is whether retrieval
+    helps at all: at H96 every arm beats the no-retrieval control
+    (0.380-0.388 vs 0.393), at H720 no arm does (0.499-0.557 vs 0.483).
+    What horizon-dependent factor most likely explains retrieval going
+    from mildly helpful to actively harmful -- candidate pool size
+    (8449 vs 7201), the fact that a 720-step weighted average of retrieved
+    futures is a much blunter object than a 96-step one, or the
+    degradation of Stage-1 ranking itself at H720 (rank_fraction 0.045 ->
+    0.075-0.126)?
 48. This experiment's Stage-2 protocol (fully retrained Base+Gate from a
     shared scratch init, `lr=0.001`/`epochs=10`/`patience=5`) is
     deliberately different from `EXP-ASYM-SCORER01`'s protocol (forced
@@ -2593,13 +2623,27 @@ follow further down this document.
     suggests the ENCODER partially transfers useful signal regardless of
     how Stage-1's own on-policy training metric behaved), or is this more
     likely coincidental given how close all 8 arms already are?
-52. Now that `EXP-ORACLE-SCRATCH01`'s original Individual-Oracle-wins-H96/
-    Set-Oracle-wins-H720 cross-horizon flip has been independently
-    replicated under a stricter same-init protocol (Individual+Asymmetric
-    leads at H96 again here), does this strengthen confidence that the
-    flip is a real horizon-dependent phenomenon rather than an artifact of
-    EXP-ORACLE-SCRATCH01's own (different) initialization or its
-    hyperparameter-correction incident?
+52. **[REVISED after the 2026-09-10 audit.]** The original version of this
+    question claimed the cross-horizon flip had been "independently
+    replicated". It had not -- the audit showed `EXP-ORACLE-SCRATCH01`'s
+    H720 Stage-2 ran under unauthorized hyperparameters, and re-running its
+    own arms correctly puts all of them BELOW Base-only, matching this
+    experiment. The genuinely replicated finding is instead: **"at H720,
+    retrieval does not beat a no-retrieval Base Forecaster"**, now shown on
+    two independently-trained Stage-1 populations. Given that, is the more
+    productive next question "why does retrieval stop helping at long
+    horizons?" rather than anything about Individual-vs-Set at all?
+53. The audit found that the Set Oracle's t>=2 target is a function of the
+    current model's own score (`alpha ∝ exp(b_i/tau_topk)`), so the target
+    itself moves as the encoder trains -- only 37.5% of t=2 target labels
+    agree between Epoch0 and Best under an identical prefix, while t=1
+    (empty prefix, `dense_utility` reduces to `MSE(Y_i,Y_q)`) is perfectly
+    stationary. This is faithful to the pre-registered spec, not a coding
+    error. Should future Set-Oracle experiments freeze the aggregation
+    weights to a fixed reference scorer so that "Epoch0 -> Best ranking
+    gain" measures learning against a stationary target, and does the
+    present non-stationarity invalidate the Set arms' reported gains or
+    merely require re-labelling them?
 
 Please answer using the structure in `research/NEXT_EXPERIMENT.md`.
 
@@ -2717,20 +2761,39 @@ its Top-10 again balloons far beyond every other arm's).
 (0.52448) is mediocre among these 8 -- no arm here shows a clean win
 pattern at H720 at all.
 
-**This directly CONTRADICTS `EXP-ORACLE-SCRATCH01`'s own H720 finding**
-(Set+Asymmetric=0.66269 clearly beat Base=0.76928 there). Absolute scales
-also differ substantially between the two experiments (0.48-0.56 here vs
-0.66-0.77 in `EXP-ORACLE-SCRATCH01`) despite both using the same
-architecture/hyperparameters -- most likely attributable to the
-DIFFERENT random Base-Predictor/Gate initialization each experiment drew
-(this experiment's own H720 cell used a freshly-generated init, per the
-user's explicit choice not to reuse `EXP-ORACLE-SCRATCH01`'s), which
-apparently matters a great deal for this small, scratch-trained
-`BaseForecastHead`'s absolute quality at H720. This has NOT been
-independently re-verified beyond the sanity tests already run (no
-additional GPU work was done to confirm this is not a bug) -- flagged
-here explicitly as a surprising result requiring scrutiny, not
-asserted as settled.
+### Why this appeared to contradict `EXP-ORACLE-SCRATCH01` — RESOLVED (audit, 2026-09-10)
+
+An earlier version of this section speculated that the difference vs
+`EXP-ORACLE-SCRATCH01` (Set+Asymmetric=0.66269 vs Base=0.76928 there) was
+"most likely attributable to the DIFFERENT random Base-Predictor/Gate
+initialization each experiment drew". **That explanation was wrong and is
+retracted.** The audit (`research/AUDIT_ORACLE_RANK_GAIN01.md`) checked it
+at tensor level:
+
+| Compared artifact (SCRATCH01 H720 vs RANK-GAIN01 H720) | Result |
+|---|---|
+| `shared_base_init` (weight, bias) | **exact_equal = True**, max_abs_diff 0.0 |
+| `shared_gate_init` (all 4 tensors) | **exact_equal = True**, max_abs_diff 0.0 |
+| cache `batch_x`, `Y_q` (train/val/test) | **exact_equal = True**, max_abs_diff 0.0 |
+
+The initializations and the Base-only-relevant data are **bit-identical**.
+The actual cause is that `EXP-ORACLE-SCRATCH01`'s H720 Stage-2 ran with
+unauthorized hyperparameters (`lr=0.01`/`50`/`10`), because an in-flight
+edit to its runner could not reach the already-running bash process. Proof
+by re-execution with identical init + identical cache + identical code,
+varying only the protocol:
+
+| Protocol | test MSE | reproduces |
+|---|---:|---|
+| lr=0.001 / 10 ep / pat 5 | **0.48279** | this experiment, bit-exactly (every epoch) |
+| lr=0.01 / 50 ep / pat 10 | **0.76928** | `EXP-ORACLE-SCRATCH01`, bit-exactly (incl. its `val_mse=20.599` spike) |
+
+**There is no contradiction.** When `EXP-ORACLE-SCRATCH01`'s own H720 arms
+are re-run under the correct protocol, all four also land WORSE than
+Base-only (0.514-0.567 vs 0.48279), matching this experiment. The "every
+retrieval arm is worse than Base at H720" finding is therefore
+**independently corroborated on a second, differently-trained set of
+Stage-1 encoders**, which raises rather than lowers confidence in it.
 
 ## Status
 
