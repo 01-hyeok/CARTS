@@ -1,0 +1,56 @@
+{
+  "pred_len": 96,
+  "top_k": 10,
+  "tau_topk": 0.1,
+  "device": "cuda",
+  "canonical_base_ckpt": "checkpoints/exp_oracle_rank_gain01/stage2/carts_rank_gain01_stage2_base_only_ETTh1_H96/checkpoint.pth",
+  "canonical_base_test_mse": 0.39297571778297424,
+  "fixed_reference_scorer_for_oracles": "checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+  "fusion_convention": "Y_final = (1-lam)*Y_base + lam*Y_ret  [mixture]",
+  "n_test_queries": 2785,
+  "n_val_queries": 2785,
+  "shape_convention": "[N, H, C]",
+  "arms": {
+    "Individual-TF-Asym": {
+      "source": "cache",
+      "path": "checkpoints/exp_oracle_rank_gain01/retrieval_cache/individual_tf_asymmetric_ETTh1_H96"
+    },
+    "Set-TF-Asym": {
+      "source": "cache",
+      "path": "checkpoints/exp_oracle_rank_gain01/retrieval_cache/set_tf_asymmetric_ETTh1_H96"
+    },
+    "Individual-OP-Asym": {
+      "source": "cache",
+      "path": "checkpoints/exp_oracle_rank_gain01/retrieval_cache/individual_onpolicy_asymmetric_ETTh1_H96"
+    },
+    "Set-OP-Asym": {
+      "source": "cache",
+      "path": "checkpoints/exp_oracle_rank_gain01/retrieval_cache/set_onpolicy_asymmetric_ETTh1_H96"
+    },
+    "KL+Asym[s2ls]": {
+      "source": "regenerated",
+      "checkpoint": "checkpoints/stage1/ETTh1/seq96_pred96/stage1_carts_s2ls_asym_kl_ETTh1_96_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_s2ls_asym_kl_ETTh1_sl96_pl96_0/checkpoint.pth",
+      "metric": "asymmetric"
+    },
+    "KL+Asym[e2]": {
+      "source": "regenerated",
+      "checkpoint": "checkpoints/stage1/ETTh1/seq96_pred96/stage1_carts_e2_asym_kl_ETTh1_96_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_e2_asym_kl_ETTh1_sl96_pl96_0/checkpoint.pth",
+      "metric": "asymmetric"
+    },
+    "Oracle-Individual": {
+      "source": "computed",
+      "kind": "oracle_ind",
+      "weighting": "score-weighted(fixed ref)"
+    },
+    "Oracle-Individual(uniform)": {
+      "source": "computed",
+      "kind": "oracle_ind_uniform",
+      "weighting": "uniform"
+    },
+    "Oracle-Set": {
+      "source": "computed",
+      "kind": "oracle_set",
+      "weighting": "score-weighted(fixed ref)"
+    }
+  }
+}

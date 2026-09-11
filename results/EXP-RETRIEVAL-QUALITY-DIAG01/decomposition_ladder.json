@@ -1,0 +1,66 @@
+{
+  "H96/Individual-TF-Asym": {
+    "joint_base_only": 0.4100376069545746,
+    "joint_base_learned_gate": 0.37754449248313904,
+    "canon_base_learned_gate": 0.37758052349090576,
+    "canon_base_global_lambda": 0.3727951943874359,
+    "canon_base_oracle_lambda": 0.33009690046310425,
+    "canonical_base": 0.39297571778297424
+  },
+  "H96/Set-TF-Asym": {
+    "joint_base_only": 0.4171103835105896,
+    "joint_base_learned_gate": 0.40007734298706055,
+    "canon_base_learned_gate": 0.39353635907173157,
+    "canon_base_global_lambda": 0.3815499544143677,
+    "canon_base_oracle_lambda": 0.3310273289680481,
+    "canonical_base": 0.39297571778297424
+  },
+  "H96/Individual-OP-Asym": {
+    "joint_base_only": 0.39740365743637085,
+    "joint_base_learned_gate": 0.37398234009742737,
+    "canon_base_learned_gate": 0.37369504570961,
+    "canon_base_global_lambda": 0.37373021245002747,
+    "canon_base_oracle_lambda": 0.328678160905838,
+    "canonical_base": 0.39297571778297424
+  },
+  "H96/Set-OP-Asym": {
+    "joint_base_only": 0.3950669765472412,
+    "joint_base_learned_gate": 0.382943332195282,
+    "canon_base_learned_gate": 0.3822469413280487,
+    "canon_base_global_lambda": 0.38120532035827637,
+    "canon_base_oracle_lambda": 0.33606088161468506,
+    "canonical_base": 0.39297571778297424
+  },
+  "H720/Individual-TF-Asym": {
+    "joint_base_only": 0.6928980350494385,
+    "joint_base_learned_gate": 0.5312173366546631,
+    "canon_base_learned_gate": 0.48108938336372375,
+    "canon_base_global_lambda": 0.4652763903141022,
+    "canon_base_oracle_lambda": 0.43362897634506226,
+    "canonical_base": 0.4827854633331299
+  },
+  "H720/Set-TF-Asym": {
+    "joint_base_only": 0.6435372233390808,
+    "joint_base_learned_gate": 0.568548858165741,
+    "canon_base_learned_gate": 0.5264251828193665,
+    "canon_base_global_lambda": 0.47892412543296814,
+    "canon_base_oracle_lambda": 0.44509491324424744,
+    "canonical_base": 0.4827854633331299
+  },
+  "H720/Individual-OP-Asym": {
+    "joint_base_only": 0.5682871341705322,
+    "joint_base_learned_gate": 0.4981412887573242,
+    "canon_base_learned_gate": 0.4692850410938263,
+    "canon_base_global_lambda": 0.4635849893093109,
+    "canon_base_oracle_lambda": 0.4321430027484894,
+    "canonical_base": 0.4827854633331299
+  },
+  "H720/Set-OP-Asym": {
+    "joint_base_only": 0.630066454410553,
+    "joint_base_learned_gate": 0.5188424587249756,
+    "canon_base_learned_gate": 0.4778801202774048,
+    "canon_base_global_lambda": 0.46756884455680847,
+    "canon_base_oracle_lambda": 0.43447497487068176,
+    "canonical_base": 0.4827854633331299
+  }
+}
