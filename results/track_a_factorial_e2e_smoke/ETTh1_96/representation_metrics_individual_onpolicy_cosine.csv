@@ -1,0 +1,2 @@
+epoch,rep_dead_dim_ratio,rep_effective_rank,rep_embed_norm_mean,rep_embed_norm_std,rep_encoder_param_displacement,rep_has_nan,rep_mean_dim_std,rep_mean_pairwise_cosine,rep_sv1_fraction
+1,0.0,53.425079345703125,1.0,3.243273027919713e-08,0.022116560014638995,False,0.06075769662857056,0.4835371673107147,0.11451037228107452

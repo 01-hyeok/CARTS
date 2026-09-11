@@ -1,0 +1,139 @@
+{
+  "cell": "Weather_96",
+  "role": "Independent Base-only Forecaster",
+  "best_epoch": 3,
+  "best_val_mse": 0.48616444692647526,
+  "independent_base_only_mse": 0.19242349240608456,
+  "independent_base_only_mae": 0.23314180678116767,
+  "n_test_elements": 21055104.0,
+  "final_epoch": 8,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse": 0.5592415562532607,
+      "val_mse": 0.49657613132530337,
+      "val_mae": 0.32807007397567645,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 2,
+      "train_mse": 0.5390936280222066,
+      "val_mse": 0.48933649063549123,
+      "val_mae": 0.32384209494147964,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 3,
+      "train_mse": 0.5253579816658148,
+      "val_mse": 0.48616444692647526,
+      "val_mae": 0.32580323622897855,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 4,
+      "train_mse": 0.5247091462416199,
+      "val_mse": 0.48903622392295065,
+      "val_mae": 0.33280078065092783,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 5,
+      "train_mse": 0.5186609653494108,
+      "val_mse": 0.4880089055258715,
+      "val_mae": 0.3196549244218055,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 6,
+      "train_mse": 0.5282631362604633,
+      "val_mse": 0.4892801688432456,
+      "val_mae": 0.320879196144761,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 7,
+      "train_mse": 0.5296168683114227,
+      "val_mse": 0.4862088240389535,
+      "val_mae": 0.32619907512245033,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 8,
+      "train_mse": 0.516241055858247,
+      "val_mse": 0.4863771074562842,
+      "val_mae": 0.32164067021122683,
+      "val_has_nan": false
+    }
+  ],
+  "wall_clock_seconds": 55.09019088745117,
+  "checkpoint": "checkpoints/track_a_factorial_e2e/Weather_96/_independent_base_only/checkpoint.pth",
+  "fingerprint": {
+    "cell": "Weather_96",
+    "role": "Independent Base-only Forecaster",
+    "retrieval_used": false,
+    "fusion_used": false,
+    "gate_used": false,
+    "base_head_mode": "shared_target_linear",
+    "trainable_params": 9312,
+    "seq_len": 96,
+    "pred_len": 96,
+    "enc_in": 21,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "train_epochs": 10,
+    "patience": 5,
+    "seed": 0,
+    "top_k_for_valid_query_filter": 10,
+    "metric_implementation": "SSE/element_count over valid_query -- identical to scripts/eval_factorial_e2e01_stage2.py",
+    "hyperparameter_provenance": {
+      "learning_rate": {
+        "value": 0.001,
+        "source": "Stage-1 reference args[\"learning_rate\"]"
+      },
+      "batch_size": {
+        "value": 32,
+        "source": "Stage-1 reference args[\"batch_size\"]"
+      },
+      "train_epochs": {
+        "value": 10,
+        "source": "Stage-1 reference args[\"train_epochs\"]"
+      },
+      "patience": {
+        "value": 5,
+        "source": "Stage-1 reference args[\"patience\"]"
+      },
+      "seed": {
+        "value": 0,
+        "source": "Stage-1 reference args[\"seed\"]"
+      },
+      "top_k": {
+        "value": 10,
+        "source": "Stage-1 reference args[\"top_k\"]"
+      },
+      "weight_decay": {
+        "value": 0.0,
+        "source": "Stage-1 exp/exp_stage1_relation.py::_select_optimizer -> Adam default (0.0)"
+      },
+      "base_head_mode": {
+        "value": "shared_target_linear",
+        "source": "Stage-2 host args[\"base_head_mode\"] (architecture must match the branch the retrieval-augmented arms are compared against)"
+      },
+      "optimizer": {
+        "value": "Adam",
+        "source": "Stage-1 exp_stage1_relation.py::_select_optimizer"
+      },
+      "lr_schedule": {
+        "value": "constant",
+        "source": "same constant-LR choice as the factorial Stage-1 arms"
+      },
+      "checkpoint_criterion": {
+        "value": "min validation MSE",
+        "source": "this experiment (no retrieval metric exists here)"
+      }
+    },
+    "reference_ckpt": "checkpoints/soft_set_mse/stage1/custom/seq96_pred96/stage1_carts_softset_Weather_96_S0_wce_RelationStage1_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl96_pl96_0/checkpoint.pth",
+    "stage2_host_read_for": "base_head_mode only",
+    "is_smoke_run": false
+  }
+}

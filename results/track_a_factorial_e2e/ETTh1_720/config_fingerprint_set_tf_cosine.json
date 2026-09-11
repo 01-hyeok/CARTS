@@ -1,0 +1,116 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "set_tf_cosine",
+  "axis_oracle": "greedy_set",
+  "axis_prefix": "tf",
+  "axis_score": "cosine",
+  "encoder_init_sha256": "b28b1ab2b83cf50efb270cc5b99a9088eae05911426ea26ac07cb0e9106b9697",
+  "scratch_init": true,
+  "encoder_trainable": true,
+  "stage2_host": "checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "seq_len": 720,
+  "pred_len": 720,
+  "enc_in": 7,
+  "d_model": 128,
+  "top_k": 10,
+  "tau_topk": 0.1,
+  "tau_choice": 0.1,
+  "candidate_mask": "raft",
+  "relation_value_space": "delta_last",
+  "optimizer": "Adam",
+  "learning_rate": 0.001,
+  "weight_decay": 0.0,
+  "batch_size": 32,
+  "train_epochs": 10,
+  "patience": 5,
+  "seed": 0,
+  "hyperparameter_provenance": {
+    "learning_rate": {
+      "value": 0.001,
+      "source": "CLI override"
+    },
+    "batch_size": {
+      "value": 32,
+      "source": "CLI override"
+    },
+    "train_epochs": {
+      "value": 10,
+      "source": "CLI override"
+    },
+    "patience": {
+      "value": 5,
+      "source": "CLI override"
+    },
+    "seed": {
+      "value": 0,
+      "source": "CLI override"
+    },
+    "top_k": {
+      "value": 10,
+      "source": "CLI override"
+    },
+    "weight_decay": {
+      "value": 0.0,
+      "source": "CLI override"
+    },
+    "optimizer": {
+      "value": "Adam",
+      "source": "Stage-1 exp/exp_stage1_relation.py::_select_optimizer"
+    },
+    "tau_choice": {
+      "value": 0.1,
+      "source": "Stage-1 reference args[\"tau_topk\"] (Choice-CE temperature)"
+    },
+    "tau_aggregation": {
+      "value": 0.1,
+      "source": "Stage-2 host args[\"tau_topk\"] (aggregation weighting only)"
+    },
+    "lr_schedule": {
+      "value": "constant",
+      "source": "DIVERGENCE FROM Stage-1 reference (lradj='type1', applied by Exp_Stage1_Relation.train). This experiment keeps LR constant, matching every prior scratch/Oracle-Choice script in this project (train_oracle_choice01, train_oracle_scratch01, train_oracle_rank_gain01). Identical for all 8 arms, so it cannot bias the factorial contrast."
+    }
+  },
+  "stage1_reference_args_subset": {
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "train_epochs": 10,
+    "patience": 5,
+    "seed": 0,
+    "top_k": 10,
+    "tau_topk": 0.1,
+    "lradj": "type1",
+    "d_model": 128,
+    "candidate_mask": "raft",
+    "relation_value_space": "delta_last",
+    "relation_top_n": 1
+  },
+  "stage2_host_args_subset": {
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "train_epochs": 10,
+    "patience": 5,
+    "seed": 0,
+    "top_k": 10,
+    "tau_topk": 0.1,
+    "fusion_mode": "residual",
+    "gate_mode": "scalar",
+    "fixed_lambda": -1.0,
+    "relation_top_n": 1,
+    "candidate_mask": "raft",
+    "relation_value_space": "delta_last"
+  },
+  "stage2_role": "FROZEN HOST -- supplies the aggregation weighting only; never trained, never used as a Stage-1 hyperparameter source",
+  "loss": "oracle_choice_cross_entropy",
+  "aggregation": "softmax(host_score/tau_topk) over the K picks (host-fixed, exogenous)",
+  "checkpoint_criterion": "min val free_running_aggregate_future_mse",
+  "cosine_init_deviation": 0.0,
+  "memory_bank_shape": [
+    7201,
+    720,
+    7
+  ],
+  "n_channels": 7,
+  "limit_batches": 0,
+  "is_smoke_run": false
+}

@@ -1,0 +1,97 @@
+{
+  "cell": "ETTh1_96",
+  "role": "Independent Base-only Forecaster",
+  "best_epoch": 2,
+  "best_val_mse": 0.7012736669695152,
+  "independent_base_only_mse": 0.40568340549695653,
+  "independent_base_only_mae": 0.41079506857370507,
+  "n_test_elements": 1871520.0,
+  "final_epoch": 2,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse": 0.43884046172048796,
+      "val_mse": 0.7263608409225752,
+      "val_mae": 0.5656273175500709,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 2,
+      "train_mse": 0.37064691445773584,
+      "val_mse": 0.7012736669695152,
+      "val_mae": 0.5538354348104979,
+      "val_has_nan": false
+    }
+  ],
+  "wall_clock_seconds": 3.629838228225708,
+  "checkpoint": "checkpoints/track_a_factorial_e2e_smoke/ETTh1_96/_independent_base_only/checkpoint.pth",
+  "fingerprint": {
+    "cell": "ETTh1_96",
+    "role": "Independent Base-only Forecaster",
+    "retrieval_used": false,
+    "fusion_used": false,
+    "gate_used": false,
+    "base_head_mode": "shared_target_linear",
+    "trainable_params": 9312,
+    "seq_len": 96,
+    "pred_len": 96,
+    "enc_in": 7,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "train_epochs": 2,
+    "patience": 5,
+    "seed": 0,
+    "top_k_for_valid_query_filter": 10,
+    "metric_implementation": "SSE/element_count over valid_query -- identical to scripts/eval_factorial_e2e01_stage2.py",
+    "hyperparameter_provenance": {
+      "learning_rate": {
+        "value": 0.001,
+        "source": "Stage-1 reference args[\"learning_rate\"]"
+      },
+      "batch_size": {
+        "value": 32,
+        "source": "Stage-1 reference args[\"batch_size\"]"
+      },
+      "train_epochs": {
+        "value": 2,
+        "source": "CLI override"
+      },
+      "patience": {
+        "value": 5,
+        "source": "Stage-1 reference args[\"patience\"]"
+      },
+      "seed": {
+        "value": 0,
+        "source": "Stage-1 reference args[\"seed\"]"
+      },
+      "top_k": {
+        "value": 10,
+        "source": "Stage-1 reference args[\"top_k\"]"
+      },
+      "weight_decay": {
+        "value": 0.0,
+        "source": "Stage-1 exp/exp_stage1_relation.py::_select_optimizer -> Adam default (0.0)"
+      },
+      "base_head_mode": {
+        "value": "shared_target_linear",
+        "source": "Stage-2 host args[\"base_head_mode\"] (architecture must match the branch the retrieval-augmented arms are compared against)"
+      },
+      "optimizer": {
+        "value": "Adam",
+        "source": "Stage-1 exp_stage1_relation.py::_select_optimizer"
+      },
+      "lr_schedule": {
+        "value": "constant",
+        "source": "same constant-LR choice as the factorial Stage-1 arms"
+      },
+      "checkpoint_criterion": {
+        "value": "min validation MSE",
+        "source": "this experiment (no retrieval metric exists here)"
+      }
+    },
+    "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+    "stage2_host_read_for": "base_head_mode only",
+    "is_smoke_run": false
+  }
+}

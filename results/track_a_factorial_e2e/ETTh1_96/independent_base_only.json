@@ -1,0 +1,153 @@
+{
+  "cell": "ETTh1_96",
+  "role": "Independent Base-only Forecaster",
+  "best_epoch": 7,
+  "best_val_mse": 0.7010027556783411,
+  "independent_base_only_mse": 0.38645120843960873,
+  "independent_base_only_mae": 0.3946579841769658,
+  "n_test_elements": 1871520.0,
+  "final_epoch": 10,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse": 0.43884046172048796,
+      "val_mse": 0.7263608409225752,
+      "val_mae": 0.5656273175500709,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 2,
+      "train_mse": 0.37064691445773584,
+      "val_mse": 0.7012736669695152,
+      "val_mae": 0.5538354348104979,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 3,
+      "train_mse": 0.36417231542540096,
+      "val_mse": 0.7118762395336473,
+      "val_mae": 0.5547430426705299,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 4,
+      "train_mse": 0.36137321673916534,
+      "val_mse": 0.7080140298173357,
+      "val_mae": 0.5541772467851374,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 5,
+      "train_mse": 0.35990841618295616,
+      "val_mse": 0.7106633504231771,
+      "val_mae": 0.5531899437452266,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 6,
+      "train_mse": 0.35858409314314166,
+      "val_mse": 0.7070410020190181,
+      "val_mae": 0.5518485091533011,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 7,
+      "train_mse": 0.3581552065477694,
+      "val_mse": 0.7010027556783411,
+      "val_mae": 0.5491632161674881,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 8,
+      "train_mse": 0.3574661205528558,
+      "val_mse": 0.7051088188492947,
+      "val_mae": 0.5502580960836229,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 9,
+      "train_mse": 0.35693958029195055,
+      "val_mse": 0.7014536950306332,
+      "val_mae": 0.5504283796755424,
+      "val_has_nan": false
+    },
+    {
+      "epoch": 10,
+      "train_mse": 0.3570579166510554,
+      "val_mse": 0.7073597972022271,
+      "val_mae": 0.5524686276061704,
+      "val_has_nan": false
+    }
+  ],
+  "wall_clock_seconds": 10.752843379974365,
+  "checkpoint": "checkpoints/track_a_factorial_e2e/ETTh1_96/_independent_base_only/checkpoint.pth",
+  "fingerprint": {
+    "cell": "ETTh1_96",
+    "role": "Independent Base-only Forecaster",
+    "retrieval_used": false,
+    "fusion_used": false,
+    "gate_used": false,
+    "base_head_mode": "shared_target_linear",
+    "trainable_params": 9312,
+    "seq_len": 96,
+    "pred_len": 96,
+    "enc_in": 7,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "train_epochs": 10,
+    "patience": 5,
+    "seed": 0,
+    "top_k_for_valid_query_filter": 10,
+    "metric_implementation": "SSE/element_count over valid_query -- identical to scripts/eval_factorial_e2e01_stage2.py",
+    "hyperparameter_provenance": {
+      "learning_rate": {
+        "value": 0.001,
+        "source": "Stage-1 reference args[\"learning_rate\"]"
+      },
+      "batch_size": {
+        "value": 32,
+        "source": "Stage-1 reference args[\"batch_size\"]"
+      },
+      "train_epochs": {
+        "value": 10,
+        "source": "Stage-1 reference args[\"train_epochs\"]"
+      },
+      "patience": {
+        "value": 5,
+        "source": "Stage-1 reference args[\"patience\"]"
+      },
+      "seed": {
+        "value": 0,
+        "source": "Stage-1 reference args[\"seed\"]"
+      },
+      "top_k": {
+        "value": 10,
+        "source": "Stage-1 reference args[\"top_k\"]"
+      },
+      "weight_decay": {
+        "value": 0.0,
+        "source": "Stage-1 exp/exp_stage1_relation.py::_select_optimizer -> Adam default (0.0)"
+      },
+      "base_head_mode": {
+        "value": "shared_target_linear",
+        "source": "Stage-2 host args[\"base_head_mode\"] (architecture must match the branch the retrieval-augmented arms are compared against)"
+      },
+      "optimizer": {
+        "value": "Adam",
+        "source": "Stage-1 exp_stage1_relation.py::_select_optimizer"
+      },
+      "lr_schedule": {
+        "value": "constant",
+        "source": "same constant-LR choice as the factorial Stage-1 arms"
+      },
+      "checkpoint_criterion": {
+        "value": "min validation MSE",
+        "source": "this experiment (no retrieval metric exists here)"
+      }
+    },
+    "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+    "stage2_host_read_for": "base_head_mode only",
+    "is_smoke_run": false
+  }
+}

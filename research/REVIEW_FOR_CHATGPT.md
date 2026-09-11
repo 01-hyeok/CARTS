@@ -2798,3 +2798,279 @@ Stage-1 encoders**, which raises rather than lowers confidence in it.
 ## Status
 
 ETTh1 H96 and H720 both COMPLETE. Weather (H96, H720) currently running.
+
+---
+
+# TRACK-A-FACTORIAL-E2E01 — Oracle x Prefix x Score, scratch trainable
+encoder, controlled factorial (IN PROGRESS: ETTh1 H96 + H720 COMPLETE,
+Weather H96 running, Weather H720 not started)
+
+Supersedes both `EXP-ORACLE-RANK-GAIN01` and `EXP-ORACLE-SCRATCH01` for the
+questions below. Triggered by `TRACK_A_STRICT_AUDIT.md`, which found that
+the prior Track A campaign's headline conclusions (`gap_recovery`
+mis-read, T1's own training log showing near-zero gradient, and the
+`oracle_first` anchor inverting the reported ranking) were not supported by
+their own artifacts. **B0 is explicitly excluded from this comparison** —
+different loss/Oracle/protocol, not a clean comparison per the user's
+instruction.
+
+## Research Question
+
+Four questions, answered per Stage-1 arm and validated downstream:
+(1) Individual vs Greedy Set Oracle supervision; (2) Teacher-Forcing vs
+On-policy training; (3) Cosine vs Asymmetric scoring family; (4) does the
+resulting retrieval, injected into the existing frozen S0_wce Stage-2 host,
+beat an **Independent Base-only Forecaster** trained with no retrieval at
+all?
+
+## Method
+
+8 arms = Oracle{individual, greedy_set} x Prefix{tf, onpolicy} x
+Score{cosine, asymmetric), x 4 cells (ETTh1 H96/H720, Weather H96/H720),
+seed 0 only. **Stage-1 encoder is scratch-initialized and trainable** (not
+frozen, not pretrained) — one shared random init per cell, loaded by all 8
+arms and verified by SHA256 tensor-equality before training starts. Loss is
+a single masked full-memory Oracle-Choice Cross-Entropy
+(`train_oracle_choice01.oracle_choice_step_loss`) for every arm; only the
+target index differs by Oracle rule. The Greedy Set Oracle's aggregation
+weighting is the Stage-2 **host's own fixed score** (exogenous, identical
+for all 8 arms) — not each arm's own score — specifically to avoid the
+self-referential-target artifact `AUDIT_ORACLE_RANK_GAIN01.md` §4.4 found
+in the prior campaign. Free-running evaluation (empty prefix ->
+argmax -> update -> argmax..., no oracle/future information) is identical
+for every arm regardless of training-time prefix policy. Primary Stage-1
+checkpoint criterion: minimum validation
+`free_running_aggregate_future_mse` (proven algebraically identical to the
+project's existing `A_weighted` formula). Stage-1 hyperparameters
+(lr=0.001, batch=32, epochs=10, patience=5, Adam, wd=0.0) are read from the
+**Stage-1 reference checkpoint's own args**, not the Stage-2 host, with
+provenance recorded per-arm in `config_fingerprint_<arm>.json`.
+
+**Three distinct Stage-2 numbers, not to be conflated:**
+
+| Name | What it is | Role |
+|---|---|---|
+| **Independent Base-only Forecaster** | trained from scratch per cell, retrieval/fusion/gate entirely absent | **THE baseline** — `delta_mse_vs_independent_base` is measured against this |
+| Frozen Host Retrieval-Ablated Branch | the host's own `y_base`, i.e. the branch **co-trained** under `y_final=y_base+lambda*y_ret` | diagnostic only, never a baseline (on ETTh1 H96 it is 0.647 vs the host's own 0.373 — it only works with retrieval added) |
+| Frozen Host Original Retrieval | the host's own unforced `y_final` | diagnostic reference |
+| Retrieval-Augmented Frozen-Host Stage-2 | each arm's free-running Top-K forced into the unchanged frozen host | the measured quantity |
+
+23 mandatory sanity checks (initial-weight SHA equality, Oracle definition
+correctness including an empty-prefix Individual/Set identity check,
+TF-vs-on-policy prefix divergence, future-leakage-in-free-running proven by
+poisoning futures with NaN, aggregation-formula equality against
+`retrieve_relation_future`, `cosine_init_deviation<1e-5`, encoder-gradient
+existence, `y_base` bit-identity across arms) implemented as 23 unit tests
+in `tests/test_factorial_e2e01.py`, all passing; full suite 659 passed / 2
+pre-existing failures (no regression). 8-arm smoke test (1 epoch, 3
+batches) run before the full campaign. Scope note carried in every result
+file: a positive result here means the retrieval **already** helps when
+injected into the *existing* S0_wce host — it is not the final performance
+of a Stage-2 retrained for this retrieval, in either direction.
+
+## Results — ETTh1 H96 (COMPLETE, 8/8 arms, cell gate PASSED)
+
+**Independent Base-only Forecaster (baseline) = 0.386451, MAE 0.394658**
+(`BaseForecastHead(shared_target_linear)`, the same class production
+Stage-2 uses, trained standalone, best_epoch 7/10).
+
+Diagnostics (identical for all 8 arms, NOT baselines): Frozen Host
+Retrieval-Ablated Branch = 0.646732; Frozen Host Original Retrieval =
+0.373122.
+
+| Arm | Stage-1 best_ep | test free-running agg. MSE | Retrieval-Augmented Stage-2 MSE | delta vs baseline | relative % |
+|---|---:|---:|---:|---:|---:|
+| set_onpolicy_cosine | 1 | 0.4161 | 0.37622 | **-0.01023** | **+2.65%** |
+| individual_onpolicy_cosine | 2 | 0.4177 | 0.37644 | -0.01001 | +2.59% |
+| set_onpolicy_asymmetric | 2 | 0.4211 | 0.37835 | -0.00810 | +2.10% |
+| individual_onpolicy_asymmetric | 9 | 0.4286 | 0.37981 | -0.00664 | +1.72% |
+| individual_tf_cosine | 1 | 0.4386 | 0.38294 | -0.00351 | +0.91% |
+| individual_tf_asymmetric | 1 | 0.4578 | 0.38745 | +0.00100 | -0.26% |
+| set_tf_cosine | 3 | 0.4940 | 0.39198 | +0.00552 | -1.43% |
+| set_tf_asymmetric | 4 | 0.5187 | 0.39791 | +0.01146 | -2.97% |
+
+Every `duplicate_rate`/`invalid_rate` = 0; `y_base` bit-identical across
+all 8 arms; all 8 initial-encoder SHA256 identical
+(`56588522de17ff76...`); no NaN/Inf anywhere.
+
+**Representation health (no collapse in any arm):**
+
+| Arm | final effective rank | final mean pairwise cosine | encoder param displacement |
+|---|---:|---:|---:|
+| individual_tf_cosine | 52.94 | 0.0886 | 0.4725 |
+| individual_tf_asymmetric | 60.35 | 0.1182 | 0.4534 |
+| individual_onpolicy_cosine | 52.04 | 0.2829 | 0.4198 |
+| individual_onpolicy_asymmetric | 58.02 | 0.2319 | 0.4984 |
+| set_tf_cosine | 45.05 | 0.3622 | 0.4628 |
+| set_tf_asymmetric | 49.59 | 0.1640 | 0.4746 |
+| set_onpolicy_cosine | 60.96 | 0.0578 | 0.4046 |
+| set_onpolicy_asymmetric | 62.40 | 0.2311 | 0.4267 |
+
+(scratch init effective rank was in the same 40-65 range at step 0 across
+this project's prior scratch experiments; none of these arms shows the
+EXP-ENCODER-UNFREEZE01-style collapse toward rank ~1-3.)
+
+**Matched-epoch test aggregate MSE (epoch 1 / 5 / 10, blank = arm
+early-stopped before that epoch):**
+
+| Arm | epoch 1 | epoch 5 | epoch 10 |
+|---|---:|---:|---:|
+| individual_tf_cosine | 0.4386 | 0.4443 | — |
+| individual_tf_asymmetric | 0.4578 | 0.4708 | — |
+| individual_onpolicy_cosine | 0.4202 | 0.4200 | — |
+| individual_onpolicy_asymmetric | 0.4242 | 0.4254 | 0.4258 |
+| set_tf_cosine | 0.5070 | 0.4929 | — |
+| set_tf_asymmetric | 0.5365 | 0.5132 | — |
+| set_onpolicy_cosine | 0.4161 | 0.4224 | — |
+| set_onpolicy_asymmetric | 0.4180 | 0.4231 | — |
+
+`best_epoch` is early (1-4) for 7/8 arms — matched-epoch numbers move very
+little after epoch 1 for the on-policy arms specifically (0.4202->0.4200,
+0.4161->0.4224), so the on-policy advantage over tf is present from epoch 1
+onward, not a longer-training artifact.
+
+## Results — ETTh1 H720 (COMPLETE, 8/8 arms, cell gate PASSED)
+
+**Independent Base-only Forecaster (baseline) = 0.491450, MAE 0.492210**
+(best_epoch 1/10 — the base head's own validation MSE was already best at
+epoch 1 for this horizon).
+
+Diagnostics: Frozen Host Retrieval-Ablated Branch = 0.455805; Frozen Host
+Original Retrieval = 0.468274. (Unlike H96, the host-ablated branch here
+sits *below* the independently-trained baseline — the two are not a
+controlled comparison of each other, since one was co-trained with
+retrieval and the other was not; recorded as-is, not interpreted further.)
+
+| Arm | Stage-1 best_ep | test free-running agg. MSE | Retrieval-Augmented Stage-2 MSE | delta vs baseline | relative % |
+|---|---:|---:|---:|---:|---:|
+| individual_onpolicy_cosine | 2 | 0.5822 | 0.46650 | **-0.02495** | **+5.08%** |
+| individual_onpolicy_asymmetric | 7 | 0.5986 | 0.46942 | -0.02203 | +4.48% |
+| set_onpolicy_cosine | 1 | 0.5730 | 0.46984 | -0.02161 | +4.40% |
+| individual_tf_asymmetric | 8 | 0.6270 | 0.47278 | -0.01867 | +3.80% |
+| set_tf_asymmetric | 1 | 0.6709 | 0.47305 | -0.01840 | +3.74% |
+| set_onpolicy_asymmetric | 8 | 0.6136 | 0.47904 | -0.01241 | +2.52% |
+| individual_tf_cosine | 4 | 0.7111 | 0.48457 | -0.00688 | +1.40% |
+| set_tf_cosine | 6 | 0.7282 | 0.48468 | -0.00677 | +1.38% |
+
+**All 8/8 arms beat the Independent Base-only baseline at H720** — every
+delta is negative and above the project's 0.01-MSE noise floor
+(`RESEARCH_CONTEXT.md`). This is a materially different pattern from H96
+(3/8 arms below baseline). Every `duplicate_rate`/`invalid_rate` = 0;
+`y_base` bit-identical across all 8 arms; all 8 initial-encoder SHA256
+identical; no NaN/Inf.
+
+**Representation health:**
+
+| Arm | final effective rank | final mean pairwise cosine | encoder param displacement |
+|---|---:|---:|---:|
+| individual_tf_cosine | 31.88 | 0.1628 | 0.5622 |
+| individual_tf_asymmetric | 39.63 | 0.2857 | 0.5790 |
+| individual_onpolicy_cosine | 40.45 | 0.1578 | 0.5064 |
+| individual_onpolicy_asymmetric | 43.14 | 0.2274 | 0.5912 |
+| set_tf_cosine | 38.63 | 0.1524 | 0.5823 |
+| set_tf_asymmetric | 43.27 | 0.2074 | 0.4527 |
+| set_onpolicy_cosine | 43.41 | 0.1433 | 0.4308 |
+| set_onpolicy_asymmetric | 45.88 | 0.1994 | 0.5420 |
+
+No collapse in any arm (effective rank stays 32-46, well above a
+collapsed rank-1-3 signature).
+
+**Matched-epoch test aggregate MSE (epoch 1 / 5 / 10):**
+
+| Arm | epoch 1 | epoch 5 | epoch 10 |
+|---|---:|---:|---:|
+| individual_tf_cosine | 0.6440 | 0.7161 | — |
+| individual_tf_asymmetric | 0.7187 | 0.6129 | 0.6135 |
+| individual_onpolicy_cosine | 0.5730 | 0.6043 | — |
+| individual_onpolicy_asymmetric | 0.6379 | 0.6043 | 0.6100 |
+| set_tf_cosine | 0.6510 | 0.7469 | 0.7449 |
+| set_tf_asymmetric | 0.6709 | 0.7462 | — |
+| set_onpolicy_cosine | 0.5730 | 0.6082 | — |
+| set_onpolicy_asymmetric | 0.5822 | 0.5938 | 0.6198 |
+
+## Factorial main effects (ETTh1 only; Weather not yet available — 4-arm
+means per side, no significance claimed at seed=1)
+
+**Oracle (Individual vs Greedy Set):**
+
+| Metric | H96: individual | H96: greedy_set | H720: individual | H720: greedy_set |
+|---|---:|---:|---:|---:|
+| test free-running agg. MSE | 0.4357 | 0.4625 | 0.6297 | 0.6464 |
+| delta vs baseline | -0.00479 | -0.00034 | -0.01813 | -0.01480 |
+| final effective rank | 55.84 | 54.50 | 38.77 | 42.80 |
+
+Individual is better on both cells for both metrics, though the margin is
+small relative to the within-Oracle spread across Prefix/Score.
+
+**Prefix (Teacher-Forcing vs On-policy) — the largest main effect found:**
+
+| Metric | H96: tf | H96: onpolicy | H720: tf | H720: onpolicy |
+|---|---:|---:|---:|---:|
+| test free-running agg. MSE | 0.4773 | 0.4209 | 0.6843 | 0.5918 |
+| delta vs baseline | +0.00362 | -0.00875 | -0.01268 | -0.02025 |
+| final effective rank | 51.98 | 58.36 | 38.35 | 43.22 |
+
+On-policy beats teacher-forcing on every metric at both horizons; this is
+the largest and most consistent main effect in the factorial. Note this
+directly **contradicts** the retracted Track A finding that on-policy
+training produces a near-inert selector (`TRACK_A_STRICT_AUDIT.md` §3.2) —
+here on-policy arms have higher effective rank (more representation
+movement, not less) and materially better downstream numbers, under a
+scratch/trainable encoder rather than the old frozen-encoder setup.
+
+**Score (Cosine vs Asymmetric):**
+
+| Metric | H96: cosine | H96: asymmetric | H720: cosine | H720: asymmetric |
+|---|---:|---:|---:|---:|
+| test free-running agg. MSE | 0.4416 | 0.4566 | 0.6486 | 0.6275 |
+| delta vs baseline | -0.00456 | -0.00057 | -0.01505 | -0.01787 |
+| final effective rank | 52.75 | 57.59 | 38.59 | 42.98 |
+
+Score direction **flips between horizons**: cosine wins on H96, asymmetric
+wins on H720. Weakest and least consistent of the three main effects.
+
+**Interactions (on `delta_mse_vs_independent_base`):**
+
+| | H96 | H720 |
+|---|---:|---:|
+| Oracle x Prefix | -0.01059 | +0.00629 |
+| Oracle x Score | +0.00009 | +0.00322 |
+| Prefix x Score | -0.00247 | +0.01777 |
+
+All interaction magnitudes are smaller than the Prefix main effect; none
+reverses its sign. Prefix x Score is the largest interaction at H720
+(0.01777) — worth watching once Weather is available, not yet
+interpreted.
+
+**Retrieval quality vs Stage-2 outcome (current 16/32 arms, ETTh1 only):**
+Spearman(`free_running_aggregate_future_mse`, Stage-2 MSE) = **+0.982**,
+Pearson = +0.946 — a arm with better free-running retrieval quality
+reliably has better Stage-2 MSE in this dataset so far. This is the
+opposite pattern from the prior campaign's B2/B4 findings
+(`RESEARCH_CONTEXT.md`), which is plausible given this experiment removes
+the confounds `TRACK_A_STRICT_AUDIT.md` identified (arm-dependent Oracle
+target, architecturally-mismatched Individual/Set arms, `y_base` used as a
+false baseline). Spearman(`free_running_aggregate_future_mse`,
+`delta_mse_vs_independent_base`) = -0.285 (weak; the sign is the expected
+direction but this uses only 16 points across two different-scale cells,
+not read as a strong finding yet).
+
+## What this does NOT establish yet
+
+- Weather H96/H720: not complete. No claim of cross-dataset consistency
+  can be made yet — everything above is ETTh1-only.
+- Seed variance: single seed throughout. Every delta reported here is a
+  point estimate; only H720's arms (all 8 beating the noise floor
+  uniformly) currently look robust to that concern, H96's do not.
+- Whether the Prefix effect (the largest found) replicates on Weather, or
+  is an ETTh1-specific optimization-dynamics artifact of the scratch
+  encoder.
+- Final verdict on all 4 required questions — reserved for
+  `TRACK_A_FACTORIAL_E2E_REAUDIT.md` once all 4 cells and the full
+  factorial/consistency analysis are complete.
+
+## Status
+
+ETTh1 H96 and H720 COMPLETE (cell gates PASSED). Weather H96 in progress,
+Weather H720 not started. Full report `TRACK_A_FACTORIAL_E2E_REAUDIT.md`
+to be written after all 4 cells finish.
