@@ -1,0 +1,121 @@
+{
+  "cell": "ETTh1_96",
+  "loss_name": "R1_wce",
+  "best_epoch": 1,
+  "best_val_free_running_aggregate_future_mse": 0.7171669565532934,
+  "best_ckpt_test_free_running_aggregate_future_mse": 0.44057257744868455,
+  "final_epoch": 6,
+  "final_val_free_running_aggregate_future_mse": 0.7433102079911029,
+  "matched_epoch_val": {
+    "epoch1": 0.7171669565532934,
+    "epoch5": 0.7414790474075206,
+    "epoch10": null
+  },
+  "matched_epoch_test": {
+    "epoch1": 0.44057257744868455,
+    "epoch5": 0.45155558910356536,
+    "epoch10": null
+  },
+  "test_internal": {
+    "free_running_aggregate_future_mse": 0.44057257744868455,
+    "oracle_action_acc": 0.0043983360389610385,
+    "expert_rank_median": 830.2889610389611,
+    "expert_regret_mean": 0.5906150460066334,
+    "expert_containment_at_10": 0.03915888798701299,
+    "ndcg_at_10": 0.9652441087287741,
+    "spearman": 0.41667063113242886,
+    "selected_individual_future_mse": 0.782481134739287,
+    "t1_oracle_action_acc": 0.006087662337662338,
+    "t1_ndcg_at_10": 0.9661744711073962,
+    "final_t_oracle_action_acc": 0.003956980519480519,
+    "final_t_expert_regret_mean": 0.6181256280389505
+  },
+  "encoder_init_sha256": "56588522de17ff762c2db6b4c7e6b1dc0fbe635f0c755f5d5e9e2804d4c978cd",
+  "set_conditioner_init_sha256": "0d334a3752161ab54ceed6297bc502a96aeb377ad1f81668d9911893b03985cb",
+  "final_effective_rank": 11.101234436035156,
+  "final_mean_pairwise_cosine": 0.01599786803126335,
+  "final_encoder_param_displacement": 0.5028531001414238,
+  "wall_clock_seconds": 3242.766014814377,
+  "checkpoint": "checkpoints/track_a_onpolicy_rankloss01/ETTh1_96/R1_wce/checkpoint.pth",
+  "fingerprint": {
+    "cell": "ETTh1_96",
+    "loss_name": "R1_wce",
+    "oracle": "individual",
+    "prefix": "onpolicy",
+    "score": "cosine",
+    "encoder_init_sha256": "56588522de17ff762c2db6b4c7e6b1dc0fbe635f0c755f5d5e9e2804d4c978cd",
+    "set_conditioner_init_sha256": "0d334a3752161ab54ceed6297bc502a96aeb377ad1f81668d9911893b03985cb",
+    "scratch_init": true,
+    "encoder_trainable": true,
+    "stage2_host": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+    "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+    "seq_len": 96,
+    "pred_len": 96,
+    "enc_in": 7,
+    "d_model": 128,
+    "top_k": 10,
+    "tau_topk": 0.1,
+    "tau_choice": 0.1,
+    "hyperparameter_provenance": {
+      "learning_rate": {
+        "value": 0.001,
+        "source": "CLI override"
+      },
+      "batch_size": {
+        "value": 32,
+        "source": "CLI override"
+      },
+      "train_epochs": {
+        "value": 10,
+        "source": "CLI override"
+      },
+      "patience": {
+        "value": 5,
+        "source": "CLI override"
+      },
+      "seed": {
+        "value": 0,
+        "source": "CLI override"
+      },
+      "top_k": {
+        "value": 10,
+        "source": "CLI override"
+      },
+      "weight_decay": {
+        "value": 0.0,
+        "source": "CLI override"
+      },
+      "tau_choice": {
+        "value": 0.1,
+        "source": "Stage-1 reference args[\"tau_topk\"]"
+      },
+      "m_listwise": {
+        "value": 100,
+        "source": "pre-registered, single value, per spec S4"
+      },
+      "min_gap_pairwise": {
+        "value": 0.0001,
+        "source": "pre-registered"
+      },
+      "lambda_hybrid": {
+        "value": 0.1,
+        "source": "pre-registered (used only for R4)"
+      },
+      "oracle": {
+        "value": "individual",
+        "source": "fixed by design -- see pre-run report"
+      },
+      "prefix": {
+        "value": "onpolicy",
+        "source": "fixed by design -- see pre-run report"
+      },
+      "score": {
+        "value": "cosine",
+        "source": "fixed by design -- see pre-run report"
+      }
+    },
+    "checkpoint_criterion": "min val free_running_aggregate_future_mse",
+    "aggregation": "softmax(host_score/tau_topk) over the K picks (host-fixed, exogenous)",
+    "loss_formula": "weighted_topk_listwise_ce(log p_S, {Top-10 Oracle by u_target LIVE on-policy}, tau=tau_choice)"
+  }
+}

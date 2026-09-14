@@ -3074,3 +3074,138 @@ not read as a strong finding yet).
 ETTh1 H96 and H720 COMPLETE (cell gates PASSED). Weather H96 in progress,
 Weather H720 not started. Full report `TRACK_A_FACTORIAL_E2E_REAUDIT.md`
 to be written after all 4 cells finish.
+
+---
+
+# TRACK-A-ONPOLICY-RANKLOSS01 — On-policy prefix fixed, loss varied
+(IN PROGRESS: ETTh1 H96 COMPLETE, ETTh1 H720 running; Weather not in scope)
+
+Follow-up to TRACK-A-FACTORIAL-E2E01's single largest, most consistent main
+effect (Prefix: on-policy >> teacher-forcing at both ETTh1 horizons), which
+that experiment measured with loss held fixed at Oracle-Choice CE. This
+experiment fixes **Oracle=individual, Prefix=onpolicy, Score=cosine** (the
+factorial's own best-supported common configuration for a loss-only
+controlled comparison — Individual wins both horizons cleanly; Score flips
+direction between horizons so a single fixed level had to be chosen, cosine
+was picked per the pre-run report) and varies ONLY the training loss.
+Runs on the SAME GPU as the still-running Weather cells of
+TRACK-A-FACTORIAL-E2E01 (explicit user instruction to use GPU 1 only,
+contention accepted), in a fully separate output directory
+(`results/track_a_onpolicy_rankloss01/`), touching none of that
+experiment's files.
+
+## Research Question
+
+Given clean on-policy prefix training, does the training LOSS itself matter?
+Four arms, one changed variable:
+
+- **R0_choice_ce** — the existing factorial loss, unchanged:
+  `CE(u_hat, argmax(u_target))`
+- **R1_wce** — Weighted Top-K CE, reusing
+  `models/RelationStage1.py::weighted_topk_listwise_ce`'s math UNMODIFIED,
+  with the Oracle Top-10 recomputed LIVE from the current on-policy state
+  every step (NOT from the project's precomputed teacher-forced-trajectory
+  cache, which was audited and rejected as a stale-bank confound before
+  implementation): `weighted_topk_listwise_ce(log p_S, {Top-10 Oracle by
+  u_target LIVE on-policy}, tau=tau_choice)`
+- **R2_pairwise** — new, sampled pairwise hinge over a
+  top-8 + hard-negative-8 + random-8 pool per query, pairs kept only above a
+  minimum utility gap: `softplus(-(s_i-s_j))` for `u_i-u_j > 1e-4`
+- **R3_listwise** — new, Top-M=100 utility-weighted listwise CE (M is a LOSS
+  SUPPORT only — free-running inference stays full-memory direct Top-K,
+  verified by a dedicated unit test that the M-support branch never appears
+  in the free-running code path):
+  `CE(teacher=softmax(u_target[TopM]/tau), student=softmax(u_hat[TopM]))`
+
+All four share: scratch trainable encoder, ONE shared init per cell
+(SHA256-verified), on-policy state construction (supervision always from
+the future-based Oracle utility, never the model's own choice — verified by
+a unit test recomputing the label from `u_target` independently), identical
+optimizer/lr/batch/epochs/patience, identical checkpoint criterion (min val
+`free_running_aggregate_future_mse`), identical Stage-2 evaluation
+(Independent Base-only Forecaster **reused read-only** from
+TRACK-A-FACTORIAL-E2E01's own ETTh1_96/ETTh1_720 baseline — same
+reference checkpoint, host, seed, protocol, so retraining it would only
+reproduce the same number). 19 unit tests in
+`tests/test_onpolicy_rankloss01.py` (on-policy-only state, future-oracle
+supervision, free-running leakage-by-NaN-poisoning, masked-probability=0,
+R0 identity to the factorial loss, R1's live (non-cached) Oracle Top-K,
+R2's pairwise direction/min-gap correctness, R3's teacher-distribution
+correctness and its M-support never touching free-running selection, R4
+hybrid additivity, encoder-gradient existence, Stage-2 base-before-fusion),
+all passing; full suite 678 passed / 2 pre-existing failures (no
+regression). Smoke test (1 epoch, 3 batches, all 4 losses + one Stage-2
+pass) run before the full campaign.
+
+## Results — ETTh1 H96 (COMPLETE, 4/4 losses)
+
+**Independent Base-only Forecaster (baseline) = 0.386451** (same value as
+TRACK-A-FACTORIAL-E2E01's ETTh1_96, reused read-only, not retrained).
+
+| Loss | best_ep | FR Aggregate MSE | NDCG@10 | Spearman | Regret | Stage-2 MSE | delta vs Base | delta vs R0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **R0_choice_ce** | 2 | 0.4177 | 0.9699 | 0.3671 | 0.5195 | **0.37644** | **-0.01001** | +0.00000 |
+| R1_wce | 1 | 0.4406 | 0.9652 | 0.4167 | 0.5906 | 0.38646 | +0.00001 | +0.01002 |
+| R2_pairwise | 2 | 0.4462 | 0.9676 | **0.5214** | 0.5727 | 0.38897 | +0.00252 | +0.01253 |
+| R3_listwise | 1 | 0.4946 | 0.9450 | 0.1002 | 0.8352 | 0.39486 | +0.00841 | +0.01842 |
+
+Representation diagnostics: R0 eff_rank=52.0/pair_cos=0.283; R1
+eff_rank=11.1/pair_cos=0.016; R2 eff_rank=11.0/pair_cos=0.319; **R3
+eff_rank=36.8/pair_cos=0.902 (collapse-adjacent signature, flagged, not yet
+attributed)**. All four: `duplicate_rate=invalid_rate=0`, `y_base`
+bit-identical across arms (R1/R2/R3 vs R0's stored reference), no NaN/Inf.
+
+**H96-only reading of the five required questions (S15):**
+
+- **Q1 (does WCE beat clean on-policy Choice-CE?)** No. R1 is
+  indistinguishable from the Independent Base-only baseline
+  (delta=+0.00001) and 0.01 worse than R0.
+- **Q2 (do pairwise/listwise raise ranking quality over Choice-CE?)**
+  Partially. R2's Spearman (0.521) clearly exceeds R0's (0.367). R3's
+  collapses instead (0.100).
+- **Q3/Q4 (does that ranking gain transfer to FR-aggregate/Stage-2?)** **No
+  — the opposite.** R2 has the best Spearman of all four arms and the
+  *worst* Stage-2 MSE of the three non-R3 arms. This reproduces, inside a
+  single controlled loss-only sweep, the exact
+  ranking-improves/downstream-doesn't pattern flagged as a risk in the
+  pre-registered spec (S15 Q5) and previously recorded in this project's
+  B2/B6/B8 findings under a completely different (frozen-encoder,
+  teacher-forced) setup.
+- **Provisional H96 verdict**: of the four losses tested, only **R0
+  Oracle-Choice CE beats the Independent Base-only baseline**; none of the
+  three new ranking objectives does, under this specific clean on-policy
+  protocol.
+
+## Results — ETTh1 H720
+
+IN PROGRESS. R0_choice_ce running (epoch 2/10 at time of writing,
+val_fr_agg improving 1.657->1.632). R1/R2/R3 not yet started. No
+cross-horizon consistency claim can be made until this cell completes.
+
+## What this does NOT establish yet
+
+- Whether R3's poor performance is attributable to the listwise objective
+  itself or to the representation-collapse-adjacent signature observed
+  alongside it (pair_cos=0.902) -- not yet separated.
+- ETTh1 H720 results, and therefore whether the H96 ranking pattern (loss
+  improves ranking, does not improve downstream) is horizon-consistent or
+  H96-specific.
+- Whether an LR probe would change any of this: the user raised the
+  hypothesis that the low `best_epoch` values (1-2 for 3 of 4 losses)
+  indicate the learning rate is too high. Read-only diagnostic evidence
+  gathered so far argues against it as the primary explanation -- training
+  loss decreases smoothly and monotonically every epoch for all four
+  losses (no oscillation/divergence), `encoder_param_displacement` grows
+  linearly with no spikes, and the SAME lr=0.001 produces `best_epoch`
+  ranging from 1 to 9 across the 8 factorial arms depending on
+  Oracle/Prefix/Score -- inconsistent with LR magnitude alone being the
+  driver. A small controlled LR probe (R0 only, ETTh1_96 only, lr in
+  {0.0003, 0.0001}, separate output path, not touching this campaign's
+  results) was pre-registered as `[EXECUTION PLAN]` but **NOT started**,
+  pending the user's go-ahead and GPU scheduling.
+
+## Status
+
+ETTh1_96 complete. ETTh1_720 running. Not yet written up as a final report
+-- `TRACK_A_FACTORIAL_E2E_REAUDIT.md` (or a dedicated rankloss report) to
+follow once ETTh1_720 finishes.
