@@ -1,0 +1,17 @@
+cell,target,prefix_policy,oracle_compute_impl,gpu,contended,repeat,n_warmup,n_iters,chunk_size,wall_median_sec,wall_p95_sec,wall_samples_per_sec,resolved_choice_ce_impl,resolved_individual_impl,resolved_greedy_set_impl
+Weather_720,greedy_set,onpolicy,reference,gpu2,False,0,3,10,4096,7.34030082100071,7.438053671969101,4.359494355932596,reference,reference,reference
+Weather_720,greedy_set,onpolicy,optimized,gpu2,False,0,3,10,4096,2.594392893544864,2.6246528829215094,12.334292188210789,optimized,optimized_cache,optimized
+Weather_720,greedy_set,onpolicy,reference,gpu1,True,0,2,6,4096,23.388589819020126,25.513864711043425,1.3681885161788114,reference,reference,reference
+Weather_720,greedy_set,onpolicy,optimized,gpu1,True,0,2,6,4096,5.627309909497853,5.637839760980569,5.686553702327634,optimized,optimized_cache,optimized
+Weather_720,individual,onpolicy,reference,gpu2,False,0,3,10,4096,4.204535456490703,4.283862130017951,7.610828908720551,reference,reference,reference
+Weather_720,individual,onpolicy,optimized,gpu2,False,0,3,10,4096,1.1687842209939845,1.1739474430214614,27.37887749099301,optimized,optimized_cache,optimized
+Weather_720,individual,onpolicy,reference,gpu1,True,0,2,6,4096,18.744049333501607,18.83775742398575,1.7072084815102238,reference,reference,reference
+Weather_720,individual,onpolicy,optimized,gpu1,True,0,2,6,4096,3.322437657043338,3.344725174945779,9.631482454505118,optimized,optimized_cache,optimized
+Weather_96,greedy_set,onpolicy,reference,gpu2,False,0,5,20,4096,2.8130781820509583,2.8629828330595046,11.375439262292188,reference,reference,reference
+Weather_96,greedy_set,onpolicy,optimized,gpu2,False,0,5,20,4096,1.2652256880537607,1.3075357970083132,25.291930366371354,optimized,optimized_cache,optimized
+Weather_96,greedy_set,onpolicy,reference,gpu1,True,0,3,10,4096,16.446021001960617,16.497471855022013,1.9457594026047462,reference,reference,reference
+Weather_96,greedy_set,onpolicy,optimized,gpu1,True,0,3,10,4096,3.146574830519967,3.20986313407775,10.16978833289404,optimized,optimized_cache,optimized
+Weather_96,individual,onpolicy,reference,gpu2,False,0,5,20,4096,2.3282461789785884,2.402766510960646,13.74425105425859,reference,reference,reference
+Weather_96,individual,onpolicy,optimized,gpu2,False,0,5,20,4096,0.8588604990509339,0.8720286909956485,37.258670104587345,optimized,optimized_cache,optimized
+Weather_96,individual,onpolicy,reference,gpu1,True,0,3,10,4096,15.680638026504312,15.760363787063397,2.0407332881424702,reference,reference,reference
+Weather_96,individual,onpolicy,optimized,gpu1,True,0,3,10,4096,2.7412625635042787,2.785974855069071,11.6734531109975,optimized,optimized_cache,optimized

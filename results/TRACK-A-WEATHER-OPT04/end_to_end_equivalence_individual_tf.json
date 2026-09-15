@@ -1,0 +1,39 @@
+{
+  "target": "individual",
+  "prefix_policy": "tf",
+  "n_steps": 10,
+  "ref_step_losses": [
+    10.616052627563477,
+    10.118073463439941,
+    10.061869621276855,
+    10.099265098571777,
+    10.0274019241333,
+    9.982671737670898,
+    9.960409164428711,
+    9.896175384521484,
+    9.87453842163086,
+    10.051268577575684
+  ],
+  "opt_step_losses": [
+    10.616052627563477,
+    10.118073463439941,
+    10.061869621276855,
+    10.099265098571777,
+    10.0274019241333,
+    9.982671737670898,
+    9.960409164428711,
+    9.896175384521484,
+    9.87453842163086,
+    10.051268577575684
+  ],
+  "max_abs_loss_diff": 0.0,
+  "mean_abs_loss_diff": 0.0,
+  "final_state_sha256_ref": "cc3d8f415669b845a8bc4ffe30f0966ad969d6ab9fc3875a86cf2ba7c1608f89",
+  "final_state_sha256_opt": "cc3d8f415669b845a8bc4ffe30f0966ad969d6ab9fc3875a86cf2ba7c1608f89",
+  "final_state_bit_exact": true,
+  "final_param_max_abs_diff": 0.0,
+  "final_param_l2_diff": 0.0,
+  "selection_disagreements": 0,
+  "selection_positions_checked": 67200,
+  "selection_agreement_pct": 100.0
+}

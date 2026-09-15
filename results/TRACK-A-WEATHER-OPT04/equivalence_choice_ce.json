@@ -1,0 +1,27 @@
+{
+  "unit_tests": {
+    "file": "tests/test_oracle_compute_optimized.py",
+    "count": 37,
+    "coverage": "30-seed random sweeps, all-valid/single-valid/no-valid masks, exact target tie, GPU check, gradient equivalence (10 seeds), no-python-loop source check",
+    "result": "loss and all 5 diag fields BIT-EXACT (torch.equal) vs reference in every case; gradient (u_hat.grad) BIT-EXACT"
+  },
+  "wiring_tests": {
+    "file": "tests/test_oracle_compute_wiring_opt04.py",
+    "tests": [
+      "test_choice_ce_optimized_dispatch_bit_exact_individual_target",
+      "test_choice_ce_optimized_dispatch_bit_exact_greedy_set_target"
+    ],
+    "result": "run_sequence(choice_ce_impl=optimized) losses and picks BIT-EXACT (torch.equal) vs reference, for BOTH individual and greedy_set oracle targets"
+  },
+  "real_weather_data_opt03_carryover": {
+    "note": "C was already validated on real H96 (500q)/H720 (300q) Weather trajectories in OPT03 (results/TRACK-A-WEATHER-OPT03/equivalence_H{96,720}.json) -- max_abs_loss_diff=0.0, max_abs_diag_diff=0.0 at both horizons, 260 real trajectory calls checked. Not rerun here since the function itself (oracle_choice_step_loss_optimized) is unchanged from OPT03 -- only its PRODUCTION CALL SITE changed in OPT04."
+  },
+  "end_to_end_10_step_training": {
+    "files": [
+      "results/TRACK-A-WEATHER-OPT04/end_to_end_equivalence_individual.json (onpolicy)",
+      "results/TRACK-A-WEATHER-OPT04/end_to_end_equivalence_individual_tf.json (tf)"
+    ],
+    "result": "Both prefix policies: max_abs_loss_diff=0.0 across all 10 optimizer steps, final_state_bit_exact=true, selection_agreement_pct=100.0. (C is exercised together with A in these individual-target runs; isolating C alone via the wiring_tests table above is what establishes C bit-exactness is not an artifact of A being ALSO bit-exact.)"
+  },
+  "verdict": "PASS -- every required check (loss bit-exact, diag bit-exact, gradient bit-exact, real-data, end-to-end 10-step) confirms C is bit-exact at every level tested, tf and onpolicy both."
+}

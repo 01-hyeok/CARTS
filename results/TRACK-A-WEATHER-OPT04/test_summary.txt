@@ -1,0 +1,23 @@
+TRACK-A-WEATHER-OPT04 -- test summary
+======================================
+
+Targeted suite (dispatcher + all prior Oracle-optimization test files), CUDA_VISIBLE_DEVICES=2 (idle):
+163 passed in 37.39s
+
+Full repository suite, CUDA_VISIBLE_DEVICES=2 (idle, clean/non-contended run):
+2 failed, 850 passed, 18 warnings in 41.86s
+
+The 2 failures are PRE-EXISTING (confirmed present before any OPT04 change; same test names/reasons throughout OPT01/02/03):
+  tests/test_stage1_new_losses.py::test_topk_coverage_reuses_target_indices_across_relations
+  tests/test_stage2_oracle_topk.py::test_identity_retrieval_uses_raw_target_source_relation_without_encoder
+
+ANOMALY (transparently recorded, not a regression): one earlier full-suite invocation was run
+WITHOUT pinning CUDA_VISIBLE_DEVICES (defaulted onto the contended GPU1) and additionally showed
+FAILED tests/test_cross_channel_context.py::test_context_off_is_exactly_target_only. Isolated rerun
+of that single test (CUDA_VISIBLE_DEVICES=2) PASSED, and the full suite pinned to the idle GPU2
+PASSED it too (850 passed / 2 pre-existing failures, matching baseline exactly) -- this was a
+GPU-1-contention timing flake from an unpinned invocation, not a code regression. All OPT04 code
+changes were otherwise verified exclusively with CUDA_VISIBLE_DEVICES pinned.
+
+New test file this round: tests/test_oracle_compute_wiring_opt04.py (14 tests, all passing).
+OPT03's own 87 tests (tests/test_oracle_compute_optimized.py) remain: retained and passing unmodified.

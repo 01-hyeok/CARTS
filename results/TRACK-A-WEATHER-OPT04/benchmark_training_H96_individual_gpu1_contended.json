@@ -1,0 +1,60 @@
+[
+  {
+    "cell": "Weather_96",
+    "target": "individual",
+    "prefix_policy": "onpolicy",
+    "oracle_compute_impl": "reference",
+    "resolved": {
+      "choice_ce_impl": "reference",
+      "individual_impl": "reference",
+      "greedy_set_impl": "reference",
+      "fallback_reason": {
+        "choice_ce": "requested_impl=reference (default)",
+        "individual": "requested_impl=reference (default)",
+        "greedy_set": "requested_impl=reference (default)"
+      }
+    },
+    "chunk_size": 4096,
+    "n_warmup": 3,
+    "n_iters": 10,
+    "wall_median_sec": 15.680638026504312,
+    "wall_p95_sec": 15.760363787063397,
+    "compute_median_sec": 15.638210913981311,
+    "compute_p95_sec": 15.717857645009644,
+    "wall_samples_per_sec": 2.0407332881424702,
+    "compute_samples_per_sec": 2.0462698818948954,
+    "peak_allocated_mb": 11942.111232,
+    "peak_reserved_mb": 12173.96736,
+    "repeat": 0,
+    "contended": true
+  },
+  {
+    "cell": "Weather_96",
+    "target": "individual",
+    "prefix_policy": "onpolicy",
+    "oracle_compute_impl": "optimized",
+    "resolved": {
+      "choice_ce_impl": "optimized",
+      "individual_impl": "optimized_cache",
+      "greedy_set_impl": "optimized",
+      "fallback_reason": {
+        "choice_ce": "",
+        "individual": "",
+        "greedy_set": ""
+      }
+    },
+    "chunk_size": 4096,
+    "n_warmup": 3,
+    "n_iters": 10,
+    "wall_median_sec": 2.7412625635042787,
+    "wall_p95_sec": 2.785974855069071,
+    "compute_median_sec": 2.6964961019693874,
+    "compute_p95_sec": 2.7417167130624875,
+    "wall_samples_per_sec": 11.6734531109975,
+    "compute_samples_per_sec": 11.867252460194095,
+    "peak_allocated_mb": 11553.2928,
+    "peak_reserved_mb": 12173.96736,
+    "repeat": 0,
+    "contended": true
+  }
+]

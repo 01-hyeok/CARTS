@@ -1,0 +1,8 @@
+{
+  "timestamp_utc": "2026-09-15T09:37:12.011612",
+  "python_version": "3.8.10 (default, Mar 18 2025, 20:04:55) \n[GCC 9.4.0]",
+  "torch_version": "1.12.0.dev20220327+cu113",
+  "cuda_available": true,
+  "note_gpu_usage_this_round": "Isolated benchmarks initially run on GPU2 (idle) per the request Phase-5 idle-GPU preference; per an explicit mid-task user correction reasserting the GPU-1-only standing rule, all training benchmarks were REDONE on GPU1 (co-located with the two running experiments, contended=True, no process killed/throttled). Both GPU1 and GPU2 result sets are kept -- GPU1 is the primary evidence per the user's instruction, GPU2 is supplementary/isolated.",
+  "nvidia_smi_at_report_time": "index, memory.used [MiB], memory.total [MiB], utilization.gpu [%]\n0, 578 MiB, 81920 MiB, 0 %\n1, 20828 MiB, 81920 MiB, 61 %\n2, 9472 MiB, 81920 MiB, 0 %\n3, 3 MiB, 4096 MiB, 0 %\n4, 60244 MiB, 81920 MiB, 47 %\n"
+}

@@ -1,0 +1,17 @@
+cell,target,prefix_policy,oracle_compute_impl,gpu,contended,repeat,n_warmup,n_iters,chunk_size,peak_allocated_mb,peak_reserved_mb
+Weather_720,greedy_set,onpolicy,reference,gpu2,False,0,3,10,4096,22112.871936,25054.674944
+Weather_720,greedy_set,onpolicy,optimized,gpu2,False,0,3,10,4096,22112.87296,25056.772096
+Weather_720,greedy_set,onpolicy,reference,gpu1,True,0,2,6,4096,22112.871936,25054.674944
+Weather_720,greedy_set,onpolicy,optimized,gpu1,True,0,2,6,4096,22112.87296,25056.772096
+Weather_720,individual,onpolicy,reference,gpu2,False,0,3,10,4096,25715.581952,28322.03776
+Weather_720,individual,onpolicy,optimized,gpu2,False,0,3,10,4096,25340.0576,28322.03776
+Weather_720,individual,onpolicy,reference,gpu1,True,0,2,6,4096,25715.581952,28322.03776
+Weather_720,individual,onpolicy,optimized,gpu1,True,0,2,6,4096,25340.0576,28322.03776
+Weather_96,greedy_set,onpolicy,reference,gpu2,False,0,5,20,4096,11250.625024,11662.262272
+Weather_96,greedy_set,onpolicy,optimized,gpu2,False,0,5,20,4096,11156.919296,11664.359424
+Weather_96,greedy_set,onpolicy,reference,gpu1,True,0,3,10,4096,11251.8016,11691.6224
+Weather_96,greedy_set,onpolicy,optimized,gpu1,True,0,3,10,4096,11157.777408,11693.719552
+Weather_96,individual,onpolicy,reference,gpu2,False,0,5,20,4096,11942.111232,12173.96736
+Weather_96,individual,onpolicy,optimized,gpu2,False,0,5,20,4096,11553.2928,12173.96736
+Weather_96,individual,onpolicy,reference,gpu1,True,0,3,10,4096,11942.111232,12173.96736
+Weather_96,individual,onpolicy,optimized,gpu1,True,0,3,10,4096,11553.2928,12173.96736

@@ -1,0 +1,14 @@
+{
+  "arm_checkpoint": "SCRATCH (untrained, checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_RelationStage1_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl720_pl720_0/checkpoint.pth, pred_len=720)",
+  "stage2_host": "checkpoints/stage2/custom/seq720_pred720/stage2_carts_softset_s2_Weather_720_S0_wce_RelationStage2_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl720_pl720_0/checkpoint.pth",
+  "n_queries_evaluated": 300,
+  "max_abs_utility_diff_at_valid_positions": 2.86102294921875e-06,
+  "selection_disagreements": 0,
+  "selection_positions_checked": 3000,
+  "selection_agreement_pct": 100.0,
+  "max_free_running_aggregate_mse_diff": 0.0,
+  "disagreement_detail": [],
+  "mean_step_time_ms_reference": 37.55318127339706,
+  "mean_step_time_ms_optimized": 3.7963379663415253,
+  "speedup_ratio": 9.891948927188508
+}

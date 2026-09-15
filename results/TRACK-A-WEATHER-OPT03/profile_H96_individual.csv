@@ -1,0 +1,9 @@
+cell,arm_type,component,sec_per_iter,pct_of_total_iter_time,calls_per_iter,max_tensor_shape
+Weather_96,individual,data_loading,0.04202413460589014,5.35181353192669,1,-
+Weather_96,individual,query_encoder,0.0008663295244332403,0.11032788932956594,1,-
+Weather_96,individual,candidate_encoder,0.002262256504036486,0.2881005185361909,1,-
+Weather_96,individual,host_scoring,0.00549972074222751,0.7003946700176822,1,-
+Weather_96,individual,oracle_utility_individual,0.02128898449591361,2.711172434000313,200,"(32, 36696, 96)"
+Weather_96,individual,choice_ce,0.6985315369267482,88.95865594524678,200,-
+Weather_96,individual,greedy_argmax,0.006457357452018186,0.8223506162897837,10,-
+Weather_96,individual,other,0.008301346644293517,1.0571843946530026,10,-

@@ -1,0 +1,96 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "A0_choice_ce",
+  "best_epoch": 1,
+  "best_val_free_running_aggregate_future_mse": 1.6159649267226286,
+  "best_ckpt_test_free_running_aggregate_future_mse": 0.5730103525803663,
+  "final_epoch": 6,
+  "matched_epoch_val": {
+    "epoch1": 1.6159649267226286,
+    "epoch5": 1.6290334843356713,
+    "epoch10": null
+  },
+  "matched_epoch_test": {
+    "epoch1": 0.5730103525803663,
+    "epoch5": 0.608238809728304,
+    "epoch10": null
+  },
+  "test_internal": {
+    "free_running_aggregate_future_mse": 0.5730103525803663,
+    "oracle_action_acc": 0.016134376546070604,
+    "expert_rank_median": 110.54390756302523,
+    "expert_regret_mean": 0.15733820240995494,
+    "expert_containment_at_10": 0.14253390703209431,
+    "ndcg_at_10": 0.6422774375173725,
+    "spearman": 0.37773726395126156
+  },
+  "encoder_init_sha256": "b28b1ab2b83cf50efb270cc5b99a9088eae05911426ea26ac07cb0e9106b9697",
+  "set_conditioner_init_sha256": "304d379a67ee66aac979822ce7d45ab50ed09ce09affc346831ce05532be82ee",
+  "final_effective_rank": 43.41142272949219,
+  "final_mean_pairwise_cosine": 0.14330023527145386,
+  "wall_clock_seconds": 7703.531443834305,
+  "checkpoint": "checkpoints/track_a_multipos_choice01/ETTh1_720/A0_choice_ce/checkpoint.pth",
+  "fingerprint": {
+    "cell": "ETTh1_720",
+    "arm": "A0_choice_ce",
+    "encoder_init_sha256": "b28b1ab2b83cf50efb270cc5b99a9088eae05911426ea26ac07cb0e9106b9697",
+    "set_conditioner_init_sha256": "304d379a67ee66aac979822ce7d45ab50ed09ce09affc346831ce05532be82ee",
+    "stage2_host": "checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+    "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+    "top_k": 10,
+    "tau_choice": 0.1,
+    "alpha": 0.5,
+    "hyperparameter_provenance": {
+      "learning_rate": {
+        "value": 0.001,
+        "source": "CLI override"
+      },
+      "batch_size": {
+        "value": 32,
+        "source": "CLI override"
+      },
+      "train_epochs": {
+        "value": 10,
+        "source": "CLI override"
+      },
+      "patience": {
+        "value": 5,
+        "source": "CLI override"
+      },
+      "seed": {
+        "value": 0,
+        "source": "CLI override"
+      },
+      "top_k": {
+        "value": 10,
+        "source": "CLI override"
+      },
+      "weight_decay": {
+        "value": 0.0,
+        "source": "CLI override"
+      },
+      "tau_choice": {
+        "value": 0.1,
+        "source": "Stage-1 reference args[\"tau_topk\"]"
+      },
+      "alpha": {
+        "value": 0.5,
+        "source": "pre-registered via scripts/offline_check_multipos_alpha01.py (median positive count = 3 at both horizons; spec default 0.10 gave median=1, explicit exception clause invoked)"
+      },
+      "oracle": {
+        "value": "greedy_set",
+        "source": "fixed by design"
+      },
+      "prefix": {
+        "value": "onpolicy",
+        "source": "fixed by design"
+      },
+      "score": {
+        "value": "cosine",
+        "source": "fixed by design"
+      }
+    },
+    "checkpoint_criterion": "min val free_running_aggregate_future_mse",
+    "supervision_rule": "one-hot Choice CE at every step"
+  }
+}

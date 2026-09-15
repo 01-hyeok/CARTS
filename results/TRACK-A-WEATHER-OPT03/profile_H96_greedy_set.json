@@ -1,0 +1,86 @@
+{
+  "cell": "Weather_96",
+  "arm_type": "greedy_set",
+  "checkpoint": "checkpoints/track_a_factorial_e2e/Weather_96/set_tf_cosine/checkpoint.pth",
+  "chunk_size": 4096,
+  "n_iters": 15,
+  "total_wall_sec": 12.311518348986283,
+  "sec_per_iter": 0.8207678899324189,
+  "peak_allocated_mb": 1565.070848,
+  "peak_reserved_mb": 2103.443456,
+  "components": [
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "data_loading",
+      "sec_per_iter": 0.042205773868287604,
+      "pct_of_total_iter_time": 5.151405920003401,
+      "calls_per_iter": 1,
+      "max_tensor_shape": "-"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "query_encoder",
+      "sec_per_iter": 0.0007936914218589664,
+      "pct_of_total_iter_time": 0.0968736339719692,
+      "calls_per_iter": 1,
+      "max_tensor_shape": "-"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "candidate_encoder",
+      "sec_per_iter": 0.002292054813976089,
+      "pct_of_total_iter_time": 0.2797556745324943,
+      "calls_per_iter": 1,
+      "max_tensor_shape": "-"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "host_scoring",
+      "sec_per_iter": 0.007465001839833955,
+      "pct_of_total_iter_time": 0.9111372958250923,
+      "calls_per_iter": 1,
+      "max_tensor_shape": "-"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "oracle_utility_greedy_set",
+      "sec_per_iter": 0.0516788538157319,
+      "pct_of_total_iter_time": 6.3076382467514,
+      "calls_per_iter": 150,
+      "max_tensor_shape": "(32, 36696, 96)"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "choice_ce",
+      "sec_per_iter": 0.7017822203226387,
+      "pct_of_total_iter_time": 85.65569951649482,
+      "calls_per_iter": 150,
+      "max_tensor_shape": "-"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "greedy_argmax",
+      "sec_per_iter": 0.005643619162340959,
+      "pct_of_total_iter_time": 0.6888292879987274,
+      "calls_per_iter": 10,
+      "max_tensor_shape": "-"
+    },
+    {
+      "cell": "Weather_96",
+      "arm_type": "greedy_set",
+      "component": "other",
+      "sec_per_iter": 0.007444708685701092,
+      "pct_of_total_iter_time": 0.9086604244220988,
+      "calls_per_iter": 10,
+      "max_tensor_shape": "-"
+    }
+  ],
+  "note": "forward-only (no_grad) profiling, matches benchmark_weather_opt01.py convention; GPU shared with other concurrently running TRACK-A jobs -- see report for contention caveat"
+}

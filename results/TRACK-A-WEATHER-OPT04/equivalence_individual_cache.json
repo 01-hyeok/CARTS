@@ -1,0 +1,30 @@
+{
+  "unit_tests": {
+    "file": "tests/test_oracle_compute_wiring_opt04.py",
+    "tests": [
+      "test_individual_caching_dispatch_bit_exact_tf",
+      "test_individual_caching_dispatch_bit_exact_onpolicy",
+      "test_individual_caching_only_calls_individual_utility_once",
+      "test_individual_reference_impl_still_calls_every_step"
+    ],
+    "result": "u_target, oracle_idx, losses and picks BIT-EXACT (torch.equal) vs reference for BOTH tf and onpolicy prefix policies. Call-count instrumentation confirms caching reduces individual_utility calls from K=4 (reference) to 1 (optimized_cache) inside one run_sequence call -- direct proof of the caching claim, not just an output-equivalence check."
+  },
+  "end_to_end_10_step_training": {
+    "tf": "results/TRACK-A-WEATHER-OPT04/end_to_end_equivalence_individual_tf.json",
+    "onpolicy": "results/TRACK-A-WEATHER-OPT04/end_to_end_equivalence_individual.json",
+    "result": {
+      "tf": {
+        "max_abs_loss_diff": 0.0,
+        "final_state_bit_exact": true,
+        "selection_agreement_pct": 100.0
+      },
+      "onpolicy": {
+        "max_abs_loss_diff": 0.0,
+        "final_state_bit_exact": true,
+        "selection_agreement_pct": 100.0
+      }
+    }
+  },
+  "scorer_coverage": "cosine only, per the Phase-5 requested cell list (Individual/On-policy/Cosine). Asymmetric scorer not separately re-verified for A in OPT04 -- A caching is scorer-independent by construction (it only changes how many times individual_utility(futures, query_future) is called, never touches u_hat/arm_score/the metric), so this is a structural argument, not an empirical gap; flagged under NOT EXECUTED for completeness.",
+  "verdict": "PASS -- caching (the OPT04-mandated approach, NOT the OPT03 norm-expansion algebra) is bit-exact at every level tested: isolated function calls, full run_sequence dispatch, and a real 10-optimizer-step training trajectory, for both tf and onpolicy."
+}

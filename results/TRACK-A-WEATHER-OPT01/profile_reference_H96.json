@@ -1,0 +1,38 @@
+{
+  "cell": "Weather_96",
+  "checkpoint": "checkpoints/track_a_factorial_e2e/Weather_96/set_tf_cosine/checkpoint.pth",
+  "n_iters": 60,
+  "wall_clock_total_s": 11.096881047007628,
+  "sec_per_iter": 0.18494801745012712,
+  "peak_gpu_mem_bytes": 1563475968,
+  "components": {
+    "data_loading": {
+      "seconds": 2.5444462045561522,
+      "pct_of_measured": 29.405788966447226
+    },
+    "query_encoder": {
+      "seconds": 0.054105518269352615,
+      "pct_of_measured": 0.6252894831495843
+    },
+    "candidate_encoder": {
+      "seconds": 1.2749876258894801,
+      "pct_of_measured": 14.734843674275144
+    },
+    "host_scoring": {
+      "seconds": 0.6538641571532935,
+      "pct_of_measured": 7.556611487224434
+    },
+    "oracle_utility": {
+      "seconds": 3.2094439659267664,
+      "pct_of_measured": 37.091069873156435
+    },
+    "greedy_argmin": {
+      "seconds": 0.4165605674497783,
+      "pct_of_measured": 4.814128951218454
+    },
+    "other": {
+      "seconds": 0.49946710537187755,
+      "pct_of_measured": 5.772267564528722
+    }
+  }
+}

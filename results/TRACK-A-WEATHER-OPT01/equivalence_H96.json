@@ -1,0 +1,27 @@
+{
+  "arm_checkpoint": "checkpoints/track_a_factorial_e2e/Weather_96/set_tf_cosine/checkpoint.pth",
+  "stage2_host": "checkpoints/stage2/custom/seq96_pred96/stage2_carts_softset_s2_Weather_96_S0_wce_RelationStage2_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl96_pl96_0/checkpoint.pth",
+  "n_queries_evaluated": 500,
+  "max_abs_utility_diff_at_valid_positions": 9.5367431640625e-07,
+  "selection_disagreements": 1,
+  "selection_positions_checked": 5000,
+  "selection_agreement_pct": 99.98,
+  "max_free_running_aggregate_mse_diff": 3.9191218093037605e-07,
+  "disagreement_detail": [
+    {
+      "t": 7,
+      "row_in_batch": 6,
+      "ref_pick": 7698,
+      "opt_pick": 7699,
+      "ref_utility_at_ref_pick": 0.0003276426577940583,
+      "ref_utility_at_opt_pick": 0.0003276426577940583,
+      "utility_gap_under_reference": 0.0,
+      "opt_utility_at_opt_pick": 0.00032764257048256695,
+      "opt_utility_at_ref_pick": 0.0003276426868978888,
+      "utility_gap_under_optimized": 1.1641532182693481e-10
+    }
+  ],
+  "mean_step_time_ms_reference": 5.328843413008144,
+  "mean_step_time_ms_optimized": 2.1637639474647585,
+  "speedup_ratio": 2.4627655984618144
+}

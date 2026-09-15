@@ -1,0 +1,3 @@
+cell,path,version,chunk_size,n_iters,path_sec_per_iter,total_sec_per_iter,peak_allocated_mb,peak_reserved_mb
+Weather_96,choice_ce,B0,n/a,15,0.8244567980524152,0.8996218274037043,2015.749632,2556.428288
+Weather_96,choice_ce,B1,n/a,15,0.11777541264891625,0.19167875800436984,2015.749632,2556.428288

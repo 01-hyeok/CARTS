@@ -1,0 +1,73 @@
+{
+  "checkpoint": "checkpoints/track_a_factorial_e2e/Weather_96/individual_tf_cosine/checkpoint.pth",
+  "stage2_host": "checkpoints/stage2/custom/seq96_pred96/stage2_carts_softset_s2_Weather_96_S0_wce_RelationStage2_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl96_pl96_0/checkpoint.pth",
+  "candidate_chunk_size": 4096,
+  "n_queries_evaluated": 500,
+  "individual_oracle": {
+    "max_abs_utility_diff": 1.430511474609375e-06,
+    "selection_disagreements": 5,
+    "selection_disagreements_tie_with_reference": 5,
+    "selection_disagreements_real_mismatch": 0,
+    "selection_positions_checked": 5000,
+    "selection_agreement_pct": 99.9,
+    "non_tie_selection_agreement_pct": 100.0,
+    "disagreement_detail": [
+      {
+        "t": 9,
+        "row": 27,
+        "is_reference_tie": true,
+        "ref_pick": 29496,
+        "opt_pick": 14815,
+        "ref_utility_at_ref_pick": -0.000819512817543,
+        "ref_utility_at_opt_pick": -0.0008195405825972557
+      },
+      {
+        "t": 3,
+        "row": 12,
+        "is_reference_tie": true,
+        "ref_pick": 22738,
+        "opt_pick": 22744,
+        "ref_utility_at_ref_pick": -0.00056918227346614,
+        "ref_utility_at_opt_pick": -0.000569196417927742
+      },
+      {
+        "t": 0,
+        "row": 12,
+        "is_reference_tie": true,
+        "ref_pick": 3507,
+        "opt_pick": 3506,
+        "ref_utility_at_ref_pick": -0.000492507591843605,
+        "ref_utility_at_opt_pick": -0.0004925354733131826
+      },
+      {
+        "t": 3,
+        "row": 1,
+        "is_reference_tie": true,
+        "ref_pick": 18461,
+        "opt_pick": 2705,
+        "ref_utility_at_ref_pick": -0.000639816396869719,
+        "ref_utility_at_opt_pick": -0.0006398441037163138
+      },
+      {
+        "t": 6,
+        "row": 12,
+        "is_reference_tie": true,
+        "ref_pick": 18092,
+        "opt_pick": 3248,
+        "ref_utility_at_ref_pick": -0.0007588211447000504,
+        "ref_utility_at_opt_pick": -0.0007589051383547485
+      }
+    ]
+  },
+  "oracle_choice_ce": {
+    "max_abs_loss_diff": 0.0,
+    "max_abs_diag_diff": {
+      "top1_acc": 0.0,
+      "top5_acc": 0.0,
+      "top10_acc": 0.0,
+      "pred_rank_mean": 0.0,
+      "top1_top2_margin_mean": 0.0
+    },
+    "calls_checked": 160
+  }
+}

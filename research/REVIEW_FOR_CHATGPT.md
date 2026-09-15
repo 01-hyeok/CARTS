@@ -3452,3 +3452,226 @@ control again exactly 1.0 at every step.
 
 ETTh1_96 and ETTh1_720 both COMPLETE. Weather not in scope for this
 experiment.
+
+---
+
+# TRACK-A-WEATHER-OPT01 -- exact optimization of the Weather Greedy Set
+Oracle (COMPLETE -- engineering, not a research experiment)
+
+Full report: `research/TRACK-A-WEATHER-OPT01.md`. Summary only here.
+
+Weather's full-memory Greedy Set Oracle was slow enough that
+`TRACK-A-FACTORIAL-E2E01`'s Weather cells run for days. Component
+profiling (real Weather data, 60/30 iterations at H96/H720) confirmed the
+Set Oracle utility computation IS the actual bottleneck -- 37% of iteration
+time at H96, **74% at H720** -- so no other component was optimized instead.
+
+An algebraically EXACT reformulation (`utils/dense_utility_optimized.py`,
+new file; the reference `utils/dense_utility.py` is completely untouched)
+precomputes the candidate residual `d_i = y_i - y_q` and its norm ONCE per
+query (prefix-invariant, reused across all K=10 greedy steps instead of
+re-derived every step) and replaces each step's `[B, chunk, H]`
+materialize-divide-square-reduce chain with one GEMV-shaped dot product.
+`FULL MEMORY -> DIRECT TOP-K` fully preserved -- no candidate/channel
+reduction, no shortlist, no ANN, no Oracle/loss/K/horizon change.
+
+**Two real bugs were caught by the equivalence test suite before either
+reached production**: (1) a numerically fragile empty-prefix (`Z_S=0`)
+special case where squaring a legitimately-tiny softmax weight could
+underflow before the weight itself did, fixed with an exact closed-form
+substitution; (2) an eps-clamp applied after squaring instead of before
+(the reference's own clamp point), which silently distorted low-weight
+candidates' utility by several MSE units until fixed.
+
+**Equivalence**, real Weather data + a real trained checkpoint
+(`TRACK-A-FACTORIAL-E2E01`'s `set_tf_cosine` Weather_96 arm), full K=10
+free-running trajectories:
+
+| | H96 (500 queries) | H720 (300 queries, scratch encoder -- no trained H720 Set arm exists yet) |
+|---|---:|---:|
+| selection agreement | 4999/5000 = 99.98% | 3000/3000 = **100%** |
+| max utility diff (valid positions) | 9.5e-7 | 2.9e-6 |
+| max FR-aggregate MSE diff | 3.9e-7 | 0.0 |
+
+The single H96 disagreement is a documented, investigated EXACT float32 tie
+under the reference (utility gap 0.0 bit-exact) that floating-point
+summation order breaks in opposite directions -- not a systematic error,
+reported rather than swept aside (per the pre-registered instruction not to
+ignore floating ties). 30-seed x 10-step synthetic stress test: 100%
+selection agreement, worst diff 1.19e-6.
+
+**Speed** (both measured under GPU-1 contention from the two experiments
+that ran throughout this work, untouched):
+
+| | H96 | H720 |
+|---|---:|---:|
+| Total iteration speedup | 1.61x | **3.60x** |
+| Oracle-component-only speedup | 2.39x | **11.50x** |
+| Peak VRAM | **+58%** (1.56GB->2.47GB) | **+59%** (11.0GB->17.5GB) |
+
+**Peak VRAM increased, not decreased -- reported honestly, not hidden.**
+Root cause: caching the prefix-invariant `d` tensor for the whole K=10
+trajectory roughly doubles that one input's footprint versus the
+reference's per-chunk temporaries. Not fixed in this round (time-boxed);
+concrete fix suggested in the full report (chunk `prepare_query_static`
+too).
+
+**Not done, and explicitly not defaulted-to**: the optimized path is NOT
+wired into any production trainer. `train_factorial_e2e01.py`,
+`train_multipos_choice01.py`, etc. are completely unmodified and continue
+to use the reference `dense_utility`. Per the pre-registered instruction,
+switching production to the optimized path (behind an explicit
+`--set_oracle_impl` flag, reference remaining the default) is left for a
+separate, explicitly-approved step, after the VRAM regression is fixed and
+after the two experiments currently running on GPU 1 finish using the code
+paths this would touch. BF16/mixed precision (spec's secondary B2 tier)
+was not reached within this round's scope.
+
+Sanity: 733 passed / 2 pre-existing failures (no regression), 23 new
+equivalence unit tests + 2 real-data end-to-end equivalence runs, all
+passing. Neither `TRACK-A-FACTORIAL-E2E01` (Weather cells, still running)
+nor `TRACK-A-MULTIPOS-CHOICE01` (still running) was killed, paused, or had
+any file modified by this work.
+
+---
+
+## TRACK-A-WEATHER-OPT03 -- Oracle-path profiling and optimization for the
+running Weather H96/H720 factorial
+
+Full report: `research/TRACK-A-WEATHER-OPT03.md`. Engineering round, not a
+new research experiment. Reference implementations untouched; no running
+experiment (`TRACK-A-FACTORIAL-E2E01` Weather cells, `TRACK-A-MULTIPOS-
+CHOICE01`) stopped or modified; no production trainer wired.
+
+**Scope narrowing (user-approved before implementation)**: the request
+named 5 Oracle paths (Individual Oracle, Future-MSE teacher/KL,
+Oracle-Choice CE, Dense marginal utility, Greedy Set Oracle) as if all were
+used by the running Weather factorial. A code trace found only 3 actually
+are -- Individual Oracle, Oracle-Choice CE, and Greedy Set Oracle
+(`scripts/train_factorial_e2e01.py` is the only trainer the factorial's
+orchestrator invokes, and it never imports the teacher/KL or
+marginal-utility code, which live in unrelated scripts). Reported as an
+`[ISSUE]` before implementation; user selected the 3-path scope.
+
+**Headline finding, from real-Weather-data profiling**: the dominant cost
+is NOT the Oracle target computation (Individual Oracle: 2.7-6.3% of
+iteration time; Greedy Set Oracle: already profiled in OPT01/OPT02) -- it
+is the **Oracle-Choice CE loss, shared by all 8 arms**, at **85-89% of
+iteration time**. Root cause: an unused diagnostic (`std_per_row`,
+never placed into the returned `diag` dict and read nowhere else) computed
+via a Python-level loop over the batch dimension with a GPU->CPU sync on
+every row, every call -- dead code, not a necessary computation.
+
+**Fix and result (Oracle-Choice CE)**: remove the dead computation only;
+every other line, including `loss` and every returned `diag` field, is
+unchanged. Real Weather data, 260 trajectory calls checked at both
+horizons: **loss and all 5 diagnostic fields are bit-exact (0.0 diff)** vs
+the reference, gradient-identical (verified via `.backward()` comparison).
+Speed:
+
+| | H96 | H720 |
+|---|---:|---:|
+| Path-only speedup | 7.00x | 6.70x |
+| Total iteration speedup | **4.69x** | **3.04x** |
+| Peak VRAM change | 0% | 0% |
+
+**Individual Oracle**: an exact norm-expansion identity
+(`\|\|Y_i-Y_q\|\|^2 = \|\|Y_i\|\|^2 - 2 Y_i.Y_q + \|\|Y_q\|\|^2`), chunked. Real
+Weather equivalence (500/300 queries): the handful of disagreements (5/5000
+at H96, 1/3000 at H720) are all documented reference-itself float32 ties
+among near-duplicate candidates, 0 real mismatches, 100% non-tie agreement.
+Speed/VRAM is chunk-size-dependent and NOT uniformly positive: chunk=2048
+is 61% SLOWER than the reference (rejected); chunk=4096 is 9% faster with
+43% less peak VRAM (marginal accept). A separate, unconditionally-safe win
+was also found but not benchmarked end-to-end this round: the Individual
+Oracle target is step-invariant, yet the reference's own call site
+recomputes it fresh on all 10 greedy steps every query -- caching it once
+per query would remove that redundancy independent of any algebra change
+(proven correct by a dedicated unit test, not yet wired).
+
+**Greedy Set Oracle**: unchanged from OPT02 -- OPT02's own numbers
+(peak VRAM within +0.3% of reference; speed target met only at
+chunk>=~4096) are cited, not re-measured, since the function itself was
+not touched this round.
+
+**Not done**: no production flag wired. A single-flag design
+(`--oracle_compute_impl {reference,optimized}`, `--candidate_chunk_size
+4096`) is proposed in the full report, internally dispatching each of the
+3 paths according to its own adoption decision above (Oracle-Choice CE
+always; Individual Oracle and Greedy Set Oracle only at
+`candidate_chunk_size>=4096`) -- not applied to any trainer this round.
+
+Sanity: 836 passed / 2 pre-existing failures (no regression; 87 new tests
+in this round's own file). Both concurrently running experiments confirmed
+alive and unmodified throughout.
+
+---
+
+## EXP-SET-LOSS01 -- Soft Regret Mass vs Set-Utility Soft CE for the Greedy
+Set Oracle (ETTh1, seed=1)
+
+Full report: `research/EXP-SET-LOSS01.md`. Research question: does
+replacing Hard Choice CE's single-index target with a regret-aware,
+multi-candidate learning signal (still 1-term, no combination with Hard
+CE) lower selection regret and improve Stage-2 forecasting, and does the
+effect differ between Teacher Forcing and On-policy? Set Oracle only,
+Cosine score only, the UNMODIFIED reference Set-Oracle utility
+(`utils/dense_utility.py`), no OPT02/OPT03 algebraic optimization. Ran
+concurrently with the pre-existing Weather_96 factorial on GPU1 (per
+explicit approval), neither job touched the other.
+
+**Two new losses** (`utils/set_loss_experimental.py`), both built on the
+SAME Oracle Top-M=10 teacher signal (tie-inclusive cutoff, scale-aware but
+shift-invariant epsilon, `detach`-ed, zero-signal on all-tied rows) so any
+difference between them is purely about loss aggregation, not teacher
+construction:
+- **Soft Regret Mass (SRM)**: `-logsumexp` over the positive set of
+  `log p_theta(i) - normalized_regret(i)` -- rewards putting mass on ANY
+  good candidate.
+- **Set-Utility Soft CE**: cross-entropy against the regret-weighted
+  teacher DISTRIBUTION over the positive set -- rewards matching the whole
+  utility-ordered distribution.
+
+Both reduce to Hard Choice CE exactly at M=1 (verified by unit test,
+`atol=1e-5`); 30 unit tests total (shift/scale invariance, tie-inclusive
+Top-M, all-tied-row zeroing, NaN/Inf handling, CPU/GPU consistency,
+gradient checks), all passing; full suite 885/887 (2 pre-existing
+failures, no new regressions).
+
+**[ISSUE], not silently resolved**: the existing ETTh1 Hard-CE arms
+(TRACK-A-FACTORIAL-E2E01) use `seed=0`; this round's spec fixes `seed=1`.
+Per the spec's own instruction, this is NOT a controlled baseline and was
+NOT mixed in; no new seed=1 Hard-CE baseline was run without approval. All
+8 arms (2 losses x {TF, on-policy} x {H96, H720}) were trained and
+Stage-2-evaluated to completion; comparisons below are SRM vs SoftCE vs
+the Independent Base-only Forecaster only.
+
+**Stage-2 MSE vs Independent Base:**
+
+| | TF | On-policy |
+|---|---:|---:|
+| H96 SRM | +3.85% (worse) | -2.19% (better) |
+| H96 SoftCE | +1.77% (worse) | **-2.80%** (better) |
+| H720 SRM | -2.99% (better) | -3.19% (better) |
+| H720 SoftCE | **-3.52%** (better) | -2.74% (better) |
+
+**Findings**: SoftCE has the lower (better) chosen normalized regret in
+every one of the 4 horizon x prefix cells, and the more consistent Stage-2
+improvement (3 of 4 cells vs SRM's 1). At H96 there is a clean sign flip:
+both losses are WORSE than Independent Base under TF and BETTER under
+on-policy -- on-policy is where the loss choice matters most, consistent
+with learning under the model's own rollout rather than an idealized
+oracle-forced trajectory. The regret improvement is not a t=0 artifact:
+`chosen_normalized_regret` at t>=1 is lower than the all-steps average for
+every arm (the genuinely Set-conditioned steps are easier than the
+harder, Individual-like t=0 step).
+
+**Caveat, stated plainly**: single seed only (seed=1, no repeats) -- none
+of the MSE deltas above (0.7-3.9%) are distinguishable from seed noise
+without a multi-seed run, which was not executed this round.
+
+**Recommendation for 3-seed follow-up**: Set-Utility Soft CE, on-policy.
+
+Neither the pre-existing Weather_96 factorial job nor MULTIPOS-CHOICE01
+(which finished on its own mid-round, independently) was affected by this
+work.

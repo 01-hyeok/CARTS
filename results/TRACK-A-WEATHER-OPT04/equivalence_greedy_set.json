@@ -1,0 +1,54 @@
+{
+  "per_call_isolated_function_check": {
+    "note": "Direct comparison of greedy_set_utility (reference) vs greedy_set_utility_optimized (E dispatch) on the REAL first Weather_96 training batch, t=0, empty prefix, run through the actual production dispatcher (not a standalone script).",
+    "max_abs_utility_diff_valid_positions": 9.5367431640625e-07,
+    "selection_disagreements": 0,
+    "selection_positions_checked": 32
+  },
+  "opt03_carryover_real_data": {
+    "source": "results/TRACK-A-WEATHER-OPT03/equivalence_H96.json / equivalence_H720.json",
+    "non_tie_selection_agreement_pct_H96": null,
+    "note": "OPT03 validated dense_utility_optimized itself (unchanged in OPT04) at 100% non-tie agreement, H96 (500q) and H720 (300q), free-running (no gradient) eval mode."
+  },
+  "end_to_end_10_step_training_onpolicy": {
+    "target": "greedy_set",
+    "prefix_policy": "onpolicy",
+    "n_steps": 10,
+    "ref_step_losses": [
+      9.473979949951172,
+      9.25367546081543,
+      9.138540267944336,
+      9.1044282913208,
+      8.965262413024902,
+      8.937688827514648,
+      8.889626502990723,
+      8.726778030395508,
+      8.787958145141602,
+      8.8308744430542
+    ],
+    "opt_step_losses": [
+      9.45164680480957,
+      9.218782424926758,
+      9.099784851074219,
+      9.091767311096191,
+      8.944215774536133,
+      8.884928703308105,
+      8.846898078918457,
+      8.720330238342285,
+      8.755006790161133,
+      8.81260871887207
+    ],
+    "max_abs_loss_diff": 0.05276012420654297,
+    "mean_abs_loss_diff": 0.028284263610839844,
+    "final_state_sha256_ref": "72e266c7b98ead7f8ec8578c063d241754527219854c594614e9bffb05313eb4",
+    "final_state_sha256_opt": "ab5195d8c88939e75967056597c2e26d42ee86c30b468c18432ee84332dd3932",
+    "final_state_bit_exact": false,
+    "final_param_max_abs_diff": 0.01305989921092987,
+    "final_param_l2_diff": 0.23266918467230274,
+    "selection_disagreements": 34710,
+    "selection_positions_checked": 67200,
+    "selection_agreement_pct": 48.348214285714285
+  },
+  "CRITICAL_FINDING": "Per-call agreement (~1e-6 max diff, 0-1 near-ties per thousands of checks, matching OPT02/OPT03) does NOT survive intact through real multi-step ON-POLICY training. Over 10 real optimizer steps (Weather_96, greedy_set, onpolicy, cosine), reference and optimized runs -- started from an IDENTICAL initial state, same batches, same seed -- diverge to only 48.3% selection agreement and a non-bit-exact final model state (param L2 diff 0.233). Root-caused (see research/TRACK-A-WEATHER-OPT04.md section on anomalies): at t=0 on the untouched initial model, oracle target VALUES agree to ~1e-6 and the CE target LABEL (argmax) agrees on every one of 32 rows for a single channel (verified directly) -- so the wiring itself is correct. Across the Weather dataset's 21 channels x K=10 steps x batch, however, a rare fraction of near-ties DO flip the discontinuous argmax CE label between reference and optimized (a ~1e-6 utility difference is enough to flip a label that sits within ~1e-6 of a true tie), each flip perturbing that gradient step by a non-negligible amount. Because prefix_policy=onpolicy feeds the MODEL's own (now perturbed) argmax back into the next step's state, this is a chaotic/butterfly-effect amplification, not a bug: both trajectories are individually valid continuations of the same Oracle definition, but they are NOT the same trajectory once a single label flips.",
+  "verdict": "CONDITIONAL -- per-call and short free-running numerical equivalence are both fully confirmed (matches OPT02/OPT03). Bit-for-bit (or even close) TRAINING REPRODUCIBILITY under onpolicy multi-step training is NOT preserved -- this is reported as the headline anomaly of OPT04, not hidden, and directly informs the E adoption decision below."
+}

@@ -1,0 +1,63 @@
+{
+  "cell": "ETTh1_96",
+  "arm": "A0_choice_ce",
+  "encoder_init_sha256": "56588522de17ff762c2db6b4c7e6b1dc0fbe635f0c755f5d5e9e2804d4c978cd",
+  "set_conditioner_init_sha256": "0d334a3752161ab54ceed6297bc502a96aeb377ad1f81668d9911893b03985cb",
+  "stage2_host": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+  "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+  "top_k": 10,
+  "tau_choice": 0.1,
+  "alpha": 0.5,
+  "hyperparameter_provenance": {
+    "learning_rate": {
+      "value": 0.001,
+      "source": "CLI override"
+    },
+    "batch_size": {
+      "value": 32,
+      "source": "CLI override"
+    },
+    "train_epochs": {
+      "value": 10,
+      "source": "CLI override"
+    },
+    "patience": {
+      "value": 5,
+      "source": "CLI override"
+    },
+    "seed": {
+      "value": 0,
+      "source": "CLI override"
+    },
+    "top_k": {
+      "value": 10,
+      "source": "CLI override"
+    },
+    "weight_decay": {
+      "value": 0.0,
+      "source": "CLI override"
+    },
+    "tau_choice": {
+      "value": 0.1,
+      "source": "Stage-1 reference args[\"tau_topk\"]"
+    },
+    "alpha": {
+      "value": 0.5,
+      "source": "pre-registered via scripts/offline_check_multipos_alpha01.py (median positive count = 3 at both horizons; spec default 0.10 gave median=1, explicit exception clause invoked)"
+    },
+    "oracle": {
+      "value": "greedy_set",
+      "source": "fixed by design"
+    },
+    "prefix": {
+      "value": "onpolicy",
+      "source": "fixed by design"
+    },
+    "score": {
+      "value": "cosine",
+      "source": "fixed by design"
+    }
+  },
+  "checkpoint_criterion": "min val free_running_aggregate_future_mse",
+  "supervision_rule": "one-hot Choice CE at every step"
+}

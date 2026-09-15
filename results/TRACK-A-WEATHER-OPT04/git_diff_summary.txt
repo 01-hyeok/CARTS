@@ -1,0 +1,314 @@
+ scripts/train_factorial_e2e01.py | 191 ++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 179 insertions(+), 12 deletions(-)
+
+--- untracked new files (git status --short) ---
+?? results/TRACK-A-WEATHER-OPT04/
+?? tests/test_oracle_compute_wiring_opt04.py
+
+--- full diff of the ONLY modified production file ---
+diff --git a/scripts/train_factorial_e2e01.py b/scripts/train_factorial_e2e01.py
+index 03a69a3..b04cb47 100644
+--- a/scripts/train_factorial_e2e01.py
++++ b/scripts/train_factorial_e2e01.py
+@@ -78,11 +78,24 @@ from models.SequentialSetRetriever import SetConditioner
+ from scripts.train_margutil01 import build_experiment, memory_value
+ from scripts.train_oracle_choice01 import oracle_choice_step_loss
+ from utils.dense_utility import candidate_weights, dense_utility
++from utils.oracle_compute_optimized import (dense_utility_optimized,
++                                            oracle_choice_step_loss_optimized,
++                                            prepare_query_static_chunked)
+ from utils.retrieval_diagnostics import load_stage2
+ 
+ ARMS = ('individual', 'greedy_set')
+ PREFIXES = ('tf', 'onpolicy')
+ SCORERS = ('cosine', 'asymmetric')
++ORACLE_COMPUTE_IMPLS = ('reference', 'optimized')
++
++# TRACK-A-WEATHER-OPT04 -- E (Greedy Set Oracle) is only wired to the
++# OPT02-validated optimized path when chunk_size is at least this value;
++# below it, OPT02's own benchmark found the optimized path SLOWER than the
++# reference (see research/TRACK-A-WEATHER-OPT02.md / OPT03's adoption
++# table). This constant is the single source of truth for that fallback
++# condition -- both the CLI resolution logic and its unit tests reference
++# it, so the two cannot silently drift apart.
++GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE = 4096
+ 
+ 
+ # --------------------------------------------------------------------------
+@@ -124,19 +137,106 @@ def greedy_set_utility(prefix_idx, w_host, futures, query_future, chunk_size):
+     """u_i^(t) = -MSE(Aggregate(S ∪ {i}), y_q), Aggregate weighted by the
+     FIXED host weights (see module docstring, decision 1). `dense_utility`
+     is `@torch.no_grad()` internally -- the Oracle is a target, never a
+-    gradient path."""
++    gradient path.
++
++    UNCHANGED from OPT01/OPT02/OPT03 -- this is the reference call, kept
++    exactly as before. TRACK-A-WEATHER-OPT04's optimized dispatch is a
++    SEPARATE function below (`greedy_set_utility_optimized`), selected only
++    when `--oracle_compute_impl optimized` AND `chunk_size >=
++    GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE`; this function is never modified
++    and remains the always-available fallback."""
+     return -dense_utility(prefix_idx, w_host, futures, query_future,
+                           chunk_size=chunk_size)
+ 
+ 
++def greedy_set_utility_optimized(prefix_idx, w_host, futures, query_future, d_sq, chunk_size):
++    """TRACK-A-WEATHER-OPT04 -- OPT02's already-validated
++    `dense_utility_optimized` (chunked path), re-exported unchanged via
++    `utils/oracle_compute_optimized.py`. `d_sq` is
++    `prepare_query_static_chunked(futures, query_future, ...)`, computed
++    ONCE per query (prefix-invariant) by the caller and reused across all
++    K greedy steps -- exactly OPT02's own established pattern."""
++    return -dense_utility_optimized(prefix_idx, w_host, futures=futures, query_future=query_future,
++                                    d_sq=d_sq, candidate_chunk_size=chunk_size)
++
++
++# --------------------------------------------------------------------------
++# TRACK-A-WEATHER-OPT04 -- oracle-compute-path dispatcher
++# --------------------------------------------------------------------------
++def resolve_oracle_compute_impl(requested_impl, chunk_size):
++    """Resolves the per-path (C/A/E) implementation choice from the single
++    `--oracle_compute_impl` CLI flag, per path E's own condition
++    (`chunk_size >= GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE`). Never silently
++    falls back -- every non-`reference` decision carries a `fallback_reason`
++    string (empty when no fallback occurred).
++
++    Returns a dict: {choice_ce_impl, individual_impl, greedy_set_impl,
++    fallback_reason: {choice_ce, individual, greedy_set}}.
++    """
++    if requested_impl not in ORACLE_COMPUTE_IMPLS:
++        raise ValueError(f'--oracle_compute_impl must be one of {ORACLE_COMPUTE_IMPLS}, '
++                         f'got {requested_impl!r}')
++    reasons = {'choice_ce': '', 'individual': '', 'greedy_set': ''}
++    if requested_impl == 'reference':
++        reasons = {k: 'requested_impl=reference (default)' for k in reasons}
++        return {'choice_ce_impl': 'reference', 'individual_impl': 'reference',
++               'greedy_set_impl': 'reference', 'fallback_reason': reasons}
++
++    # requested_impl == 'optimized'
++    choice_ce_impl = 'optimized'         # C: unconditional (OPT03/OPT04 finding)
++    individual_impl = 'optimized_cache'  # A: unconditional CACHING of the reference
++                                         # formula (OPT04 Phase 3 -- NOT the OPT03
++                                         # norm-expansion algebra, which stays
++                                         # benchmark-only per this round's spec)
++    if chunk_size >= GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE:
++        greedy_set_impl = 'optimized'
++    else:
++        greedy_set_impl = 'reference'
++        reasons['greedy_set'] = (f'chunk_size={chunk_size} < '
++                                 f'GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE='
++                                 f'{GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE} '
++                                 f'(OPT02/OPT03: optimized Set Oracle is SLOWER '
++                                 f'than reference below this chunk size)')
++    return {'choice_ce_impl': choice_ce_impl, 'individual_impl': individual_impl,
++           'greedy_set_impl': greedy_set_impl, 'fallback_reason': reasons}
++
++
++def log_oracle_compute_resolution(requested_impl, resolved, chunk_size):
++    print('[oracle-compute]')
++    print(f'requested_impl={requested_impl}')
++    print(f"choice_ce_impl={resolved['choice_ce_impl']}")
++    print(f"individual_impl={resolved['individual_impl']}")
++    print(f"greedy_set_impl={resolved['greedy_set_impl']}")
++    print(f'chunk_size={chunk_size}')
++    for path, reason in resolved['fallback_reason'].items():
++        if reason:
++            print(f'fallback_reason[{path}]={reason}')
++
++
+ # --------------------------------------------------------------------------
+ # one K-step sequence
+ # --------------------------------------------------------------------------
+ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
+                  futures, query_future, target, prefix_policy,
+-                 tau_choice, k, chunk_size, free_running=False):
++                 tau_choice, k, chunk_size, free_running=False,
++                 choice_ce_impl='reference', individual_impl='reference',
++                 greedy_set_impl='reference'):
+     """K steps of (state -> logits -> Oracle target -> Choice CE).
+ 
++    TRACK-A-WEATHER-OPT04 dispatcher args (all default to 'reference', i.e.
++    byte-identical to OPT01/02/03's `run_sequence` in every respect):
++      choice_ce_impl  'reference' | 'optimized' (C -- dead-code-eliminated
++                       oracle_choice_step_loss_optimized; unconditional)
++      individual_impl 'reference' | 'optimized_cache' (A -- SAME reference
++                       formula, computed once per query and reused across
++                       all K steps instead of recomputed every step; NOT
++                       the OPT03 norm-expansion algebra)
++      greedy_set_impl 'reference' | 'optimized' (E -- OPT02's validated
++                       dense_utility_optimized; caller is responsible for
++                       only ever passing 'optimized' when chunk_size >=
++                       GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE, per
++                       `resolve_oracle_compute_impl`)
++
+     prefix_policy='tf'       : prefix advances along the ORACLE's own argmax
+     prefix_policy='onpolicy' : prefix advances along the MODEL's own argmax
+     free_running=True        : prefix advances along the MODEL's own argmax
+@@ -157,6 +257,28 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
+     losses, diags, step_records = [], [], []
+     neg_inf = torch.finfo(z_q.dtype).min / 4
+ 
++    # A (Individual Oracle) -- step-invariant; when caching is enabled the
++    # SAME reference formula (`individual_utility`) is called ONCE here,
++    # before the K-loop, instead of once per step (finding A-1, OPT03
++    # report section 1). The value is byte-for-byte what the reference call
++    # site would compute at every step -- this is caching, not a formula
++    # change.
++    cached_individual_target = None
++    if (not is_set) and (not free_running) and individual_impl == 'optimized_cache':
++        with torch.no_grad():
++            cached_individual_target = individual_utility(futures, query_future)
++
++    # E (Greedy Set Oracle) -- the prefix-invariant `d_sq` static quantity
++    # is computed ONCE here (OPT02's own established pattern) when the
++    # optimized path is selected; prefix-dependent E_S/Z_S are still
++    # recomputed every step inside `greedy_set_utility_optimized` (correct,
++    # since the Set Oracle genuinely depends on the prefix, unlike A).
++    set_oracle_d_sq = None
++    if is_set and (not free_running) and greedy_set_impl == 'optimized':
++        with torch.no_grad():
++            set_oracle_d_sq = prepare_query_static_chunked(futures, query_future,
++                                                            candidate_chunk_size=chunk_size)
++
+     for t in range(k):
+         if t == 0:
+             h_t = z_q
+@@ -178,12 +300,21 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
+ 
+         with torch.no_grad():
+             if is_set:
+-                u_target = greedy_set_utility(prefix_now, w_host, futures,
+-                                              query_future, chunk_size)
++                if greedy_set_impl == 'optimized':
++                    u_target = greedy_set_utility_optimized(prefix_now, w_host, futures,
++                                                            query_future, set_oracle_d_sq,
++                                                            chunk_size)
++                else:
++                    u_target = greedy_set_utility(prefix_now, w_host, futures,
++                                                  query_future, chunk_size)
+             else:
+-                u_target = individual_utility(futures, query_future)
++                u_target = (cached_individual_target if cached_individual_target is not None
++                           else individual_utility(futures, query_future))
+ 
+-        loss_t, diag_t = oracle_choice_step_loss(u_hat, u_target, valid_now, tau_choice)
++        if choice_ce_impl == 'optimized':
++            loss_t, diag_t = oracle_choice_step_loss_optimized(u_hat, u_target, valid_now, tau_choice)
++        else:
++            loss_t, diag_t = oracle_choice_step_loss(u_hat, u_target, valid_now, tau_choice)
+         losses.append(loss_t)
+         diags.append(diag_t)
+ 
+@@ -348,6 +479,8 @@ def _iter_batches(loader, limit):
+ 
+ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
+                 loader, channels, device):
++    oc = getattr(cli, 'resolved_oracle_compute', None) or {
++        'choice_ce_impl': 'reference', 'individual_impl': 'reference', 'greedy_set_impl': 'reference'}
+     model.train(True)
+     set_conditioner.train(True)
+     if metric is not None:
+@@ -376,7 +509,9 @@ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
+             losses, diags, picks, steps = run_sequence(
+                 z_q, E, cand_mask, set_conditioner, metric, w_host,
+                 futures, query_future, cli.target, cli.prefix_policy,
+-                cli.tau_choice, cli.top_k, cli.chunk_size)
++                cli.tau_choice, cli.top_k, cli.chunk_size,
++                choice_ce_impl=oc['choice_ce_impl'], individual_impl=oc['individual_impl'],
++                greedy_set_impl=oc['greedy_set_impl'])
+ 
+             batch_loss = batch_loss + sum(losses) / cli.top_k
+             with torch.no_grad():
+@@ -414,6 +549,8 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
+                loader, channels, device, collect_stepwise=False):
+     """Free-running inference (spec S15) + the teacher-forced-state internal
+     diagnostics, computed separately so they are never conflated."""
++    oc = getattr(cli, 'resolved_oracle_compute', None) or {
++        'choice_ce_impl': 'reference', 'individual_impl': 'reference', 'greedy_set_impl': 'reference'}
+     model.train(False)
+     set_conditioner.train(False)
+     if metric is not None:
+@@ -441,13 +578,23 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
+             _, _, picks, _ = run_sequence(
+                 z_q, E, cand_mask, set_conditioner, metric, w_host,
+                 futures, query_future, cli.target, cli.prefix_policy,
+-                cli.tau_choice, cli.top_k, cli.chunk_size, free_running=True)
++                cli.tau_choice, cli.top_k, cli.chunk_size, free_running=True,
++                choice_ce_impl=oc['choice_ce_impl'], individual_impl=oc['individual_impl'],
++                greedy_set_impl=oc['greedy_set_impl'])
+             fr = free_running_aggregate_future_mse(picks, host_scores, futures,
+                                                    query_future, cli.tau_topk)
+             fr_sum += float(fr.sum())
+             fr_n += int(fr.numel())
+ 
+             # ---- stepwise metrics along the FREE-RUNNING trajectory ----
++            # (diagnostic-only recomputation; same dispatcher as above)
++            cached_individual_eval = None
++            if cli.target != 'greedy_set' and oc['individual_impl'] == 'optimized_cache':
++                cached_individual_eval = individual_utility(futures, query_future)
++            eval_set_d_sq = None
++            if cli.target == 'greedy_set' and oc['greedy_set_impl'] == 'optimized':
++                eval_set_d_sq = prepare_query_static_chunked(futures, query_future,
++                                                              candidate_chunk_size=cli.chunk_size)
+             selected = torch.zeros_like(cand_mask)
+             prev_agg = None
+             for t in range(cli.top_k):
+@@ -459,10 +606,16 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
+                     h_t = set_conditioner(z_q, m)
+                 u_hat = arm_score(h_t, E, metric)
+                 if cli.target == 'greedy_set':
+-                    u_target = greedy_set_utility(picks[:, :t], w_host, futures,
+-                                                  query_future, cli.chunk_size)
++                    if oc['greedy_set_impl'] == 'optimized':
++                        u_target = greedy_set_utility_optimized(picks[:, :t], w_host, futures,
++                                                                query_future, eval_set_d_sq,
++                                                                cli.chunk_size)
++                    else:
++                        u_target = greedy_set_utility(picks[:, :t], w_host, futures,
++                                                      query_future, cli.chunk_size)
+                 else:
+-                    u_target = individual_utility(futures, query_future)
++                    u_target = (cached_individual_eval if cached_individual_eval is not None
++                               else individual_utility(futures, query_future))
+                 neg_inf = torch.finfo(u_hat.dtype).min / 4
+                 oracle_idx = u_target.masked_fill(~valid_now, neg_inf).argmax(dim=-1)
+                 model_idx = picks[:, t]
+@@ -474,7 +627,10 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
+                 s['marginal_aggregate_improvement'] = (
+                     float(prev_agg - cur) if prev_agg is not None else float('nan'))
+                 prev_agg = cur
+-                loss_t, _ = oracle_choice_step_loss(u_hat, u_target, valid_now, cli.tau_choice)
++                if oc['choice_ce_impl'] == 'optimized':
++                    loss_t, _ = oracle_choice_step_loss_optimized(u_hat, u_target, valid_now, cli.tau_choice)
++                else:
++                    loss_t, _ = oracle_choice_step_loss(u_hat, u_target, valid_now, cli.tau_choice)
+                 s['choice_ce'] = float(loss_t)
+                 ce_sum += float(loss_t)
+                 ce_n += 1
+@@ -567,8 +723,17 @@ def main():
+                     help='epochs at which the TEST aggregate MSE is also measured (spec S17)')
+     ap.add_argument('--limit_batches', type=int, default=0,
+                     help='SMOKE ONLY: cap batches per split. 0 = full run.')
++    ap.add_argument('--oracle_compute_impl', choices=ORACLE_COMPUTE_IMPLS, default='reference',
++                    help='TRACK-A-WEATHER-OPT04: reference (default, byte-identical to '
++                         'OPT01/02/03) or optimized (C always; A via caching, not the OPT03 '
++                         'norm-expansion algebra; E only when --chunk_size >= '
++                         f'{GREEDY_SET_OPTIMIZED_MIN_CHUNK_SIZE}, else reference with a logged '
++                         'fallback_reason). Reuses --chunk_size; no separate flag added.')
+     cli = ap.parse_args()
+ 
++    cli.resolved_oracle_compute = resolve_oracle_compute_impl(cli.oracle_compute_impl, cli.chunk_size)
++    log_oracle_compute_resolution(cli.oracle_compute_impl, cli.resolved_oracle_compute, cli.chunk_size)
++
+     # ---- hyperparameter provenance (spec: Stage-1 config is the source) ----
+     ref_args = dict(torch.load(cli.reference_ckpt, map_location='cpu')['args'])
+     host_ck = torch.load(cli.stage2_host, map_location='cpu')
+@@ -686,6 +851,8 @@ def main():
+     fingerprint = {
+         'cell': cli.cell, 'arm': cli.arm_name,
+         'axis_oracle': cli.target, 'axis_prefix': cli.prefix_policy, 'axis_score': cli.scorer,
++        'oracle_compute_impl_requested': cli.oracle_compute_impl,
++        'oracle_compute_impl_resolved': cli.resolved_oracle_compute,
+         'encoder_init_sha256': init_sha, 'scratch_init': True, 'encoder_trainable': True,
+         'stage2_host': cli.stage2_host, 'reference_ckpt': cli.reference_ckpt,
+         'seq_len': int(args.seq_len), 'pred_len': int(args.pred_len), 'enc_in': int(args.enc_in),

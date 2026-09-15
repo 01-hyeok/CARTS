@@ -1,0 +1,39 @@
+{
+  "target": "individual",
+  "prefix_policy": "onpolicy",
+  "n_steps": 10,
+  "ref_step_losses": [
+    10.532014846801758,
+    10.073982238769531,
+    10.060349464416504,
+    10.157970428466797,
+    10.053130149841309,
+    10.021950721740723,
+    10.019439697265625,
+    9.938637733459473,
+    9.953629493713379,
+    10.10441780090332
+  ],
+  "opt_step_losses": [
+    10.532014846801758,
+    10.073982238769531,
+    10.060349464416504,
+    10.157970428466797,
+    10.053130149841309,
+    10.021950721740723,
+    10.019439697265625,
+    9.938637733459473,
+    9.953629493713379,
+    10.10441780090332
+  ],
+  "max_abs_loss_diff": 0.0,
+  "mean_abs_loss_diff": 0.0,
+  "final_state_sha256_ref": "4b96c94191df417cead7a3b499209bb5507227aaa2ae0c2b55509f4fa80f72a0",
+  "final_state_sha256_opt": "4b96c94191df417cead7a3b499209bb5507227aaa2ae0c2b55509f4fa80f72a0",
+  "final_state_bit_exact": true,
+  "final_param_max_abs_diff": 0.0,
+  "final_param_l2_diff": 0.0,
+  "selection_disagreements": 0,
+  "selection_positions_checked": 67200,
+  "selection_agreement_pct": 100.0
+}

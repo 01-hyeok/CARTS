@@ -1,0 +1,3 @@
+cell,target,prefix_policy,oracle_compute_impl,chunk_size,n_warmup,n_iters,wall_median_sec,wall_p95_sec,compute_median_sec,compute_p95_sec,wall_samples_per_sec,compute_samples_per_sec,peak_allocated_mb,peak_reserved_mb,repeat,contended,resolved_choice_ce_impl,resolved_individual_impl,resolved_greedy_set_impl
+Weather_96,greedy_set,onpolicy,reference,4096,3,10,16.446021001960617,16.497471855022013,16.402855232532602,16.45490518002771,1.9457594026047462,1.9508798648989356,11251.8016,11691.6224,0,True,reference,reference,reference
+Weather_96,greedy_set,onpolicy,optimized,4096,3,10,3.146574830519967,3.20986313407775,3.103889635007363,3.1623915530508384,10.16978833289404,10.309644917488857,11157.777408,11693.719552,0,True,optimized,optimized_cache,optimized

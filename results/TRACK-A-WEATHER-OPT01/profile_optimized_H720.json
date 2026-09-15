@@ -1,0 +1,42 @@
+{
+  "cell": "Weather_720",
+  "checkpoint": "SCRATCH(checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_RelationStage1_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl720_pl720_0/checkpoint.pth, pred_len=720)",
+  "n_iters": 30,
+  "wall_clock_total_s": 5.491934068966657,
+  "sec_per_iter": 0.18306446896555523,
+  "peak_gpu_mem_bytes": 17547707392,
+  "components": {
+    "data_loading": {
+      "seconds": 1.2709510286804289,
+      "pct_of_measured": 23.3299736603741
+    },
+    "query_encoder": {
+      "seconds": 0.028789230273105204,
+      "pct_of_measured": 0.5284640940661066
+    },
+    "candidate_encoder": {
+      "seconds": 0.21338471525814384,
+      "pct_of_measured": 3.916956416226065
+    },
+    "host_scoring": {
+      "seconds": 0.14472878503147513,
+      "pct_of_measured": 2.6566867381097663
+    },
+    "query_static_prep": {
+      "seconds": 2.2696000487776473,
+      "pct_of_measured": 41.66148668414202
+    },
+    "oracle_utility": {
+      "seconds": 1.085582809871994,
+      "pct_of_measured": 19.927296795033882
+    },
+    "greedy_argmin": {
+      "seconds": 0.2050136384787038,
+      "pct_of_measured": 3.763294318815378
+    },
+    "other": {
+      "seconds": 0.22966711863409728,
+      "pct_of_measured": 4.215841293232679
+    }
+  }
+}

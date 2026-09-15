@@ -1,0 +1,62 @@
+[
+  {
+    "target": "greedy_set",
+    "prefix_policy": "tf",
+    "scorer": "cosine",
+    "n_steps": 20,
+    "max_abs_loss_diff": 0.0,
+    "mean_abs_loss_diff": 0.0,
+    "oracle_target_index_agreement_pct": 100.0,
+    "model_selection_agreement_pct": 100.0,
+    "final_param_max_abs_diff": 0.0,
+    "final_state_bit_exact": true,
+    "optimizer_state_bit_exact": true,
+    "final_state_sha256_ref": "af055f3b9f149db2d1cd6c9a3d130b7d082878479031015d72a2c1b61f497afa",
+    "final_state_sha256_safe": "af055f3b9f149db2d1cd6c9a3d130b7d082878479031015d72a2c1b61f497afa"
+  },
+  {
+    "target": "greedy_set",
+    "prefix_policy": "tf",
+    "scorer": "asymmetric",
+    "n_steps": 20,
+    "max_abs_loss_diff": 0.0,
+    "mean_abs_loss_diff": 0.0,
+    "oracle_target_index_agreement_pct": 100.0,
+    "model_selection_agreement_pct": 100.0,
+    "final_param_max_abs_diff": 0.0,
+    "final_state_bit_exact": true,
+    "optimizer_state_bit_exact": true,
+    "final_state_sha256_ref": "8da587dcd2160f4d25f47d6d884adb4c0156b9904f3575de333840e3fe37b213",
+    "final_state_sha256_safe": "8da587dcd2160f4d25f47d6d884adb4c0156b9904f3575de333840e3fe37b213"
+  },
+  {
+    "target": "greedy_set",
+    "prefix_policy": "onpolicy",
+    "scorer": "cosine",
+    "n_steps": 20,
+    "max_abs_loss_diff": 0.0,
+    "mean_abs_loss_diff": 0.0,
+    "oracle_target_index_agreement_pct": 100.0,
+    "model_selection_agreement_pct": 100.0,
+    "final_param_max_abs_diff": 0.0,
+    "final_state_bit_exact": true,
+    "optimizer_state_bit_exact": true,
+    "final_state_sha256_ref": "41a390e75f0860a90db10feb6c48e25bb056c37aa25231141b04c4e95d6b3fd9",
+    "final_state_sha256_safe": "41a390e75f0860a90db10feb6c48e25bb056c37aa25231141b04c4e95d6b3fd9"
+  },
+  {
+    "target": "greedy_set",
+    "prefix_policy": "onpolicy",
+    "scorer": "asymmetric",
+    "n_steps": 20,
+    "max_abs_loss_diff": 0.0,
+    "mean_abs_loss_diff": 0.0,
+    "oracle_target_index_agreement_pct": 100.0,
+    "model_selection_agreement_pct": 100.0,
+    "final_param_max_abs_diff": 0.0,
+    "final_state_bit_exact": true,
+    "optimizer_state_bit_exact": true,
+    "final_state_sha256_ref": "12a23bf103cc38c3b6ae98d69ff7d1025a646a74b25c66aa1fc7335f86a91306",
+    "final_state_sha256_safe": "12a23bf103cc38c3b6ae98d69ff7d1025a646a74b25c66aa1fc7335f86a91306"
+  }
+]
