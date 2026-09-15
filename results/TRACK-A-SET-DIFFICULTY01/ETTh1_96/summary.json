@@ -1,0 +1,18 @@
+{
+  "cell": "ETTh1_96",
+  "individual_checkpoint": "checkpoints/track_a_factorial_e2e/ETTh1_96/individual_onpolicy_cosine/checkpoint.pth",
+  "individual_best_epoch": 2,
+  "set_checkpoint": "checkpoints/track_a_factorial_e2e/ETTh1_96/set_onpolicy_cosine/checkpoint.pth",
+  "set_best_epoch": 1,
+  "perturbation_rule": "P1_last_action_replacement",
+  "near_tie_fracs": [
+    0.001,
+    0.01,
+    0.05
+  ],
+  "duplicate_rate": 0.0,
+  "invalid_rate": 0.0,
+  "rows_total": 38990,
+  "no_new_training": true,
+  "no_encoder_retrain": true
+}

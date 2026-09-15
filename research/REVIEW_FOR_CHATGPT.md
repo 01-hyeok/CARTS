@@ -3078,7 +3078,7 @@ to be written after all 4 cells finish.
 ---
 
 # TRACK-A-ONPOLICY-RANKLOSS01 — On-policy prefix fixed, loss varied
-(IN PROGRESS: ETTh1 H96 COMPLETE, ETTh1 H720 running; Weather not in scope)
+(COMPLETE: ETTh1 H96 + ETTh1 H720 both done; Weather not in scope)
 
 Follow-up to TRACK-A-FACTORIAL-E2E01's single largest, most consistent main
 effect (Prefix: on-policy >> teacher-forcing at both ETTh1 horizons), which
@@ -3176,20 +3176,57 @@ bit-identical across arms (R1/R2/R3 vs R0's stored reference), no NaN/Inf.
   three new ranking objectives does, under this specific clean on-policy
   protocol.
 
-## Results — ETTh1 H720
+## Results — ETTh1 H720 (COMPLETE, 4/4 losses)
 
-IN PROGRESS. R0_choice_ce running (epoch 2/10 at time of writing,
-val_fr_agg improving 1.657->1.632). R1/R2/R3 not yet started. No
-cross-horizon consistency claim can be made until this cell completes.
+**Independent Base-only Forecaster (baseline) = 0.491450** (same value as
+TRACK-A-FACTORIAL-E2E01's ETTh1_720, reused read-only, not retrained).
 
-## What this does NOT establish yet
+| Loss | best_ep | FR Aggregate MSE | NDCG@10 | Spearman | Regret | Stage-2 MSE | delta vs Base | delta vs R0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **R0_choice_ce** | 2 | 0.5822 | 0.9695 | 0.2859 | 0.4384 | **0.46650** | **-0.02495** | +0.00000 |
+| R1_wce | 3 | 0.6173 | 0.9585 | 0.1928 | 0.5937 | 0.47556 | -0.01589 | +0.00906 |
+| R2_pairwise | 1 | 0.6264 | 0.9644 | **0.5102** | 0.6085 | 0.47276 | -0.01869 | +0.00626 |
+| R3_listwise | 1 | 0.7483 | 0.8900 | -0.0826 | 1.1645 | 0.48850 | -0.00295 | +0.02200 |
+
+Representation diagnostics: R0 eff_rank=40.4/pair_cos=0.158; R1
+eff_rank=9.9/pair_cos=0.337; R2 eff_rank=15.5/pair_cos=0.162; R3
+eff_rank=31.3/pair_cos=0.524. All four: `duplicate_rate=invalid_rate=0`,
+`y_base` bit-identical across arms, no NaN/Inf.
+
+**H720 differs from H96 in one respect and agrees in another:**
+
+- **Differs**: at H720, ALL FOUR losses beat the Independent Base-only
+  baseline (every delta-vs-Base is negative), unlike H96 where only R0 did.
+- **Agrees**: **R0 Oracle-Choice CE is still the best of the four** by
+  Stage-2 MSE at both horizons, and the ranking/downstream mismatch
+  reproduces exactly — R2 again has the best Spearman (0.510, vs R0's
+  0.286) but a worse Stage-2 MSE than R0. R3 is the worst arm at both
+  horizons, and at H720 its Spearman turns **negative** (-0.083) —
+  the model's score ordering is anti-correlated with Oracle utility on
+  average, alongside its own representation partially recovering (pair_cos
+  0.524, better than H96's 0.902) — collapse severity and Stage-2 quality
+  did NOT move together for R3 across horizons, so collapse alone does not
+  explain its failure.
+
+## Cross-horizon synthesis (both ETTh1 cells complete)
+
+**Provisional verdict, now checked against BOTH horizons**: of the four
+losses tested, only **R0 Oracle-Choice CE reliably beats or ties its own
+Independent Base-only baseline and beats the three alternative ranking
+objectives**, under this specific clean on-policy protocol. R2 (pairwise)
+is the most interesting runner-up: it consistently improves ranking
+correlation (Spearman) over R0 at both horizons but never translates that
+into a better Stage-2 number — a clean, twice-replicated instance of
+"ranking improves, downstream doesn't." R1 (WCE) and R3 (listwise) do not
+show a redeeming pattern at either horizon.
+
+## What this does NOT establish
 
 - Whether R3's poor performance is attributable to the listwise objective
-  itself or to the representation-collapse-adjacent signature observed
-  alongside it (pair_cos=0.902) -- not yet separated.
-- ETTh1 H720 results, and therefore whether the H96 ranking pattern (loss
-  improves ranking, does not improve downstream) is horizon-consistent or
-  H96-specific.
+  itself or to representation collapse -- H96 showed both together
+  (pair_cos=0.902), but H720 showed R3 still worst on Stage-2/Spearman with
+  LESS collapse (pair_cos=0.524), so collapse is not the whole story either;
+  not separated further here.
 - Whether an LR probe would change any of this: the user raised the
   hypothesis that the low `best_epoch` values (1-2 for 3 of 4 losses)
   indicate the learning rate is too high. Read-only diagnostic evidence
@@ -3206,6 +3243,212 @@ cross-horizon consistency claim can be made until this cell completes.
 
 ## Status
 
-ETTh1_96 complete. ETTh1_720 running. Not yet written up as a final report
--- `TRACK_A_FACTORIAL_E2E_REAUDIT.md` (or a dedicated rankloss report) to
-follow once ETTh1_720 finishes.
+ETTh1_96 and ETTh1_720 both COMPLETE. Weather not in scope for this
+experiment.
+
+---
+
+# TRACK-A-SET-DIFFICULTY01 — why does the Greedy Set Oracle look harder to
+learn than the Individual Oracle? (COMPLETE: ETTh1 H96 + ETTh1 H720)
+
+Diagnostic only. **No new training.** Loads TRACK-A-FACTORIAL-E2E01's own
+best checkpoints for `individual_onpolicy_cosine` and `set_onpolicy_cosine`
+(paths resolved directly from those experiments' own
+`retrieval_metrics_*.json`, never guessed; fingerprint agreement asserted
+before use) and evaluates everything on the model's own FREE-RUNNING
+trajectory (never teacher-forced, never fed future information for
+selection). Ran on GPU 1 in parallel with the still-running Weather cells
+of TRACK-A-FACTORIAL-E2E01 and TRACK-A-ONPOLICY-RANKLOSS01 (per explicit
+user instruction: GPU 1 only, at most 3 concurrent jobs — H96 and H720 of
+this experiment were run sequentially, chained, rather than in parallel
+with each other, to keep the total at 3).
+
+## Research Question
+
+Four sub-questions (spec Q1-Q4), kept structurally separate:
+
+- **Q1** does Set get harder than Individual as steps progress?
+- **Q2** is the Set top-1 target genuinely ambiguous (near-tied with
+  top-2/5/10)?
+- **Q3** is the Set Oracle sensitive to small prefix perturbations?
+- **Q4** when exact top-1 accuracy is low, is regret also low (i.e. the
+  model picks a near-equivalent candidate, not a bad one)?
+
+## Method
+
+`Oracle=individual` vs `Oracle=set`, both `Prefix=onpolicy, Score=cosine`
+(the factorial's own best checkpoints, K=10, ETTh1 seed 0). Reuses
+`step_rank_diagnostics` from `train_factorial_e2e01.py` UNMODIFIED for
+`expert_rank_{mean,median,fraction}`, `expert_regret_mean`,
+`oracle_action_acc`, `expert_containment_at_{1,5,10}`, `ndcg_at_10`,
+`spearman`, computed at every step t=1..10 of the FREE-RUNNING trajectory.
+
+New diagnostics, both pre-registered before running (never re-tuned after
+seeing results):
+
+- **Ambiguity**: `gap_1_2 = u_(1)-u_(2)`, `gap_1_5`, `gap_1_10` (Oracle
+  utility gaps), plus near-tie candidate counts at three FIXED thresholds
+  relative to the per-query `(u_1-u_10)` range (frac in
+  {0.001, 0.01, 0.05}) — a relative rather than absolute threshold because
+  the utility scale (-MSE) differs by an order of magnitude between H96
+  and H720.
+- **Prefix sensitivity**: perturbation rule **P1 (last-action
+  replacement)**, fixed before running — the last element of the current
+  free-running prefix is replaced by the model's own SECOND-BEST valid
+  candidate at the step it was originally chosen (deterministic, no
+  randomness). Measures Top-1 agreement, Top-5/Top-10 overlap, Spearman,
+  Kendall tau between `u(S)` and `u(S')`, t=2..10 (t=1 has an empty prefix,
+  not applicable). The Individual Oracle is the built-in control: since
+  `individual_utility(futures, query_future)` structurally never takes a
+  prefix argument, its ranking is invariant to this perturbation BY
+  CONSTRUCTION, not by accident — used as a sanity check.
+
+17 unit tests in `tests/test_set_difficulty01.py` (ambiguity-gap ordering
+and an exact hand-computed case, near-tie monotonicity in the threshold,
+P1 correctness including the empty-prefix and invalid-candidate edge
+cases, overlap/Spearman/Kendall correctness on synthetic rankings, the
+Individual-invariance control, checkpoint-resolution failing loudly on a
+missing json/file rather than guessing a path, free-running leakage
+checked by NaN-poisoning the future, no duplicate/invalid picks), all
+passing; full suite 695 passed / 2 pre-existing failures (no regression).
+Smoke test (2 batches, both oracles, full pipeline including one prefix-
+perturbation pass) run before the full evaluation, and its Individual
+control already returned exactly 1.0/1.0/~1.0 before the real run.
+
+## Results — ETTh1 H96
+
+`duplicate_rate=invalid_rate=0`, 38,990 query-channel rows evaluated, no
+NaN/Inf.
+
+**Step-wise (selected steps; full curve t=1..10 in
+`results/TRACK-A-SET-DIFFICULTY01/ETTh1_96/{individual,set}_stepwise.csv`):**
+
+| Oracle | t | Action Acc | Rank Median | Containment@10 | Regret | NDCG@10 | Spearman |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Individual | 1 | 0.0092 | 545.2 | 0.0769 | 0.4869 | 0.9714 | 0.3555 |
+| Individual | 10 | 0.0071 | 550.2 | 0.0663 | 0.5388 | 0.9691 | 0.3683 |
+| Set | 1 | 0.0088 | 616.0 | 0.0669 | 0.4888 | 0.9702 | 0.1746 |
+| Set | 3 | 0.0362 | **60.6** | 0.2483 | 0.1618 | 0.6887 | 0.2593 |
+| Set | 10 | 0.0267 | **57.7** | 0.2242 | **0.0525** | 0.6220 | 0.1084 |
+
+**Ambiguity:**
+
+| Oracle | gap_1_2 | gap_1_5 | gap_1_10 | near-tie (frac=0.05) |
+|---|---:|---:|---:|---:|
+| Individual | 0.0225 | 0.0583 | 0.0911 | 1.145 |
+| Set | 0.0154 | 0.0369 | 0.0539 | 1.128 |
+
+**Ambiguity-binned regret (Set only shows a clean monotonic relationship):**
+
+| Oracle | low ambiguity | medium | high ambiguity |
+|---|---:|---:|---:|
+| Individual regret | 0.532 | 0.499 | 0.505 (flat) |
+| Set regret | 0.162 | 0.117 | **0.103** (monotonic) |
+
+**Prefix sensitivity (Set; Individual control in parentheses, all steps):**
+
+| t | Top1 Agreement | Top10 Overlap | Spearman |
+|---:|---:|---:|---:|
+| 2 | 0.27 (1.0000) | 0.43 (1.0000) | 0.68 (1.0000) |
+| 4 | 0.57 (1.0000) | 0.69 (1.0000) | 0.83 (1.0000) |
+| 10 | 0.81 (1.0000) | 0.87 (1.0000) | 0.94 (1.0000) |
+
+Individual control is **exactly 1.0/1.0/~1.0 at every single step** —
+implementation-correctness confirmed, not just approximately invariant.
+
+## Results — ETTh1 H720
+
+`duplicate_rate=invalid_rate=0`, 30,254 query-channel rows evaluated, no
+NaN/Inf. **The pattern is essentially the same as H96:**
+
+| Oracle | t | Action Acc | Rank Median | Regret | Spearman |
+|---|---:|---:|---:|---:|---:|
+| Individual | 1 | 0.0012 | 699.8 | 0.5462 | 0.2129 |
+| Individual | 10 | 0.0132 | 391.5 | 0.4435 | 0.2945 |
+| Set | 1 | 0.0017 | 578.1 | 0.5225 | 0.2427 |
+| Set | 3 | 0.0166 | **62.4** | 0.1809 | 0.4878 |
+| Set | 10 | 0.0187 | **56.0** | **0.0572** | 0.2956 |
+
+Ambiguity: gap_1_10 Individual=0.0888, Set=0.0457 (Set ~48% narrower, vs
+~41% at H96 — consistent direction, larger magnitude). Ambiguity-binned
+regret again monotonic for Set (0.176/0.125/0.110) and flat for Individual
+(0.461/0.380/0.410). Prefix sensitivity: Set Top1 agreement 0.35 (t=2) ->
+0.81 (t=10), Top10 overlap 0.52 -> 0.88 — same shape as H96. Individual
+control again exactly 1.0 at every step.
+
+## Answering the six required questions
+
+1. **Is Set Oracle actually harder than Individual?** At t=1, both are
+   comparably bad (Individual/Set action acc 0.0092/0.0088 at H96,
+   0.0012/0.0017 at H720 — statistically indistinguishable at this scale).
+   From t=2-3 onward, **Set becomes substantially and consistently EASIER
+   than Individual** by every metric that matters (rank median, regret,
+   containment) — the opposite of "Set is harder."
+2. **Does the difficulty gap exist from t=1, or grow with t?** **Neither,
+   in the direction the pre-registered hypothesis expected.** It does not
+   exist at t=1 (both oracles comparably poor there), and it does not grow
+   with t — it appears once (t=1->3) and then the gap FAVORS Set for the
+   remainder of the trajectory, at both horizons.
+3. **Does Set have more near-tie candidates?** The raw near-tie COUNT is
+   similar between the two oracles (~1.13-1.15 at frac=0.05, both
+   horizons), but the underlying utility GAP is 40-48% narrower for Set at
+   every gap statistic (1-2, 1-5, 1-10) and at both horizons — Set
+   candidates cluster more tightly near the top even where raw counts look
+   similar.
+4. **Is low exact accuracy explained by ambiguity or by real regret?**
+   **Ambiguity, for Set specifically.** Set's regret falls monotonically
+   as the ambiguity bin narrows (0.162->0.103 at H96, 0.176->0.110 at
+   H720) while exact accuracy stays in the low single digits throughout —
+   textbook "wrong label, right-ish answer." Individual shows NO such
+   monotonic relationship (regret is flat across ambiguity bins,
+   0.499-0.532) — for Individual, low accuracy looks more like a real
+   ranking failure than an ambiguity artifact.
+5. **How sensitive is Set to prefix perturbation?** Real and large at
+   t=2 (Top1 agreement 0.27-0.35, i.e. the Oracle's best pick changes
+   completely for ~65-73% of queries under a single-item, deterministic
+   perturbation) but **shrinks steadily and does not compound** — by t=10
+   agreement reaches 0.81-0.81 and Top10 overlap 0.87-0.88 at both
+   horizons. The pre-registered Case B description ("sensitivity increases
+   with t") is **not what happened** — sensitivity is highest early and
+   self-stabilizes, the opposite of accumulating instability.
+6. **Which follow-up is indicated — Multi-positive Choice CE, conditioner
+   improvement, or a capacity/architecture problem?**
+
+   **Case A (ambiguity) has the strongest, most direct support**: narrower
+   utility gaps for Set, and a clean monotonic ambiguity-regret
+   relationship that Individual does not share, at both horizons
+   independently. **Case B (prefix sensitivity) is real but only in its
+   ORIGINAL, unmodified form at t=2** — it does not match the
+   pre-registered growth-with-t description, so a "stronger conditioner /
+   better state representation" fix aimed at a compounding-error story is
+   not well-supported by this data; a fix aimed specifically at the FIRST
+   couple of steps could still be worth considering. **Case C
+   (representation/capacity bottleneck) has weak support**: the SAME
+   encoder and conditioner architecture underlies both oracles, and
+   Individual does not show the Set-specific improvement-with-t or
+   ambiguity-regret pattern, which argues the driver is the Set TARGET
+   DEFINITION itself rather than shared architecture capacity.
+
+   **Most defensible next step per the evidence: Multi-positive/soft
+   Choice CE (Case A), not conditioner redesign or architecture change.**
+   This is a `[SUGGESTION — NOT EXECUTED]`, offered per the interpretation
+   above; not started.
+
+## What this does NOT establish
+
+- Whether the same pattern holds on Weather (not run — out of scope per
+  the approved spec).
+- Causal proof that ambiguity IS the mechanism behind Set's t>=3 ease and
+  Individual's flatness, only a strong, twice-replicated correlational
+  pattern.
+- Whether a Multi-positive Choice CE fix would actually improve Set's
+  Stage-2 numbers -- not tested, offered only as a suggestion.
+- Whether the t=2-specific prefix sensitivity, even though it does not
+  compound, still meaningfully hurts the free-running trajectory's overall
+  quality (e.g. by anchoring an early suboptimal choice) -- not measured
+  directly here.
+
+## Status
+
+ETTh1_96 and ETTh1_720 both COMPLETE. Weather not in scope for this
+experiment.
