@@ -1,0 +1,51 @@
+{
+  "exp": "TRACK-A-CHOICECE-STAGE2-RETRAIN01",
+  "cell": "ETTh1_96",
+  "arm": "individual_onpolicy_cosine",
+  "best_epoch": 8,
+  "best_val_final_mse": 0.6851995547877485,
+  "test": {
+    "final_mse": 0.38641090274845685,
+    "final_mae": 0.4014711571277854,
+    "base_mse": 0.392150336517741,
+    "base_mae": 0.40090617010040425,
+    "ret_mse": 1.674400231719394,
+    "ret_mae": 0.9579879322428677,
+    "gate_mean": 0.05219675600528717,
+    "gate_std": 0.1061730831861496,
+    "gate_min": 9.029290509721122e-11,
+    "gate_max": 0.9047107100486755,
+    "gate_saturation_rate": 0.646319568157196
+  },
+  "frozen_submodule_sha256_matched": true,
+  "wall_clock_seconds": 109.69733262062073,
+  "fingerprint": {
+    "exp": "TRACK-A-CHOICECE-STAGE2-RETRAIN01",
+    "cell": "ETTh1_96",
+    "arm": "individual_onpolicy_cosine",
+    "seed": 1,
+    "stage2_init_sha256": "5690648dcb6bddb660e26a87335ae4d880d9efb94eefa921602d71cc78a451c8",
+    "frozen_submodule_sha256_before_training": {
+      "stage1_encoder": "d29a37111b4f525f620017022920cc81d15a93204755fa2b35bfb2f450b60e2b",
+      "shared_cross_projection": "2013cf2bb519c707ed32d90bdf541eda61d35a50f1e0c4fb49e9cb098aa7198e"
+    },
+    "trainable_parameter_names": [
+      "base_head.shared.bias",
+      "base_head.shared.weight",
+      "gate.net.0.bias",
+      "gate.net.0.weight",
+      "gate.net.2.bias",
+      "gate.net.2.weight",
+      "relation_concat_projection.bias",
+      "relation_concat_projection.weight",
+      "relation_mixer.score_net.0.bias",
+      "relation_mixer.score_net.0.weight",
+      "relation_mixer.score_net.2.bias",
+      "relation_mixer.score_net.2.weight"
+    ],
+    "trainable_parameter_count": 56002,
+    "stage2_host": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+    "stage2_host_sha256": "112bd013c59749f39294a19013ba2e08947f6fee26e943ccacc10b194a049683",
+    "cache_dir": "results/TRACK-A-CHOICECE-STAGE2-RETRAIN01/cache/ETTh1_96/individual_onpolicy_cosine"
+  }
+}

@@ -3675,3 +3675,108 @@ without a multi-seed run, which was not executed this round.
 Neither the pre-existing Weather_96 factorial job nor MULTIPOS-CHOICE01
 (which finished on its own mid-round, independently) was affected by this
 work.
+
+---
+
+## TRACK-A-CHOICECE-STAGE2-RETRAIN01 -- arm-specific Stage-2 retraining
+replaces the fixed-host diagnostic (ETTh1, both horizons, all 8 Factorial arms)
+
+Full report: `research/TRACK-A-CHOICECE-STAGE2-RETRAIN01.md`. The prior
+`eval_factorial_e2e01_stage2.py` numbers injected each arm's Top-K into
+the EXISTING S0_wce host's already-trained gate/head -- a diagnostic, not
+a fair evaluation of that arm's retrieval, since the gate/head were never
+trained to expect that arm's own retrieval distribution. This round trains
+a FRESH gate/base-head/fusion for every arm, from a shared random init,
+with the Stage-1 retrieval policy (encoder + SetConditioner, loaded
+directly from the Factorial checkpoint's own keys -- confirmed by code
+audit that the standard `load_stage1_checkpoint` silently drops the
+SetConditioner and mislocates the asymmetric metric, so this was NOT used)
+completely frozen and injected via `RelationStage2.forward_from_retrieval_values`,
+a pre-existing production hook. WCE's own trained gate/head weights are
+never loaded into any of the new models (verified by a unit test that
+would fail if they matched bit-for-bit).
+
+**All 16 arm x horizon combinations complete** (8 arms x {H96, H720}).
+9 unit tests pass against the real model classes (frozen submodules get no
+gradient, trainable ones do, frozen hashes unchanged across an optimizer
+step, fresh init does not match the host's trained weights). Smoke test
+(20 steps, `set_onpolicy_cosine`/H96) clean: loss 1.04->0.51, gate moving
+normally, no NaN/Inf.
+
+**Headline finding**: giving every arm its OWN freshly-trained gate/head
+does not change the picture -- every one of the 16 final `y_final` MSEs
+lands within ~1-3% of the Independent Base-only Forecaster (H96 base
+MSE 0.3865; retrained arms range 0.382-0.389; H720 base MSE ~0.486-0.491
+region; retrained arms range 0.490-0.507), and in every arm the gate
+converges to a SMALL mean weight on the retrieval branch (0.026-0.093)
+rather than a large one. The raw, ungated retrieval-only prediction
+(`y_ret`) has a much larger standalone MSE (1.6-2.0) than the base head
+alone -- consistent with, and now confirmed under a FRESH, arm-specific-
+trained gate (not just the old shared WCE one), this project's
+already-established finding that retrieval quality is floor-level (see
+`retrieval-recall-is-floor-level` in the standing project memory). This
+is a meaningfully different and stronger claim than the old diagnostic
+could support: it rules out "the old WCE gate/head was mismatched to this
+arm's retrieval" as an explanation for weak fixed-host numbers -- even
+with a gate/head trained FROM SCRATCH specifically for each arm's own
+retrieval, Stage-2 still finds nothing worth leaning on. No arm (Individual
+or Set, TF or on-policy, cosine or asymmetric) breaks this pattern at
+either horizon.
+
+```
+OLD: Fixed-host injection diagnostic -- no arm-specific Stage 2 training
+NEW: Arm-specific retrained Stage 2 -- frozen Stage-1 retrieval, trained gate/head
+```
+
+Neither Weather_96 nor the other concurrently-running experiments were
+affected; GPU1 ran up to 4 jobs concurrently this round per explicit user
+approval.
+
+---
+
+## EXP-SET-LOSS-STAGE2-RETRAIN01 -- same retraining protocol applied to
+the 4 Set-Oracle losses (ETTh1_96 so far; H720 in progress)
+
+Full report: `research/EXP-SET-LOSS-STAGE2-RETRAIN01.md`. Identical
+method to TRACK-A-CHOICECE-STAGE2-RETRAIN01 above, applied to
+TRACK-A-SET-LOSS-CONTROL01's own checkpoints (Hard Choice CE / Adaptive
+MultiPos / Soft Regret Mass / Set-Utility Soft CE, Greedy Set Oracle,
+On-policy, Cosine, all 7 ETTh1 channels, matched seed=1 init across all
+four -- no cross-seed baseline risk this time, since Hard CE is part of
+the SAME seed=1 experiment).
+
+**H96, all 4 arms complete**:
+
+| loss | final_MSE | base_MSE | ret_MSE (raw, uncalibrated) | gate_mean |
+|---|---:|---:|---:|---:|
+| A0 Hard Choice CE | **0.38568** | 0.39235 | 1.681 | 0.050 |
+| A1 Adaptive MultiPos | 0.38598 | 0.39219 | 1.675 | 0.048 |
+| A2 Soft Regret Mass | 0.38579 | 0.39232 | 1.680 | 0.055 |
+| A3 Set-Utility Soft CE | 0.38612 | 0.39220 | 1.656 | 0.054 |
+
+(Independent Base-only Forecaster MSE: 0.38645 -- all 4 arms land at or
+just under it.) Same pattern as the sibling experiment above: tiny gate
+weight, poor raw retrieval, final result close to base regardless of
+which Stage-1 loss produced the retrieval. Within this single seed, Hard
+CE has the numerically lowest final MSE, but the spread across all 4
+losses (0.38568-0.38612, a 0.044% range) is far smaller than anything
+that could be called a finding -- consistent with EXP-SET-LOSS01's own
+already-stated caveat that single-seed differences this small are not
+distinguishable from noise.
+
+**H720: not complete yet** -- TRACK-A-SET-LOSS-CONTROL01's own H720
+Stage-1 run is still in progress (this experiment reads that experiment's
+completed checkpoints only, never starts or modifies it); this experiment's
+H720 Stage-2 runs automatically once that finishes, chained via a
+background watcher, not yet complete at the time of this note.
+
+A methodological note investigated and RULED OUT during this round: the
+unusually large `ret_MSE` (raw retrieval-only prediction) initially looked
+like a possible unit/offset-space bug in the retrieval cache. Traced
+through `RelationStage2._restore_retrieved_value` and
+`scripts/train_margutil01.py::memory_value` -- both apply the exact same
+`relation_value_space == 'delta_last'` candidate-delta + query-offset
+convention, confirmed consistent by direct code reading (not just
+assumed), so the cache is in the correct space; the large `ret_MSE` is a
+real, expected consequence of already-known floor-level retrieval quality,
+not a data bug.

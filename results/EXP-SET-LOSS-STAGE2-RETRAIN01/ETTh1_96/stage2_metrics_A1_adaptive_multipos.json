@@ -1,0 +1,51 @@
+{
+  "exp": "EXP-SET-LOSS-STAGE2-RETRAIN01",
+  "cell": "ETTh1_96",
+  "arm": "A1_adaptive_multipos",
+  "best_epoch": 8,
+  "best_val_final_mse": 0.6841039935778357,
+  "test": {
+    "final_mse": 0.3859753937764872,
+    "final_mae": 0.40047556955488034,
+    "base_mse": 0.39219351116486,
+    "base_mae": 0.400871883645734,
+    "ret_mse": 1.6754498284036525,
+    "ret_mae": 0.9630260010300472,
+    "gate_mean": 0.04774649068713188,
+    "gate_std": 0.09148392081260681,
+    "gate_min": 1.102922961293551e-10,
+    "gate_max": 0.8707507252693176,
+    "gate_saturation_rate": 0.6406257748603821
+  },
+  "frozen_submodule_sha256_matched": true,
+  "wall_clock_seconds": 110.50388669967651,
+  "fingerprint": {
+    "exp": "EXP-SET-LOSS-STAGE2-RETRAIN01",
+    "cell": "ETTh1_96",
+    "arm": "A1_adaptive_multipos",
+    "seed": 1,
+    "stage2_init_sha256": "5690648dcb6bddb660e26a87335ae4d880d9efb94eefa921602d71cc78a451c8",
+    "frozen_submodule_sha256_before_training": {
+      "stage1_encoder": "d29a37111b4f525f620017022920cc81d15a93204755fa2b35bfb2f450b60e2b",
+      "shared_cross_projection": "2013cf2bb519c707ed32d90bdf541eda61d35a50f1e0c4fb49e9cb098aa7198e"
+    },
+    "trainable_parameter_names": [
+      "base_head.shared.bias",
+      "base_head.shared.weight",
+      "gate.net.0.bias",
+      "gate.net.0.weight",
+      "gate.net.2.bias",
+      "gate.net.2.weight",
+      "relation_concat_projection.bias",
+      "relation_concat_projection.weight",
+      "relation_mixer.score_net.0.bias",
+      "relation_mixer.score_net.0.weight",
+      "relation_mixer.score_net.2.bias",
+      "relation_mixer.score_net.2.weight"
+    ],
+    "trainable_parameter_count": 56002,
+    "stage2_host": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+    "stage2_host_sha256": "112bd013c59749f39294a19013ba2e08947f6fee26e943ccacc10b194a049683",
+    "cache_dir": "results/EXP-SET-LOSS-STAGE2-RETRAIN01/cache/ETTh1_96/A1_adaptive_multipos"
+  }
+}

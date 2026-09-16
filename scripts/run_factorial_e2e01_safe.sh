@@ -45,15 +45,15 @@ S2_ETTh1_720="checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ET
 S2_Weather_96="checkpoints/stage2/custom/seq96_pred96/stage2_carts_softset_s2_Weather_96_S0_wce_RelationStage2_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl96_pl96_0/checkpoint.pth"
 S2_Weather_720="checkpoints/stage2/custom/seq720_pred720/stage2_carts_softset_s2_Weather_720_S0_wce_RelationStage2_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl720_pl720_0/checkpoint.pth"
 
+# NOTE: asymmetric-score arms removed by explicit user request for the
+# Weather_720 safe run (2026-09-16) -- cosine-only, 4 arms instead of 8.
+# This script is intended ONLY for Weather_720; if it is ever reused for
+# another cell, revisit this narrowing first.
 ARMS=(
   "individual_tf_cosine            individual tf       cosine"
-  "individual_tf_asymmetric        individual tf       asymmetric"
   "individual_onpolicy_cosine      individual onpolicy cosine"
-  "individual_onpolicy_asymmetric  individual onpolicy asymmetric"
   "set_tf_cosine                   greedy_set tf       cosine"
-  "set_tf_asymmetric               greedy_set tf       asymmetric"
   "set_onpolicy_cosine             greedy_set onpolicy cosine"
-  "set_onpolicy_asymmetric         greedy_set onpolicy asymmetric"
 )
 
 run_cell() {
