@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_factorial_e2e/ETTh1_720/set_tf_asymmetric/checkpoint.pth",
+  "stage1_checkpoint_hash": "7697ae2e87880d9d5c33e8c0062954efc69c6561c3fcf28e4f2d1210aefeed51",
+  "config_hash": "919f8740b1b4ed12eb54a2fab68e8c034840c0092a719bd4bbdf4ea429c767f5",
+  "cell": "ETTh1_720",
+  "arm_name": "set_tf_asymmetric"
+}

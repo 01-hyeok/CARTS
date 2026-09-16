@@ -1,0 +1,10 @@
+[stage2_retrain01] individual_onpolicy_cosine epoch 1 train_loss=0.38427 val_final_mse=0.688766 gate_mean=0.530
+[stage2_retrain01] individual_onpolicy_cosine epoch 2 train_loss=0.34887 val_final_mse=0.669396 gate_mean=0.475
+[stage2_retrain01] individual_onpolicy_cosine epoch 3 train_loss=0.34405 val_final_mse=0.671072 gate_mean=0.453
+[stage2_retrain01] individual_onpolicy_cosine epoch 4 train_loss=0.34248 val_final_mse=0.669180 gate_mean=0.457
+[stage2_retrain01] individual_onpolicy_cosine epoch 5 train_loss=0.34013 val_final_mse=0.659316 gate_mean=0.445
+[stage2_retrain01] individual_onpolicy_cosine epoch 6 train_loss=0.33949 val_final_mse=0.675412 gate_mean=0.438
+[stage2_retrain01] individual_onpolicy_cosine epoch 7 train_loss=0.33890 val_final_mse=0.664803 gate_mean=0.419
+[stage2_retrain01] individual_onpolicy_cosine epoch 8 train_loss=0.33883 val_final_mse=0.662611 gate_mean=0.410
+[stage2_retrain01] individual_onpolicy_cosine epoch 9 train_loss=0.33791 val_final_mse=0.659172 gate_mean=0.418
+[stage2_retrain01] individual_onpolicy_cosine epoch 10 train_loss=0.33752 val_final_mse=0.666525 gate_mean=0.417

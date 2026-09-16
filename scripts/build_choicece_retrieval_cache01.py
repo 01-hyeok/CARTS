@@ -18,6 +18,27 @@ uses in train_factorial_e2e01.py -- reused here, not reinvented).
 Output cache (one file per cell/arm/split) is indexed by `batch_start_idx`
 (not by loader position), so it is invariant to DataLoader shuffling. Every
 tensor is created under `torch.no_grad()` and detached before saving.
+
+CORRECTED (this version): `relation_outputs` stores the weighted DELTA
+aggregate (`sum_i alpha_i * memory_value_c[i]`, candidate future MINUS
+that candidate's own last observed value), NOT the absolute-space value
+(`memory_c + offset_c`) an earlier version of this script stored. Verified
+by direct trace of `models/RelationStage2.py::forward`'s online path: the
+`relation_outputs` local variable fed to `self.relation_mixer(...)` is
+built by `relation_outputs.append(r_cr)` where `r_cr` comes from
+`retrieve_relation_future(..., memory_value_c=memory_value_c, ...)` and
+`memory_value_c` is exactly this delta (from `self._memory_value`, which
+never adds `query_offset`) -- `query_offset` is added back in only ONCE,
+uniformly, at the very end of `forward` (`y_ret_out = y_ret_all +
+output_offset`), and separately, only for the DIAGNOSTIC
+`debug['relation_outputs']` field via `_restore_retrieved_value` (which
+never feeds back into the actual `y_ret_c`/`y_final_c` computation). The
+old absolute-space cache double-counted the offset once it reached
+`y_ret_out`, corrupting every retrained Stage-2 arm's `y_ret`/`y_final`
+numbers -- see `research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md`.
+Cache dicts carry `value_space='delta'`, `offset_included=False`,
+`cache_schema_version='corrected_delta_v1'`, plus `stage1_checkpoint_hash`/
+`config_hash`, so a trainer can refuse to silently load a legacy cache.
 """
 import argparse
 import hashlib
@@ -45,6 +66,15 @@ def _file_sha256(path):
     h = hashlib.sha256()
     h.update(Path(path).read_bytes())
     return h.hexdigest()
+
+
+def restore_absolute(delta_cache_relation_outputs, query_offset):
+    """VALIDATION-ONLY: converts cached delta-space `relation_outputs` back
+    to absolute scale (comparable to `batch_y`) by adding the query's own
+    last observed value. NEVER call this on values fed into Stage-2 --
+    Stage-2's own forward pass restores the offset exactly once, at the
+    very end, uniformly for base/ret/final (see module docstring)."""
+    return delta_cache_relation_outputs + query_offset.unsqueeze(-1)
 
 
 def validate_arm_checkpoint(arm_ckpt, retrieval_metrics_json, cell, arm_name, top_k):
@@ -122,6 +152,7 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
 
     all_start_idx, all_relation_outputs, all_query_embs = [], [], []
     all_topk_idx, all_alpha, all_valid_count, all_dup, all_invalid = [], [], [], [], []
+    all_query_offset = []
 
     for batch_x, batch_y, batch_start_idx in loader:
         batch_x = batch_x.float().to(device)
@@ -133,12 +164,20 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
         query_emb_ch = torch.zeros(bsz, len(channels), 1, d_model)
         topk_idx_ch = torch.zeros(bsz, len(channels), top_k, dtype=torch.long)
         alpha_ch = torch.zeros(bsz, len(channels), top_k)
+        query_offset_ch = torch.zeros(bsz, len(channels))  # for absolute-space
+                                                            # RESTORATION during
+                                                            # validation only -- never
+                                                            # fed into Stage-2
 
         for c in channels:
             E = encode_raw(model, exp.memory_x, c)
             z_q = encode_raw(model, batch_x, c)
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
-            futures = memory_c + offset_c.view(-1, 1, 1)
+            # memory_c is [N_memory, pred_len] (shared across the batch, NOT
+            # per-query) -- broadcast to [B, N_memory, pred_len] before
+            # gathering by per-query picks_t, matching the shape `futures`
+            # (the old, now-removed absolute-space tensor) used to have.
+            memory_c_b = memory_c.unsqueeze(0).expand(batch_x.size(0), -1, -1)
             host_scores = host.scores(batch_x, c, cand_mask)
 
             selected = torch.zeros_like(cand_mask)
@@ -155,13 +194,21 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
 
             sc_sel = host_scores.gather(1, picks_t)
             alpha = torch.softmax(sc_sel / float(host.tau_topk), dim=-1)
-            tgt = futures.gather(1, picks_t.unsqueeze(-1).expand(-1, -1, futures.size(-1)))
-            y_ret = (alpha.unsqueeze(-1) * tgt).sum(1)
+            # CORRECTED (was: gather from `futures` = memory_c + offset_c,
+            # i.e. absolute-space). RelationStage2's own online path feeds
+            # the mixer a weighted-sum of `memory_value_c` -- the CANDIDATE
+            # delta, query_offset NEVER added -- confirmed by direct code
+            # trace of models/RelationStage2.py::forward (see
+            # research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md
+            # section 1). `relation_outputs` must be this same delta.
+            tgt_delta = memory_c_b.gather(1, picks_t.unsqueeze(-1).expand(-1, -1, memory_c_b.size(-1)))
+            delta_ret = (alpha.unsqueeze(-1) * tgt_delta).sum(1)
 
-            rel_out_ch[:, c, 0, :] = y_ret.cpu()
+            rel_out_ch[:, c, 0, :] = delta_ret.cpu()
             query_emb_ch[:, c, 0, :] = z_q.detach().cpu()
             topk_idx_ch[:, c, :] = picks_t.cpu()
             alpha_ch[:, c, :] = alpha.cpu()
+            query_offset_ch[:, c] = offset_c.detach().cpu()
 
         dup = (topk_idx_ch.sort(dim=-1).values[:, :, 1:] ==
               topk_idx_ch.sort(dim=-1).values[:, :, :-1]).sum(dim=-1)
@@ -176,18 +223,22 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
         all_valid_count.append(counts.cpu())
         all_dup.append(dup)
         all_invalid.append(invalid)
+        all_query_offset.append(query_offset_ch)
 
     cache = {
         'batch_start_idx': torch.cat(all_start_idx),
-        'relation_outputs': torch.cat(all_relation_outputs),
+        'relation_outputs': torch.cat(all_relation_outputs),  # DELTA space (see header docstring)
         'relation_query_embs': torch.cat(all_query_embs),
         'topk_idx': torch.cat(all_topk_idx),
         'alpha': torch.cat(all_alpha),
+        'query_offset': torch.cat(all_query_offset),  # [N, channels], validation-only
         'valid_count': torch.cat(all_valid_count),
         'duplicate_count': torch.cat(all_dup),
         'invalid_row': torch.cat(all_invalid),
         'channels': channels, 'top_k': top_k, 'pred_len': pred_len,
         'arm_name': arm_name, 'split': split,
+        'value_space': 'delta', 'offset_included': False,
+        'cache_schema_version': 'corrected_delta_v1',
     }
     return cache
 
@@ -202,7 +253,7 @@ def main():
     ap.add_argument('--pred_len', type=int, required=True)
     ap.add_argument('--top_k', type=int, default=10)
     ap.add_argument('--chunk_size', type=int, default=4096)
-    ap.add_argument('--out_dir', default='results/TRACK-A-CHOICECE-STAGE2-RETRAIN01')
+    ap.add_argument('--out_dir', default='results/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED')
     cli = ap.parse_args()
 
     rm_json = Path(cli.factorial_out_dir) / cli.cell / f'retrieval_metrics_{cli.arm_name}.json'
@@ -211,12 +262,21 @@ def main():
     validate_arm_checkpoint(arm_ckpt, rm_json, cli.cell, cli.arm_name, cli.top_k)
     print(f'[build_cache01] {cli.cell}/{cli.arm_name}: checkpoint validated -- {arm_ckpt}')
 
+    stage1_hash = _file_sha256(arm_ckpt)
+    config_hash = hashlib.sha256(
+        json.dumps({'cell': cli.cell, 'arm_name': cli.arm_name, 'pred_len': cli.pred_len,
+                   'top_k': cli.top_k, 'chunk_size': cli.chunk_size,
+                   'stage2_host': cli.stage2_host}, sort_keys=True).encode()
+    ).hexdigest()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     out_dir = Path(cli.out_dir) / 'cache' / cli.cell / cli.arm_name
     out_dir.mkdir(parents=True, exist_ok=True)
     for split in ('train', 'val', 'test'):
         cache = build_cache_for_split(arm_ckpt, cli.arm_name, cli.stage2_host, cli.reference_ckpt,
                                       cli.pred_len, split, cli.top_k, cli.chunk_size, device)
+        cache.update({'stage1_checkpoint_path': str(arm_ckpt), 'stage1_checkpoint_hash': stage1_hash,
+                     'config_hash': config_hash})
         out_path = out_dir / f'{split}.pt'
         torch.save(cache, out_path)
         n_dup = int((cache['duplicate_count'] > 0).sum())
@@ -226,6 +286,13 @@ def main():
         if n_dup or n_inv:
             print(f'[ISSUE] {cli.cell}/{cli.arm_name}/{split}: {n_dup} duplicate-selection rows, '
                  f'{n_inv} invalid/short-candidate-pool rows found -- inspect before training on this cache.')
+
+    manifest = {'value_space': 'delta', 'offset_included': False,
+               'cache_schema_version': 'corrected_delta_v1',
+               'stage1_checkpoint_path': str(arm_ckpt), 'stage1_checkpoint_hash': stage1_hash,
+               'config_hash': config_hash, 'cell': cli.cell, 'arm_name': cli.arm_name}
+    (out_dir / 'cache_manifest.json').write_text(json.dumps(manifest, indent=2))
+    print(f'[build_cache01] wrote {out_dir / "cache_manifest.json"}')
 
 
 if __name__ == '__main__':

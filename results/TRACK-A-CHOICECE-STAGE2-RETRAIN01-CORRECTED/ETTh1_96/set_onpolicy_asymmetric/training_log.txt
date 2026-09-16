@@ -1,0 +1,10 @@
+[stage2_retrain01] set_onpolicy_asymmetric epoch 1 train_loss=0.38349 val_final_mse=0.684203 gate_mean=0.522
+[stage2_retrain01] set_onpolicy_asymmetric epoch 2 train_loss=0.34779 val_final_mse=0.667047 gate_mean=0.469
+[stage2_retrain01] set_onpolicy_asymmetric epoch 3 train_loss=0.34351 val_final_mse=0.669480 gate_mean=0.456
+[stage2_retrain01] set_onpolicy_asymmetric epoch 4 train_loss=0.34147 val_final_mse=0.667044 gate_mean=0.454
+[stage2_retrain01] set_onpolicy_asymmetric epoch 5 train_loss=0.33951 val_final_mse=0.657526 gate_mean=0.437
+[stage2_retrain01] set_onpolicy_asymmetric epoch 6 train_loss=0.33865 val_final_mse=0.675396 gate_mean=0.444
+[stage2_retrain01] set_onpolicy_asymmetric epoch 7 train_loss=0.33827 val_final_mse=0.664318 gate_mean=0.418
+[stage2_retrain01] set_onpolicy_asymmetric epoch 8 train_loss=0.33837 val_final_mse=0.660896 gate_mean=0.419
+[stage2_retrain01] set_onpolicy_asymmetric epoch 9 train_loss=0.33733 val_final_mse=0.657299 gate_mean=0.421
+[stage2_retrain01] set_onpolicy_asymmetric epoch 10 train_loss=0.33735 val_final_mse=0.663414 gate_mean=0.416

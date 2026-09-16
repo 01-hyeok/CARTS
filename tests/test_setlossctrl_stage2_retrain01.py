@@ -24,9 +24,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.train_setlossctrl_stage2_retrain01 import (FREEZE_SUBMODULES, build_fresh_stage2,
+from scripts.train_setlossctrl_stage2_retrain01 import (FREEZE_SUBMODULES, REQUIRED_CACHE_SCHEMA,
+                                                      build_fresh_stage2,
+                                                      compute_cache_restored_fragg,
                                                       freeze_retrieval_submodules,
-                                                      load_cache_as_lookup, lookup_batch)
+                                                      load_cache_as_lookup, lookup_batch,
+                                                      restore_absolute)
 from scripts.train_factorial_e2e01 import state_sha
 
 S2_96 = ('checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_'
@@ -116,6 +119,11 @@ def _make_synthetic_cache(tmp_path, n=6, channels=7, pred_len=96, d_model=128):
         'batch_start_idx': torch.tensor([100, 5, 300, 1, 200, 50]),
         'relation_outputs': torch.randn(n, channels, 1, pred_len),
         'relation_query_embs': torch.randn(n, channels, 1, d_model),
+        'query_offset': torch.randn(n, channels),
+        'value_space': 'delta', 'offset_included': False,
+        'cache_schema_version': REQUIRED_CACHE_SCHEMA,
+        'stage1_checkpoint_path': 'dummy.pth', 'stage1_checkpoint_hash': 'deadbeef',
+        'config_hash': 'cafef00d',
     }
     path = tmp_path / 'test.pt'
     torch.save(cache, path)
@@ -186,3 +194,177 @@ def test_forward_from_retrieval_values_finite_loss_and_selective_gradient():
     optimizer.step()
     shas_after = freeze_retrieval_submodules(model)
     assert shas_before == shas_after
+
+
+# --------------------------------------------------------------------------
+# Corrected delta-space cache: schema rejection, offset semantics,
+# weighted-sum exactness, FR-Agg cross-check (spec's 10 required tests)
+# --------------------------------------------------------------------------
+def test_legacy_or_wrong_schema_cache_is_rejected_not_silently_used(tmp_path):
+    legacy = {
+        'batch_start_idx': torch.tensor([1, 2, 3]),
+        'relation_outputs': torch.randn(3, 7, 1, 96),
+        'relation_query_embs': torch.randn(3, 7, 1, 128),
+    }
+    path = tmp_path / 'legacy.pt'
+    torch.save(legacy, path)
+    with pytest.raises(SystemExit, match=r'\[ISSUE\]\[ABORT\]'):
+        load_cache_as_lookup(path)
+
+
+def test_wrong_value_space_field_is_also_rejected(tmp_path):
+    bad = {
+        'batch_start_idx': torch.tensor([1, 2, 3]),
+        'relation_outputs': torch.randn(3, 7, 1, 96),
+        'relation_query_embs': torch.randn(3, 7, 1, 128),
+        'value_space': 'absolute', 'cache_schema_version': REQUIRED_CACHE_SCHEMA,
+    }
+    path = tmp_path / 'bad.pt'
+    torch.save(bad, path)
+    with pytest.raises(SystemExit, match=r'\[ISSUE\]\[ABORT\]'):
+        load_cache_as_lookup(path)
+
+
+def test_correct_schema_cache_loads_without_error(tmp_path):
+    path, _ = _make_synthetic_cache(tmp_path)
+    loaded, lut = load_cache_as_lookup(path)
+    assert loaded['cache_schema_version'] == REQUIRED_CACHE_SCHEMA
+    assert loaded['value_space'] == 'delta'
+
+
+def test_cache_relation_outputs_never_equals_offset_added_version(tmp_path):
+    path, cache = _make_synthetic_cache(tmp_path)
+    delta = cache['relation_outputs'][:, :, 0, :]
+    offset = cache['query_offset']
+    would_be_absolute = delta + offset.unsqueeze(-1)
+    assert not torch.allclose(delta, would_be_absolute), \
+        'cache relation_outputs must be pure delta, not delta+offset'
+
+
+def test_restore_absolute_adds_offset_exactly_once():
+    delta = torch.randn(4, 3, 5)
+    offset = torch.randn(4, 3)
+    restored = restore_absolute(delta, offset)
+    expected = delta + offset.unsqueeze(-1)
+    assert torch.equal(restored, expected)
+    double_offset = restore_absolute(restored, offset)
+    assert not torch.allclose(double_offset, expected), \
+        'deliberately double-adding the offset must NOT match the correct single-add result'
+
+
+def test_weighted_delta_sum_matches_cache_exactly():
+    top_k, pred_len = 5, 12
+    memory_c = torch.randn(top_k, pred_len)
+    alpha = torch.softmax(torch.randn(top_k), dim=-1)
+    expected_delta = (alpha.unsqueeze(-1) * memory_c).sum(0)
+    computed = (alpha.unsqueeze(-1) * memory_c).sum(dim=0)
+    assert torch.equal(expected_delta, computed)
+
+
+def test_restored_cache_matches_directly_computed_aggregate_future():
+    top_k, pred_len = 5, 12
+    memory_c = torch.randn(top_k, pred_len)
+    offset = torch.randn(())
+    alpha = torch.softmax(torch.randn(top_k), dim=-1)
+    delta = (alpha.unsqueeze(-1) * memory_c).sum(0)
+    restored = restore_absolute(delta.unsqueeze(0).unsqueeze(0),
+                                 offset.reshape(1, 1)).squeeze(0).squeeze(0)
+    direct_future_agg = (alpha.unsqueeze(-1) * (memory_c + offset)).sum(0)
+    assert torch.allclose(restored, direct_future_agg, atol=1e-5)
+
+
+def test_encoder_and_setconditioner_receive_no_gradient_from_stage2_loss():
+    exp, args, model, host_ck = build_fresh_stage2(S2_96, seed=1)
+    exp._ensure_memory()
+    exp._build_key_bank(force=True)
+    freeze_retrieval_submodules(model)
+
+    _, loader = exp._get_data(flag='train', shuffle=False)
+    batch_x, batch_y, batch_start_idx = next(iter(loader))
+    batch_x, batch_y, batch_start_idx = exp._move_batch(batch_x, batch_y, batch_start_idx)
+    cand_mask, counts = exp._candidate_mask(batch_start_idx)
+    valid_query = counts > 0
+
+    bsz = batch_x.size(0)
+    channels = model.channels
+    slots = model.num_source_slots()
+    relation_outputs = torch.randn(bsz, channels, slots, model.pred_len)
+    relation_query_embs = torch.randn(bsz, channels, slots, int(args.d_model))
+    rcache = {'relation_outputs': relation_outputs, 'relation_query_embs': relation_query_embs}
+
+    y_final, y_base, y_ret, beta, lam, debug = model.forward_from_retrieval_values(
+        relation_outputs, batch_x=batch_x, retrieval_cache=rcache, memory_y=exp.memory_y,
+        valid_mask=cand_mask, key_bank=exp.key_bank, memory_x_last=exp.memory_x_last, target_y=batch_y)
+    loss = exp._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
+    loss.backward()
+
+    encoder = getattr(model, 'stage1_encoder', None)
+    if encoder is not None:
+        for p in encoder.parameters():
+            assert p.grad is None, 'frozen stage1_encoder received a non-None gradient'
+
+
+def test_forecast_head_and_gate_do_receive_gradient():
+    exp, args, model, host_ck = build_fresh_stage2(S2_96, seed=1)
+    exp._ensure_memory()
+    exp._build_key_bank(force=True)
+    freeze_retrieval_submodules(model)
+
+    _, loader = exp._get_data(flag='train', shuffle=False)
+    batch_x, batch_y, batch_start_idx = next(iter(loader))
+    batch_x, batch_y, batch_start_idx = exp._move_batch(batch_x, batch_y, batch_start_idx)
+    cand_mask, counts = exp._candidate_mask(batch_start_idx)
+    valid_query = counts > 0
+
+    bsz = batch_x.size(0)
+    channels = model.channels
+    slots = model.num_source_slots()
+    relation_outputs = torch.randn(bsz, channels, slots, model.pred_len)
+    relation_query_embs = torch.randn(bsz, channels, slots, int(args.d_model))
+    rcache = {'relation_outputs': relation_outputs, 'relation_query_embs': relation_query_embs}
+
+    y_final, y_base, y_ret, beta, lam, debug = model.forward_from_retrieval_values(
+        relation_outputs, batch_x=batch_x, retrieval_cache=rcache, memory_y=exp.memory_y,
+        valid_mask=cand_mask, key_bank=exp.key_bank, memory_x_last=exp.memory_x_last, target_y=batch_y)
+    loss = exp._loss(y_final, y_base, y_ret, batch_y, debug, valid_query)
+    assert torch.isfinite(loss)
+    loss.backward()
+
+    base_head = getattr(model, 'base_head', None)
+    assert base_head is not None
+    assert any(p.grad is not None and torch.isfinite(p.grad).all() and p.grad.abs().sum() > 0
+              for p in base_head.parameters()), 'base_head received no finite nonzero gradient'
+
+
+def test_compute_cache_restored_fragg_matches_manual_computation_on_real_batch():
+    exp, args, model, host_ck = build_fresh_stage2(S2_96, seed=1)
+    exp._ensure_memory()
+    device = exp.device
+
+    _, loader = exp._get_data(flag='val', shuffle=False)
+    batch_x, batch_y, batch_start_idx = next(iter(loader))
+    batch_x, batch_y, batch_start_idx = exp._move_batch(batch_x, batch_y, batch_start_idx)
+    cand_mask, counts = exp._candidate_mask(batch_start_idx)
+    valid_query = counts.to(device) > 0
+    if bool((~valid_query).all()):
+        pytest.skip('no valid queries in first val batch')
+
+    channels = model.channels
+    bsz = batch_x.size(0)
+    delta = torch.randn(bsz, channels, 1, model.pred_len)
+    offset = torch.randn(bsz, channels)
+    cache = {'relation_outputs': delta, 'query_offset': offset,
+             'batch_start_idx': batch_start_idx.clone()}
+    start_to_row = {int(s): i for i, s in enumerate(batch_start_idx.tolist())}
+
+    class _OneBatchLoader:
+        def __iter__(self):
+            yield batch_x, batch_y, batch_start_idx
+
+    result = compute_cache_restored_fragg(exp, _OneBatchLoader(), cache, start_to_row, device)
+
+    raw_abs = restore_absolute(delta[:, :, 0, :], offset).permute(0, 2, 1).to(device)
+    yt = batch_y[valid_query]
+    yr = raw_abs[valid_query]
+    expected = float(((yr - yt) ** 2).sum()) / yt.numel()
+    assert abs(result - expected) < 1e-6

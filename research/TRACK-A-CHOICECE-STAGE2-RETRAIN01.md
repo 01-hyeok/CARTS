@@ -1,4 +1,32 @@
 ```text
+INVALID_FOR_CONCLUSION:
+- reason: The retrieval cache built by scripts/build_choicece_retrieval_cache01.py
+  stored `relation_outputs` in ABSOLUTE value space (`memory_c + offset_c`,
+  the query's own last-observed value added onto the candidate delta), while
+  `RelationStage2.forward_from_retrieval_values()` -- and the model's own
+  online (non-cached) path -- expects/builds `relation_outputs` in DELTA
+  space (candidate future minus that candidate's own last value, offset
+  NEVER added mid-pipeline; confirmed by direct line-level trace of
+  models/RelationStage2.py::forward(), see
+  research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md section 1 for the
+  full evidence). This caused every metric below built on the cached
+  retrieval branch (`ret_mse`, the gate's learned weighting of that branch,
+  and therefore `final_mse`) to be computed on an effectively double-offset
+  retrieval signal.
+- affected: every ChoiceCE-STAGE2-RETRAIN01 metric in this file that
+  involves `ret_mse`, the gate/lambda values, or `final_mse` -- i.e. all 16
+  arms (H96 + H720). Any interpretation drawn from those numbers (including
+  gate weight magnitude, retrieval-branch usefulness, or ChoiceCE-vs-
+  Independent-Base comparisons) is INVALID and must not be cited.
+- unaffected: the Stage-1 checkpoints themselves, their own
+  free_running_aggregate_future_mse (`retrieval_metrics_<arm>.json`), the
+  frozen-submodule-hash integrity checks, and the Independent Base
+  reference (trained without any retrieval branch, never touched this
+  cache).
+- superseded by: research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md
+```
+
+```text
 EXECUTED:
 - Code audit (section 2, all 7 questions), read-only, with the two named
   suspicions CONFIRMED by direct code inspection (not assumed).

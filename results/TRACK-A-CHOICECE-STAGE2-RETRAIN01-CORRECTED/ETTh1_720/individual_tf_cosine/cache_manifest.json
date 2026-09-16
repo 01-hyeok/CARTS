@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_factorial_e2e/ETTh1_720/individual_tf_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "33ceb7d4ec81b99c9ccb7bc0bb9926b268874a99ddf39496c3534d8e72c547fc",
+  "config_hash": "2469e7e1e5ee401524699fa0d89b06733e365fce8bb4dd1afa29b55b8d7af0ab",
+  "cell": "ETTh1_720",
+  "arm_name": "individual_tf_cosine"
+}

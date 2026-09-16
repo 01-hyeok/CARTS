@@ -1,0 +1,11 @@
+[stage2_retrain01] set_onpolicy_cosine epoch 1 train_loss=0.59671 val_final_mse=1.520180 gate_mean=0.247
+[stage2_retrain01] set_onpolicy_cosine epoch 2 train_loss=0.54863 val_final_mse=1.563144 gate_mean=0.200
+[stage2_retrain01] set_onpolicy_cosine epoch 3 train_loss=0.54262 val_final_mse=1.634257 gate_mean=0.253
+[stage2_retrain01] set_onpolicy_cosine epoch 4 train_loss=0.54356 val_final_mse=1.512378 gate_mean=0.187
+[stage2_retrain01] set_onpolicy_cosine epoch 5 train_loss=0.53926 val_final_mse=1.507975 gate_mean=0.087
+[stage2_retrain01] set_onpolicy_cosine epoch 6 train_loss=0.53405 val_final_mse=1.541885 gate_mean=0.123
+[stage2_retrain01] set_onpolicy_cosine epoch 7 train_loss=0.53034 val_final_mse=1.536201 gate_mean=0.145
+[stage2_retrain01] set_onpolicy_cosine epoch 8 train_loss=0.52359 val_final_mse=1.552919 gate_mean=0.129
+[stage2_retrain01] set_onpolicy_cosine epoch 9 train_loss=0.52344 val_final_mse=1.578035 gate_mean=0.183
+[stage2_retrain01] set_onpolicy_cosine epoch 10 train_loss=0.53378 val_final_mse=1.580232 gate_mean=0.078
+[stage2_retrain01] early stop at epoch 10 (best=5)

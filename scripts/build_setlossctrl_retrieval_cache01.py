@@ -15,6 +15,12 @@ experiment's own fingerprint fields (`loss_name` instead of Factorial's
 `axis_oracle`/`axis_prefix`/`axis_score` triple, though the latter three
 are also present and checked since SET-LOSS-CONTROL01's fingerprint
 includes them too, fixed at greedy_set/onpolicy/cosine for every arm).
+
+CORRECTED (this version): `relation_outputs` stores the weighted DELTA
+aggregate, not the absolute-space value an earlier version stored -- same
+root cause, same fix, same verification as the sibling script; see that
+script's own module docstring and
+`research/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED.md` for the full trace.
 """
 import argparse
 import hashlib
@@ -33,6 +39,17 @@ from scripts.train_factorial_e2e01 import HostScorer, arm_score, candidate_weigh
 from scripts.train_margutil01 import build_experiment, memory_value
 
 ARMS = ('A0_hard_choice', 'A1_adaptive_multipos', 'A2_srm', 'A3_setutility_softce')
+
+
+def _file_sha256(path):
+    h = hashlib.sha256()
+    h.update(Path(path).read_bytes())
+    return h.hexdigest()
+
+
+def restore_absolute(delta_cache_relation_outputs, query_offset):
+    """VALIDATION-ONLY: see sibling `build_choicece_retrieval_cache01.py`."""
+    return delta_cache_relation_outputs + query_offset.unsqueeze(-1)
 
 
 def validate_arm_checkpoint(arm_ckpt, retrieval_metrics_json, cell, arm_name, top_k):
@@ -95,6 +112,7 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
     _, loader = exp._get_data(flag=split, shuffle=False)
 
     all_start_idx, all_relation_outputs, all_query_embs = [], [], []
+    all_query_offset = []
     all_topk_idx, all_alpha, all_valid_count, all_dup, all_invalid = [], [], [], [], []
 
     for batch_x, batch_y, batch_start_idx in loader:
@@ -107,12 +125,16 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
         query_emb_ch = torch.zeros(bsz, len(channels), 1, d_model)
         topk_idx_ch = torch.zeros(bsz, len(channels), top_k, dtype=torch.long)
         alpha_ch = torch.zeros(bsz, len(channels), top_k)
+        query_offset_ch = torch.zeros(bsz, len(channels))  # validation-only restoration
 
         for c in channels:
             E = encode_raw(model, exp.memory_x, c)
             z_q = encode_raw(model, batch_x, c)
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
-            futures = memory_c + offset_c.view(-1, 1, 1)
+            # memory_c is [N_memory, pred_len] (shared across the batch, NOT
+            # per-query) -- broadcast to [B, N_memory, pred_len] before
+            # gathering by per-query picks_t.
+            memory_c_b = memory_c.unsqueeze(0).expand(batch_x.size(0), -1, -1)
             host_scores = host.scores(batch_x, c, cand_mask)
 
             selected = torch.zeros_like(cand_mask)
@@ -129,13 +151,15 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
 
             sc_sel = host_scores.gather(1, picks_t)
             alpha = torch.softmax(sc_sel / float(host.tau_topk), dim=-1)
-            tgt = futures.gather(1, picks_t.unsqueeze(-1).expand(-1, -1, futures.size(-1)))
-            y_ret = (alpha.unsqueeze(-1) * tgt).sum(1)
+            # CORRECTED: DELTA space, query_offset NEVER added (see module docstring)
+            tgt_delta = memory_c_b.gather(1, picks_t.unsqueeze(-1).expand(-1, -1, memory_c_b.size(-1)))
+            delta_ret = (alpha.unsqueeze(-1) * tgt_delta).sum(1)
 
-            rel_out_ch[:, c, 0, :] = y_ret.cpu()
+            rel_out_ch[:, c, 0, :] = delta_ret.cpu()
             query_emb_ch[:, c, 0, :] = z_q.detach().cpu()
             topk_idx_ch[:, c, :] = picks_t.cpu()
             alpha_ch[:, c, :] = alpha.cpu()
+            query_offset_ch[:, c] = offset_c.detach().cpu()
 
         dup = (topk_idx_ch.sort(dim=-1).values[:, :, 1:] ==
               topk_idx_ch.sort(dim=-1).values[:, :, :-1]).sum(dim=-1)
@@ -150,18 +174,22 @@ def build_cache_for_split(arm_ckpt_path, arm_name, stage2_host, reference_ckpt, 
         all_valid_count.append(counts.cpu())
         all_dup.append(dup)
         all_invalid.append(invalid)
+        all_query_offset.append(query_offset_ch)
 
     return {
         'batch_start_idx': torch.cat(all_start_idx),
-        'relation_outputs': torch.cat(all_relation_outputs),
+        'relation_outputs': torch.cat(all_relation_outputs),  # DELTA space
         'relation_query_embs': torch.cat(all_query_embs),
         'topk_idx': torch.cat(all_topk_idx),
         'alpha': torch.cat(all_alpha),
+        'query_offset': torch.cat(all_query_offset),
         'valid_count': torch.cat(all_valid_count),
         'duplicate_count': torch.cat(all_dup),
         'invalid_row': torch.cat(all_invalid),
         'channels': channels, 'top_k': top_k, 'pred_len': pred_len,
         'arm_name': arm_name, 'split': split,
+        'value_space': 'delta', 'offset_included': False,
+        'cache_schema_version': 'corrected_delta_v1',
     }
 
 
@@ -175,7 +203,7 @@ def main():
     ap.add_argument('--pred_len', type=int, required=True)
     ap.add_argument('--top_k', type=int, default=10)
     ap.add_argument('--chunk_size', type=int, default=4096)
-    ap.add_argument('--out_dir', default='results/EXP-SET-LOSS-STAGE2-RETRAIN01')
+    ap.add_argument('--out_dir', default='results/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED')
     cli = ap.parse_args()
 
     rm_json = Path(cli.stage1_out_dir) / cli.cell / f'retrieval_metrics_{cli.arm_name}.json'
@@ -190,12 +218,21 @@ def main():
     validate_arm_checkpoint(arm_ckpt, rm_json, cli.cell, cli.arm_name, cli.top_k)
     print(f'[build_cache_setlossctrl01] {cli.cell}/{cli.arm_name}: checkpoint validated -- {arm_ckpt}')
 
+    stage1_hash = _file_sha256(arm_ckpt)
+    config_hash = hashlib.sha256(
+        json.dumps({'cell': cli.cell, 'arm_name': cli.arm_name, 'pred_len': cli.pred_len,
+                   'top_k': cli.top_k, 'chunk_size': cli.chunk_size,
+                   'stage2_host': cli.stage2_host}, sort_keys=True).encode()
+    ).hexdigest()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     out_dir = Path(cli.out_dir) / 'cache' / cli.cell / cli.arm_name
     out_dir.mkdir(parents=True, exist_ok=True)
     for split in ('train', 'val', 'test'):
         cache = build_cache_for_split(arm_ckpt, cli.arm_name, cli.stage2_host, cli.reference_ckpt,
                                       cli.pred_len, split, cli.top_k, cli.chunk_size, device)
+        cache.update({'stage1_checkpoint_path': str(arm_ckpt), 'stage1_checkpoint_hash': stage1_hash,
+                     'config_hash': config_hash})
         out_path = out_dir / f'{split}.pt'
         torch.save(cache, out_path)
         n_dup = int((cache['duplicate_count'] > 0).sum())
@@ -206,6 +243,13 @@ def main():
         if n_dup or n_inv:
             print(f'[ISSUE] {cli.cell}/{cli.arm_name}/{split}: {n_dup} duplicate-selection rows, '
                  f'{n_inv} invalid/short-candidate-pool rows found.')
+
+    manifest = {'value_space': 'delta', 'offset_included': False,
+               'cache_schema_version': 'corrected_delta_v1',
+               'stage1_checkpoint_path': str(arm_ckpt), 'stage1_checkpoint_hash': stage1_hash,
+               'config_hash': config_hash, 'cell': cli.cell, 'arm_name': cli.arm_name}
+    (out_dir / 'cache_manifest.json').write_text(json.dumps(manifest, indent=2))
+    print(f'[build_cache_setlossctrl01] wrote {out_dir / "cache_manifest.json"}')
 
 
 if __name__ == '__main__':

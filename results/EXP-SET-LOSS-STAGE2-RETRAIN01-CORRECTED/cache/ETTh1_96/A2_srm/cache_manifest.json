@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_set_loss_control01/ETTh1_96/A2_srm/checkpoint.pth",
+  "stage1_checkpoint_hash": "84b16dfdcf24205b947033e8c93600430d814615cd10e96732101e8a055696d9",
+  "config_hash": "6c36dc0e26a8a9c4641830bfe6f59e8e23e337cec147edc445306bd4f9235d1d",
+  "cell": "ETTh1_96",
+  "arm_name": "A2_srm"
+}

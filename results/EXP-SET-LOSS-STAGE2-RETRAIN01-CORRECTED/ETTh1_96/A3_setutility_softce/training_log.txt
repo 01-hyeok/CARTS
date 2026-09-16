@@ -1,0 +1,11 @@
+[stage2_retrain01] A3_setutility_softce epoch 1 train_loss=0.38324 val_final_mse=0.681459 gate_mean=0.523
+[stage2_retrain01] A3_setutility_softce epoch 2 train_loss=0.34793 val_final_mse=0.663584 gate_mean=0.471
+[stage2_retrain01] A3_setutility_softce epoch 3 train_loss=0.34338 val_final_mse=0.667070 gate_mean=0.456
+[stage2_retrain01] A3_setutility_softce epoch 4 train_loss=0.34153 val_final_mse=0.665934 gate_mean=0.452
+[stage2_retrain01] A3_setutility_softce epoch 5 train_loss=0.33953 val_final_mse=0.655958 gate_mean=0.432
+[stage2_retrain01] A3_setutility_softce epoch 6 train_loss=0.33864 val_final_mse=0.674131 gate_mean=0.442
+[stage2_retrain01] A3_setutility_softce epoch 7 train_loss=0.33826 val_final_mse=0.663158 gate_mean=0.421
+[stage2_retrain01] A3_setutility_softce epoch 8 train_loss=0.33834 val_final_mse=0.659689 gate_mean=0.413
+[stage2_retrain01] A3_setutility_softce epoch 9 train_loss=0.33738 val_final_mse=0.656406 gate_mean=0.417
+[stage2_retrain01] A3_setutility_softce epoch 10 train_loss=0.33709 val_final_mse=0.662986 gate_mean=0.419
+[stage2_retrain01] early stop at epoch 10 (best=5)

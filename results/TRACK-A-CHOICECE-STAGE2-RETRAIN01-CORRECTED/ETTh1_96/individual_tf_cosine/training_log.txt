@@ -1,0 +1,11 @@
+[stage2_retrain01] individual_tf_cosine epoch 1 train_loss=0.38750 val_final_mse=0.690646 gate_mean=0.507
+[stage2_retrain01] individual_tf_cosine epoch 2 train_loss=0.35131 val_final_mse=0.671590 gate_mean=0.449
+[stage2_retrain01] individual_tf_cosine epoch 3 train_loss=0.34604 val_final_mse=0.675711 gate_mean=0.424
+[stage2_retrain01] individual_tf_cosine epoch 4 train_loss=0.34452 val_final_mse=0.675765 gate_mean=0.421
+[stage2_retrain01] individual_tf_cosine epoch 5 train_loss=0.34165 val_final_mse=0.663058 gate_mean=0.405
+[stage2_retrain01] individual_tf_cosine epoch 6 train_loss=0.34074 val_final_mse=0.674655 gate_mean=0.403
+[stage2_retrain01] individual_tf_cosine epoch 7 train_loss=0.34037 val_final_mse=0.668438 gate_mean=0.380
+[stage2_retrain01] individual_tf_cosine epoch 8 train_loss=0.34071 val_final_mse=0.666155 gate_mean=0.378
+[stage2_retrain01] individual_tf_cosine epoch 9 train_loss=0.33921 val_final_mse=0.665196 gate_mean=0.384
+[stage2_retrain01] individual_tf_cosine epoch 10 train_loss=0.33927 val_final_mse=0.668707 gate_mean=0.381
+[stage2_retrain01] early stop at epoch 10 (best=5)

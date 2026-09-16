@@ -1,4 +1,22 @@
 ```text
+INVALID_FOR_CONCLUSION:
+- reason: The retrieval cache built by scripts/build_setlossctrl_retrieval_cache01.py
+  stored `relation_outputs` in ABSOLUTE value space (`memory_c + offset_c`)
+  instead of the DELTA space `RelationStage2.forward_from_retrieval_values()`
+  expects -- identical root cause as the sibling ChoiceCE experiment; see
+  research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md section 1 for the
+  full evidence trace.
+- affected: every EXP-SET-LOSS-STAGE2-RETRAIN01 metric in this file
+  involving `ret_mse`, the gate/lambda values, or `final_mse` -- i.e. all 4
+  H96 loss arms (Hard CE / MultiPos / SRM / SoftCE). Any interpretation
+  drawn from those numbers is INVALID and must not be cited.
+- unaffected: TRACK-A-SET-LOSS-CONTROL01's own Stage-1 checkpoints and
+  their own free_running_aggregate_future_mse, frozen-submodule-hash
+  integrity checks, and the Independent Base reference.
+- superseded by: research/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED.md
+```
+
+```text
 STAGE1 LOSS JOB: RUNNING
 STAGE2 IMPLEMENTATION: COMPLETE
 STAGE2 TESTS: COMPLETE (scope-limited, see below)

@@ -1,0 +1,10 @@
+[stage2_retrain01] individual_tf_asymmetric epoch 1 train_loss=0.39116 val_final_mse=0.689466 gate_mean=0.489
+[stage2_retrain01] individual_tf_asymmetric epoch 2 train_loss=0.35358 val_final_mse=0.670303 gate_mean=0.411
+[stage2_retrain01] individual_tf_asymmetric epoch 3 train_loss=0.34780 val_final_mse=0.674956 gate_mean=0.383
+[stage2_retrain01] individual_tf_asymmetric epoch 4 train_loss=0.34655 val_final_mse=0.671373 gate_mean=0.375
+[stage2_retrain01] individual_tf_asymmetric epoch 5 train_loss=0.34348 val_final_mse=0.664616 gate_mean=0.364
+[stage2_retrain01] individual_tf_asymmetric epoch 6 train_loss=0.34237 val_final_mse=0.675542 gate_mean=0.364
+[stage2_retrain01] individual_tf_asymmetric epoch 7 train_loss=0.34190 val_final_mse=0.668158 gate_mean=0.342
+[stage2_retrain01] individual_tf_asymmetric epoch 8 train_loss=0.34188 val_final_mse=0.666148 gate_mean=0.332
+[stage2_retrain01] individual_tf_asymmetric epoch 9 train_loss=0.34107 val_final_mse=0.663404 gate_mean=0.343
+[stage2_retrain01] individual_tf_asymmetric epoch 10 train_loss=0.34043 val_final_mse=0.667619 gate_mean=0.338

@@ -3780,3 +3780,53 @@ convention, confirmed consistent by direct code reading (not just
 assumed), so the cache is in the correct space; the large `ret_MSE` is a
 real, expected consequence of already-known floor-level retrieval quality,
 not a data bug.
+
+---
+
+## CORRECTION (append-only) -- the "unit/offset-space bug RULED OUT" claim
+above was WRONG; both Stage-2 retrain experiments' numbers are INVALID
+
+The paragraph directly above ("A methodological note investigated and
+RULED OUT during this round...") is **retracted**. It was wrong.
+
+**What actually happened.** The user pushed back with a detailed,
+evidence-based challenge to that conclusion and explicitly required a
+fresh, independent re-trace of `RelationStage2.forward()` before accepting
+or rejecting it -- not a re-reading of the same two functions cited above.
+Doing that re-trace (this time following exactly where the local
+`relation_outputs` list used by `self.relation_mixer(...)` is populated,
+not just `_restore_retrieved_value`) found:
+
+- The ONLINE path's `relation_outputs` (the tensor that actually feeds
+  `relation_mixer` -> `y_ret_c` -> the gate -> `y_final_c`) is built from
+  `retrieve_relation_future(..., memory_value_c=memory_value_c, ...)`,
+  where `memory_value_c` is the **candidate's own delta**
+  (`memory_y[...] - memory_x_last[...]`) -- the query's own `query_offset`
+  is returned separately by that helper and is **never added** into this
+  tensor.
+- `_restore_retrieved_value` (the function both cited above) DOES add
+  `query_offset` -- but its output feeds **only** a diagnostics field
+  (`debug['relation_outputs']`), never `y_ret_c`/`y_final_c`. The earlier
+  reasoning conflated this diagnostics-only restoration with what the
+  model actually trains/predicts on.
+- Both cache builders (`scripts/build_choicece_retrieval_cache01.py`,
+  `scripts/build_setlossctrl_retrieval_cache01.py`) stored
+  `futures = memory_c + offset_c`, i.e. the diagnostics-only ABSOLUTE
+  space, and fed that directly into `forward_from_retrieval_values`.
+
+**Consequence.** Every `ret_mse` / gate-weight / `final_mse` number
+reported for TRACK-A-CHOICECE-STAGE2-RETRAIN01 (16 arms) and
+EXP-SET-LOSS-STAGE2-RETRAIN01 (4 H96 arms) above is computed from a
+retrieval branch fed a value roughly double-counting the query's own last
+observation, not the value the model is actually designed to consume. The
+"tiny gate weight, poor raw retrieval, retrieval looks useless" reading
+given above does **not** follow from this evidence and must not be cited.
+
+**Status.** Both experiments have been re-run end to end with a corrected,
+schema-versioned (`cache_schema_version=corrected_delta_v1`), pure-delta
+cache, a mandatory pre-training Stage-1 FR-Agg cross-check gate, and fresh
+Stage-2 gate/head/fusion weights (never continued from the old run's
+checkpoints). See `research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md`
+and `research/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED.md` for the
+corrected results; the two original report files are marked
+`INVALID_FOR_CONCLUSION` at the top and preserved unmodified otherwise.

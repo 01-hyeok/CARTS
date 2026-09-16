@@ -1,0 +1,6 @@
+{
+  "counterfactual_lambda0_mse": 0.6539178054480169,
+  "counterfactual_lambda1_mse": 0.5986199666177062,
+  "trained_final_mse": 0.5583436385162338,
+  "note": "lambda0 == base_mse (retrieval branch off, reused not re-run); lambda1 == projected_retrieval_branch_mse (base branch off, reused not re-run)"
+}

@@ -1,0 +1,11 @@
+[stage2_retrain01] A0_hard_choice epoch 1 train_loss=0.38294 val_final_mse=0.681209 gate_mean=0.520
+[stage2_retrain01] A0_hard_choice epoch 2 train_loss=0.34737 val_final_mse=0.664815 gate_mean=0.471
+[stage2_retrain01] A0_hard_choice epoch 3 train_loss=0.34286 val_final_mse=0.668476 gate_mean=0.457
+[stage2_retrain01] A0_hard_choice epoch 4 train_loss=0.34088 val_final_mse=0.667971 gate_mean=0.456
+[stage2_retrain01] A0_hard_choice epoch 5 train_loss=0.33890 val_final_mse=0.656145 gate_mean=0.438
+[stage2_retrain01] A0_hard_choice epoch 6 train_loss=0.33805 val_final_mse=0.675291 gate_mean=0.446
+[stage2_retrain01] A0_hard_choice epoch 7 train_loss=0.33761 val_final_mse=0.664431 gate_mean=0.424
+[stage2_retrain01] A0_hard_choice epoch 8 train_loss=0.33788 val_final_mse=0.661211 gate_mean=0.417
+[stage2_retrain01] A0_hard_choice epoch 9 train_loss=0.33686 val_final_mse=0.659467 gate_mean=0.422
+[stage2_retrain01] A0_hard_choice epoch 10 train_loss=0.33651 val_final_mse=0.662742 gate_mean=0.422
+[stage2_retrain01] early stop at epoch 10 (best=5)

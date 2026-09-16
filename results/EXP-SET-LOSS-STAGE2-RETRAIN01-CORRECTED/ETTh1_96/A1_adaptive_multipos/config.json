@@ -1,0 +1,37 @@
+{
+  "exp": "EXP-SET-LOSS-STAGE2-RETRAIN01",
+  "cell": "ETTh1_96",
+  "arm": "A1_adaptive_multipos",
+  "seed": 1,
+  "stage2_init_sha256": "5690648dcb6bddb660e26a87335ae4d880d9efb94eefa921602d71cc78a451c8",
+  "frozen_submodule_sha256_before_training": {
+    "stage1_encoder": "d29a37111b4f525f620017022920cc81d15a93204755fa2b35bfb2f450b60e2b",
+    "shared_cross_projection": "2013cf2bb519c707ed32d90bdf541eda61d35a50f1e0c4fb49e9cb098aa7198e"
+  },
+  "trainable_parameter_names": [
+    "base_head.shared.bias",
+    "base_head.shared.weight",
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_concat_projection.bias",
+    "relation_concat_projection.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 56002,
+  "stage2_host": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+  "stage2_host_sha256": "112bd013c59749f39294a19013ba2e08947f6fee26e943ccacc10b194a049683",
+  "cache_dir": "results/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED/cache/ETTh1_96/A1_adaptive_multipos",
+  "stage1_checkpoint_path": "checkpoints/track_a_set_loss_control01/ETTh1_96/A1_adaptive_multipos/checkpoint.pth",
+  "stage1_checkpoint_hash": "cdef2705dd31706037fb8a0b7c29c71889d3ea4041c7acce263d45d47359f51d",
+  "cache_config_hash": "38ab92642798ab505becf7042cec7eea466df4902dd1156428d03f1509926203",
+  "cache_restored_val_fragg": 0.7154285953362253,
+  "stage1_reported_fragg": 0.715428619021772,
+  "fragg_tolerance": 0.02,
+  "pid": 610128,
+  "start_time": "2026-09-16T12:57:11"
+}

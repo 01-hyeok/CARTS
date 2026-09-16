@@ -1,0 +1,37 @@
+{
+  "exp": "TRACK-A-CHOICECE-STAGE2-RETRAIN01",
+  "cell": "ETTh1_720",
+  "arm": "individual_tf_cosine",
+  "seed": 1,
+  "stage2_init_sha256": "8cf30b8dc619466be905e576e74032178b572a114b5ac5e2e0fd5f197e1d2d3d",
+  "frozen_submodule_sha256_before_training": {
+    "stage1_encoder": "c2d7268b793992baf229794607e07b7f5bf91e63f2f7107f282a15aef6518d41",
+    "shared_cross_projection": "ca80123a1a0bbbaf11fe2ba7bd1cb5c8c1c0d6a61eae47027dea606ff950f17f"
+  },
+  "trainable_parameter_names": [
+    "base_head.shared.bias",
+    "base_head.shared.weight",
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_concat_projection.bias",
+    "relation_concat_projection.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 1315234,
+  "stage2_host": "checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_sha256": "492b19c82757ced93be60d7f69e5cc50fd633557befc939778c3913ae67b4fe6",
+  "cache_dir": "results/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED/cache/ETTh1_720/individual_tf_cosine",
+  "stage1_checkpoint_path": "checkpoints/track_a_factorial_e2e/ETTh1_720/individual_tf_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "33ceb7d4ec81b99c9ccb7bc0bb9926b268874a99ddf39496c3534d8e72c547fc",
+  "cache_config_hash": "2469e7e1e5ee401524699fa0d89b06733e365fce8bb4dd1afa29b55b8d7af0ab",
+  "cache_restored_val_fragg": 1.8058242843691927,
+  "stage1_reported_fragg": 1.8058243319229668,
+  "fragg_tolerance": 0.02,
+  "pid": 595897,
+  "start_time": "2026-09-16T12:32:43"
+}
