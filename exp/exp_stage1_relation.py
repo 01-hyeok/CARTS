@@ -77,8 +77,8 @@ class Exp_Stage1_Relation(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-    def _get_data(self, flag, shuffle=None):
-        return data_provider(self.args, flag, shuffle=shuffle)
+    def _get_data(self, flag, shuffle=None, generator=None):
+        return data_provider(self.args, flag, shuffle=shuffle, generator=generator)
 
     def _select_optimizer(self):
         return optim.Adam([p for p in self.model.parameters() if p.requires_grad], lr=self.args.learning_rate)

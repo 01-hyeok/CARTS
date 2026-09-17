@@ -3830,3 +3830,143 @@ checkpoints). See `research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md`
 and `research/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED.md` for the
 corrected results; the two original report files are marked
 `INVALID_FOR_CONCLUSION` at the top and preserved unmodified otherwise.
+
+---
+
+## CORRECTION (append-only) -- TRACK-A-SET-LOSS-CONTROL01 / EXP-SET-LOSS-STAGE2-RETRAIN01(-CORRECTED) used an unauthorized seed=1
+
+`TRACK-A-SET-LOSS-CONTROL01` (and therefore its Stage-2 child,
+`EXP-SET-LOSS-STAGE2-RETRAIN01` / `-CORRECTED`) was run with `--seed 1`.
+This was never approved by the user. The Factorial baseline arm
+`A0_hard_choice` is meant to reproduce -- `set_onpolicy_cosine` (Set
+Oracle + On-policy + Cosine + Hard Choice CE, all 7 ETTh1 channels) --
+uses `--seed 0`. Any earlier statement in this document or in
+`research/EXP-SET-LOSS-STAGE2-RETRAIN01.md` claiming "spec requires
+seed=1" is **withdrawn** -- it had no basis and should not be cited.
+
+All `results/TRACK-A-SET-LOSS-CONTROL01/**` and
+`results/EXP-SET-LOSS-STAGE2-RETRAIN01-CORRECTED/**` outputs are preserved
+unmodified (not deleted, not overwritten) but are now marked
+`NOT DIRECTLY COMPARABLE TO FACTORIAL SEED-0 BASELINE / UNAUTHORIZED SEED
+CHANGE / PRESERVED AS A SEED-1 REPLICATE ONLY` at the top of each affected
+report and via an `UNAUTHORIZED_SEED_WARNING.md` file at the root of each
+affected results directory.
+
+A same-seed (seed=0), reproducibility-gated re-run is in progress under
+new experiment IDs `TRACK-A-SET-LOSS-CONTROL02` /
+`EXP-SET-LOSS-STAGE2-RETRAIN02`, writing to entirely separate
+`results/`/`checkpoints/`/`logs/` paths. See
+`research/TRACK-A-SET-LOSS-CONTROL02.md` /
+`research/EXP-SET-LOSS-STAGE2-RETRAIN02.md` once available for the
+corrected numbers.
+
+---
+
+## CORRECTION (append-only) -- TRACK-A-ONPOLICY-RANKLOSS01's R1_wce omitted
+the student temperature; its Stage-2 numbers are a frozen-host diagnostic,
+not a final Stage-2 result
+
+Two limitations in the R1_wce arm reported earlier in this document
+(section "TRACK-A-ONPOLICY-RANKLOSS01 — On-policy prefix fixed, loss
+varied", rows in the results tables around line 3148/3187) are recorded
+here. **The original R1_wce results are NOT modified or deleted** -- they
+remain valid as what they actually measured; only their scope is
+corrected.
+
+**1. Missing student temperature.** R1_wce's step loss
+(`scripts/train_onpolicy_rankloss01.py::_wce_step_loss`) builds
+`log_prob = F.log_softmax(u_hat.masked_fill(~valid_now, neg_inf), dim=-1)`
+-- `u_hat` is NOT divided by any temperature before the softmax. Only the
+teacher side (`weighted_topk_listwise_ce`'s own `tau_teacher` argument,
+passed `tau_choice`) is temperature-scaled. This means R1_wce's student
+distribution `p_theta` used an implicit `tau_S=1`, not `tau_S=tau_choice`
+the way Hard Choice CE (`oracle_choice_step_loss`) scales its own logits
+by `tau_choice`. Confirmed empirically: `wce_step_loss` with `top_k_oracle=1`
+must degenerate to Hard Choice CE exactly (a plain one-hot target), and
+against `_wce_step_loss` it did NOT (loss 3.58 vs 21.50 on a synthetic
+check) -- see `tests/test_oracle_utility_wce.py::test_m1_equals_hard_choice_ce`.
+R1_wce is therefore **not** a controlled temperature-matched comparison
+against R0's Hard Choice CE; it is a separate, earlier, exploratory
+formulation of WCE, kept as-is and not treated as a duplicate baseline for
+`EXP-ORACLE-WCE-CONTROL01`.
+
+**2. Stage-2 numbers are a frozen-host injection diagnostic.** R1_wce's
+reported Stage-2 MSE came from `scripts/eval_onpolicy_rankloss01_stage2.py`,
+which injects the arm's retrieval into the EXISTING frozen S0_wce Stage-2
+host -- no arm-specific Stage-2 gate/head was ever retrained for R1_wce.
+This is the same category of limitation already documented for the
+pre-correction ChoiceCE/SetLoss Stage-2 rounds earlier in this document.
+Those numbers must not be cited as R1_wce's "final" Stage-2 performance,
+and are not reused as a baseline for `EXP-ORACLE-WCE-CONTROL01`'s own
+(freshly retrained, corrected) Stage-2 numbers.
+
+**Consequence for `EXP-ORACLE-WCE-CONTROL01`.** Both `individual_onpolicy_cosine_wce`
+and `set_onpolicy_cosine_wce` use ONE shared, corrected `wce_step_loss`
+(`utils/oracle_utility_wce.py`) that DOES apply `tau_choice` to the student
+logits (matching Hard Choice CE's own temperature, spec-exact), with a
+freshly retrained (not frozen-host-injected) Stage-2 per arm. This is not
+a duplicate of R1_wce: the Individual side is a corrected re-verification
+under the right formula, and the Set side (never run under plain WCE
+before -- TRACK-A-SET-LOSS-CONTROL01/02 used a different, normalized-regret
+Soft-CE variant) is new.
+
+---
+
+## EXP-ORACLE-WCE-CONTROL01 — Individual/Set Oracle × Hard Choice CE vs WCE, corrected student temperature
+
+Full report: `research/EXP-ORACLE-WCE-CONTROL01.md`. Corrects
+TRACK-A-ONPOLICY-RANKLOSS01's R1_wce (see the correction block directly
+above this section) by applying `tau_choice` to the student logits as
+well as the teacher, using ONE shared `utils/oracle_utility_wce.py::wce_step_loss`
+for both arms (built from `models/RelationStage1.py`'s
+`prepare_topk_coverage_targets` + `weighted_topk_listwise_ce`, the same
+primitives R1_wce should have used correctly). Compares two already-
+completed Hard Choice CE arms (`individual_onpolicy_cosine`,
+`set_onpolicy_cosine`, both seed=0) against two new WCE arms
+(`individual_onpolicy_cosine_wce`, `set_onpolicy_cosine_wce`, also
+seed=0) — loss is the only intended difference; the Hard-CE arms were
+NOT re-run. This comparison is **configuration-matched, not exact-paired**
+(the original Hard-CE runs never recorded a batch-order hash to prove
+identical shuffling — see `[ISSUE]` in the full report).
+
+t=0 equivalence between the two Oracles was verified directly against the
+real `individual_utility`/`greedy_set_utility` code (not assumed):
+`Aggregate(S_{-1} U {i})` with an empty prefix reduces to the singleton
+candidate's own value regardless of host weighting, so Individual and Set
+distance/Top-M targets/WCE loss are IDENTICAL at t=0
+(max_abs_diff=4.77e-07). Every result difference below originates
+entirely from t>=1.
+
+**Stage-2 (freshly retrained per arm — frozen-host injection numbers are
+never used, per this session's established corrected-Stage-2 protocol):**
+
+| horizon | oracle | loss | final_MSE | delta_vs_IB | delta_vs_corresponding_hard | gate_mean | beats_both_counterfactuals |
+|---|---|---|---:|---:|---:|---:|---|
+| H96 | Individual | WCE | 0.36615 | -5.25% | -0.43% | 0.454 | YES |
+| H96 | Set | WCE | 0.36914 | -4.48% | +0.39% | 0.444 | YES |
+| H720 | Individual | WCE | 0.47906 | -2.52% | -0.79% | 0.147 | **NO** |
+| H720 | Set | WCE | 0.53075 | +8.00% | **+8.35%** | 0.464 | YES |
+
+(Independent Base: H96=0.386451, H720=0.491450. Hard-CE reference:
+`results/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED/`.)
+
+**Key findings:**
+- WCE helps Individual Oracle slightly at both horizons (both under 1%,
+  plausibly seed noise); WCE hurts Set Oracle at both horizons, sharply so
+  at H720 (+8.35%, unlikely to be pure noise given the magnitude, but not
+  confirmed without more seeds).
+- Under Hard CE, Individual and Set were nearly tied at both horizons
+  (H96: 0.36773 vs 0.36769; H720: 0.48288 vs 0.48984). WCE is what pulls
+  them apart — always in Individual's favor.
+- H720 shows the same base-only-counterfactual-losing pattern already
+  flagged in the ChoiceCE-CORRECTED report, independent of loss
+  formulation: `individual_onpolicy_cosine_wce`'s trained gate does NOT
+  beat simply using the base branch alone at H720 (gate collapses to
+  mean=0.147).
+- Batch-order SHA256 hashes are identical between the two WCE arms at
+  every shared epoch, at both horizons — the loss-only-difference claim
+  is exact WITHIN this experiment's own two arms, even though it is not
+  exact-paired against the older Hard-CE runs.
+
+Ten closing questions, full Stage-1 table, and the counterfactual/gate-
+distribution breakdown are in the full report.

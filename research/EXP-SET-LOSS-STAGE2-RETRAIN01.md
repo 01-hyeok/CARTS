@@ -1,4 +1,19 @@
 ```text
+NOT DIRECTLY COMPARABLE TO FACTORIAL SEED-0 BASELINE
+UNAUTHORIZED SEED CHANGE
+PRESERVED AS A SEED-1 REPLICATE ONLY
+```
+
+This experiment's Stage-1 (`TRACK-A-SET-LOSS-CONTROL01`) used `--seed 1`
+without user approval. The Factorial baseline `A0_hard_choice` is meant to
+reproduce (`set_onpolicy_cosine`, Set Oracle + On-policy + Cosine + Hard
+Choice CE) was trained with `--seed 0`. Any earlier claim in this file
+that "spec requires seed=1" is withdrawn -- it had no basis. This is a
+second, independent defect from the value-space bug below (INVALID_FOR_CONCLUSION),
+not a duplicate of it. Superseded, same-seed (seed=0) re-run:
+`research/EXP-SET-LOSS-STAGE2-RETRAIN02.md`.
+
+```text
 INVALID_FOR_CONCLUSION:
 - reason: The retrieval cache built by scripts/build_setlossctrl_retrieval_cache01.py
   stored `relation_outputs` in ABSOLUTE value space (`memory_c + offset_c`)

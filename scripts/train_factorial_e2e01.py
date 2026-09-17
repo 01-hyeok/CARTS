@@ -249,8 +249,17 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
                  futures, query_future, target, prefix_policy,
                  tau_choice, k, chunk_size, free_running=False,
                  choice_ce_impl='reference', individual_impl='reference',
-                 greedy_set_impl='reference'):
+                 greedy_set_impl='reference', loss_fn=None):
     """K steps of (state -> logits -> Oracle target -> Choice CE).
+
+    `loss_fn` (TRACK-A-SET-LOSS-CONTROL02): optional
+    `(t, u_hat, u_target, valid_now, tau_choice) -> (loss_t, diag_t)`
+    callback. When given, it REPLACES the choice_ce_impl dispatch below for
+    computing the per-step loss/diag -- everything else (state advance,
+    Oracle target computation, prefix policy, free-running contract) is
+    unchanged. Default `None` preserves this function's exact prior
+    behavior byte-for-byte (regression-tested); this is the minimal-diff
+    hook the spec asked for instead of a duplicated sequence runner.
 
     TRACK-A-WEATHER-OPT04 dispatcher args (all default to 'reference', i.e.
     byte-identical to OPT01/02/03's `run_sequence` in every respect):
@@ -340,7 +349,9 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
                 u_target = (cached_individual_target if cached_individual_target is not None
                            else individual_utility(futures, query_future))
 
-        if choice_ce_impl == 'optimized':
+        if loss_fn is not None:
+            loss_t, diag_t = loss_fn(t, u_hat, u_target, valid_now, tau_choice)
+        elif choice_ce_impl == 'optimized':
             loss_t, diag_t = oracle_choice_step_loss_optimized(u_hat, u_target, valid_now, tau_choice)
         else:
             loss_t, diag_t = oracle_choice_step_loss(u_hat, u_target, valid_now, tau_choice)

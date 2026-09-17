@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/exp_oracle_wce_control01/ETTh1_96/set_onpolicy_cosine_wce/checkpoint.pth",
+  "stage1_checkpoint_hash": "2bd4647dcee648ecc80e290041d60047b98dc4deb6d6d37ddd4993d0ddf995bc",
+  "config_hash": "840ca286cc878d9960a925fcca8892ae5f8483bf76e2321c6a902b1b827efea6",
+  "cell": "ETTh1_96",
+  "arm_name": "set_onpolicy_cosine_wce"
+}

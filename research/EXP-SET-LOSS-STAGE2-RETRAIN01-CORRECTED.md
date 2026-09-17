@@ -1,4 +1,18 @@
 ```text
+NOT DIRECTLY COMPARABLE TO FACTORIAL SEED-0 BASELINE
+UNAUTHORIZED SEED CHANGE
+PRESERVED AS A SEED-1 REPLICATE ONLY
+```
+
+This file's Stage-1 input (`TRACK-A-SET-LOSS-CONTROL01`) used `--seed 1`
+without user approval, not `--seed 0` as the Factorial baseline
+(`set_onpolicy_cosine`) uses. The value-space (delta vs absolute) fix this
+file documents remains valid on its own terms -- it is an orthogonal bug
+from the seed issue -- but none of the numbers below should be compared
+directly against the Factorial seed=0 baseline. Superseded, same-seed
+(seed=0) re-run: `research/EXP-SET-LOSS-STAGE2-RETRAIN02.md`.
+
+```text
 EXECUTED:
 - Identical fix and re-verification protocol as
   research/TRACK-A-CHOICECE-STAGE2-RETRAIN01-CORRECTED.md (same root cause,

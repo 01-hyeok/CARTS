@@ -12,7 +12,7 @@ data_dict = {
 }
 
 
-def data_provider(args, flag, shuffle=None):
+def data_provider(args, flag, shuffle=None, generator=None):
     Data = data_dict[args.data]
     timeenc = 0 if args.embed != 'timeF' else 1
 
@@ -47,5 +47,6 @@ def data_provider(args, flag, shuffle=None):
         batch_size=batch_size,
         shuffle=shuffle_flag,
         num_workers=args.num_workers,
-        drop_last=drop_last)
+        drop_last=drop_last,
+        generator=generator)
     return data_set, data_loader
