@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_set_loss_control02/ETTh1_96/A1_adaptive_multipos/checkpoint.pth",
+  "stage1_checkpoint_hash": "95e677a751770cfc284075edefcc0ebe83e84f17215724e66d204ae976f45f7f",
+  "config_hash": "38ab92642798ab505becf7042cec7eea466df4902dd1156428d03f1509926203",
+  "cell": "ETTh1_96",
+  "arm_name": "A1_adaptive_multipos"
+}

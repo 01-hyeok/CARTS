@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_set_normregret_control01/ETTh1_720/A3_normregret_srm/checkpoint.pth",
+  "stage1_checkpoint_hash": "34d3a283598750f6800d0b92288ad028a2f8ba5b337b6d15efd6090602621bdd",
+  "config_hash": "17ad290ce56b317215f8d29faeb1e402ee76b1e3cfec8b514be0b36d0d7e24e3",
+  "cell": "ETTh1_720",
+  "arm_name": "A3_normregret_srm"
+}

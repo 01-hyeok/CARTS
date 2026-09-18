@@ -1,0 +1,8 @@
+[stage2_retrain01] A3_normregret_srm epoch 1 train_loss=0.57806 val_final_mse=1.540021 gate_mean=0.394
+[stage2_retrain01] A3_normregret_srm epoch 2 train_loss=0.52606 val_final_mse=1.509957 gate_mean=0.230
+[stage2_retrain01] A3_normregret_srm epoch 3 train_loss=0.52112 val_final_mse=1.611009 gate_mean=0.366
+[stage2_retrain01] A3_normregret_srm epoch 4 train_loss=0.51627 val_final_mse=1.539703 gate_mean=0.401
+[stage2_retrain01] A3_normregret_srm epoch 5 train_loss=0.50661 val_final_mse=1.584514 gate_mean=0.432
+[stage2_retrain01] A3_normregret_srm epoch 6 train_loss=0.50842 val_final_mse=1.544842 gate_mean=0.372
+[stage2_retrain01] A3_normregret_srm epoch 7 train_loss=0.50274 val_final_mse=1.577668 gate_mean=0.386
+[stage2_retrain01] early stop at epoch 7 (best=2)

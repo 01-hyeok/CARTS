@@ -1,0 +1,37 @@
+{
+  "exp": "EXP-SET-LOSS-STAGE2-RETRAIN02",
+  "cell": "ETTh1_96",
+  "arm": "A2_srm",
+  "seed": 0,
+  "stage2_init_sha256": "2757367845167aa20600b2dfaf9ed0fa20a1d85c639a6f8ee97ec2fa40f4705b",
+  "frozen_submodule_sha256_before_training": {
+    "stage1_encoder": "d29a37111b4f525f620017022920cc81d15a93204755fa2b35bfb2f450b60e2b",
+    "shared_cross_projection": "2013cf2bb519c707ed32d90bdf541eda61d35a50f1e0c4fb49e9cb098aa7198e"
+  },
+  "trainable_parameter_names": [
+    "base_head.shared.bias",
+    "base_head.shared.weight",
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_concat_projection.bias",
+    "relation_concat_projection.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 56002,
+  "stage2_host": "checkpoints/stage2/ETTh1/seq96_pred96/stage2_carts_softset_s2_ETTh1_96_S0_wce_RelationStage2_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth",
+  "stage2_host_sha256": "112bd013c59749f39294a19013ba2e08947f6fee26e943ccacc10b194a049683",
+  "cache_dir": "results/EXP-SET-LOSS-STAGE2-RETRAIN02/cache/ETTh1_96/A2_srm",
+  "stage1_checkpoint_path": "checkpoints/track_a_set_loss_control02/ETTh1_96/A2_srm/checkpoint.pth",
+  "stage1_checkpoint_hash": "15d9998ea4401c3fd95a132ec87c96b648123612a134a9fce76e5d836efba984",
+  "cache_config_hash": "6c36dc0e26a8a9c4641830bfe6f59e8e23e337cec147edc445306bd4f9235d1d",
+  "cache_restored_val_fragg": 0.7048200157734944,
+  "stage1_reported_fragg": 0.7048200362379404,
+  "fragg_tolerance": 0.02,
+  "pid": 1272244,
+  "start_time": "2026-09-18T11:43:30"
+}

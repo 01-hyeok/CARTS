@@ -1,0 +1,6 @@
+{
+  "stage1_checkpoint_path": "checkpoints/track_a_set_normregret_control01/ETTh1_720/A0_hard_choice/checkpoint.pth",
+  "stage1_checkpoint_hash": "944e3df7054196d5890fa14df802176249d56561d3e54597bd8749c47394ae5e",
+  "stage2_host": "checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_sha256": "492b19c82757ced93be60d7f69e5cc50fd633557befc939778c3913ae67b4fe6"
+}

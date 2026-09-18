@@ -1,0 +1,10 @@
+[stage2_retrain01] A1_raw_wce epoch 1 train_loss=0.55925 val_final_mse=1.636153 gate_mean=0.445
+[stage2_retrain01] A1_raw_wce epoch 2 train_loss=0.51435 val_final_mse=1.573612 gate_mean=0.331
+[stage2_retrain01] A1_raw_wce epoch 3 train_loss=0.50560 val_final_mse=1.564009 gate_mean=0.430
+[stage2_retrain01] A1_raw_wce epoch 4 train_loss=0.49702 val_final_mse=1.591675 gate_mean=0.452
+[stage2_retrain01] A1_raw_wce epoch 5 train_loss=0.49127 val_final_mse=1.627328 gate_mean=0.516
+[stage2_retrain01] A1_raw_wce epoch 6 train_loss=0.49348 val_final_mse=1.557326 gate_mean=0.461
+[stage2_retrain01] A1_raw_wce epoch 7 train_loss=0.48743 val_final_mse=1.586921 gate_mean=0.440
+[stage2_retrain01] A1_raw_wce epoch 8 train_loss=0.48629 val_final_mse=1.599983 gate_mean=0.439
+[stage2_retrain01] A1_raw_wce epoch 9 train_loss=0.48375 val_final_mse=1.566690 gate_mean=0.412
+[stage2_retrain01] A1_raw_wce epoch 10 train_loss=0.48832 val_final_mse=1.580959 gate_mean=0.384

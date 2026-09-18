@@ -1,0 +1,10 @@
+[stage2_retrain01] A1_adaptive_multipos epoch 1 train_loss=0.55010 val_final_mse=1.583776 gate_mean=0.296
+[stage2_retrain01] A1_adaptive_multipos epoch 2 train_loss=0.50288 val_final_mse=1.792627 gate_mean=0.454
+[stage2_retrain01] A1_adaptive_multipos epoch 3 train_loss=0.50729 val_final_mse=1.551753 gate_mean=0.381
+[stage2_retrain01] A1_adaptive_multipos epoch 4 train_loss=0.48388 val_final_mse=1.590049 gate_mean=0.459
+[stage2_retrain01] A1_adaptive_multipos epoch 5 train_loss=0.47677 val_final_mse=1.589808 gate_mean=0.519
+[stage2_retrain01] A1_adaptive_multipos epoch 6 train_loss=0.47487 val_final_mse=1.544893 gate_mean=0.468
+[stage2_retrain01] A1_adaptive_multipos epoch 7 train_loss=0.47172 val_final_mse=1.570200 gate_mean=0.454
+[stage2_retrain01] A1_adaptive_multipos epoch 8 train_loss=0.47110 val_final_mse=1.581387 gate_mean=0.493
+[stage2_retrain01] A1_adaptive_multipos epoch 9 train_loss=0.46934 val_final_mse=1.602214 gate_mean=0.444
+[stage2_retrain01] A1_adaptive_multipos epoch 10 train_loss=0.47419 val_final_mse=1.544618 gate_mean=0.436

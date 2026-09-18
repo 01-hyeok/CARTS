@@ -1,0 +1,37 @@
+{
+  "exp": "TRACK-A-SET-NORMREGRET-CONTROL01",
+  "cell": "ETTh1_720",
+  "arm": "A2_normregret_softce",
+  "seed": 0,
+  "stage2_init_sha256": "d4f9c6fc736e59958f56ffe5afdb560ba4cd832d82aa54cc80c9eca1fd29995a",
+  "frozen_submodule_sha256_before_training": {
+    "stage1_encoder": "c2d7268b793992baf229794607e07b7f5bf91e63f2f7107f282a15aef6518d41",
+    "shared_cross_projection": "ca80123a1a0bbbaf11fe2ba7bd1cb5c8c1c0d6a61eae47027dea606ff950f17f"
+  },
+  "trainable_parameter_names": [
+    "base_head.shared.bias",
+    "base_head.shared.weight",
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_concat_projection.bias",
+    "relation_concat_projection.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 1315234,
+  "stage2_host": "checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_sha256": "492b19c82757ced93be60d7f69e5cc50fd633557befc939778c3913ae67b4fe6",
+  "cache_dir": "results/TRACK-A-SET-NORMREGRET-CONTROL01/stage2/cache/ETTh1_720/A2_normregret_softce",
+  "stage1_checkpoint_path": "checkpoints/track_a_set_normregret_control01/ETTh1_720/A2_normregret_softce/checkpoint.pth",
+  "stage1_checkpoint_hash": "c4b113a1bbda9e79d4d98563e4dfe6a302955adac8d3e1cd78b9d4195c4e37b8",
+  "cache_config_hash": "53c993bf8a0195d52d805b28b6a8996c9a79cf692562a5e42f1bdeb883293727",
+  "cache_restored_val_fragg": 1.5962231578193518,
+  "stage1_reported_fragg": 1.5962231807307776,
+  "fragg_tolerance": 0.02,
+  "pid": 1187397,
+  "start_time": "2026-09-18T01:18:17"
+}

@@ -77,7 +77,7 @@ from layers.retrieval_metric import RetrievalMetric, cosine_init_deviation
 from models.SequentialSetRetriever import SetConditioner
 from scripts.train_margutil01 import build_experiment, memory_value
 from scripts.train_oracle_choice01 import oracle_choice_step_loss
-from utils.dense_utility import candidate_weights, dense_utility
+from utils.dense_utility import candidate_weights, dense_utility, dense_utility_memsafe
 from utils.oracle_compute_optimized import (dense_utility_optimized,
                                             oracle_choice_step_loss_optimized,
                                             prepare_query_static_chunked)
@@ -133,6 +133,23 @@ def individual_utility(futures, query_future):
     return -((futures - query_future.unsqueeze(1)) ** 2).mean(dim=-1)
 
 
+def individual_utility_memsafe(memory_c, offset_c, query_future, chunk_size=None):
+    """TRACK-A-SOLAR-VRAM-OPT01 P0.2 -- mathematically IDENTICAL to
+    `individual_utility`, but chunked over the candidate axis and never
+    materializing the full `[B, N, H]` tensor -- same
+    `memory_c`/`offset_c` convention as `greedy_set_utility_memsafe`."""
+    bsz = offset_c.size(0)
+    n, h = memory_c.shape
+    chunk_size = chunk_size or n
+    out = offset_c.new_empty(bsz, n)
+    q = query_future.unsqueeze(1)
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        y_c = memory_c[start:end].unsqueeze(0) + offset_c.view(-1, 1, 1)
+        out[:, start:end] = -((y_c - q) ** 2).mean(dim=-1)
+    return out
+
+
 def greedy_set_utility(prefix_idx, w_host, futures, query_future, chunk_size):
     """u_i^(t) = -MSE(Aggregate(S ∪ {i}), y_q), Aggregate weighted by the
     FIXED host weights (see module docstring, decision 1). `dense_utility`
@@ -147,6 +164,20 @@ def greedy_set_utility(prefix_idx, w_host, futures, query_future, chunk_size):
     and remains the always-available fallback."""
     return -dense_utility(prefix_idx, w_host, futures, query_future,
                           chunk_size=chunk_size)
+
+
+def greedy_set_utility_memsafe(prefix_idx, w_host, memory_c, offset_c, query_future, chunk_size):
+    """TRACK-A-SOLAR-VRAM-OPT01 P0.2 -- mathematically IDENTICAL to
+    `greedy_set_utility` above (same sign flip of the same `dense_utility`
+    math), but takes `memory_c`/`offset_c` (as returned by
+    `scripts.train_margutil01.memory_value`) instead of a pre-built
+    `futures = memory_c + offset_c.view(-1,1,1)` tensor -- the caller never
+    materializes the full `[B, N, H]` tensor. See
+    `utils.dense_utility.dense_utility_memsafe`'s docstring for the exact
+    chunking guarantee. Opt-in only; `greedy_set_utility` is unchanged and
+    remains the default/reference path everywhere."""
+    return -dense_utility_memsafe(prefix_idx, w_host, memory_c, offset_c, query_future,
+                                  chunk_size=chunk_size)
 
 
 def greedy_set_utility_optimized(prefix_idx, w_host, futures, query_future, d_sq, chunk_size):
@@ -249,8 +280,24 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
                  futures, query_future, target, prefix_policy,
                  tau_choice, k, chunk_size, free_running=False,
                  choice_ce_impl='reference', individual_impl='reference',
-                 greedy_set_impl='reference', loss_fn=None):
+                 greedy_set_impl='reference', loss_fn=None,
+                 memsafe=False, memory_c=None, offset_c=None):
     """K steps of (state -> logits -> Oracle target -> Choice CE).
+
+    TRACK-A-SOLAR-VRAM-OPT01 P0.2 -- `memsafe=True` (opt-in, default False =
+    byte-identical to this function's prior behavior): pass `futures=None`
+    and `memory_c`/`offset_c` (as returned by
+    `scripts.train_margutil01.memory_value`) instead. The Oracle-target
+    computation (the only place `futures` is used INSIDE this function --
+    `free_running=True` never touches it at all) is redirected to
+    `greedy_set_utility_memsafe`/`individual_utility_memsafe`, which never
+    materialize the full `[B, N, H]` tensor the caller would otherwise have
+    had to build before calling this function. ONLY supported together with
+    `greedy_set_impl='reference'` and `individual_impl in ('reference',
+    'optimized_cache')` -- combining `memsafe=True` with `greedy_set_impl=
+    'optimized'` raises, since that path's own `futures`-consuming algebra
+    was never re-verified against the memsafe formulation (scope boundary,
+    not a limitation of the math itself).
 
     `loss_fn` (TRACK-A-SET-LOSS-CONTROL02): optional
     `(t, u_hat, u_target, valid_now, tau_choice) -> (loss_t, diag_t)`
@@ -295,6 +342,14 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
     losses, diags, step_records = [], [], []
     neg_inf = torch.finfo(z_q.dtype).min / 4
 
+    if memsafe:
+        if is_set and greedy_set_impl == 'optimized':
+            raise ValueError("memsafe=True is not supported with greedy_set_impl='optimized' "
+                             "(scope boundary -- that path's own algebra was never verified "
+                             "against the memsafe formulation)")
+        if memory_c is None or offset_c is None:
+            raise ValueError('memsafe=True requires memory_c and offset_c')
+
     # A (Individual Oracle) -- step-invariant; when caching is enabled the
     # SAME reference formula (`individual_utility`) is called ONCE here,
     # before the K-loop, instead of once per step (finding A-1, OPT03
@@ -304,7 +359,9 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
     cached_individual_target = None
     if (not is_set) and (not free_running) and individual_impl == 'optimized_cache':
         with torch.no_grad():
-            cached_individual_target = individual_utility(futures, query_future)
+            cached_individual_target = (
+                individual_utility_memsafe(memory_c, offset_c, query_future, chunk_size)
+                if memsafe else individual_utility(futures, query_future))
 
     # E (Greedy Set Oracle) -- the prefix-invariant `d_sq` static quantity
     # is computed ONCE here (OPT02's own established pattern) when the
@@ -342,12 +399,19 @@ def run_sequence(z_q, E, cand_mask, set_conditioner, metric, w_host,
                     u_target = greedy_set_utility_optimized(prefix_now, w_host, futures,
                                                             query_future, set_oracle_d_sq,
                                                             chunk_size)
+                elif memsafe:
+                    u_target = greedy_set_utility_memsafe(prefix_now, w_host, memory_c, offset_c,
+                                                          query_future, chunk_size)
                 else:
                     u_target = greedy_set_utility(prefix_now, w_host, futures,
                                                   query_future, chunk_size)
             else:
-                u_target = (cached_individual_target if cached_individual_target is not None
-                           else individual_utility(futures, query_future))
+                if cached_individual_target is not None:
+                    u_target = cached_individual_target
+                elif memsafe:
+                    u_target = individual_utility_memsafe(memory_c, offset_c, query_future, chunk_size)
+                else:
+                    u_target = individual_utility(futures, query_future)
 
         if loss_fn is not None:
             loss_t, diag_t = loss_fn(t, u_hat, u_target, valid_now, tau_choice)
@@ -397,6 +461,20 @@ def free_running_aggregate_future_mse(picks, host_scores, futures, query_future,
     sc = host_scores.gather(1, picks)
     alpha = torch.softmax(sc / float(tau_topk), dim=-1)
     tgt = futures.gather(1, picks.unsqueeze(-1).expand(-1, -1, futures.size(-1)))
+    y_ret = (alpha.unsqueeze(-1) * tgt).sum(1)
+    return (y_ret - query_future).pow(2).mean(-1)
+
+
+def free_running_aggregate_future_mse_memsafe(picks, host_scores, memory_c, offset_c,
+                                              query_future, tau_topk):
+    """TRACK-A-SOLAR-VRAM-OPT01 P0.2 -- mathematically IDENTICAL to
+    `free_running_aggregate_future_mse`, but only ever gathers the K
+    PICKED candidates from `memory_c`/`offset_c` (never materializes the
+    full `[B, N, H]` `futures` tensor -- this function never needed more
+    than the K picks anyway)."""
+    sc = host_scores.gather(1, picks)
+    alpha = torch.softmax(sc / float(tau_topk), dim=-1)
+    tgt = memory_c[picks] + offset_c.view(-1, 1, 1)  # [B, K, H], fancy-index gather + offset
     y_ret = (alpha.unsqueeze(-1) * tgt).sum(1)
     return (y_ret - query_future).pow(2).mean(-1)
 
@@ -518,7 +596,30 @@ def _iter_batches(loader, limit):
 
 
 def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
-                loader, channels, device):
+                loader, channels, device, channelwise_backward=False, memsafe=False):
+    """TRACK-A-SOLAR-VRAM-OPT01 (P0.1, opt-in via `channelwise_backward`,
+    default False = BYTE-IDENTICAL to this function's original behavior):
+    for many-channel datasets (Solar=137), accumulating every channel's
+    full computation graph into `batch_loss` before a single `.backward()`
+    keeps ALL channels' activations resident simultaneously -- the
+    dominant OOM driver at high channel counts (confirmed by direct code
+    read, not assumed). Fix uses linearity of differentiation:
+
+        d/dtheta (1/C) sum_c L_c  ==  (1/C) sum_c d/dtheta L_c
+
+    so calling `.backward()` once per channel on `L_c / C` and letting
+    PyTorch's `.grad` accumulation (the same accumulation `.zero_grad()`/
+    `.step()` already rely on) sum the per-channel gradients is
+    mathematically identical to one backward on the pre-summed
+    `sum_c L_c / C` -- gradients end up numerically identical (same
+    floating-point associativity a straightforward sum already has), but
+    each channel's graph is freed immediately after its own `.backward()`
+    instead of staying resident until the loop ends. `optimizer.step()`
+    is still called exactly once, after the full channel loop, matching
+    the original -- no per-channel step. No gradient clipping exists at
+    this call site (grepped, confirmed absent), so there is no clip-timing
+    change to make.
+    """
     oc = getattr(cli, 'resolved_oracle_compute', None) or {
         'choice_ce_impl': 'reference', 'individual_impl': 'reference', 'greedy_set_impl': 'reference'}
     model.train(True)
@@ -536,45 +637,77 @@ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
         cand_mask, _ = exp._candidate_mask(batch_start_idx)
         cli.optimizer.zero_grad()
         batch_loss = 0.0
+        batch_loss_value = 0.0
         for c in channels:
             E = encode_raw(model, exp.memory_x, c)
             z_q = encode_raw(model, batch_x, c)
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
-            futures = memory_c + offset_c.view(-1, 1, 1)
             query_future = batch_y[:, :, c]
             with torch.no_grad():
                 host_scores = host.scores(batch_x, c, cand_mask)
                 w_host = candidate_weights(host_scores, cand_mask, cli.tau_topk)
 
-            losses, diags, picks, steps = run_sequence(
-                z_q, E, cand_mask, set_conditioner, metric, w_host,
-                futures, query_future, cli.target, cli.prefix_policy,
-                cli.tau_choice, cli.top_k, cli.chunk_size,
-                choice_ce_impl=oc['choice_ce_impl'], individual_impl=oc['individual_impl'],
-                greedy_set_impl=oc['greedy_set_impl'])
+            if memsafe:
+                losses, diags, picks, steps = run_sequence(
+                    z_q, E, cand_mask, set_conditioner, metric, w_host,
+                    None, query_future, cli.target, cli.prefix_policy,
+                    cli.tau_choice, cli.top_k, cli.chunk_size,
+                    choice_ce_impl=oc['choice_ce_impl'], individual_impl=oc['individual_impl'],
+                    greedy_set_impl=oc['greedy_set_impl'],
+                    memsafe=True, memory_c=memory_c, offset_c=offset_c)
+            else:
+                futures = memory_c + offset_c.view(-1, 1, 1)
+                losses, diags, picks, steps = run_sequence(
+                    z_q, E, cand_mask, set_conditioner, metric, w_host,
+                    futures, query_future, cli.target, cli.prefix_policy,
+                    cli.tau_choice, cli.top_k, cli.chunk_size,
+                    choice_ce_impl=oc['choice_ce_impl'], individual_impl=oc['individual_impl'],
+                    greedy_set_impl=oc['greedy_set_impl'])
 
-            batch_loss = batch_loss + sum(losses) / cli.top_k
+            ch_loss = sum(losses) / cli.top_k
+            if channelwise_backward:
+                (ch_loss / len(channels)).backward()
+                batch_loss_value += float(ch_loss.detach()) / len(channels)
+            else:
+                batch_loss = batch_loss + ch_loss
             with torch.no_grad():
-                fr = free_running_aggregate_future_mse(picks, host_scores, futures,
-                                                       query_future, cli.tau_topk)
+                # TRACK-A-SOLAR-VRAM-OPT01 P0.2: the diagnostics below (fr,
+                # step_rank_diagnostics' sel_ind_mse) are the ONLY remaining
+                # consumers of a full-[B,N,H] futures tensor once `memsafe`
+                # routes the K-step Oracle-target computation above through
+                # the chunked path. Built here, AFTER the expensive K-step
+                # loop, and freed immediately after this diagnostic block --
+                # not resident during backward.
+                if memsafe:
+                    fr = free_running_aggregate_future_mse_memsafe(
+                        picks, host_scores, memory_c, offset_c, query_future, cli.tau_topk)
+                    futures_diag = memory_c + offset_c.view(-1, 1, 1)
+                else:
+                    fr = free_running_aggregate_future_mse(picks, host_scores, futures,
+                                                           query_future, cli.tau_topk)
+                    futures_diag = futures
                 d0 = steps[0]
                 s = step_rank_diagnostics(d0['u_hat'], d0['u_target'], d0['valid_now'],
                                           d0['oracle_idx'], d0['model_idx'],
-                                          futures, query_future)
+                                          futures_diag, query_future)
                 s['train_prefix_aggregate_future_mse'] = float(fr.mean())
                 for kk, vv in s.items():
                     if isinstance(vv, float) and vv == vv:
                         agg[kk] = agg.get(kk, 0.0) + vv
                 aggn += 1
 
-        batch_loss = batch_loss / len(channels)
-        batch_loss.backward()
+        if channelwise_backward:
+            batch_loss_final = batch_loss_value
+        else:
+            batch_loss = batch_loss / len(channels)
+            batch_loss.backward()
+            batch_loss_final = float(batch_loss.detach())
         enc_gn += grad_norm(params)
         sc_gn += grad_norm(list(set_conditioner.parameters())
                            + (list(metric.parameters()) if metric is not None else []))
         gn_n += 1
         cli.optimizer.step()
-        tot_loss += float(batch_loss.detach())
+        tot_loss += batch_loss_final
         nb += 1
 
     out = {'train_choice_ce': tot_loss / max(nb, 1),
@@ -586,7 +719,7 @@ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
 
 @torch.no_grad()
 def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
-               loader, channels, device, collect_stepwise=False):
+               loader, channels, device, collect_stepwise=False, memsafe=False):
     """Free-running inference (spec S15) + the teacher-forced-state internal
     diagnostics, computed separately so they are never conflated."""
     oc = getattr(cli, 'resolved_oracle_compute', None) or {
@@ -609,20 +742,26 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
             E = encode_raw(model, exp.memory_x, c)
             z_q = encode_raw(model, batch_x, c)
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
-            futures = memory_c + offset_c.view(-1, 1, 1)
             query_future = batch_y[:, :, c]
             host_scores = host.scores(batch_x, c, cand_mask)
             w_host = candidate_weights(host_scores, cand_mask, cli.tau_topk)
 
             # ---- PRIMARY: free-running, no oracle information at all ----
+            # (free_running=True never touches futures inside run_sequence
+            # regardless of memsafe -- passing None here is always safe)
             _, _, picks, _ = run_sequence(
                 z_q, E, cand_mask, set_conditioner, metric, w_host,
-                futures, query_future, cli.target, cli.prefix_policy,
+                None, query_future, cli.target, cli.prefix_policy,
                 cli.tau_choice, cli.top_k, cli.chunk_size, free_running=True,
                 choice_ce_impl=oc['choice_ce_impl'], individual_impl=oc['individual_impl'],
                 greedy_set_impl=oc['greedy_set_impl'])
-            fr = free_running_aggregate_future_mse(picks, host_scores, futures,
-                                                   query_future, cli.tau_topk)
+            if memsafe:
+                fr = free_running_aggregate_future_mse_memsafe(
+                    picks, host_scores, memory_c, offset_c, query_future, cli.tau_topk)
+            else:
+                futures = memory_c + offset_c.view(-1, 1, 1)
+                fr = free_running_aggregate_future_mse(picks, host_scores, futures,
+                                                       query_future, cli.tau_topk)
             fr_sum += float(fr.sum())
             fr_n += int(fr.numel())
 
@@ -630,11 +769,21 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
             # (diagnostic-only recomputation; same dispatcher as above)
             cached_individual_eval = None
             if cli.target != 'greedy_set' and oc['individual_impl'] == 'optimized_cache':
-                cached_individual_eval = individual_utility(futures, query_future)
+                cached_individual_eval = (
+                    individual_utility_memsafe(memory_c, offset_c, query_future, cli.chunk_size)
+                    if memsafe else individual_utility(futures, query_future))
             eval_set_d_sq = None
             if cli.target == 'greedy_set' and oc['greedy_set_impl'] == 'optimized':
+                if memsafe:
+                    raise ValueError("memsafe=True is not supported with greedy_set_impl="
+                                    "'optimized' (scope boundary)")
                 eval_set_d_sq = prepare_query_static_chunked(futures, query_future,
                                                               candidate_chunk_size=cli.chunk_size)
+            # step_rank_diagnostics needs a full-[B,N,H] tensor for its
+            # single-index sel_ind_mse gather; built ONCE per channel here
+            # (not per step) even under memsafe, so the diagnostic loop
+            # below never re-materializes it K times.
+            futures_diag = (memory_c + offset_c.view(-1, 1, 1)) if memsafe else futures
             selected = torch.zeros_like(cand_mask)
             prev_agg = None
             for t in range(cli.top_k):
@@ -650,19 +799,32 @@ def eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
                         u_target = greedy_set_utility_optimized(picks[:, :t], w_host, futures,
                                                                 query_future, eval_set_d_sq,
                                                                 cli.chunk_size)
+                    elif memsafe:
+                        u_target = greedy_set_utility_memsafe(picks[:, :t], w_host, memory_c,
+                                                              offset_c, query_future, cli.chunk_size)
                     else:
                         u_target = greedy_set_utility(picks[:, :t], w_host, futures,
                                                       query_future, cli.chunk_size)
                 else:
-                    u_target = (cached_individual_eval if cached_individual_eval is not None
-                               else individual_utility(futures, query_future))
+                    if cached_individual_eval is not None:
+                        u_target = cached_individual_eval
+                    elif memsafe:
+                        u_target = individual_utility_memsafe(memory_c, offset_c, query_future,
+                                                              cli.chunk_size)
+                    else:
+                        u_target = individual_utility(futures, query_future)
                 neg_inf = torch.finfo(u_hat.dtype).min / 4
                 oracle_idx = u_target.masked_fill(~valid_now, neg_inf).argmax(dim=-1)
                 model_idx = picks[:, t]
                 s = step_rank_diagnostics(u_hat, u_target, valid_now, oracle_idx,
-                                          model_idx, futures, query_future)
-                cur = free_running_aggregate_future_mse(
-                    picks[:, :t + 1], host_scores, futures, query_future, cli.tau_topk).mean()
+                                          model_idx, futures_diag, query_future)
+                if memsafe:
+                    cur = free_running_aggregate_future_mse_memsafe(
+                        picks[:, :t + 1], host_scores, memory_c, offset_c, query_future,
+                        cli.tau_topk).mean()
+                else:
+                    cur = free_running_aggregate_future_mse(
+                        picks[:, :t + 1], host_scores, futures, query_future, cli.tau_topk).mean()
                 s['current_aggregate_mse'] = float(cur)
                 s['marginal_aggregate_improvement'] = (
                     float(prev_agg - cur) if prev_agg is not None else float('nan'))
@@ -770,7 +932,30 @@ def main():
                          'recommended for Set arms, see OPT04 on-policy divergence finding) | '
                          'safe (recommended: C+A always optimized, E ALWAYS reference '
                          'regardless of chunk_size). Reuses --chunk_size; no separate flag added.')
+    ap.add_argument('--channelwise_backward', action='store_true',
+                    help='TRACK-A-SOLAR-VRAM-OPT01 P0.1, opt-in, default OFF (byte-identical '
+                         'behavior when unset): call .backward() once per channel (loss scaled '
+                         'by 1/n_channels) instead of accumulating every channel into one '
+                         'pre-backward sum -- mathematically identical gradient (linearity of '
+                         'differentiation), but only one channel\'s computation graph is '
+                         'resident at a time instead of all of them. optimizer.step() is still '
+                         'called exactly once per batch, unchanged. Recommended for high-'
+                         'channel-count datasets (Solar=137) where the all-channel graph is the '
+                         'dominant OOM driver; leave OFF for exact reproduction of existing '
+                         'ETTh1/Weather runs.')
+    ap.add_argument('--memsafe', action='store_true',
+                    help='TRACK-A-SOLAR-VRAM-OPT01 P0.2, opt-in, default OFF (byte-identical '
+                         'behavior when unset): never materialize the full [B, N_memory, '
+                         'pred_len] "futures" tensor before the K-step Oracle-target loop -- '
+                         'route it through memory_c/offset_c + chunked Oracle-utility functions '
+                         '(greedy_set_utility_memsafe / individual_utility_memsafe / '
+                         'free_running_aggregate_future_mse_memsafe), verified bit-for-bit '
+                         'equivalent to the reference formulas. Only supported with '
+                         '--oracle_compute_impl reference or safe (raises if the resolved '
+                         'greedy_set path is \'optimized\' -- that path was never re-verified '
+                         'against the memsafe formulation).')
     cli = ap.parse_args()
+    cli.memsafe = getattr(cli, 'memsafe', False)
 
     cli.resolved_oracle_compute = resolve_oracle_compute_impl(cli.oracle_compute_impl, cli.chunk_size)
     log_oracle_compute_resolution(cli.oracle_compute_impl, cli.resolved_oracle_compute, cli.chunk_size)
@@ -935,9 +1120,11 @@ def main():
 
     for epoch in range(1, cli.train_epochs + 1):
         tr = train_epoch(exp, args, host, model, set_conditioner, metric, cli,
-                         train_loader, channels, device)
+                         train_loader, channels, device,
+                         channelwise_backward=getattr(cli, 'channelwise_backward', False),
+                         memsafe=getattr(cli, 'memsafe', False))
         va, _ = eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
-                           val_loader, channels, device)
+                           val_loader, channels, device, memsafe=getattr(cli, 'memsafe', False))
         with torch.no_grad():
             rep = representation_diagnostics(encode_raw(model, probe_x, 0))
         rep['encoder_param_displacement'] = param_displacement(model, init_state)
@@ -949,7 +1136,7 @@ def main():
 
         if epoch in test_at:
             te, _ = eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
-                               test_loader, channels, device)
+                               test_loader, channels, device, memsafe=getattr(cli, 'memsafe', False))
             row['test_free_running_aggregate_future_mse'] = te['free_running_aggregate_future_mse']
 
         epoch_rows.append(row)
@@ -982,7 +1169,8 @@ def main():
     if metric is not None:
         metric.load_state_dict(bl['metric_state_dict'])
     te, stepwise_best = eval_epoch(exp, args, host, model, set_conditioner, metric, cli,
-                                   test_loader, channels, device, collect_stepwise=True)
+                                   test_loader, channels, device, collect_stepwise=True,
+                                   memsafe=getattr(cli, 'memsafe', False))
 
     with open(cell_dir / f'epoch_metrics_{cli.arm_name}.csv', 'w', newline='') as fh:
         keys = sorted({k for r in epoch_rows for k in r})

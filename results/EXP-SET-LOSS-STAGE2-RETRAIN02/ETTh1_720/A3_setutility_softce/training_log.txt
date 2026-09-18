@@ -1,0 +1,10 @@
+[stage2_retrain01] A3_setutility_softce epoch 1 train_loss=0.55731 val_final_mse=1.673926 gate_mean=0.599
+[stage2_retrain01] A3_setutility_softce epoch 2 train_loss=0.50207 val_final_mse=1.614107 gate_mean=0.484
+[stage2_retrain01] A3_setutility_softce epoch 3 train_loss=0.49273 val_final_mse=1.611868 gate_mean=0.447
+[stage2_retrain01] A3_setutility_softce epoch 4 train_loss=0.48514 val_final_mse=1.614577 gate_mean=0.484
+[stage2_retrain01] A3_setutility_softce epoch 5 train_loss=0.47792 val_final_mse=1.602159 gate_mean=0.539
+[stage2_retrain01] A3_setutility_softce epoch 6 train_loss=0.48001 val_final_mse=1.538887 gate_mean=0.460
+[stage2_retrain01] A3_setutility_softce epoch 7 train_loss=0.47737 val_final_mse=1.605118 gate_mean=0.436
+[stage2_retrain01] A3_setutility_softce epoch 8 train_loss=0.47450 val_final_mse=1.568510 gate_mean=0.494
+[stage2_retrain01] A3_setutility_softce epoch 9 train_loss=0.47295 val_final_mse=1.585791 gate_mean=0.458
+[stage2_retrain01] A3_setutility_softce epoch 10 train_loss=0.47743 val_final_mse=1.582760 gate_mean=0.440

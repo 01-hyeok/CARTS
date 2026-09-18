@@ -64,6 +64,54 @@ def dense_utility(prefix_idx, w, futures, query_future, chunk_size=None, eps=1e-
     return out
 
 
+def dense_utility_memsafe(prefix_idx, w, memory_c, offset_c, query_future, chunk_size=None, eps=1e-12):
+    """TRACK-A-SOLAR-VRAM-OPT01 P0.2 -- mathematically IDENTICAL to
+    `dense_utility` above, but NEVER materializes the full `[B, N, H]`
+    "futures" tensor (`memory_c + offset_c`) the caller previously had to
+    build before calling this function. Instead takes `memory_c` `[N, H]`
+    (shared across the batch, NOT offset-adjusted -- exactly what
+    `scripts.train_margutil01.memory_value()` already returns) and
+    `offset_c` `[B]` separately, and builds only:
+      - the PREFIX-sized `[B, t-1, H]` gather (`prefix_weighted_sums`'s own
+        gather already only touches prefix positions, not the full N --
+        replicated here without the intermediate full tensor), and
+      - one CHUNK-sized `[B, chunk_size, H]` temporary per loop iteration
+        (never the full `[B, N, H]`).
+
+    Same formula, same chunking granularity over the candidate axis as
+    `dense_utility`; verified bit-for-bit equivalent in
+    `tests/test_solar_vram_opt01_dense_utility_memsafe.py`.
+    """
+    bsz = offset_c.size(0)
+    n, h = memory_c.shape
+    device = memory_c.device
+    dtype = memory_c.dtype
+
+    with torch.no_grad():
+        if prefix_idx.size(1) == 0:
+            z_s = torch.zeros(bsz, 1, device=device, dtype=dtype)
+            m_s = torch.zeros(bsz, h, device=device, dtype=dtype)
+        else:
+            w_sel = w.gather(1, prefix_idx)
+            mem_sel = memory_c[prefix_idx]  # [B, t-1, H] (fancy-index along dim0)
+            y_sel = mem_sel + offset_c.view(-1, 1, 1)
+            z_s = w_sel.sum(dim=-1, keepdim=True)
+            m_s = (w_sel.unsqueeze(-1) * y_sel).sum(dim=1)
+
+    chunk_size = chunk_size or n
+    out = offset_c.new_empty(bsz, n)
+    q = query_future.unsqueeze(1)
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        w_c = w[:, start:end]
+        y_c = memory_c[start:end].unsqueeze(0) + offset_c.view(-1, 1, 1)  # [B, chunk, H] only
+        trial_num = m_s.unsqueeze(1) + w_c.unsqueeze(-1) * y_c
+        trial_den = (z_s + w_c).unsqueeze(-1).clamp_min(eps)
+        y_ret = trial_num / trial_den
+        out[:, start:end] = (y_ret - q).pow(2).mean(dim=-1)
+    return out
+
+
 def candidate_weights(scores, valid_mask, tau, eps=0.0):
     """w_i = exp(s_i/tau), row-max-shifted for numerical stability (matches
     `select_greedy_weighted_set`'s own convention exactly), zeroed at invalid

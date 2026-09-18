@@ -1,0 +1,10 @@
+[stage2_retrain01] A2_normregret_softce epoch 1 train_loss=0.56660 val_final_mse=1.616637 gate_mean=0.560
+[stage2_retrain01] A2_normregret_softce epoch 2 train_loss=0.51570 val_final_mse=1.663568 gate_mean=0.415
+[stage2_retrain01] A2_normregret_softce epoch 3 train_loss=0.51110 val_final_mse=1.574607 gate_mean=0.431
+[stage2_retrain01] A2_normregret_softce epoch 4 train_loss=0.49507 val_final_mse=1.559933 gate_mean=0.467
+[stage2_retrain01] A2_normregret_softce epoch 5 train_loss=0.49032 val_final_mse=1.585960 gate_mean=0.520
+[stage2_retrain01] A2_normregret_softce epoch 6 train_loss=0.48920 val_final_mse=1.540412 gate_mean=0.465
+[stage2_retrain01] A2_normregret_softce epoch 7 train_loss=0.48490 val_final_mse=1.587425 gate_mean=0.502
+[stage2_retrain01] A2_normregret_softce epoch 8 train_loss=0.48507 val_final_mse=1.560659 gate_mean=0.499
+[stage2_retrain01] A2_normregret_softce epoch 9 train_loss=0.48232 val_final_mse=1.621184 gate_mean=0.413
+[stage2_retrain01] A2_normregret_softce epoch 10 train_loss=0.48924 val_final_mse=1.561053 gate_mean=0.415
