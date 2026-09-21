@@ -1,0 +1,33 @@
+{
+  "exp": "TRACK-A-HORIZON-RETRIEVAL-HEADROOM01",
+  "cell": "ETTh1_720",
+  "pred_len": 720,
+  "top_k": 10,
+  "channels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "blocks": {
+    "block1": [
+      0,
+      96
+    ],
+    "block2": [
+      96,
+      336
+    ],
+    "block3": [
+      336,
+      720
+    ]
+  },
+  "reference_ckpt": "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "reference_ckpt_sha256": "b548cfa686b2abae71dbf2f23263ce5fd7177607a62b531138339600e6f2a28d",
+  "value_reconstruction": "scripts.train_margutil01.memory_value (unmodified)",
+  "utility_fn": "scripts.train_factorial_e2e01.individual_utility_memsafe (unmodified, called with time-sliced inputs for block utilities)"
+}

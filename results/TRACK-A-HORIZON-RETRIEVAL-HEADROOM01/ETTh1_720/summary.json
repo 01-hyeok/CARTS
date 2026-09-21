@@ -1,0 +1,22 @@
+{
+  "cell": "ETTh1_720",
+  "n_test_queries": 2161,
+  "global_top10_mse": 0.29685489555466565,
+  "global_top30_mse": 0.2971187080293273,
+  "global_budgetmatched_mse": 0.29608046436878005,
+  "block_oracle_mse": 0.2204987191798123,
+  "absolute_improvement_block_vs_global10": 0.07635617637485334,
+  "relative_improvement_pct": 25.72171708072518,
+  "block_vs_global30_gap": 0.07661998884951501,
+  "block_vs_globalU_gap": 0.07558174518896774,
+  "mean_delta": 0.07635617637485334,
+  "median_delta": 0.07218602299690247,
+  "p25_delta": 0.05574768781661987,
+  "p75_delta": 0.09384548664093018,
+  "p90_delta": 0.11758135259151459,
+  "fraction_delta_gt_0": 1.0,
+  "fraction_delta_gt_1pct": 1.0,
+  "fraction_delta_gt_5pct": 1.0,
+  "fraction_delta_gt_10pct": 0.998149005090236,
+  "mean_unique_candidates_block": 28.894956038870895
+}

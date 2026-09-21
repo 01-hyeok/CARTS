@@ -1,0 +1,6 @@
+{
+  "stage1_checkpoint_path": "checkpoints/track_a_tf_oracle_learnability01/Weather_720/individual_tf_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "be6c08464fdce6c022db4ca6651b3dab7d8dad6358f7e3eab9ccffa3847c7a65",
+  "stage2_host": "checkpoints/stage2/custom/seq720_pred720/stage2_carts_softset_s2_Weather_720_S0_wce_RelationStage2_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_sha256": "17cc4a16da7c371a8b372ddce3aca7307c1366c7d1b51ead2906f9f054a7d3eb"
+}

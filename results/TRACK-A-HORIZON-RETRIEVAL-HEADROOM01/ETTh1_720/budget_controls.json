@@ -1,0 +1,6 @@
+{
+  "global_top10_mse": 0.29685489555466565,
+  "global_top30_mse": 0.2971187080293273,
+  "global_budgetmatched_mse": 0.29608046436878005,
+  "block_oracle_mse": 0.2204987191798123
+}

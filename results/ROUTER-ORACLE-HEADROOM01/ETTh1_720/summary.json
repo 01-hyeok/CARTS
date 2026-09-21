@@ -1,0 +1,34 @@
+{
+  "cell": "ETTh1_720",
+  "n_test_queries": 2161,
+  "n_val_queries": 2161,
+  "mean_error": {
+    "raw": 1.0554457119166547,
+    "delta": 0.8725632356858154,
+    "learned": 0.7241370516731362
+  },
+  "static_expert": "learned",
+  "static_expert_val_means": {
+    "raw": 1.976751442476314,
+    "delta": 1.9064240700003727,
+    "learned": 1.7832332014596226
+  },
+  "best_static_test_error": 0.7241370516731362,
+  "oracle_router_test_error": 0.6554655587849711,
+  "headroom_absolute": 0.0686714928881651,
+  "headroom_relative": 0.0948321767675027,
+  "headroom_bootstrap": {
+    "mean": 0.0686714928881651,
+    "ci_low": 0.06342286214901308,
+    "ci_high": 0.07364406128108418,
+    "n_bootstrap": 2000
+  },
+  "winner_fraction": {
+    "raw": 0.16011105969458583,
+    "delta": 0.2642295233688107,
+    "learned": 0.5756594169366034
+  },
+  "fraction_static_not_query_best": 0.42434058306339656,
+  "mean_winner_margin": 0.1642925122831222,
+  "n_unique_winner_experts_present": 3
+}

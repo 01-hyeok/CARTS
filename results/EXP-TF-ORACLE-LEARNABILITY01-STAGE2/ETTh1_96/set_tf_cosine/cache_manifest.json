@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_tf_oracle_learnability01/ETTh1_96/set_tf_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "0a5f608f4f34ff6d4a157b84bcb25f8d8240ab58b95ae5b4b3afaf040fc4d741",
+  "config_hash": "eb6a26a5a96a9f33db044afa2af212f97ad8e64fea15f889881a801cb1f8e421",
+  "cell": "ETTh1_96",
+  "arm_name": "set_tf_cosine"
+}

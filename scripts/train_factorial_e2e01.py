@@ -75,6 +75,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from layers.retrieval_metric import RetrievalMetric, cosine_init_deviation
 from models.SequentialSetRetriever import SetConditioner
+from scripts.rng_control01 import batch_order_sha256
 from scripts.train_margutil01 import build_experiment, memory_value
 from scripts.train_oracle_choice01 import oracle_choice_step_loss
 from utils.dense_utility import candidate_weights, dense_utility, dense_utility_memsafe
@@ -596,7 +597,8 @@ def _iter_batches(loader, limit):
 
 
 def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
-                loader, channels, device, channelwise_backward=False, memsafe=False):
+                loader, channels, device, channelwise_backward=False, memsafe=False,
+                record_batch_order=False):
     """TRACK-A-SOLAR-VRAM-OPT01 (P0.1, opt-in via `channelwise_backward`,
     default False = BYTE-IDENTICAL to this function's original behavior):
     for many-channel datasets (Solar=137), accumulating every channel's
@@ -619,6 +621,14 @@ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
     the original -- no per-channel step. No gradient clipping exists at
     this call site (grepped, confirmed absent), so there is no clip-timing
     change to make.
+
+    `record_batch_order` (TRACK-A-TF-ORACLE-LEARNABILITY01, opt-in, default
+    False = no behavior change): when True, records each batch's
+    `batch_start_idx` and adds a `batch_order_sha256` key (via
+    `scripts.rng_control01.batch_order_sha256`) to the returned dict, so
+    the caller can assert Individual/Set arms shared the identical
+    DataLoader order every epoch. Purely additive -- computed alongside the
+    existing loop, never changes what is trained on.
     """
     oc = getattr(cli, 'resolved_oracle_compute', None) or {
         'choice_ce_impl': 'reference', 'individual_impl': 'reference', 'greedy_set_impl': 'reference'}
@@ -630,8 +640,12 @@ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
     tot_loss, nb = 0.0, 0
     agg, aggn = {}, 0
     enc_gn, sc_gn, gn_n = 0.0, 0.0, 0
+    batch_starts_this_epoch = []
 
     for batch_x, batch_y, batch_start_idx in _iter_batches(loader, getattr(cli, 'limit_batches', 0)):
+        if record_batch_order:
+            batch_starts_this_epoch.append(batch_start_idx.clone() if torch.is_tensor(batch_start_idx)
+                                           else torch.as_tensor(batch_start_idx))
         batch_x = batch_x.float().to(device)
         batch_y = batch_y.float().to(device)
         cand_mask, _ = exp._candidate_mask(batch_start_idx)
@@ -714,6 +728,8 @@ def train_epoch(exp, args, host, model, set_conditioner, metric, cli,
            'encoder_grad_norm': enc_gn / max(gn_n, 1),
            'score_layer_grad_norm': sc_gn / max(gn_n, 1)}
     out.update({f'train_{k}': v / max(aggn, 1) for k, v in agg.items()})
+    if record_batch_order:
+        out['batch_order_sha256'] = batch_order_sha256(batch_starts_this_epoch)
     return out
 
 

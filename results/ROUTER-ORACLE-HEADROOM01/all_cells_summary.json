@@ -1,0 +1,36 @@
+{
+  "Weather_720": {
+    "cell": "Weather_720",
+    "n_test_queries": 9820,
+    "n_val_queries": 4551,
+    "mean_error": {
+      "raw": 0.7120616534728625,
+      "delta": 2.086375946440789,
+      "learned": 0.7281873479500686
+    },
+    "static_expert": "raw",
+    "static_expert_val_means": {
+      "raw": 1.029661957614109,
+      "delta": 1.2185248379536027,
+      "learned": 1.0794101586592797
+    },
+    "best_static_test_error": 0.7120616534728625,
+    "oracle_router_test_error": 0.5438564205955706,
+    "headroom_absolute": 0.16820523287729194,
+    "headroom_relative": 0.23622284960427578,
+    "headroom_bootstrap": {
+      "mean": 0.1682052328772919,
+      "ci_low": 0.16170046599600804,
+      "ci_high": 0.17515984339650925,
+      "n_bootstrap": 2000
+    },
+    "winner_fraction": {
+      "raw": 0.4713849287169043,
+      "delta": 0.17617107942973523,
+      "learned": 0.3524439918533605
+    },
+    "fraction_static_not_query_best": 0.5286150712830957,
+    "mean_winner_margin": 0.1899270225156956,
+    "n_unique_winner_experts_present": 3
+  }
+}

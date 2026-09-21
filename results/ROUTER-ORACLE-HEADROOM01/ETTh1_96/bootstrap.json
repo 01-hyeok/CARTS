@@ -1,0 +1,28 @@
+{
+  "headroom_static_minus_oracle": {
+    "mean": 0.03464166357765506,
+    "ci_low": 0.03200294558941997,
+    "ci_high": 0.03737339750333577,
+    "n_bootstrap": 2000
+  },
+  "expert_pairs": {
+    "delta_minus_raw": {
+      "mean": -0.1404647890498437,
+      "ci_low": -0.1523305187533531,
+      "ci_high": -0.1293182459083023,
+      "n_bootstrap": 2000
+    },
+    "delta_minus_learned": {
+      "mean": 0.06679200042621024,
+      "ci_low": 0.05991093619079521,
+      "ci_high": 0.07320777520243099,
+      "n_bootstrap": 2000
+    },
+    "learned_minus_raw": {
+      "mean": -0.20725678947605394,
+      "ci_low": -0.21817418647732725,
+      "ci_high": -0.19643730101722362,
+      "n_bootstrap": 2000
+    }
+  }
+}

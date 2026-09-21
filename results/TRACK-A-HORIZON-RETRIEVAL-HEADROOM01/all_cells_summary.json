@@ -1,0 +1,24 @@
+{
+  "Weather_720": {
+    "cell": "Weather_720",
+    "n_test_queries": 9820,
+    "global_top10_mse": 0.09876033989162528,
+    "global_top30_mse": 0.0927881610888965,
+    "global_budgetmatched_mse": 0.09279828910031138,
+    "block_oracle_mse": 0.05983282225547916,
+    "absolute_improvement_block_vs_global10": 0.03892751763614612,
+    "relative_improvement_pct": 39.41614384768547,
+    "block_vs_global30_gap": 0.032955338833417336,
+    "block_vs_globalU_gap": 0.03296546684483222,
+    "mean_delta": 0.03892751763614612,
+    "median_delta": 0.032005589455366135,
+    "p25_delta": 0.025618690997362137,
+    "p75_delta": 0.045950405299663544,
+    "p90_delta": 0.06834780797362328,
+    "fraction_delta_gt_0": 1.0,
+    "fraction_delta_gt_1pct": 1.0,
+    "fraction_delta_gt_5pct": 1.0,
+    "fraction_delta_gt_10pct": 1.0,
+    "mean_unique_candidates_block": 29.7379838114115
+  }
+}

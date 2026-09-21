@@ -1,0 +1,10 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "checkpoints/track_a_tf_oracle_learnability01/Weather_720/set_tf_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "d21e6a6bda7346ed249a6833eee34209923578242db0528aa4cef944857a7f1d",
+  "config_hash": "5ab633e1cf3e90c82cadea5ef061557bf79d3389fe8fbcafc84c640ccb0aeac0",
+  "cell": "Weather_720",
+  "arm_name": "set_tf_cosine"
+}
