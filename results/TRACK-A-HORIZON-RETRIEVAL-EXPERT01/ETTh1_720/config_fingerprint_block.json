@@ -1,0 +1,41 @@
+{
+  "exp": "TRACK-A-HORIZON-RETRIEVAL-EXPERT01",
+  "cell": "ETTh1_720",
+  "arm": "block",
+  "blocks": {
+    "block1": [
+      0,
+      96
+    ],
+    "block2": [
+      96,
+      336
+    ],
+    "block3": [
+      336,
+      720
+    ]
+  },
+  "top_k": 10,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "loss": "0.5*KL_G + (KL_B1+KL_B2+KL_B3)/6",
+  "init_seed": 0,
+  "loader_seed": 0,
+  "channels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "encoder_init_sha256": "9588bdf54270600c62f4eb6b8d468aac87b76b8fba44698768cf7e891353fad0",
+  "learning_rate": 0.001,
+  "batch_size": 32,
+  "epochs": 10,
+  "patience": 5,
+  "checkpoint_criterion": "min val full-H720 uniform-aggregate hard Top-10 MSE",
+  "code_commit": "22ba01159e43f597f752cdfa8914b17a3c17e795"
+}

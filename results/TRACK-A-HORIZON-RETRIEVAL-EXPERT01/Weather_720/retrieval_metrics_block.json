@@ -1,0 +1,97 @@
+{
+  "exp": "TRACK-A-HORIZON-RETRIEVAL-EXPERT01",
+  "cell": "Weather_720",
+  "arm": "block",
+  "best_epoch": 1,
+  "best_val_primary_mse": 0.7535860098945888,
+  "test_metrics": {
+    "global_h720_mse": 0.5218391703329196,
+    "block1_mse": 0.18931649439018783,
+    "overlap_global_block1": 0.06134419614181245,
+    "block2_mse": 0.398138275457254,
+    "overlap_global_block2": 0.16272767130496857,
+    "block3_mse": 0.5535651007097244,
+    "overlap_global_block3": 0.1863820210933084,
+    "block_h720_mse": 0.45318967201189253,
+    "block_h720_mse_reconcheck": 0.45318967201189253,
+    "n_queries_seen": 9820
+  },
+  "train_metrics_subset": {
+    "global_h720_mse": 0.8070278813202987,
+    "block1_mse": 0.5116260586696453,
+    "overlap_global_block1": 0.1047158295950079,
+    "block2_mse": 0.7050157416364053,
+    "overlap_global_block2": 0.2347552718302035,
+    "block3_mse": 0.838292451257461,
+    "overlap_global_block3": 0.22267641156527193,
+    "block_h720_mse": 0.7503113554424157,
+    "block_h720_mse_reconcheck": 0.7503113554424157,
+    "n_queries_seen": 35448
+  },
+  "encoder_init_sha256": "9588bdf54270600c62f4eb6b8d468aac87b76b8fba44698768cf7e891353fad0",
+  "batch_order_hashes": {
+    "epoch1": "6af96801af06168a2ec711888079dc71e5745c2a51729c6916f9b1a371c60cf8",
+    "epoch2": "62831f6b2b649f80afc24a9a76230e3ee49a65a61a3e66cc58a16169b830c731",
+    "epoch3": "a9f8689562b8f5a6ba5f31a928fe5a02a45326de27b49106c1e729bc1650e492",
+    "epoch4": "4b15e89aef636626579c23fd7c4fbcd433df0d13f53fb4d5a8bf355737d45470",
+    "epoch5": "c72cbe50c2ad851dda836fd691a97d2df9272e482401a4ec46e841068a9abbab",
+    "epoch6": "4ee3183ea007c764477be1cd318ea108e5d835867e5a57a362bf9399b1306113"
+  },
+  "wall_clock_seconds": 9490.76751589775,
+  "checkpoint": "checkpoints/track_a_horizon_retrieval_expert01/Weather_720/block/checkpoint.pth",
+  "fingerprint": {
+    "exp": "TRACK-A-HORIZON-RETRIEVAL-EXPERT01",
+    "cell": "Weather_720",
+    "arm": "block",
+    "blocks": {
+      "block1": [
+        0,
+        96
+      ],
+      "block2": [
+        96,
+        336
+      ],
+      "block3": [
+        336,
+        720
+      ]
+    },
+    "top_k": 10,
+    "tau_t": 0.1,
+    "tau_s": 0.1,
+    "loss": "0.5*KL_G + (KL_B1+KL_B2+KL_B3)/6",
+    "init_seed": 0,
+    "loader_seed": 0,
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "encoder_init_sha256": "9588bdf54270600c62f4eb6b8d468aac87b76b8fba44698768cf7e891353fad0",
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "epochs": 10,
+    "patience": 5,
+    "checkpoint_criterion": "min val full-H720 uniform-aggregate hard Top-10 MSE",
+    "code_commit": "22ba01159e43f597f752cdfa8914b17a3c17e795"
+  }
+}

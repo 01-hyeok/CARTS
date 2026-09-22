@@ -1,0 +1,11 @@
+{
+  "cell": "ETTh1_720",
+  "n_queries": 256,
+  "n_channels": 7,
+  "method": "greedy approximate uniform-aggregate search (NOT guaranteed optimal)",
+  "global_individual_ranked_top10_mse": 0.2975546362743314,
+  "global_greedy_uniform_aggregate_top10_mse": 0.23819341330922075,
+  "block_oracle_mse": 0.22000632515742577,
+  "greedy_vs_individual_ranked_delta": 0.05936122296511062,
+  "block_vs_greedy_delta": 0.018187088151794983
+}
