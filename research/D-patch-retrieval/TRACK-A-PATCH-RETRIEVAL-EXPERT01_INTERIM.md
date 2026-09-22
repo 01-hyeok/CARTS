@@ -73,10 +73,31 @@ but material context for interpreting any future comparison against them.
   deleted after): ETTh1_720 `patch_len=24` completed end-to-end successfully
   after the fix (val_model_top10_individual_mse and val_oracle_regret both
   finite and moving epoch-to-epoch, distinct from the earlier `patch_len=16`
-  run's numbers). `patch_len=16` smoke hit `CUDA OutOfMemoryError` twice --
-  diagnosed as GPU1 resource contention with two other concurrently-running
-  Track-A jobs (Solar_96 TF-Oracle-Learnability01, Solar_720
-  Horizon-Retrieval-Expert01), not a script defect; not yet retried.
+  run's numbers). `patch_len=16` smoke hit `CUDA OutOfMemoryError` twice with
+  `--channelwise_backward` off.
+
+  **Root cause, confirmed by direct measurement (not assumed):** an isolated
+  steady-state run of ETTh1 `patch_len=16` (`torch.cuda.max_memory_allocated`,
+  13 batches) uses a stable ~5.95GB, all of it from `E = encode_raw(model,
+  exp.memory_x, c)` -- one Transformer forward pass over the full ~7,201-row
+  candidate bank per channel. Without `--channelwise_backward`, all 7
+  channels' graphs for that encode stay alive simultaneously until a single
+  end-of-batch `.backward()`, so real peak usage is ~7x that (observed: an
+  OOM trace showing this process alone holding 30.72GB -- consistent with
+  7 x ~5.95GB minus some inter-channel sharing). This never showed up in any
+  other Track-A experiment this session because they all use the cheap
+  `relation_encoder_type='mlp'` host encoder (section 2); this is the first
+  time the (forced, for this experiment) `transformer` branch's per-channel
+  candidate-bank cost has been exercised at all, even at ETTh1's small
+  7-channel scale.
+
+  **Fix**: `--channelwise_backward` is now the CLI **default** for this
+  script (opt out via `--no_channelwise_backward`), unlike
+  `TRACK-A-HORIZON-RETRIEVAL-EXPERT01` where it defaulted off and was a
+  Solar-only (137-channel) concern. Re-ran ETTh1 `patch_len=16` smoke with
+  the new default: completed successfully, 2 epochs, metrics distinct from
+  `patch_len=24`'s (val_model_top10_individual_mse 2.570 vs 2.186), confirming
+  the two architectures are training independently and correctly.
 
 ## 4. Not yet done (everything downstream of infra)
 

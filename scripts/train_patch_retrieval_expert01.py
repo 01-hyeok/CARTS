@@ -256,7 +256,23 @@ def main():
                     help='dataset-calibrated teacher temperature (section 2) -- required, no default')
     ap.add_argument('--tau_s', type=float, default=0.1)
     ap.add_argument('--limit_batches', type=int, default=0, help='SMOKE ONLY')
-    ap.add_argument('--channelwise_backward', action='store_true')
+    ap.add_argument('--channelwise_backward', dest='channelwise_backward', action='store_true',
+                    default=True,
+                    help='Per-channel immediate .backward() instead of accumulating every '
+                         "channel's graph before one backward. DEFAULT ON for this experiment "
+                         '(unlike TRACK-A-HORIZON-RETRIEVAL-EXPERT01, where it defaulted off '
+                         'and was only needed for Solar): forcing relation_encoder_type='
+                         "'transformer' here (section 2 code-verification fix) makes even a "
+                         '7-channel dataset (ETTh1) keep a ~6GB candidate-bank-encoding graph '
+                         'per channel if not freed immediately -- confirmed by a real OOM '
+                         '(process using ~30.7GB, ~7x the per-channel 5.95GB steady-state peak '
+                         'measured in isolation) on ETTh1 with this flag off. Mathematically '
+                         'identical gradient (linearity); only one channel resident at a time. '
+                         'optimizer.step() still called once.')
+    ap.add_argument('--no_channelwise_backward', dest='channelwise_backward', action='store_false',
+                    help='Opt out of the default above (accumulate all channels before one '
+                         'backward). Not recommended under relation_encoder_type=transformer '
+                         'except on GPUs with ample headroom.')
     cli = ap.parse_args()
     cli.stride = cli.stride or cli.patch_len
 
