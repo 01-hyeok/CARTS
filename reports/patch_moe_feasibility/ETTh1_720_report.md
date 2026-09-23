@@ -1,11 +1,12 @@
-# ETTh1_720 Patch-level MoE Feasibility — Interim Report
+# ETTh1_720 Patch-level MoE Feasibility — Final Report
 
-**Status: NOT FINAL.** Stages 0-3 (feasibility funnel through root-cause
-diagnosis of the router failure) are complete. Stage 4 (soft-utility
-router) and Stage 5 (direct mixture-loss router) have not been run yet —
-paused pending a decision, since Stages 1-3 already established that the
-router's failure is very unlikely to be a feature-quality problem. Weather_720
-has not been started (per explicit instruction: ETTh1 first).
+**Status: CLOSED. Final verdict: C — Single Patch 유지, Patch-level MoE 트랙 종료.**
+Stages 0-3(feasibility funnel + router 실패 원인 규명)까지 완료한 뒤, 사용자
+결정으로 Stage 4(soft-utility router)/Stage 5(direct mixture-loss router)는
+**실행하지 않고 여기서 트랙을 종료**한다. §13(Go/No-Go)의 잠정 판정이 최종
+판정으로 확정됐다. Weather_720은 이 판정에 따라(§12 규칙: ETTh1이 C 판정이면
+신규 대규모 학습 시작 안 함) 신규 학습을 진행하지 않으며, 이미 중단된 Phase A
+native_p16 부분 학습 결과 외에 추가 분석도 진행하지 않는다.
 
 ## 1. 한 문장 결론
 
@@ -158,20 +159,25 @@ GPU1에서 각 (arm × split) 조합당 수 분~수십 분, 총 수 GB 수준의
 - 없음(신규 버그 미발견). candidate-support 비대칭은 버그가 아니라 기존
   mask_mode='raft'의 의도된 anti-leakage 설계임을 코드 추적으로 확인.
 
-## 13. Patch-level MoE Go/No-Go 판정 (잠정)
+## 13. Patch-level MoE Go/No-Go 판정 — **최종: C (Single Patch 유지)**
 
-**Stage 4/5(soft router, direct mixture loss) 미실행 상태의 잠정 판정.**
-Stage 1-3의 증거(oracle headroom 유의미, complementarity 존재, fusion 미미,
-hard-winner router 완전 실패 + 원인이 temporal shift로 특정됨)를 종합하면
-**B(단순 fusion 유지) 또는 C(Single Patch 유지)에 가깝다.** Router 자체가
-"학습이 안 된 것"이 아니라 "학습해야 할 대상(feature-utility 관계)이
-train/val/test 사이에서 실제로 바뀌는 것"이므로, Stage 4(soft utility loss)나
-더 정교한 feature(learned embedding, post-retrieval confidence)를 추가해도
-근본적인 temporal shift 자체는 해결되지 않을 가능성이 높다 — 다만 이건
-아직 직접 검증되지 않은 추정이며, Stage 4/5를 실제로 돌려봐야 확정된다.
+Stage 1-3의 증거(oracle headroom은 유의미하지만, fusion으로는 그중 15~23%밖에
+못 건지고, hard-winner router는 완전히 실패했으며 그 원인이 feature 품질이
+아니라 train/val/test 사이의 진짜 temporal regime shift로 특정됨)를 근거로,
+**Stage 4(soft utility loss router)/Stage 5(direct mixture-loss router)는
+실행하지 않고 여기서 트랙을 종료하기로 결정했다.**
 
-## 14. Weather에서 확인해야 할 사항
-- ETTh1과 마찬가지로 train/val/test 간 winner 분포·oracle headroom 격차가
-  나타나는지 (temporal shift가 ETTh1만의 특이 현상인지, 일반적 패턴인지 확인)
-- Best Fixed Patch가 ETTh1과 다른지
-- (ETTh1이 B/C 판정이므로) 대규모 신규 학습 없이 기존 완료분만 분석
+> Patch별 oracle complementarity는 존재하지만, 어느 patch가 유용한지를 과거
+> 정보에서 안정적으로 예측하지 못했다. 원인은 candidate-support mismatch가
+> 아니라(deployment-matched 실험으로 기각) 진짜 temporal distribution shift로
+> 확인됐다(block-random holdout 3-seed 재현, block-vs-time 곡선에서 train/val
+> 경계의 급격한 전환 확인). 따라서 oracle headroom은 배포 가능한 성능으로
+> 전환되지 않았으며, **Best Fixed Patch(patch_len=120)를 유지하는 것이
+> 타당하다.** Shared-Trunk MoE(Phase B)는 진행하지 않는다.
+
+## 14. Weather 진행 여부 — **진행하지 않음**
+
+ETTh1이 C 판정을 받았으므로, §12 규칙에 따라 Weather_720에서 신규 대규모 학습을
+시작하지 않는다. Weather_720 Phase A는 native_p16 arm이 학습 중 사용자 지시로
+중단됐고(p24/p48/p120 미착수), 완료된 산출물이 없어 추가 사후 분석도 진행하지
+않는다. Patch-level MoE feasibility 트랙은 ETTh1_720 단일 셀 결과로 종료한다.
