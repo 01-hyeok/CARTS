@@ -1,0 +1,15 @@
+{
+  "uniform_prob_fusion": 0.957040475397847,
+  "reciprocal_rank_fusion": 0.9568618060403454,
+  "mean_rank_fusion": 0.9469990281251116,
+  "n_queries": 2161,
+  "n_channels": 7,
+  "tau_used": 0.1,
+  "rrf_k": 60,
+  "best_fixed_arm": "p120",
+  "best_fixed_mean": 0.9691655039787292,
+  "scale_oracle_mean": 0.8223060965538025,
+  "uniform_prob_fusion_vs_best_fixed_improve_pct": 1.2510792564433229,
+  "reciprocal_rank_fusion_vs_best_fixed_improve_pct": 1.2695146378893252,
+  "mean_rank_fusion_vs_best_fixed_improve_pct": 2.2871713616113327
+}

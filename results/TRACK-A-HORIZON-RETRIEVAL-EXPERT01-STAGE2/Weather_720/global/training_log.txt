@@ -1,0 +1,10 @@
+[stage2_retrain01] global epoch 1 train_loss=0.66456 val_final_mse=0.636780 gate_mean=0.125
+[stage2_retrain01] global epoch 2 train_loss=0.65049 val_final_mse=0.632755 gate_mean=0.118
+[stage2_retrain01] global epoch 3 train_loss=0.69136 val_final_mse=0.633475 gate_mean=0.110
+[stage2_retrain01] global epoch 4 train_loss=0.61516 val_final_mse=0.617477 gate_mean=0.107
+[stage2_retrain01] global epoch 5 train_loss=0.70086 val_final_mse=0.619731 gate_mean=0.107
+[stage2_retrain01] global epoch 6 train_loss=0.64369 val_final_mse=0.615217 gate_mean=0.112
+[stage2_retrain01] global epoch 7 train_loss=0.61541 val_final_mse=0.631655 gate_mean=0.117
+[stage2_retrain01] global epoch 8 train_loss=0.65971 val_final_mse=0.624799 gate_mean=0.133
+[stage2_retrain01] global epoch 9 train_loss=0.68432 val_final_mse=0.623769 gate_mean=0.130
+[stage2_retrain01] global epoch 10 train_loss=0.64996 val_final_mse=0.623237 gate_mean=0.137

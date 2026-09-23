@@ -1,0 +1,35 @@
+{
+  "cell": "Weather_720",
+  "n_queries": 512,
+  "n_channels": 21,
+  "candidate_taus": [
+    0.1,
+    0.05,
+    0.02
+  ],
+  "per_tau": {
+    "0.1": {
+      "tau_t": 0.1,
+      "top10_mass_median": 0.00804341584444046,
+      "top10_mass_mean": 0.015743162482976913,
+      "n_valid_median": 32569.0,
+      "n_rows": 10752
+    },
+    "0.05": {
+      "tau_t": 0.05,
+      "top10_mass_median": 0.02738293632864952,
+      "top10_mass_mean": 0.0532834529876709,
+      "n_valid_median": 32569.0,
+      "n_rows": 10752
+    },
+    "0.02": {
+      "tau_t": 0.02,
+      "top10_mass_median": 0.1421346217393875,
+      "top10_mass_mean": 0.20840571820735931,
+      "n_valid_median": 32569.0,
+      "n_rows": 10752
+    }
+  },
+  "selection_rule": "median top10 teacher-prob-mass closest to 0.5, ties -> larger tau_T (pre-specified comparison rule, NOT a claim of optimal temperature)",
+  "selected_tau_t": 0.02
+}

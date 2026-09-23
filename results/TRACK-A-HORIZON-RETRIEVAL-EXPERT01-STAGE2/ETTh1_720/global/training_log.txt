@@ -1,0 +1,8 @@
+[stage2_retrain01] global epoch 1 train_loss=0.59983 val_final_mse=1.548390 gate_mean=0.238
+[stage2_retrain01] global epoch 2 train_loss=0.54911 val_final_mse=1.526320 gate_mean=0.103
+[stage2_retrain01] global epoch 3 train_loss=0.54745 val_final_mse=1.536455 gate_mean=0.075
+[stage2_retrain01] global epoch 4 train_loss=0.55004 val_final_mse=1.580684 gate_mean=0.113
+[stage2_retrain01] global epoch 5 train_loss=0.53689 val_final_mse=1.585544 gate_mean=0.186
+[stage2_retrain01] global epoch 6 train_loss=0.53678 val_final_mse=1.534750 gate_mean=0.128
+[stage2_retrain01] global epoch 7 train_loss=0.53373 val_final_mse=1.579562 gate_mean=0.128
+[stage2_retrain01] early stop at epoch 7 (best=2)

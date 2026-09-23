@@ -1,0 +1,9 @@
+{
+  "cell": "Weather_720",
+  "arm_name": "block",
+  "stage1_checkpoint": "checkpoints/track_a_horizon_retrieval_expert01/Weather_720/block/checkpoint.pth",
+  "stage1_checkpoint_hash": "22c95c56d913b69d989614009de3f7edaf0f2ed9d8cc7001e8ee1b6a9857880a",
+  "config_hash": "722c5a7ec107a2b8c4da1afc6915e46e99975d042817d6f4a0b0ca312e8b7de6",
+  "stage2_host": "checkpoints/stage2/custom/seq720_pred720/stage2_carts_softset_s2_Weather_720_S0_wce_RelationStage2_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_hash": "17cc4a16da7c371a8b372ddce3aca7307c1366c7d1b51ead2906f9f054a7d3eb"
+}

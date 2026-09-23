@@ -1,0 +1,78 @@
+{
+  "val": {
+    "n_rows": 15127,
+    "hard_top1_acc": 0.34256628155708313,
+    "majority_baseline_acc": 0.34256628155708313,
+    "macro_f1": 0.12757890590378648,
+    "confusion_matrix": [
+      [
+        5182,
+        0,
+        0,
+        0
+      ],
+      [
+        3404,
+        0,
+        0,
+        0
+      ],
+      [
+        3460,
+        0,
+        0,
+        0
+      ],
+      [
+        3081,
+        0,
+        0,
+        0
+      ]
+    ],
+    "router_selected_retmse10": 2.260054111480713,
+    "best_fixed_arm": "p120",
+    "best_fixed_mean": 2.0443100929260254,
+    "scale_oracle_mean": 1.6636229753494263,
+    "router_improve_vs_best_fixed_pct": -10.553390080166,
+    "recovered_headroom_frac": -0.5667226669714587
+  },
+  "test": {
+    "n_rows": 15127,
+    "hard_top1_acc": 0.3126198351383209,
+    "majority_baseline_acc": 0.3126198351383209,
+    "macro_f1": 0.11908239323126511,
+    "confusion_matrix": [
+      [
+        4729,
+        0,
+        0,
+        0
+      ],
+      [
+        2661,
+        0,
+        0,
+        0
+      ],
+      [
+        3598,
+        0,
+        0,
+        0
+      ],
+      [
+        4139,
+        0,
+        0,
+        0
+      ]
+    ],
+    "router_selected_retmse10": 0.9716675281524658,
+    "best_fixed_arm": "p120",
+    "best_fixed_mean": 0.9691655039787292,
+    "scale_oracle_mean": 0.8223060965538025,
+    "router_improve_vs_best_fixed_pct": -0.2581627352051818,
+    "recovered_headroom_frac": -0.017036866875658512
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "exp": "EXP-SET-LOSS-STAGE2-RETRAIN02",
+  "cell": "Weather_720",
+  "arm": "block",
+  "seed": 0,
+  "stage2_init_sha256": "03725da5794fc8fb8f8c9e31cdfefe9958c8e5e25a7c949dabaf7515741b7456",
+  "frozen_submodule_sha256_before_training": {
+    "stage1_encoder": "d013a68f87bf7c0a5b74b4d161d5b42f77d904885bf0cf51f367b1cc12cbd8ef",
+    "shared_cross_projection": "ca80123a1a0bbbaf11fe2ba7bd1cb5c8c1c0d6a61eae47027dea606ff950f17f"
+  },
+  "trainable_parameter_names": [
+    "base_head.shared.bias",
+    "base_head.shared.weight",
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_concat_projection.bias",
+    "relation_concat_projection.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 1315234,
+  "stage2_host": "checkpoints/stage2/custom/seq720_pred720/stage2_carts_softset_s2_Weather_720_S0_wce_RelationStage2_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_sha256": "17cc4a16da7c371a8b372ddce3aca7307c1366c7d1b51ead2906f9f054a7d3eb",
+  "cache_dir": "results/TRACK-A-HORIZON-RETRIEVAL-EXPERT01-STAGE2/cache/Weather_720/block",
+  "stage1_checkpoint_path": "checkpoints/track_a_horizon_retrieval_expert01/Weather_720/block/checkpoint.pth",
+  "stage1_checkpoint_hash": "22c95c56d913b69d989614009de3f7edaf0f2ed9d8cc7001e8ee1b6a9857880a",
+  "cache_config_hash": "722c5a7ec107a2b8c4da1afc6915e46e99975d042817d6f4a0b0ca312e8b7de6",
+  "cache_restored_val_fragg": 0.7648417045457188,
+  "stage1_reported_fragg": null,
+  "fragg_tolerance": 0.02,
+  "pid": 2805115,
+  "start_time": "2026-09-22T12:16:50"
+}

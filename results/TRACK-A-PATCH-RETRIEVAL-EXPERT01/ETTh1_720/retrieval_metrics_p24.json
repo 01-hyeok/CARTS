@@ -1,0 +1,69 @@
+{
+  "exp": "TRACK-A-PATCH-RETRIEVAL-EXPERT01",
+  "cell": "ETTh1_720",
+  "arm_name": "p24",
+  "best_epoch": 1,
+  "best_val_model_top10_individual_mse": 2.1444313310068503,
+  "test_metrics": {
+    "model_top10_individual_mse": 0.9927721495762957,
+    "oracle_top10_individual_mse": 0.49783304340188295,
+    "oracle_regret": 0.49493910894837123,
+    "recall_at_10": 0.02507437124218906,
+    "ndcg_at_10": 0.961185682534683,
+    "global_h720_mse": 0.6092691618838109,
+    "n_queries_seen": 2161
+  },
+  "train_metrics_subset": {
+    "model_top10_individual_mse": 0.9596976012823367,
+    "oracle_top10_individual_mse": 0.515913338407389,
+    "oracle_regret": 0.4437842681724026,
+    "recall_at_10": 0.0995397492780577,
+    "ndcg_at_10": 0.953222602985983,
+    "global_h720_mse": 0.6346945988343694,
+    "n_queries_seen": 7201
+  },
+  "encoder_init_sha256": "762de72bbaba0016edbd6f262d3c301bca250d7f312a333ec1590b7fa4bb2bfc",
+  "batch_order_hashes": {
+    "epoch1": "ed5ae8650de28798be6f0318a2238bce4a291d53db81e6f937f480fdbb770ae1",
+    "epoch2": "8afdef4443f688d5519e7bc2f7faf2968055b9015a75f249a7512e6c2b8dc637",
+    "epoch3": "7ac8d453462e60bbfcd429e15ada33d0c0c6c597b0269733e4a7bc84b070f7fd",
+    "epoch4": "1dc6c6696d65d04c980d6d913b61dbb8288483b55e6f165cb19956926faeb18c",
+    "epoch5": "3be4e607f99fa024a0790db9accbf1450d242f188913cc0f4a1d1fb0366deb1a",
+    "epoch6": "6fee58ce2f6c7e4394d3e37c29f66e0f8f1d1ece5005ee1a145f03323d900992"
+  },
+  "wall_clock_seconds": 2228.122022628784,
+  "checkpoint": "checkpoints/track_a_patch_retrieval_expert01/ETTh1_720/p24/checkpoint.pth",
+  "fingerprint": {
+    "exp": "TRACK-A-PATCH-RETRIEVAL-EXPERT01",
+    "cell": "ETTh1_720",
+    "arm_name": "p24",
+    "relation_encoder_type_corrected_from_host": "mlp -> transformer (host default does not read patch_len at all; see script docstring)",
+    "relation_self_fill": "zero",
+    "patch_len": 24,
+    "stride": 24,
+    "num_patches": 30,
+    "param_count": 2686368,
+    "top_k": 10,
+    "tau_t": 0.02,
+    "tau_s": 0.1,
+    "loss": "KL(p_T||p_S), full-horizon [0:720] individual-candidate-MSE teacher, no block split",
+    "init_seed": 0,
+    "loader_seed": 0,
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "encoder_init_sha256": "762de72bbaba0016edbd6f262d3c301bca250d7f312a333ec1590b7fa4bb2bfc",
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "epochs": 10,
+    "patience": 5,
+    "checkpoint_criterion": "min val model_top10_individual_mse (== min val oracle_regret)",
+    "code_commit": "48ea19375bc9bac3bd56273a37e065c82da33248"
+  }
+}

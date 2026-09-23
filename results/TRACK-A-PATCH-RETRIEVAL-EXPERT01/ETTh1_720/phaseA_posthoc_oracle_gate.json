@@ -1,0 +1,48 @@
+{
+  "cell": "ETTh1_720",
+  "n_val_rows": 2161,
+  "n_channels": 7,
+  "top_k": 10,
+  "method": "FUTURE-AWARE POST-HOC ORACLE DIAGNOSTIC -- picks the best already-frozen arm per query/channel using that query's own future; NOT a trained or usable router; never claim as deployable performance.",
+  "per_arm_val_mean_individual_top10_mse": {
+    "native_p16": 2.260053873062134,
+    "p24": 2.1444313526153564,
+    "p48": 2.0478551387786865,
+    "p120": 2.0443098545074463
+  },
+  "best_fixed_arm": "p120",
+  "best_fixed_mean": 2.0443098545074463,
+  "posthoc_best_mean": 1.6636229753494263,
+  "relative_improvement": 0.18621779781506864,
+  "trimmed_top5pct_dropped_posthoc_mean": 1.813411682844162,
+  "trimmed_relative_improvement": 0.11294675861107006,
+  "winner_arm_share": {
+    "native_p16": 0.34256628155708313,
+    "p24": 0.22502809762954712,
+    "p48": 0.22873008251190186,
+    "p120": 0.2036755532026291
+  },
+  "pairwise_top10_overlap": {
+    "native_p16_vs_p24": 0.132894828915596,
+    "native_p16_vs_p48": 0.11749190837144852,
+    "native_p16_vs_p120": 0.10394658893346786,
+    "p24_vs_p48": 0.2567792534828186,
+    "p24_vs_p120": 0.20729820430278778,
+    "p48_vs_p120": 0.24893897771835327
+  },
+  "max_pairwise_overlap": 0.2567792534828186,
+  "thinned_robustness_check": {
+    "thin_stride": 720,
+    "n_rows_used": 4,
+    "note": "non-overlapping-window subset (temporal dependency caveat); NOT a formal CI",
+    "best_fixed_mean": 2.101231336593628,
+    "posthoc_best_mean": 1.812030553817749,
+    "relative_improvement": 0.13763395668975287
+  },
+  "gate_criteria": {
+    "relative_improvement_ge_2pct": true,
+    "not_concentrated_in_few_queries_trimmed_retains_half": true,
+    "arms_retrieve_genuinely_different_candidates_max_overlap_lt_0.95": true
+  },
+  "verdict": "PROCEED_TO_PHASE_B"
+}

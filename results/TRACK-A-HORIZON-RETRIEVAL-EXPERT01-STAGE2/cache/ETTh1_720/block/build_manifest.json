@@ -1,0 +1,9 @@
+{
+  "cell": "ETTh1_720",
+  "arm_name": "block",
+  "stage1_checkpoint": "checkpoints/track_a_horizon_retrieval_expert01/ETTh1_720/block/checkpoint.pth",
+  "stage1_checkpoint_hash": "470fbde04679aaabb691061c4adc7c21928bf30dee57066e4a7ff4512cf2dd1f",
+  "config_hash": "471daaec9c80e2e1daf1db9741b1a0d38d7d41acd29e3b1636cc73caecc2e92b",
+  "stage2_host": "checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "stage2_host_hash": "492b19c82757ced93be60d7f69e5cc50fd633557befc939778c3913ae67b4fe6"
+}
