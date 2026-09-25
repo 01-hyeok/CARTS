@@ -1,0 +1,44 @@
+{
+  "cell": "Weather_720",
+  "split": "val",
+  "n_rows": 95571,
+  "top_k": 10,
+  "alpha_equal": 0.5,
+  "retrieval_specialization_matrix_mean_retmse": {
+    "shared": {
+      "shared": 1.0488628503448334,
+      "local": 0.22570952626727103,
+      "trend": 0.5328143892039109,
+      "seasonal": 1.4208361723507101
+    },
+    "local": {
+      "shared": 1.0506175549898695,
+      "local": 0.22381141296842808,
+      "trend": 0.5337427007290807,
+      "seasonal": 1.4218097204595401
+    },
+    "trend": {
+      "shared": 1.055274157648861,
+      "local": 0.23066391922190893,
+      "trend": 0.5305005498061872,
+      "seasonal": 1.438039268520678
+    },
+    "seasonal": {
+      "shared": 1.0566647542733865,
+      "local": 0.23266975771485005,
+      "trend": 0.5373754844383284,
+      "seasonal": 1.4332259363419768
+    }
+  },
+  "top10_jaccard_overlap": {
+    "shared_vs_local": 0.38663556468822197,
+    "shared_vs_trend": 0.3265131595801537,
+    "shared_vs_seasonal": 0.4698257710745655,
+    "local_vs_trend": 0.24339395910827347,
+    "local_vs_seasonal": 0.4218966415421359,
+    "trend_vs_seasonal": 0.31395755830004535
+  },
+  "shared_only_overall_agg_mse": 0.7158961617666971,
+  "equal_mixture_overall_agg_mse": 0.7190469379784062,
+  "equal_vs_shared_improve_pct": -0.44011637161646366
+}
