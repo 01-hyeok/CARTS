@@ -1,0 +1,11 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "a0",
+  "val_global_h720_mse": 1.810685396194458,
+  "test_global_h720_mse": 0.6540816426277161,
+  "reproduces_clean02_val": true,
+  "clean02_val_primary_mse": 1.810685340415827,
+  "frozen_trunk_sha256_before": "db1bb451c4616042c597f8156dce1dd96c8d957ba12981819b75c76bfcd1c951",
+  "frozen_trunk_sha256_after": "db1bb451c4616042c597f8156dce1dd96c8d957ba12981819b75c76bfcd1c951",
+  "g_best_checkpoint_hash": "6f292a9b3e318f60c3e2a4f3287790afe3ddd97fad6c4aac5a610add34998500"
+}

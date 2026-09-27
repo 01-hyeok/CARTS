@@ -1,0 +1,23 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "a1_tau010",
+  "zero_init_check": true,
+  "frozen_trunk_unchanged": true,
+  "embedding_cache_max_abs_error": 0.0,
+  "score_cache_max_abs_error": 0.0,
+  "smoke_epoch_row": {
+    "epoch": 1,
+    "train_loss": 1.2629397539865403,
+    "val_global_h720_mse": 1.9484058618545532,
+    "val_block1_mse": 0.5417276620864868,
+    "val_block2_mse": 1.6158171892166138,
+    "val_block3_mse": 2.5067362785339355,
+    "val_block_h720_mse": 1.947762131690979,
+    "val_global_vs_block1_jaccard": 0.9788961410522461,
+    "val_global_vs_block2_jaccard": 0.9780844449996948,
+    "val_global_vs_block3_jaccard": 0.9797077775001526,
+    "val_block1_vs_block2_jaccard": 0.9862013459205627,
+    "val_block1_vs_block3_jaccard": 0.9805194139480591,
+    "val_block2_vs_block3_jaccard": 0.984578013420105
+  }
+}

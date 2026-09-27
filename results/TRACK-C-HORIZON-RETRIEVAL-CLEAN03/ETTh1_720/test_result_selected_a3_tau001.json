@@ -1,0 +1,18 @@
+{
+  "test_metrics_a3": {
+    "global_h720_mse": 0.6540816426277161,
+    "block1_mse": 0.40841299295425415,
+    "block2_mse": 0.5336042642593384,
+    "block3_mse": 0.8056725859642029,
+    "block_h720_mse": 0.6620151996612549,
+    "global_vs_block1_jaccard": 0.4265795052051544,
+    "global_vs_block2_jaccard": 0.49491798877716064,
+    "global_vs_block3_jaccard": 0.5546038150787354,
+    "block1_vs_block2_jaccard": 0.6088714599609375,
+    "block1_vs_block3_jaccard": 0.47801756858825684,
+    "block2_vs_block3_jaccard": 0.5311681032180786
+  },
+  "test_global_a0": {
+    "global_h720_mse": 0.6540816426277161
+  }
+}
