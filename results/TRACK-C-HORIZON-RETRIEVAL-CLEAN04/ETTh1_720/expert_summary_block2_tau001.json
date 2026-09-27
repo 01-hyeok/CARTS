@@ -1,0 +1,12 @@
+{
+  "cell": "ETTh1_720",
+  "block": "block2",
+  "tau_t": 0.01,
+  "arm_name": "block2_tau001",
+  "best_step": 225,
+  "best_val_block_mse": 1.9287906885147095,
+  "adapter_init_sha256": "023e4557d38362293e73eb01ae6d1618f32163d7228c72b51ab8b868df4b7981",
+  "frozen_trunk_sha256": "db1bb451c4616042c597f8156dce1dd96c8d957ba12981819b75c76bfcd1c951",
+  "g_best_checkpoint_hash": "6f292a9b3e318f60c3e2a4f3287790afe3ddd97fad6c4aac5a610add34998500",
+  "wall_clock_seconds": 46.38017678260803
+}

@@ -1,0 +1,5 @@
+{
+  "block1": {"tau": 0.01, "step": 150, "ckpt": "checkpoints/track_c_horizon_retrieval_clean04/ETTh1_720/block1_tau001/checkpoint.pth"},
+  "block2": {"tau": 0.10, "step": 675, "ckpt": "checkpoints/track_c_horizon_retrieval_clean04/ETTh1_720/block2_tau01/checkpoint.pth"},
+  "block3": {"tau": 0.10, "step": 50,  "ckpt": "checkpoints/track_c_horizon_retrieval_clean04/ETTh1_720/block3_tau01/checkpoint.pth"}
+}

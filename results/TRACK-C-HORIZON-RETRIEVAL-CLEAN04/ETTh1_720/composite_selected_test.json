@@ -1,0 +1,32 @@
+{
+  "cell": "ETTh1_720",
+  "split": "test",
+  "config": "selected",
+  "global_h720_mse": 0.6540816617833967,
+  "block_h720_mse": 0.6528945772088495,
+  "improve_vs_global_pct": 0.18148874122392125,
+  "per_block_mse": {
+    "block1": 0.4098800392282721,
+    "block2": 0.5284397923135471,
+    "block3": 0.7914324672836663
+  },
+  "global_vs_block_jaccard": {
+    "block1": 0.6077260200842726,
+    "block2": 0.5051957209771676,
+    "block3": 0.7320802249272959
+  },
+  "config_detail": {
+    "block1": {
+      "tau": 0.1,
+      "step": 100
+    },
+    "block2": {
+      "tau": 0.1,
+      "step": 675
+    },
+    "block3": {
+      "tau": 0.1,
+      "step": 50
+    }
+  }
+}
