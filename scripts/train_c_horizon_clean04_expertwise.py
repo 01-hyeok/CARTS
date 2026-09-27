@@ -105,7 +105,12 @@ def main():
     ap.add_argument('--out_dir', default='results/TRACK-C-HORIZON-RETRIEVAL-CLEAN04')
     ap.add_argument('--checkpoints', default='checkpoints/track_c_horizon_retrieval_clean04')
     ap.add_argument('--smoke_test', action='store_true')
+    ap.add_argument('--checkpoint_steps', default=None,
+                    help='comma-separated int list; overrides the ETTh1-tuned CHECKPOINT_STEPS default '
+                         '(used for CLEAN05 dataset-size-normalized epoch-fraction schedules)')
     cli = ap.parse_args()
+    custom_checkpoint_steps = (tuple(int(x) for x in cli.checkpoint_steps.split(','))
+                               if cli.checkpoint_steps else None)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     tau_tag = f"tau{str(cli.tau_t).replace('0.', '0').replace('.', '')}"
@@ -170,7 +175,7 @@ def main():
     best = {'val': float('inf'), 'step': -1}
     step = 0
     max_steps = 6 if cli.smoke_test else cli.max_steps
-    checkpoint_steps = (0, 3, 6) if cli.smoke_test else CHECKPOINT_STEPS
+    checkpoint_steps = (0, 3, 6) if cli.smoke_test else (custom_checkpoint_steps or CHECKPOINT_STEPS)
     t0 = time.time()
 
     def do_eval_and_maybe_checkpoint(step):

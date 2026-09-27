@@ -1,0 +1,32 @@
+{
+  "cell": "Weather_720",
+  "split": "test",
+  "config": "selected",
+  "global_h720_mse": 0.4630800639766661,
+  "block_h720_mse": 0.463058160441167,
+  "improve_vs_global_pct": 0.0047299672784528474,
+  "per_block_mse": {
+    "block1": 0.19838899919315567,
+    "block2": 0.4149101175033998,
+    "block3": 0.5593179876360351
+  },
+  "global_vs_block_jaccard": {
+    "block1": 0.5436129355837275,
+    "block2": 1.0,
+    "block3": 1.0
+  },
+  "config_detail": {
+    "block1": {
+      "tau": 0.1,
+      "step": 4432
+    },
+    "block2": {
+      "tau": 0.1,
+      "step": 0
+    },
+    "block3": {
+      "tau": 0.1,
+      "step": 0
+    }
+  }
+}

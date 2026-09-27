@@ -1,0 +1,79 @@
+{
+  "exp": "TRACK-C-HORIZON-RETRIEVAL-CLEAN02",
+  "cell": "Weather_720",
+  "arm": "g_transformer",
+  "best_epoch": 1,
+  "best_val_metric": 0.7292484964752972,
+  "test_metrics": {
+    "global_h720_mse": 0.46389307313071293,
+    "n_queries_seen": 9820
+  },
+  "train_metrics_subset": {
+    "global_h720_mse": 0.7749985759053881,
+    "n_queries_seen": 35448
+  },
+  "encoder_init_sha256": "ac3073e368439bcdea02a86fbb75669572d71a1bab2b712c0b89e8f8d30fd115",
+  "batch_order_hashes": {
+    "epoch1": "6af96801af06168a2ec711888079dc71e5745c2a51729c6916f9b1a371c60cf8",
+    "epoch2": "62831f6b2b649f80afc24a9a76230e3ee49a65a61a3e66cc58a16169b830c731",
+    "epoch3": "a9f8689562b8f5a6ba5f31a928fe5a02a45326de27b49106c1e729bc1650e492",
+    "epoch4": "4b15e89aef636626579c23fd7c4fbcd433df0d13f53fb4d5a8bf355737d45470",
+    "epoch5": "c72cbe50c2ad851dda836fd691a97d2df9272e482401a4ec46e841068a9abbab",
+    "epoch6": "4ee3183ea007c764477be1cd318ea108e5d835867e5a57a362bf9399b1306113"
+  },
+  "wall_clock_seconds": 22254.764461755753,
+  "checkpoint": "checkpoints/track_c_horizon_retrieval_clean05/Weather_720/g_transformer/checkpoint.pth",
+  "fingerprint": {
+    "exp": "TRACK-C-HORIZON-RETRIEVAL-CLEAN02",
+    "cell": "Weather_720",
+    "arm": "g_transformer",
+    "relation_encoder_type": "transformer",
+    "relation_self_fill": "zero",
+    "patch_len": 16,
+    "stride": 16,
+    "d_model": 128,
+    "trunk_param_count": 2688160,
+    "adapter_param_count": 0,
+    "tau_t": {
+      "block1": 0.05,
+      "block2": 0.1,
+      "block3": 0.1,
+      "global": 0.1
+    },
+    "tau_s": 0.1,
+    "lambda_g": 0.25,
+    "top_k": 10,
+    "init_seed": 0,
+    "loader_seed": 0,
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "encoder_init_sha256": "ac3073e368439bcdea02a86fbb75669572d71a1bab2b712c0b89e8f8d30fd115",
+    "learning_rate": 0.001,
+    "batch_size": 128,
+    "epochs": 10,
+    "patience": 5,
+    "checkpoint_criterion": "g_transformer: min val global_h720_mse; h_symmetric: min val block_h720_mse (concatenated blockwise Top-K, uniform mean)",
+    "code_commit": "167cb59f59e298de6721514e48873718ae24eb5e"
+  }
+}

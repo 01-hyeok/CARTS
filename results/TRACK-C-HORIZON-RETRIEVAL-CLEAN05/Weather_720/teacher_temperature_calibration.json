@@ -1,0 +1,82 @@
+{
+  "cell": "Weather_720",
+  "n_queries": 512,
+  "n_channels": 21,
+  "tau_t_global": 0.1,
+  "global_normalized_entropy_mean": 0.8477902412414551,
+  "global_effective_positives_mean": 8452.0830078125,
+  "selection_rule": "per block, candidate tau_T in {0.01,0.02,0.05,0.10,0.20} whose TRAIN-subset normalized entropy mean is closest to the Global teacher's own (tau_T,G=0.10 fixed) normalized entropy mean -- val/test never used",
+  "per_block": {
+    "block1": {
+      "0.01": {
+        "normalized_entropy_mean": 0.6468193531036377,
+        "effective_positives_mean": 5412.79541015625
+      },
+      "0.02": {
+        "normalized_entropy_mean": 0.7361037135124207,
+        "effective_positives_mean": 6281.73291015625
+      },
+      "0.05": {
+        "normalized_entropy_mean": 0.832869827747345,
+        "effective_positives_mean": 8536.9638671875
+      },
+      "0.1": {
+        "normalized_entropy_mean": 0.8895502686500549,
+        "effective_positives_mean": 11508.1494140625
+      },
+      "0.2": {
+        "normalized_entropy_mean": 0.9328778386116028,
+        "effective_positives_mean": 15703.7763671875
+      }
+    },
+    "block2": {
+      "0.01": {
+        "normalized_entropy_mean": 0.5479698181152344,
+        "effective_positives_mean": 4651.51171875
+      },
+      "0.02": {
+        "normalized_entropy_mean": 0.6597782373428345,
+        "effective_positives_mean": 5207.8193359375
+      },
+      "0.05": {
+        "normalized_entropy_mean": 0.7893549799919128,
+        "effective_positives_mean": 6992.9365234375
+      },
+      "0.1": {
+        "normalized_entropy_mean": 0.8642333149909973,
+        "effective_positives_mean": 9666.75
+      },
+      "0.2": {
+        "normalized_entropy_mean": 0.9199513792991638,
+        "effective_positives_mean": 13890.017578125
+      }
+    },
+    "block3": {
+      "0.01": {
+        "normalized_entropy_mean": 0.5304923057556152,
+        "effective_positives_mean": 4369.70849609375
+      },
+      "0.02": {
+        "normalized_entropy_mean": 0.6447091698646545,
+        "effective_positives_mean": 4874.51220703125
+      },
+      "0.05": {
+        "normalized_entropy_mean": 0.7823511958122253,
+        "effective_positives_mean": 6495.27734375
+      },
+      "0.1": {
+        "normalized_entropy_mean": 0.862080991268158,
+        "effective_positives_mean": 9144.8896484375
+      },
+      "0.2": {
+        "normalized_entropy_mean": 0.9192242622375488,
+        "effective_positives_mean": 13500.720703125
+      }
+    }
+  },
+  "selected_tau_t": {
+    "block1": 0.05,
+    "block2": 0.1,
+    "block3": 0.1
+  }
+}

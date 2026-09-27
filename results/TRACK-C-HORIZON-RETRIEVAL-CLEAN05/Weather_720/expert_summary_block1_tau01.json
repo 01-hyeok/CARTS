@@ -1,0 +1,12 @@
+{
+  "cell": "Weather_720",
+  "block": "block1",
+  "tau_t": 0.1,
+  "arm_name": "block1_tau01",
+  "best_step": 4432,
+  "best_val_block_mse": 0.4685554802417755,
+  "adapter_init_sha256": "023e4557d38362293e73eb01ae6d1618f32163d7228c72b51ab8b868df4b7981",
+  "frozen_trunk_sha256": "634caeb626be9aaee90439099ff182f658d8e72b643685faf7588f91d5703765",
+  "g_best_checkpoint_hash": "116c6bb82558b291668ddb3ee334daeb944cd9c265a123250ebbd493287a535a",
+  "wall_clock_seconds": 852.1007788181305
+}
