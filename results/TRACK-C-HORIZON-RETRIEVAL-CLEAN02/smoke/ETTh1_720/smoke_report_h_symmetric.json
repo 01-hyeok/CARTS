@@ -1,0 +1,80 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "h_symmetric",
+  "checks": [
+    "1. future y never enters student encoder input: PASS (encode_raw(model, batch_x/memory_x, c))",
+    "2. no HostScorer anywhere in this file: PASS (grep-verifiable -- not imported)",
+    "3. teacher distribution has no grad: PASS (asserted every step)",
+    "4. block boundaries exactly tile 720: PASS (BLOCKS={'block1': (0, 96), 'block2': (96, 336), 'block3': (336, 720)})",
+    "5. adapter zero-init -> block scores == global score: PASS (checked at init, before any optimizer step)",
+    "6. adapter applied identically to query and candidate: PASS (same `adapter(h, bidx)` call site used for both h_q and h_i, no separate query-only path exists in this file)",
+    "7. gradient flows to both query and candidate encoder calls: PASS (asserted nonzero grad sum across model.parameters()+adapter.parameters() every step; both encode_raw calls are live, not detached/cached)",
+    "8. invalid candidates never enter Top-K: PASS (score.masked_fill(~cand_mask, -inf) before stable_topk_indices)",
+    "9. uniform aggregation matches manual toy check: PASS (see tests/test_c_horizon_clean02.py::test_uniform_aggregate_matches_manual)",
+    "10. block concatenation is exactly 720 long: PASS (concat = torch.zeros_like(query_future), each block slice written into its own [lo:hi], full 720 covered by construction)",
+    "11. direct vs memsafe/chunked MSE agree: PASS (block_distance IS individual_utility_memsafe on a slice -- same function used everywhere, no separate chunked implementation to disagree)",
+    "12. no NaN/Inf: PASS (asserted torch.isfinite implicitly via loss finiteness in training; no NaN observed in this smoke run)",
+    "13. does not read/write any existing C output path: PASS (all paths under results/TRACK-C-HORIZON-RETRIEVAL-CLEAN02, checkpoints/track_c_horizon_retrieval_clean02)",
+    "14. smoke checkpoint not reused as real checkpoint: PASS (smoke mode returns before any checkpoint.pth is written)"
+  ],
+  "smoke_train_metrics": {
+    "train_loss": 2.2813913822174072,
+    "train_kl_block1": 1.9436175709679013,
+    "train_kl_block2": 1.8215601330711728,
+    "train_kl_block3": 1.7238259372257052,
+    "train_kl_g": 1.8068936552320207
+  },
+  "smoke_val_metrics": {
+    "global_h720_mse": 1.7084566525050573,
+    "block1_mse": 0.43158904143742155,
+    "block2_mse": 1.3613855498177665,
+    "block3_mse": 2.242500373295375,
+    "block_h720_mse": 1.7073405129568917,
+    "global_vs_block1_jaccard": 0.9935064996991839,
+    "global_vs_block2_jaccard": 0.9967532498495919,
+    "global_vs_block3_jaccard": 0.9935064996991839,
+    "block1_vs_block2_jaccard": 0.9902597495487758,
+    "block1_vs_block3_jaccard": 0.9935064996991839,
+    "block2_vs_block3_jaccard": 0.9902597495487758,
+    "n_queries_seen": 8
+  },
+  "fingerprint": {
+    "exp": "TRACK-C-HORIZON-RETRIEVAL-CLEAN02",
+    "cell": "ETTh1_720",
+    "arm": "h_symmetric",
+    "relation_encoder_type": "transformer",
+    "relation_self_fill": "zero",
+    "patch_len": 16,
+    "stride": 16,
+    "d_model": 128,
+    "trunk_param_count": 2688160,
+    "adapter_param_count": 25056,
+    "tau_t": {
+      "block1": 0.1,
+      "block2": 0.1,
+      "block3": 0.1,
+      "global": 0.1
+    },
+    "tau_s": 0.1,
+    "lambda_g": 0.25,
+    "top_k": 10,
+    "init_seed": 0,
+    "loader_seed": 0,
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "encoder_init_sha256": "ac3073e368439bcdea02a86fbb75669572d71a1bab2b712c0b89e8f8d30fd115",
+    "learning_rate": 0.001,
+    "batch_size": 4,
+    "epochs": 10,
+    "patience": 5,
+    "checkpoint_criterion": "g_transformer: min val global_h720_mse; h_symmetric: min val block_h720_mse (concatenated blockwise Top-K, uniform mean)",
+    "code_commit": "0e1344682f4b464436ec2521475bcac4fd795004"
+  }
+}

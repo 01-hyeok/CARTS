@@ -1,0 +1,37 @@
+{
+  "exp": "EXP-SET-LOSS-STAGE2-RETRAIN02",
+  "cell": "Weather_96",
+  "arm": "set_tf_hostfree_cosine",
+  "seed": 0,
+  "stage2_init_sha256": "9a0b57fa4b3e7ccd1c33326b5defbc02a75f3cd9fd66d6b785dbaae6bae9d63b",
+  "frozen_submodule_sha256_before_training": {
+    "stage1_encoder": "0c31c7b3e256c79597f23a57cff102f6beeeeb1e6ab35867b390c82cb9033440",
+    "shared_cross_projection": "2013cf2bb519c707ed32d90bdf541eda61d35a50f1e0c4fb49e9cb098aa7198e"
+  },
+  "trainable_parameter_names": [
+    "base_head.shared.bias",
+    "base_head.shared.weight",
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_concat_projection.bias",
+    "relation_concat_projection.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 56002,
+  "stage2_host": "checkpoints/stage2/custom/seq96_pred96/stage2_carts_softset_s2_Weather_96_S0_wce_RelationStage2_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_Weather_sl96_pl96_0/checkpoint.pth",
+  "stage2_host_sha256": "84748e60be84feaef177cb3368377e36b1dad73dcf274ec97e133d8966e7de30",
+  "cache_dir": "results/TRACK-A-SETORACLE-HOSTFREE01-STAGE2/cache/Weather_96/set_tf_hostfree_cosine",
+  "stage1_checkpoint_path": "checkpoints/track_a_setoracle_hostfree01/Weather_96/set_tf_hostfree_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "d0402c70362a0e5b91ac463bac6f5be621e7a562a2de7a8216430573a9c08da1",
+  "cache_config_hash": "315822f1c63640dc7f5352b52c869c40f10f45a47cadc51bada267b6a236dff3",
+  "cache_restored_val_fragg": 0.6261056273543536,
+  "stage1_reported_fragg": 0.6261056501736698,
+  "fragg_tolerance": 0.02,
+  "pid": 3012511,
+  "start_time": "2026-09-26T19:50:34"
+}
