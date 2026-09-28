@@ -1,0 +1,6 @@
+{
+  "f0_pooled_val_retmse10": 2.0443099558987807,
+  "expected_approx": 2.0443,
+  "abs_diff": 9.955898780944494e-06,
+  "within_tolerance": true
+}

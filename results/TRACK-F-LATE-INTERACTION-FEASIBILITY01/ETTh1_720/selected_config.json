@@ -1,0 +1,26 @@
+{
+  "seeds": {
+    "0": {
+      "best_epoch": 6,
+      "val": 1.9602230564020848,
+      "test": 0.8929274228604714
+    },
+    "1": {
+      "best_epoch": 5,
+      "val": 1.949084506548979,
+      "test": 0.8827244535491433
+    },
+    "2": {
+      "best_epoch": 3,
+      "val": 1.9461582315222652,
+      "test": 0.9139122563564683
+    }
+  },
+  "mean_val_retmse10": 1.9518219314911096,
+  "mean_test_retmse10": 0.8965213775886944,
+  "f0_pooled_val": 2.04431,
+  "f0_pooled_test": 0.9692,
+  "mean_val_improve_pct": 4.524170429577229,
+  "mean_test_improve_pct": 7.4988260845342065,
+  "all_seeds_improved_val": true
+}

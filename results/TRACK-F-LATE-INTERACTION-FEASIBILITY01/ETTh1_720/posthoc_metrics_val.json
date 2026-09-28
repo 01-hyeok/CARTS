@@ -1,0 +1,215 @@
+{
+  "F0_pooled": {
+    "model_top10_individual_mse": 2.0443099558987807,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.1562318900859765,
+    "recall_at_10": 0.03209493022653158,
+    "ndcg_at_10": 0.9368617071102685,
+    "top1_individual_mse": 2.0126626292168366,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 3.9553287029266357,
+    "wall_clock_seconds": 10.010404586791992
+  },
+  "F1_aligned": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798247776572,
+    "top1_individual_mse": 1.9583675152265507,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.008739233016968,
+    "wall_clock_seconds": 6.031385660171509
+  },
+  "F3_unordered_maxsim": {
+    "model_top10_individual_mse": 1.9317672203953145,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0436891712262608,
+    "recall_at_10": 0.028611093517209404,
+    "ndcg_at_10": 0.937569218838121,
+    "top1_individual_mse": 1.9158398669907284,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.102398872375488,
+    "wall_clock_seconds": 6.098581075668335
+  },
+  "F2_local_lse_w0_lam00_tau005": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798328473547,
+    "top1_individual_mse": 1.958365001515812,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.271849155426025
+  },
+  "F2_local_lse_w0_lam00_tau01": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798328473547,
+    "top1_individual_mse": 1.958365001515812,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.264608383178711
+  },
+  "F2_local_lse_w0_lam01_tau005": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798328473547,
+    "top1_individual_mse": 1.958365001515812,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.276145935058594
+  },
+  "F2_local_lse_w0_lam01_tau01": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798328473547,
+    "top1_individual_mse": 1.958365001515812,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.268136262893677
+  },
+  "F2_local_lse_w0_lam05_tau005": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798328473547,
+    "top1_individual_mse": 1.958365001515812,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.269534587860107
+  },
+  "F2_local_lse_w0_lam05_tau01": {
+    "model_top10_individual_mse": 1.9687145538541908,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.08063648501525,
+    "recall_at_10": 0.021180670914051354,
+    "ndcg_at_10": 0.9356798328473547,
+    "top1_individual_mse": 1.958365001515812,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.277876853942871
+  },
+  "F2_local_lse_w1_lam00_tau005": {
+    "model_top10_individual_mse": 1.9348190528525153,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0467410183097883,
+    "recall_at_10": 0.024902492858148845,
+    "ndcg_at_10": 0.9361909856371975,
+    "top1_individual_mse": 1.9186346341938385,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.276727914810181
+  },
+  "F2_local_lse_w1_lam00_tau01": {
+    "model_top10_individual_mse": 1.9424145324630369,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.054336469676369,
+    "recall_at_10": 0.024565347024167752,
+    "ndcg_at_10": 0.9356945045659316,
+    "top1_individual_mse": 1.925314290907943,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.280152082443237
+  },
+  "F2_local_lse_w1_lam01_tau005": {
+    "model_top10_individual_mse": 1.9348028599959795,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0467248022528723,
+    "recall_at_10": 0.02479672187648321,
+    "ndcg_at_10": 0.9361945559739389,
+    "top1_individual_mse": 1.918952125342026,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.279233932495117
+  },
+  "F2_local_lse_w1_lam01_tau01": {
+    "model_top10_individual_mse": 1.942533538307951,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0544554840953366,
+    "recall_at_10": 0.024446354576212217,
+    "ndcg_at_10": 0.935720745204437,
+    "top1_individual_mse": 1.925214380993203,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.281412839889526
+  },
+  "F2_local_lse_w1_lam05_tau005": {
+    "model_top10_individual_mse": 1.9374111637275107,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0493331180889498,
+    "recall_at_10": 0.024333972786536272,
+    "ndcg_at_10": 0.9362036606100252,
+    "top1_individual_mse": 1.919216714580226,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.2916295528411865
+  },
+  "F2_local_lse_w1_lam05_tau01": {
+    "model_top10_individual_mse": 1.9446610847735915,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0565830325784014,
+    "recall_at_10": 0.024023270287043735,
+    "ndcg_at_10": 0.9357449568184036,
+    "top1_individual_mse": 1.9270017937484765,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.288196086883545
+  },
+  "F2_local_lse_w2_lam00_tau005": {
+    "model_top10_individual_mse": 1.9175601055674585,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.029482062955034,
+    "recall_at_10": 0.02619157866980242,
+    "ndcg_at_10": 0.9378449936856231,
+    "top1_individual_mse": 1.8906592790658234,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.281030654907227
+  },
+  "F2_local_lse_w2_lam00_tau01": {
+    "model_top10_individual_mse": 1.9251362421133233,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0370582090836646,
+    "recall_at_10": 0.026251074909541317,
+    "ndcg_at_10": 0.9373930164911367,
+    "top1_individual_mse": 1.9049634864753162,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.299211025238037
+  },
+  "F2_local_lse_w2_lam01_tau005": {
+    "model_top10_individual_mse": 1.9189814929882723,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0309034554194085,
+    "recall_at_10": 0.026138693285357215,
+    "ndcg_at_10": 0.9376700486983642,
+    "top1_individual_mse": 1.8937963729195675,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.4307026863098145
+  },
+  "F2_local_lse_w2_lam01_tau01": {
+    "model_top10_individual_mse": 1.927069627624782,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0389915572727728,
+    "recall_at_10": 0.026039532851643277,
+    "ndcg_at_10": 0.9371983209195026,
+    "top1_individual_mse": 1.9098063287554048,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.290437698364258
+  },
+  "F2_local_lse_w2_lam05_tau005": {
+    "model_top10_individual_mse": 1.9242602905830246,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0361822207353715,
+    "recall_at_10": 0.025530509051291856,
+    "ndcg_at_10": 0.9371778496102788,
+    "top1_individual_mse": 1.90399254351084,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.286935806274414
+  },
+  "F2_local_lse_w2_lam05_tau01": {
+    "model_top10_individual_mse": 1.9328525008847617,
+    "oracle_top10_individual_mse": 0.8880780481603414,
+    "oracle_regret": 1.0447744416285862,
+    "recall_at_10": 0.025457791479232647,
+    "ndcg_at_10": 0.9367164475135906,
+    "top1_individual_mse": 1.9144141360552918,
+    "n_queries_seen": 2161,
+    "scoring_time_seconds": 4.277562379837036
+  }
+}

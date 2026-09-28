@@ -1,0 +1,12 @@
+{
+  "existing_maxsim_or_late_interaction_found": false,
+  "checked": [
+    "TRACK-A-PATCH-RETRIEVAL-EXPERT01 (encode_raw -> pooled cosine only)",
+    "Patch MoE/router diagnostics (same encode_raw/arm_score reuse)",
+    "pair2/pair4 (layers/pairwise_scorer.py: z_q [B,D], z_k [B,M,D] -- pooled only)",
+    "Experiment E multi-subspace (channel-axis slicing of pooled vector, not patch-token axis)"
+  ],
+  "keyword_search": ["maxsim", "late.interaction", "logsumexp", "token.bank", "patch.token"],
+  "keyword_search_hits_in_scoring_code": 0,
+  "conclusion": "No existing implementation performs query-candidate patch-token-level interaction. Prior patch experiments exist but all use single-vector pooling. Proceeding with new F-track implementation is justified."
+}

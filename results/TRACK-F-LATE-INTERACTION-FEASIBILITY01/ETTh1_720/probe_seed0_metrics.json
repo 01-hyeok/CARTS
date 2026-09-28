@@ -1,0 +1,16 @@
+{
+  "seed": 0,
+  "w": 2,
+  "best_epoch": 6,
+  "best_val": 1.9602230564020848,
+  "test_metrics": {
+    "model_top10_individual_mse": 0.8929274228604714,
+    "oracle_regret": 0.39509437441502765,
+    "recall_at_10": 0.07795332985985987,
+    "ndcg_at_10": 0.9669102552571174,
+    "n_queries_seen": 2161
+  },
+  "head_init_sha256": "b5c1bee76d130dfd69d3fa7545a4c6cfbe221a17962bd3295df625e1ba68fbbe",
+  "frozen_trunk_sha256": "8a33ef680c26f4a21c1adcc2e361a11c61788e45a86a225deaa7f52e36a8b0d4",
+  "wall_clock_seconds": 188.66053748130798
+}

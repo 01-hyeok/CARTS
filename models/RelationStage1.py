@@ -2986,17 +2986,41 @@ class RelationEncoder(nn.Module):
             return padded
         return padded + self.role_embedding
 
-    def forward(self, relation_x, return_pre_normalized=False):
+    def forward(self, relation_x, return_pre_normalized=False, return_tokens=False):
+        """`return_tokens=False` (default) is BYTE-FOR-BYTE the original
+        behavior -- the token path below only ever READS `out`, never
+        mutates control flow, so pooled callers are unaffected (verified by
+        `tests/test_f_late_interaction_feasibility01.py::
+        test_forward_pooled_output_unchanged_by_return_tokens_flag`).
+
+        `return_tokens=True` additionally returns the per-patch token bank
+        (TRACK-F-LATE-INTERACTION-FEASIBILITY01): for `encoder_type=
+        'transformer'`, this is the Transformer's own output at every
+        PATCH position -- for `pooling='cls'` that excludes the CLS slot
+        (`out[:, 1:]`), for `pooling='mean'` it is every position (`out`,
+        since mean pooling never had a non-patch slot to exclude). Tokens
+        are L2-normalized along the last dim (explicit, since the pooled
+        path's own normalization choice depends on `retrieval_similarity`
+        and token-level cosine/LSE scoring always wants unit vectors
+        regardless of that setting). Only defined for `encoder_type==
+        'transformer'`; other encoder types have no patch-token structure
+        to return and raise if `return_tokens=True` is requested for them.
+        """
         if self.encoder_type == 'transformer':
             tokens = self.patch_embed(relation_x)
             if self.pooling == 'cls':
                 cls = self.cls_token.expand(tokens.size(0), -1, -1)
                 out = self.encoder(torch.cat([cls, tokens], dim=1))
                 h = out[:, 0]
+                patch_tokens = out[:, 1:]
             else:
                 out = self.encoder(tokens)
                 h = out.mean(dim=1)
+                patch_tokens = out
         else:
+            if return_tokens:
+                raise ValueError(f"return_tokens=True is only defined for encoder_type='transformer', "
+                                 f"got {self.encoder_type!r}")
             rows = self._prepare_rows(relation_x)
             if self.encoder_type == 'tcn':
                 h = self.encoder(rows)
@@ -3007,6 +3031,11 @@ class RelationEncoder(nn.Module):
         # embedding instead. Callers that only want a key/query vector stay
         # unchanged; the ones that asked for the pre-normalised copy still get z.
         normalized = z if self.retrieval_similarity == 'l2' else F.normalize(z, dim=-1)
+        if return_tokens:
+            token_bank = F.normalize(patch_tokens, dim=-1)
+            if return_pre_normalized:
+                return normalized, z, token_bank
+            return normalized, token_bank
         if return_pre_normalized:
             return normalized, z
         return normalized
