@@ -1,0 +1,3 @@
+{"f0_pooled_val_retmse10": 2.0443099558987807, "f0_pooled_test_retmse10": 0.969165454248431,
+ "expected_val": 2.044309956, "expected_test": 0.969165454, "tolerance": 1e-5,
+ "val_abs_diff": 9.955898780944494e-06, "test_abs_diff": 0.0, "within_tolerance": true}

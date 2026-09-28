@@ -3184,3 +3184,43 @@ re-run under the correct protocol during the audit):
 The corrected runs were computed into `/tmp/audit_rg01/` during the audit
 and have NOT been archived into a permanent `stage2_fixed/` path; doing so
 is proposed but not yet approved.
+
+---
+
+## TRACK-F-LATE-INTERACTION-FEASIBILITY01 (2026-09-28)
+
+Feasibility check: does patch-token late interaction (vs the existing
+pooled CLS retrieval score) recover useful retrieval signal on ETTh1_720,
+frozen p120 checkpoint? F0-Pooled baseline reproduced exactly (val
+2.044310, matching the ~2.0443 previously reported). Training-free F1/F2/F3
+variants all beat F0 on val with zero training. F4 (frozen trunk, learned
+`W_q`/`W_k` + local-LSE head, 3 loader-order replications) improved val
+retMSE@10 by 4.52% and test by 7.50% (3-seed mean), every replication
+individually beating the baseline. Verdict: **GO** (feasibility only).
+Full report: `research/F-late-interaction/TRACK-F-LATE-INTERACTION-FEASIBILITY01.md`.
+Commit: `104fc8c`.
+
+## TRACK-F-LATE-INTERACTION-CONTROL01 (2026-09-28)
+
+Follow-up control experiment isolating whether FEASIBILITY01's F4
+improvement is actually caused by patch-token late interaction (H1) or by
+simply training a fresh projection on top of a previously-frozen/unused
+representation path (H2). Built a parameter/training-matched primary
+control (B1: same frozen patch tokens, same `W_q`/`W_k`, same training
+budget/loss/optimizer as F4/B2, but mean-pooled instead of local-LSE) and
+a simpler raw-CLS control (B0: no patch tokens at all, fresh `W_q`/`W_k`
+on the raw CLS vector). Baseline reproduced exactly on both val
+(2.044310) and test (0.969165454, abs diff 0). **B0 (-15.26% vs pooled
+baseline) and B1 (-13.80%) both beat B2/F4 (-7.50%) in all 3 loader-order
+replications.** Cluster (query_start-window, 7-channel-joint) bootstrap,
+10,000 reps: B2-B1 difference is statistically significant in ALL 3 seeds
+but in **B1's favor** (95% CI entirely positive, i.e. B2 worse), B1 wins
+68-77% of query-clusters per seed. HardAggregateMSE@10 also 5.99% worse
+for B2 than B1 (exceeds the 1% tolerance). All four GO conditions in the
+pre-registered decision rule fail. Verdict: **FAIL** — the improvement
+FEASIBILITY01 reported is real and reproduces exactly, but is NOT caused
+by patch-token late interaction; it is caused by bypassing the existing
+`norm→proj` bottleneck and training any fresh projection at all (which a
+much simpler CLS-only control captures even better). Full encoder
+fine-tuning, Weather, and Stage-2 were not started. Full report:
+`research/F-late-interaction/TRACK-F-LATE-INTERACTION-CONTROL01.md`.

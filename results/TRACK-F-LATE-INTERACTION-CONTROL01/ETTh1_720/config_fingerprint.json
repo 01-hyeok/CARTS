@@ -1,0 +1,6 @@
+{
+  "arm_checkpoint": "checkpoints/track_a_patch_retrieval_expert01/ETTh1_720/p120/checkpoint.pth",
+  "patch_len": 120, "stride": 120, "num_patches": 6, "top_k": 10, "tau_t": 0.02, "tau_s": 0.1,
+  "relation_value_space": "delta_last", "relation_encoder_type": "transformer", "d_model": 128,
+  "candidate_memory_N": 7201, "channels": 7
+}

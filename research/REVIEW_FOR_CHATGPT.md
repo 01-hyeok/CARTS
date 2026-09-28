@@ -3970,3 +3970,42 @@ never used, per this session's established corrected-Stage-2 protocol):**
 
 Ten closing questions, full Stage-1 table, and the counterfactual/gate-
 distribution breakdown are in the full report.
+
+---
+
+# Addendum (2026-09-28): TRACK-F-LATE-INTERACTION-FEASIBILITY01 + CONTROL01
+
+This addendum is appended, not a full rewrite of the file above (which
+covers an earlier, unrelated experiment cycle from this same repository).
+Full reports: `research/F-late-interaction/TRACK-F-LATE-INTERACTION-FEASIBILITY01.md`,
+`research/F-late-interaction/TRACK-F-LATE-INTERACTION-CONTROL01.md`.
+
+**Question**: does exposing the frozen p120 patch-token bank (instead of
+only the pooled CLS vector) to retrieval scoring recover useful signal
+that pooling discards, and is that specifically due to token-to-token
+*late interaction* (vs. simply training a fresh projection at all)?
+
+**FEASIBILITY01 (GO, then re-interpreted by CONTROL01)**: a frozen-trunk
+learned local-LSE late-interaction head (F4) beat the pooled p120 baseline
+by 4.52%/7.50% (val/test, 3 loader-order replications, all individually
+improving). Baseline reproduced exactly (val 2.044310).
+
+**CONTROL01 (FAIL)**: built a parameter/training-matched control (B1:
+same frozen tokens, same `W_q`/`W_k`, same training budget, mean-pooled
+instead of local-LSE) and a simpler raw-CLS-only control (B0, no patch
+tokens). **B0 (-15.26%) and B1 (-13.80%) both beat B2/F4 (-7.50%) in all
+3 replications**; cluster bootstrap (10,000 reps, query-window × 7-channel
+joint resampling) gives a 95% CI excluding zero in **B1's favor** for
+every seed; HardAggregateMSE@10 is 5.99% worse for B2 than B1. All four
+pre-registered GO conditions fail.
+
+**Conclusion carried forward**: the observed improvement is real
+(numbers reproduce exactly) but is attributable to bypassing the
+existing, never-retrained `norm→proj` bottleneck and training ANY fresh
+projection — not to patch-token late interaction specifically. The
+narrower, better-supported claim is: *patch tokens contain retrieval
+signal the pooled CLS path doesn't use*; the claim *not* supported is
+*token-to-token late interaction beats a fair pooled-projection control*.
+
+Full encoder fine-tuning, Weather, and Stage-2 were not started in either
+experiment, per each experiment's own explicit scope limit.

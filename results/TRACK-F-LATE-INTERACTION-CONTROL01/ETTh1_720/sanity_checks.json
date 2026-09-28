@@ -1,0 +1,13 @@
+{
+  "S1_S2_forward_regression_token_shape": "covered by unchanged FEASIBILITY01 unit tests; not re-run standalone",
+  "S3_S4_pooled_formula_p1": "code-inspection only, not independently re-unit-tested this round",
+  "S5_gradient_isolation": "PASS (in-loop assert every step, 9/9 runs, no failure)",
+  "S6_trunk_immutability": "PASS (state hash identical before/after, 9/9 runs)",
+  "S7_teacher_independence": "true by construction (shared call site), not byte-diffed this round",
+  "S8_candidate_support": "unchanged production _candidate_mask path, not independently re-audited",
+  "S9_paired_batch_order": "loader_seed controls torch.manual_seed identically per arm; not pairwise-diffed this round",
+  "S10_nan_inf": "PASS (none observed in 9/9 runs)",
+  "S11_per_query_reconstruction": "PASS (per-query CSV used directly for bootstrap; same eval_epoch populates both)",
+  "S12_full_memory_invariant": "PASS (stable_topk_indices always over full N=7201, no shortlist/sampling code exists)",
+  "disclosed_limitation": "S1-S4, S7-S9 audited by code-inspection and result-consistency, not dedicated new unit tests this round"
+}

@@ -1,0 +1,16 @@
+{
+  "verdict": "FAIL",
+  "B0_mean_test_retmse10": 0.821279,
+  "B1_mean_test_retmse10": 0.835432,
+  "B2_mean_test_retmse10": 0.896521,
+  "B2_vs_B1_pct": -7.312264792346947,
+  "B1_hard_agg_mean": 0.520942,
+  "B2_hard_agg_mean": 0.552173,
+  "hard_agg_change_pct": 5.995097346027426,
+  "decision_conditions": {
+    "B2_beats_B1_all_seeds": false,
+    "B2_2pct_better_than_B1_mean": false,
+    "bootstrap_ci_excludes_zero_favoring_B2": false,
+    "hard_agg_not_worse_than_1pct": false
+  }
+}
