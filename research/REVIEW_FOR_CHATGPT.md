@@ -4009,3 +4009,73 @@ signal the pooled CLS path doesn't use*; the claim *not* supported is
 
 Full encoder fine-tuning, Weather, and Stage-2 were not started in either
 experiment, per each experiment's own explicit scope limit.
+
+---
+
+# Addendum (2026-09-28): TRACK-G-DECOUPLED-METRIC-ADAPTATION01
+
+**Correction to the CONTROL01 addendum directly above**: CONTROL01's
+"bypassing the existing, never-retrained `norm→proj` bottleneck" framing
+is **factually wrong**. Direct code read of `train_patch_retrieval_expert01.py`
+(p120's own training script) confirms `model.parameters()` — the whole
+encoder, `norm`/`proj` included — was put into the Adam optimizer
+originally (`p.requires_grad_(True)` for all params). The norm/proj path
+WAS trained end-to-end. TRACK-G was commissioned specifically to
+re-investigate the source of the gain under this corrected premise. Full
+report: `research/G-decoupled-metric-adaptation/TRACK-G-DECOUPLED-METRIC-ADAPTATION01.md`.
+
+**Question**: does a second, decoupled metric-adaptation stage (freeze
+the already-fully-trained trunk, train only a fresh asymmetric metric
+head on top) beat (a) the frozen trunk's own cosine score, (b)
+continuing to train the whole trunk with no metric head, and (c) training
+trunk+metric jointly?
+
+**Six arms, same p120 checkpoint, 3 loader-order replications each (18
+runs)**: A0 frozen-cosine baseline; A1 frozen-final-embedding + fresh
+identity-init Wq/Wk; A2 frozen-raw-CLS + fresh Wq/Wk (= CONTROL01's B0);
+A3 frozen-patch-mean + fresh Wq/Wk (= CONTROL01's B1); A4
+trainable-encoder, no metric head; A5 trainable-encoder + fresh Wq/Wk,
+trained jointly. Baseline reproduced exactly (0.969165454248431, all 3
+seeds); A2/A3 reproduce CONTROL01's B0/B1 exactly; step-0 identity-init
+equivalence (A1 vs A0) exact; batch-order hashes identical across all
+trained arms per seed.
+
+**Results (test retMSE@10, 3-seed mean, Δ vs A0)**: A1 -12.39%, A2
+-15.26%, A3 -13.80%, A4 -0.12% (2/3 seeds numerically worse than A0), A5
+-15.75%.
+
+**A1 ≫ A4 (metric adaptation vs plain continued encoder training)**:
+clean, bootstrap-significant win for A1 in all 3 seeds, both retMSE and
+aggregate-MSE metrics. Continuing to train the whole encoder with no
+metric head essentially does nothing.
+
+**A1 vs A5 (decoupled vs joint — the round's central, pre-registered
+question) does NOT resolve in one direction — it is metric-dependent**:
+- Individual retMSE@10: **A5 beats A1** in all 3 seeds (cluster bootstrap
+  95% CI excludes zero, favoring A5, every seed).
+- Top-10 uniform-aggregate MSE: **A1 beats A5** in all 3 seeds (CI
+  excludes zero, favoring A1, every seed) — A5's aggregate MSE
+  (0.574880) is even *worse* than the untrained A0 baseline (0.569328),
+  despite A5 having the single best individual retMSE and oracle mean
+  rank of any of the six arms.
+
+Both directions are bootstrap-significant within their own metric, in
+every one of the 3 independent loader-order replications — this reads as
+a genuine per-candidate-quality vs aggregate-quality trade-off in what
+joint training produces, not noise. Per the pre-registered instruction,
+this experiment does **not** conclude "decoupled training is better" —
+that claim is unsupported once both required metrics are considered.
+Verdict: **GO on metric adaptation in general** (A1/A2/A3 all clearly
+beat A0); **INCONCLUSIVE on decoupling vs joint optimization specifically**,
+resolved differently depending on which downstream objective (per-
+candidate retrieval vs aggregate Top-10 prediction) is prioritized — a
+decision left to the reviewer.
+
+**Not measured this round** (flagged, not filled in): a direct mechanism
+probe for A5's aggregate-MSE weakness (e.g., Top-10 diversity/score-
+distribution collapse) — only the outcome, not the cause, is established.
+Per-epoch effective-rank / mean-pairwise-cosine / parameter-displacement
+diagnostics requested in the original spec were not logged during the 18
+runs. Weather, other horizons, Stage-2, new losses, temperature/patch
+sweeps, and new architectures were not started, per the spec's explicit
+scope limit.

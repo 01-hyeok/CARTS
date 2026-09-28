@@ -3224,3 +3224,43 @@ by patch-token late interaction; it is caused by bypassing the existing
 much simpler CLS-only control captures even better). Full encoder
 fine-tuning, Weather, and Stage-2 were not started. Full report:
 `research/F-late-interaction/TRACK-F-LATE-INTERACTION-CONTROL01.md`.
+
+## TRACK-G-DECOUPLED-METRIC-ADAPTATION01 (2026-09-28)
+
+User-issued correction to CONTROL01's framing: `train_patch_retrieval_expert01.py`
+(p120's own training script) puts `model.parameters()` — the whole
+encoder including `norm`/`proj` — into the Adam optimizer; the
+"never-retrained norm→proj bottleneck" claim in CONTROL01's report was
+factually wrong (verified by direct code read this round). Reframed
+question: does a SECOND, decoupled metric-adaptation stage on a frozen,
+already-fully-trained trunk help, and if so is it better than (a) the
+frozen trunk alone, (b) continuing to train the whole trunk with no
+metric head, or (c) training trunk+metric jointly? Six arms (A0 frozen
+cosine baseline, A1 frozen-final+fresh-asym, A2 frozen-rawCLS+fresh-asym
+= CONTROL01 B0, A3 frozen-patchmean+fresh-asym = CONTROL01 B1, A4
+trainable-encoder-no-head, A5 trainable-encoder+fresh-asym-joint), same
+p120 checkpoint, 3 loader-order replications each, 18 runs total.
+Baseline (A0) reproduced exactly (0.969165454248431, all 3 seeds). A2/A3
+reproduce CONTROL01's B0/B1 exactly. Step-0 identity-init equivalence
+(A1 vs A0 at init) exact (max abs diff 0.0). Batch-order hashes identical
+across all trained arms per seed.
+
+Results (test retMSE@10, 3-seed mean, Δ vs A0): A1 -12.39%, A2 -15.26%,
+A3 -13.80%, A4 -0.12% (2/3 seeds worse than A0), A5 -15.75%. **A1 ≫ A4**
+holds cleanly (bootstrap CI excludes zero, all 3 seeds, both metrics) —
+metric adaptation beats plain continued encoder training. **A1 vs A5
+(the round's central question) is metric-dependent and does NOT resolve
+in one direction**: on individual retMSE@10, A5 beats A1 in all 3 seeds
+(bootstrap CI excludes zero, favoring A5, every seed); on Top-10 uniform
+aggregate MSE, A1 beats A5 in all 3 seeds (CI excludes zero, favoring A1,
+every seed) — A5's aggregate MSE is even worse than the untrained A0
+baseline despite A5 having the single best individual retMSE and oracle
+rank of any arm. Per the pre-registered instruction, this is reported as
+**INCONCLUSIVE on the decoupling-vs-joint question**, not resolved in
+either direction; "decoupled training is better" is explicitly NOT
+concluded. Per-epoch effective-rank/cosine/parameter-displacement
+diagnostics requested in the original spec were not logged during the 18
+runs (only coarser per-epoch curves + final-epoch scalar displacement)
+and would require a fresh run to add. Weather, other horizons, Stage-2,
+new losses, and architecture sweeps were not started. Full report:
+`research/G-decoupled-metric-adaptation/TRACK-G-DECOUPLED-METRIC-ADAPTATION01.md`.

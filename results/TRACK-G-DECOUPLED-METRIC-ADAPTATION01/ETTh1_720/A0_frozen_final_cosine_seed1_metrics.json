@@ -1,0 +1,21 @@
+{
+  "arm": "A0_frozen_final_cosine",
+  "loader_seed": 1,
+  "frozen": true,
+  "best_epoch": 0,
+  "best_val_retmse10": 2.0443099558987807,
+  "test_retmse10": 0.969165454248431,
+  "test_uniform_aggregate_mse10": 0.5693282798615279,
+  "test_weighted_aggregate_mse10": 0.5693700919898699,
+  "test_recall10": 0.029298605619107628,
+  "test_binary_oracle_ndcg10": 0.02932432555723641,
+  "test_oracle_regret": 0.4713324110987261,
+  "test_oracle_mean_rank": 734.7699963228002,
+  "test_oracle_median_rank": 566.5056521451709,
+  "test_rank_fraction_mean": 0.10191250105894605,
+  "encoder_init_sha256": "8a33ef680c26f4a21c1adcc2e361a11c61788e45a86a225deaa7f52e36a8b0d4",
+  "head_init_sha256": null,
+  "encoder_param_displacement": 0.0,
+  "checkpoint_hash": "49de4f307ee858668b43267067a211259609f4558c235eb6955910a7a6d58171",
+  "batch_order_hashes": {}
+}
