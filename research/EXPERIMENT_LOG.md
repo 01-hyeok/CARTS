@@ -3617,3 +3617,58 @@ improvement improve forecasting?") is answered no. No sweep, no
 additional seed, no Weather, no Stage2 architecture change, no
 test-based checkpoint/arm selection anywhere. Full report:
 `research/M-relevance-constrained-multislot/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01.md`.
+
+## TRACK-N-FORECAST-CONDITIONAL-UTILITY01 (2026-09-29/30, ETTh1_720, NO RETRIEVER TRAINING)
+
+Diagnoses WHY TRACK-M's M2 (best Stage1 retrieval quality of any arm)
+was significantly worse than J1 in Stage2 forecasting. No retriever
+training, no Stage1 retraining, no Set Oracle, no coefficient sweep, no
+Weather, no additional seed, no Stage2 base-head joint training -- every
+checkpoint used is an existing frozen one (J1/K2/M2 retrievers, and
+TRACK-M's S0_base as a COMMON frozen base `B_q` for every downstream
+analysis, eliminating the base-head-co-training confound TRACK-M's own
+Stage2 had).
+
+Reproduction gates PASSED to <1e-6: Uniform aggregation (=Stage1's own
+AggMSE) reproduces J1/K2/M2's 0.564026/0.546943/0.523593; Host
+aggregation (=TRACK-M's Stage2 cache) reproduces 0.578322/0.573898/
+0.562447. Weighted `Agg_w=D_w+C_w` identity holds to <5e-7 for both
+weightings.
+
+**Mechanism found (Q1/Q2)**: the Uniform->Host aggregation "damage" is
+a `D_w` (individual-quality) inflation story, NOT a `C_w`
+(complementarity) reversal -- `C_w` actually *decreases* under Host
+weighting for every arm. Damage is worst for M2 (+7.42%) and K2
+(+4.93%), smallest for J1 (+2.53%): HostScorer's own fixed criterion
+doesn't know which slot a multi-slot retriever picked for individual
+quality vs. complementarity, so it disproportionately hurts the
+multi-slot arms.
+
+**Central finding (Q4/Q5/PART 17)**: standalone retrieval quality
+(AggMSE/D/C) is a WEAK predictor of downstream forecast-conditional
+utility (Pearson r~0.10-0.14 vs `oracle_gain`); what actually predicts
+utility is the correction-target residual cosine (r~0.59-0.60 Pearson,
+~0.93 Spearman). J1 has the best oracle potential of the three, but M2
+is a competitive (not far-behind) second, and a trivial, deployable,
+validation-calibrated single global lambda (no learned gate at all)
+already gets M2 to within 0.0006 (Uniform) / 0.0033 (Host) of J1's own
+calibrated result -- ~3x smaller than TRACK-M's real trained-gate gap
+(0.0098, CI entirely positive). The conditional Frozen-Base Gate-Only
+ablation (PART 18-19, triggered by this evidence) technically confirmed
+`MSE_M2<MSE_J1` (statistically significant, 10k-rep bootstrap) but the
+effect was tiny and confounded: ALL three gate-only arms landed within
+~0.001 of the no-retrieval baseline, ~14x smaller improvement than any
+arm's real full-joint-trained result, implicating the frozen
+`relation_mixer` (never adapted to real nonzero retrieval) as a major
+confound rather than cleanly isolating gate failure.
+
+**Verdict: Mixed cause (A+B), NOT Case C.** M2's retrieval is not
+fundamentally deficient for forecasting (oracle/calibrated-lambda
+utility is competitive with J1's) -- the bottleneck is Stage2
+CONSUMPTION (HostScorer aggregation choice and/or joint mixer+gate
+training dynamics), not the M2 retrieval objective. **New Stage1
+training is NOT needed (Q7: NO).** Per the user's own instruction,
+retriever architecture/loss must not be changed again until the Stage2
+consumption question is resolved. 18/18 unit tests pass; full pytest
+suite: 1242 passed, the same 2 pre-existing unrelated failures. Full
+report: `research/N-forecast-conditional-utility/TRACK-N-FORECAST-CONDITIONAL-UTILITY01.md`.

@@ -4456,3 +4456,52 @@ here. No sweep, no additional seed, no Weather, no Stage2 architecture
 change, no test-based checkpoint or arm selection anywhere in this
 track. 18/18 Stage1 + 10/10 Stage2 unit tests pass. Full report:
 `research/M-relevance-constrained-multislot/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01.md`.
+
+# Addendum (2026-09-29/30): TRACK-N-FORECAST-CONDITIONAL-UTILITY01
+
+**Question**: TRACK-M's M2 had the best Stage1 retrieval quality of any
+arm, but was significantly WORSE than J1 in Stage2 forecasting, with the
+trained gate suppressing it to near-zero. Is M2 actually bad for
+forecasting, or was a genuinely good retrieval set consumed incorrectly?
+
+**Method (NO retriever/Stage1/Stage2-base training anywhere)**: a common
+frozen base `B_q` (from TRACK-M's S0 checkpoint) removes the base-head
+co-training confound TRACK-M's own Stage2 had. J1/K2/M2's existing
+frozen retrievers regenerate the SAME future-blind hard Top-10 sets used
+throughout, aggregated two ways -- Uniform (=Stage1's own AggMSE) and
+Host (=TRACK-M's actual Stage2 cache) -- both reproduced to <1e-6.
+Forecast-conditional diagnostics (residual cosine, analytic oracle
+lambda, validation-calibrated deployable lambda) and a conditional
+Frozen-Base Gate-Only ablation (triggered by the evidence) followed.
+
+**Result -- Mixed cause, leaning strongly away from "M2's retrieval is
+just bad"**:
+
+- The Uniform->Host aggregation damage (worst for M2, +7.42%; least for
+  J1, +2.53%) is a `D_w` (individual-quality) inflation story, NOT `C_w`
+  reversal -- `C_w` actually decreases under Host weighting for every
+  arm. HostScorer's fixed, retriever-agnostic criterion disproportionately
+  hurts multi-slot retrievers.
+- Standalone retrieval quality is a WEAK predictor of downstream
+  forecast-conditional utility (r~0.10-0.14 vs oracle_gain); what
+  predicts it is residual-target cosine alignment (r~0.59-0.93). J1 has
+  the best oracle potential; M2 is a competitive second.
+- A trivial, deployable, validation-only-calibrated single lambda (no
+  learned gate) already closes MOST of the gap between M2 and J1 (to
+  0.0006-0.0033), vs. TRACK-M's real trained-gate gap of 0.0098
+  (statistically significant). The Gate-Only ablation meant to confirm
+  this cleanly was itself confounded by a frozen mixer never adapted to
+  real retrieval, so it only weakly/inconclusively supports the story on
+  its own -- but the calibrated-lambda evidence is decisive.
+
+**Bottom line**: M2's retrieval is not fundamentally deficient for
+forecasting. The bottleneck is how Stage2 CONSUMES it (aggregation
+scheme choice and/or joint mixer+gate training dynamics), not the M2
+retrieval objective itself. **No new Stage1 training is warranted.**
+Per the user's own instruction, retriever architecture/loss should not
+be touched again until the Stage2 consumption question is resolved --
+the natural next step is fixing HOW Stage2 fuses retrieval (e.g. proper
+joint mixer+gate training with real nonzero retrieval from the start,
+and/or reconsidering the aggregation scheme for multi-slot retrievers),
+not a new retrieval objective. 18/18 unit tests pass. Full report:
+`research/N-forecast-conditional-utility/TRACK-N-FORECAST-CONDITIONAL-UTILITY01.md`.

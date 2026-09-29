@@ -1,0 +1,34 @@
+{
+  "n_boot": 10000,
+  "seed": 0,
+  "resampling_unit": "query_start_idx",
+  "n_common_queries": 2161,
+  "per_arm_mean_mse": {
+    "G0_J1": 0.48934915763865133,
+    "G1_K2": 0.4887839240340489,
+    "G2_M2": 0.4889243876200371
+  },
+  "comparisons": {
+    "G1_K2_minus_G0_J1": {
+      "mean_diff": -0.0005652336046023812,
+      "ci_lo_2.5": -0.0007896160414681176,
+      "ci_hi_97.5": -0.0003528118995481595,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "G2_M2_minus_G0_J1": {
+      "mean_diff": -0.00042477001861420457,
+      "ci_lo_2.5": -0.0006265762367633579,
+      "ci_hi_97.5": -0.00023097662545640624,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "G2_M2_minus_G1_K2": {
+      "mean_diff": 0.0001404635859881767,
+      "ci_lo_2.5": 2.6011600752552096e-06,
+      "ci_hi_97.5": 0.0002752448148139369,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    }
+  }
+}

@@ -1,0 +1,38 @@
+# TRACK-N-FORECAST-CONDITIONAL-UTILITY01 -- exact commands (ETTh1_720)
+# GPU1 only, strictly sequential. NO retriever training anywhere.
+
+## PART 4 -- common frozen base predictions B_q (from TRACK-M's S0_base checkpoint)
+CUDA_VISIBLE_DEVICES=1 python scripts/precompute_n_common_base01.py
+
+## PARTS 5-13 -- retrieval regeneration (J1/K2/M2, future-blind hard Top-10, unchanged
+## selection code), Uniform + Host aggregation, reproduction gates, weighted D/C
+## decomposition, forecast-conditional correction, analytic oracle lambda
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_n_diagnostics01.py
+python scripts/compute_n_summary01.py   # CPU-only, reads the saved parquet
+
+## PART 18 -- Uniform-aggregation caches for the conditional Gate-Only experiment
+for ARM in G0_J1 G1_K2 G2_M2; do
+  CUDA_VISIBLE_DEVICES=1 python scripts/build_n_gate_only_cache01.py \
+    --arm "$ARM" --cell ETTh1_720 --reference_ckpt "$S1_720" --pred_len 720
+done
+
+## PART 18-19 -- Gate-Only training (G0 establishes the shared gate init, G1/G2 load it)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_n_gate_only01.py --arm G0_J1 --cell ETTh1_720 \
+  --cache_dir results/TRACK-N-FORECAST-CONDITIONAL-UTILITY01/gate_only/cache/ETTh1_720/G0_J1 \
+  --seed 0 --train_epochs 10 --patience 5 \
+  --shared_gate_init_out logs/TRACK-N-FORECAST-CONDITIONAL-UTILITY01/shared_gate_init_ETTh1_720.pth
+for ARM in G1_K2 G2_M2; do
+  CUDA_VISIBLE_DEVICES=1 python scripts/train_n_gate_only01.py --arm "$ARM" --cell ETTh1_720 \
+    --cache_dir "results/TRACK-N-FORECAST-CONDITIONAL-UTILITY01/gate_only/cache/ETTh1_720/$ARM" \
+    --seed 0 --train_epochs 10 --patience 5 \
+    --shared_gate_init_in logs/TRACK-N-FORECAST-CONDITIONAL-UTILITY01/shared_gate_init_ETTh1_720.pth
+done
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_n_gate_bootstrap01.py
+
+## Sanity: full pytest suite (GPU1)
+CUDA_VISIBLE_DEVICES=1 python -m pytest tests/ -q
+
+# S1_720 (Stage1 host / reference_ckpt, same throughout this session):
+# checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth
+# S2_720 (Stage2 host, --stage2_host):
+# checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth

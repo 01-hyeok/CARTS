@@ -1,0 +1,13 @@
+{
+  "part19_criterion": "MSE_G2(M2) < MSE_G0(J1) -> M2 retrieval useful, blocked by joint training/aggregation",
+  "part19_result": {
+    "mean_diff": -0.00042477001861420457,
+    "ci_lo_2.5": -0.0006265762367633579,
+    "ci_hi_97.5": -0.00023097662545640624,
+    "ci_excludes_zero": true,
+    "n_queries": 2161
+  },
+  "part19_criterion_met_literally": true,
+  "caveat": "Effect sizes are tiny (~0.0004-0.0006 absolute MSE, ~0.1% relative to base_mse=0.488790) and ALL three gate-only arms dramatically underperform their own TRACK-M full-joint-trained counterparts (G0 J1 gate-only=0.489349 vs S1 J1 full-joint=0.475650; a ~14x smaller improvement over base). This strongly suggests the frozen relation_mixer/relation_concat_projection (trained only on S0's all-zero retrieval, never adapted to a real nonzero retrieval signal) is itself a major confound in this ablation, not just the gate -- limiting how decisively this experiment can isolate \"gate optimization failure\" as the sole explanation. Ranking under this ablation (K2 < M2 < J1, i.e. K2 best) also does NOT match either the oracle/calibrated-lambda ranking (J1 best) or TRACK-M's own full-joint Stage2 ranking (J1 best, K2 second, M2 worst) -- three different diagnostic regimes give three different rankings, which is itself informative but resists a single clean causal story.",
+  "interpretation": "INCONCLUSIVE-BUT-LEANING-CASE-B: literal PART19 success criterion met, but magnitude too small and confounded by the frozen mixer to serve as decisive confirmation."
+}

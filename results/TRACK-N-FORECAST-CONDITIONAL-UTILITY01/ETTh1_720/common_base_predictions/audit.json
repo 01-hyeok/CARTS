@@ -1,0 +1,6 @@
+{
+  "s0_checkpoint": "checkpoints/track_m_relevance_constrained_multislot01/stage2/ETTh1_720/S0_base/checkpoint.pth",
+  "s0_checkpoint_sha256": "a7f91972c02bce72a00b05e9402474f597cee71a6c5ce41247e34e17b35e8609",
+  "base_head_state_sha": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5",
+  "s0_best_epoch": 6
+}

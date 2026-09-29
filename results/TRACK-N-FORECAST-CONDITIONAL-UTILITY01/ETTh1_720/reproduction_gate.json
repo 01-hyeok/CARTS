@@ -1,0 +1,33 @@
+{
+  "J1": {
+    "uniform_got": 0.5640261535397141,
+    "uniform_expected": 0.564026,
+    "uniform_absdiff": 1.5353971405396294e-07,
+    "uniform_pass": true,
+    "host_got": 0.5783217527391441,
+    "host_expected": 0.578322,
+    "host_absdiff": 2.4726085590121016e-07,
+    "host_pass": true
+  },
+  "K2": {
+    "uniform_got": 0.5469431647733016,
+    "uniform_expected": 0.546943,
+    "uniform_absdiff": 1.6477330166964066e-07,
+    "uniform_pass": true,
+    "host_got": 0.5738977505695861,
+    "host_expected": 0.573898,
+    "host_absdiff": 2.4943041387892606e-07,
+    "host_pass": true
+  },
+  "M2": {
+    "uniform_got": 0.523592702169795,
+    "uniform_expected": 0.523593,
+    "uniform_absdiff": 2.978302049427839e-07,
+    "uniform_pass": true,
+    "host_got": 0.5624470444051487,
+    "host_expected": 0.562447,
+    "host_absdiff": 4.440514866921319e-08,
+    "host_pass": true
+  },
+  "all_pass": true
+}
