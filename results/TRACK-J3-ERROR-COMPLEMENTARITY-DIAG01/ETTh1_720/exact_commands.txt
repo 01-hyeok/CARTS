@@ -1,0 +1,8 @@
+# TRACK-J3-ERROR-COMPLEMENTARITY-DIAG01 exact commands run
+# NO TRAINING -- post-hoc analysis only, on J0/J1(/J2)'s existing best checkpoints
+
+CUDA_VISIBLE_DEVICES=1 python scripts/diag_j3_error_complementarity01.py
+
+# (bootstrap / pairwise-interaction / sign-cancellation / leave-one-out
+#  post-processing was run as inline pandas/numpy analysis on the saved
+#  per_query_decomposition_{J0,J1,J2}.parquet files -- no GPU needed)

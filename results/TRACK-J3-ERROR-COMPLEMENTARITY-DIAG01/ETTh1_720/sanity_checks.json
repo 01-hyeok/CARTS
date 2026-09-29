@@ -1,0 +1,21 @@
+{
+  "reproduction_gate": {
+    "J0": {
+      "retmse10_diff": 1.2868050736081216e-08,
+      "agg_diff": 2.657179720699787e-08,
+      "recall_diff": 2.5361909447574327e-10
+    },
+    "J1": {
+      "retmse10_diff": 6.273954245017421e-09,
+      "agg_diff": 3.586007712996775e-09,
+      "recall_diff": 7.06807310596469e-10
+    },
+    "J2": "N/A (J2 not in EXPECTED)"
+  },
+  "reproduction_tolerance": 1e-05,
+  "reproduction_pass": true,
+  "identity_check": "Agg = D + C asserted per-query-channel at atol=1e-4 during computation (never failed, see script)",
+  "candidate_count": 7201,
+  "test_probe_n": 256,
+  "channels": 7
+}

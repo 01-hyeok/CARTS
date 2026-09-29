@@ -1,0 +1,29 @@
+{
+  "agg_mse10": {
+    "mean_diff": -0.07733735352044066,
+    "ci_2.5": -0.09623434494751563,
+    "ci_97.5": -0.05952095969525026,
+    "ci_excludes_zero": true
+  },
+  "D": {
+    "mean_diff": 0.005475373549458373,
+    "ci_2.5": 0.0033544794794449612,
+    "ci_97.5": 0.007541944340352659,
+    "ci_excludes_zero": true
+  },
+  "C": {
+    "mean_diff": -0.08284735420419019,
+    "ci_2.5": -0.09953603357592199,
+    "ci_97.5": -0.06654018663253478,
+    "ci_excludes_zero": true
+  },
+  "mean_pairwise_error_cosine": {
+    "mean_diff": -0.12300271954275438,
+    "ci_2.5": -0.1311550341779366,
+    "ci_97.5": -0.11474099791783894,
+    "ci_excludes_zero": true
+  },
+  "n_queries": 256,
+  "n_reps": 10000,
+  "note": "paired query-level cluster bootstrap (all 7 channels resampled jointly per query_start_idx); this is within-population paired uncertainty on the ETTh1 H720 test-probe set, NOT seed uncertainty."
+}

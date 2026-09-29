@@ -4252,3 +4252,45 @@ quality) the eventual system prioritizes. 13/13 unit tests pass. Per
 spec, no additional seed, Weather, Stage-2, or A2 (asymmetric dual
 encoder) was run this round. Full report:
 `research/J-shared-encoder-drift/TRACK-J2-KEY-UPDATE-DECOMPOSITION01.md`.
+
+---
+
+# Addendum (2026-09-29): TRACK-J3-ERROR-COMPLEMENTARITY-DIAG01
+
+**Question**: TRACK-J2 showed J1 (StopGrad-Key) beats J0 (Joint Shared)
+on Uniform Aggregate MSE@10 despite being worse on retMSE@10. Is this
+because J1's retrieved Top-10 candidate errors cancel/complement each
+other more than J0's?
+
+**Method (NO TRAINING, pure post-hoc)**: `AggMSE = D + C` where D is the
+individual/diagonal error term (`= retMSE@K/K`) and C is the
+cross-candidate-error-interaction term (`= (1/K^2) sum_{i!=j} e_i.e_j/H`).
+Reconstructed J0/J1's actual Top-10 picks and candidate futures on the
+same fixed 256-query test probe TRACK-J/J2 used (a mismatch here --
+full test split vs this probe -- initially and correctly failed the
+reproduction gate, root-caused and fixed; final reproduction matched
+saved values to ~1e-8).
+
+**Result -- GO**: `D_J1 (0.1008) > D_J0 (0.0954)` (individual candidates
+ARE genuinely worse under J1) while `C_J1 (0.4635) < C_J0 (0.5464)`
+(cross-error-interaction substantially better). `R_cross = 1.071` --
+the cross-term improvement alone more than fully explains J1's entire
+aggregate gain, exceeding the spec's `>1` threshold. Confirmed at: macro
+level, per-query level (19.7% of query-channel pairs show the exact
+individual-worse-but-set-better pattern directly), channel level (4/7
+channels drive the gain, not a single outlier), and with bootstrap CIs
+(10,000 reps, paired query-clustered) excluding zero on D, C, Agg, and
+mean pairwise error cosine. Both future diversity and target-relative
+error complementarity increase together for J1 (cannot be fully
+separated by this diagnostic alone). Leave-one-out benefit correlates
+only weakly-to-moderately with individual future-MSE quality in both
+arms.
+
+**Interpretation, per the pre-registered constraint**: this is *emergent*
+complementarity, not evidence that J1 was trained to be complementary
+(it wasn't) or that Set Oracle training is correct. Correct framing:
+"J1's training intervention resulted, emergently, in individually-worse
+but more mutually-complementary retrieved candidates, and this explains
+its aggregate advantage over J0." No Set Oracle, no new training, no
+Stage-2 introduced. Full report:
+`research/J-shared-encoder-drift/TRACK-J3-ERROR-COMPLEMENTARITY-DIAG01.md`.

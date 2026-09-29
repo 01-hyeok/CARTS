@@ -3435,3 +3435,41 @@ run, not a post-hoc proxy). But J2 beats J0 on Uniform Aggregate MSE@10
 answer depends on which downstream objective is prioritized. 13/13 unit
 tests pass. Per spec, no additional seed/Weather/Stage-2/A2 was run. Full
 report: `research/J-shared-encoder-drift/TRACK-J2-KEY-UPDATE-DECOMPOSITION01.md`.
+
+## TRACK-J3-ERROR-COMPLEMENTARITY-DIAG01 (2026-09-29, ETTh1_720, NO TRAINING)
+
+Pure post-hoc analysis (no new checkpoints) decomposing why J1
+(TRACK-J2's StopGrad-Key) beats J0 (TRACK-J's Joint Shared) on Uniform
+Aggregate MSE@10 despite being worse on retMSE@10. Discovered mid-run
+that TRACK-J/J2's saved "test" metrics were computed on a fixed 256-query
+PROBE subset of the test split, not the full 2161-query split -- an
+initial full-test-split reproduction attempt correctly failed the
+required gate (~0.002-0.003 off), triggering root-cause investigation
+per the spec's "do not proceed on failed reproduction" rule; fixed by
+matching the exact probe construction, after which reproduction matched
+to ~1e-8.
+
+Decomposed `AggMSE = D + C` (D = individual/diagonal term = retMSE@K/K,
+C = cross-candidate-error-interaction term), verified via an independent
+direct pairwise computation (never failed the identity check). Result:
+`D_J1 (0.1008) > D_J0 (0.0954)` (individual candidates genuinely worse
+under J1) while `C_J1 (0.4635) < C_J0 (0.5464)` (cross-term substantially
+better) -- `R_cross = 1.071 > 1`, meaning the cross-term improvement
+alone more than fully explains J1's entire aggregate gain. J1's mean
+pairwise error cosine is significantly lower than J0's (0.500 vs 0.623,
+bootstrap CI clearly excluding zero), and both future diversity and
+error-complementarity increase together (spec's Case 1). 19.7% of
+individual query-channel pairs show the exact
+"individual-worse-but-set-better" pattern directly, not just in the
+macro average; channel breakdown shows 4/7 channels drive most of the
+gain (not a single-channel artifact). Leave-one-out benefit correlates
+only weakly-to-moderately with individual future-MSE quality in both
+arms (|Pearson r| 0.22-0.43). **Verdict: GO** -- individual relevance
+optimization and set-level aggregate utility are measurably misaligned
+on this data, with the misalignment mechanism identified (cross-error
+cancellation). Per spec's explicit interpretation constraint, this is
+reported as *emergent* complementarity (J1 was never trained with a
+complementarity-aware objective), not as evidence that Set Oracle
+training is correct. No new training, no Set Oracle, no Stage-2 this
+round. Full report:
+`research/J-shared-encoder-drift/TRACK-J3-ERROR-COMPLEMENTARITY-DIAG01.md`.
