@@ -1,0 +1,16 @@
+{
+  "test_metrics": {
+    "J0_joint_shared": {"retmse10": 0.953599, "agg_mse10": 0.641731, "recall10": 0.020257, "note": "reused, not re-run"},
+    "J1_stopgrad_key": {"retmse10": 1.008351, "agg_mse10": 0.564347, "recall10": 0.021987, "note": "reused, not re-run"},
+    "K1_multislot_relevance": {"retmse10": 1.139629, "agg_mse10_hard": 0.573750, "recall10": 0.020017, "D": 0.113963, "C": 0.459787, "best_epoch": 1},
+    "K2_multislot_aggregate": {"retmse10": 1.120915, "agg_mse10_hard": 0.546943, "agg_mse10_soft": 0.504919, "recall10": 0.027461, "D": 0.112091, "C": 0.434852, "best_epoch": 1}
+  },
+  "K2_vs_J1_retmse10_pct_change": 0.1116,
+  "K2_agg_best_of_all_four_arms": true,
+  "no_go_condition_6_triggered": true,
+  "no_go_condition_6_detail": "K2 retMSE degrades 11.16% vs J1, exceeding the pre-registered 10% NO-GO threshold",
+  "condition_A_pareto_over_J1": false,
+  "condition_B_bridge": false,
+  "weak_go": false,
+  "verdict": "NO-GO (per pre-registered numeric thresholds), despite K2 achieving best aggregate MSE and best Recall@10 of all four arms"
+}

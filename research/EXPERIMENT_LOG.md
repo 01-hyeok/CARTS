@@ -3473,3 +3473,43 @@ complementarity-aware objective), not as evidence that Set Oracle
 training is correct. No new training, no Set Oracle, no Stage-2 this
 round. Full report:
 `research/J-shared-encoder-drift/TRACK-J3-ERROR-COMPLEMENTARITY-DIAG01.md`.
+
+## TRACK-K-MULTISLOT-PREDICTIVE-RETRIEVAL01 (2026-09-29, ETTh1_720, seed0; run in parallel with TRACK-J3)
+
+Tests whether a single query can learn S=10 independent retrieval
+"slots" (one shared MLP encoder, J1-style StopGrad-Key candidate branch,
+10 linear projections `W_m=I+eps_m` producing 10 score rows via one
+batched `Q@K^T`, no per-slot re-encoding) that are individually relevant
+AND mutually complementary, without any Set Oracle or combinatorial
+search. K1 (multislot_relevance): collective-distribution KL anchor +
+slot-distribution overlap penalty only, no future/aggregate loss. K2
+(multislot_aggregate): K1's loss + a differentiable, future-blind
+Top-32-per-slot soft aggregate loss. Checkpoint selection: min val HARD
+`uniform_agg_mse10` (not the individual-retrieval criterion J0/J1/J2
+used, since this track's purpose is retrieved-SET quality -- documented
+deviation). J0/J1 were NOT re-run, reused as baselines.
+
+Result (test, retMSE@10 / AggMSE@10 / Recall@10): J0=0.9536/0.6417/0.0203,
+J1=1.0084/0.5643/0.0220, K1=1.1396/0.5738/0.0200, **K2=1.1209/0.5469/0.0275**.
+K1 alone (no aggregate loss) does NOT recover J1's aggregate advantage --
+slightly worse than J1 on both metrics. K2 clearly beats K1 on every
+metric, and achieves the best aggregate MSE AND best Recall@10 of all
+four arms compared this session. Real slot specialization confirmed (low
+cross-slot Top-1 identity overlap: K1 3.6%, K2 1.5% -- more
+differentiated under the aggregate objective, not collapsed). Soft-hard
+relaxation gap for K2: soft agg 0.5049 vs hard agg 0.5469 (partial but
+not full transfer). Computationally practical: no `[B,S,N,H]` tensor
+ever allocated, VRAM ~1.46-1.47GB (comparable to single-slot baseline),
+both runs early-stopped within 3 minutes.
+
+**However, K2's retMSE@10 degrades 11.16% relative to J1 -- exceeding
+the pre-registered 10% NO-GO ceiling (criterion 6).** Per the spec's
+explicit numeric decision rule: **Verdict: NO-GO**, despite the
+genuinely positive aggregate/Recall result. Combined with TRACK-J3's GO
+verdict (run in parallel, see that entry): the applicable pre-registered
+combined outcome is **"problem diagnosis correct (J3), but this specific
+multi-slot surrogate did not solve it within the pre-registered
+individual-quality budget (K2)."** No coefficient sweep (`lambda_agg`/
+`beta`/`L_soft`), additional seed, Weather, or Stage-2 was run, per spec.
+16/16 unit tests pass. Full report:
+`research/K-multislot-predictive-retrieval/TRACK-K-MULTISLOT-PREDICTIVE-RETRIEVAL01.md`.
