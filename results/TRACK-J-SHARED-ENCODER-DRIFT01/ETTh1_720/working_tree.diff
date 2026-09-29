@@ -1,0 +1,3 @@
+fcdd2e2 Add TRACK-I-PCA-FUTURE-TEACHER01 (NO-GO); TRACK-H ETTh1 grid + Weather p120 baseline
+# working_tree.diff: this track's own new/modified files are all newly added (no pre-existing
+# production file was modified -- see 'git show --stat' on this track's own commit for the full file list)

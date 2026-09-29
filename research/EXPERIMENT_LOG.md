@@ -3336,3 +3336,54 @@ instruction, Stage-2 was not run (the required Stage-1 improvement
 precondition was not met). H=96 was not attempted per the pre-registered
 stopping rule. Full report:
 `research/I-pca-future-teacher/TRACK-I-PCA-FUTURE-TEACHER01.md`.
+
+## TRACK-J-SHARED-ENCODER-DRIFT01 (2026-09-29, A0 diagnostic only, ETTh1_720, seed0)
+
+Tested whether a shared query/candidate encoder's simultaneous, coupled
+update under a future-supervised KL retrieval objective explains the
+repeatedly-observed "training KL falls, full-memory retrieval doesn't
+improve" disconnect seen across this session's other tracks. Baseline:
+the corrected, bug-fixed `individual_utility_memsafe`/
+`normalized_teacher_prob`/`kl_loss`/`memory_value`/`encode_raw` library
+(reused unmodified from TRACK-F/G/H/I), with `relation_encoder_type=mlp`,
+`relation_self_fill=linear` substituted for the Transformer/patch config
+those tracks used -- sourced and documented item-by-item in
+`research/J-shared-encoder-drift/AUDIT.md`, including the discovery that
+`run.py`'s own default `stage1_full_memory_gradient_mode='bank'` (cached,
+no candidate gradient) is NOT the shared-encoder behavior this track
+studies -- A0 deliberately uses the always-full-online library instead.
+Four fixed-probe score-matrix variants computed at every diagnostic step
+(S00 frozen-at-init, St0 query-adapts/key-frozen, S0t query-frozen/
+key-adapts, Stt actual shared encoder), against a deterministic 256-query
+probe set, identical candidate universe/mask/Top-K/raw-future eval target
+throughout. Step-0 equivalence (all four variants identical) and the
+gradient-decomposition identity (g_combined == g_q + g_k, max rel diff
+0.00e+00) both verified exactly. Found and fixed a real bug during the
+required instrumentation ON/OFF equivalence check: the gradient-conflict
+diagnostic ran in `.train()` mode, consuming extra RNG draws via active
+dropout and silently perturbing subsequent training steps -- fixed by
+forcing `.eval()` inside that diagnostic; re-verified bit-identical
+training trajectories (per-batch KL, final encoder hash) after the fix.
+
+**Result does not match the pre-registered Case A/B/C/D framework
+cleanly.** St0 and S0t are both, robustly, WORSE than the S00 baseline
+throughout training and at the held-out test split (test retMSE@10: S00
+1.167, St0 1.775, S0t 1.446) -- freezing either side of the encoder at
+initialization hurts retrieval. Yet Stt (the actual, jointly-updated
+shared encoder) is BEST of all four variants on every metric, both
+in-training and at test (test retMSE@10: Stt 0.954). Query/key
+encoder-gradients are measurably, persistently negatively correlated
+after initialization (cos(g_q,g_k): +0.35 at step0, then -0.31/-0.08/
+-0.29/-0.18 at 25%/50%/epoch1-end/best-checkpoint) -- genuine gradient
+conflict is present -- yet the coupled update is still net-beneficial.
+Representation collapse is real and early (effective rank 23.9->4.5 by
+step 20) and only partially recovers. Query displacement exceeds
+candidate displacement throughout (opposite of a "runaway candidate
+drift" story). Utility-group candidate displacement is U-shaped (bottom
+and oracle-top groups drift more than the middle group). 18/18 unit
+tests pass. **Conclusion: this diagnostic does NOT justify running A1
+Frozen-Key** -- A1 is mathematically equivalent to the St0 objective,
+which is the worst-performing non-baseline variant observed. Per the
+spec's explicit instruction, A1/A2/seed1/seed2/other horizons/datasets
+were NOT run this round regardless of this conclusion. Full report:
+`research/J-shared-encoder-drift/TRACK-J-SHARED-ENCODER-DRIFT01.md`.

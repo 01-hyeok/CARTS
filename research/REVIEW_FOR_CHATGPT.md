@@ -4123,3 +4123,74 @@ user's explicit conditional instruction, Stage-2 was not run (the
 required Stage-1 improvement precondition was not met); H=96 was not
 attempted per the pre-registered stopping rule. Full report:
 `research/I-pca-future-teacher/TRACK-I-PCA-FUTURE-TEACHER01.md`.
+
+---
+
+# Addendum (2026-09-29): TRACK-J-SHARED-ENCODER-DRIFT01
+
+**Question**: across this session's tracks, training KL repeatedly falls
+while full-memory retrieval doesn't improve or worsens. Is this explained
+by a SHARED query/candidate encoder's coupled update -- useful query-side
+adaptation cancelled by simultaneous candidate-side drift?
+
+**Design**: A0 diagnostic only (no new training objective, no
+architecture change) on the corrected MLP shared-encoder baseline
+(`relation_encoder_type=mlp`, `relation_self_fill=linear`, raw
+future-MSE teacher, KL(p_T||p_S), full-online candidate re-encoding every
+step -- see `research/J-shared-encoder-drift/AUDIT.md` for exact
+hyperparameter sourcing). Four fixed-probe score variants at every
+diagnostic step: S00 (frozen-at-init baseline), St0 (query adapts,
+candidates frozen at init), S0t (query frozen at init, candidates adapt),
+Stt (actual shared encoder). ETTh1_720, seed0 only, per spec. Step-0
+equivalence and the gradient-decomposition identity (g_combined =
+g_q + g_k) both verified exactly. A real instrumentation bug (gradient
+diagnostic leaking RNG state via active dropout, perturbing subsequent
+training) was found and fixed via the required ON/OFF equivalence check;
+re-verified bit-identical after the fix.
+
+**Result -- does not match the pre-registered Case A/B/C/D framework
+cleanly, reported as observed rather than forced into one**:
+
+- St0 and S0t are both robustly WORSE than the S00 baseline, throughout
+  training and at held-out test (test retMSE@10: S00=1.167, St0=1.775,
+  S0t=1.446) -- freezing either side of the encoder at init hurts.
+- Stt (actual, jointly-updated) is the BEST of all four variants on every
+  metric, in-training and at test (test retMSE@10 = 0.954) -- clearly
+  better than S00, St0, AND S0t.
+- This directly contradicts the spec's Case A prediction (candidate
+  drift cancelling query gains would make Stt <= St0); instead St0 itself
+  never improves at all, and Stt outperforms every single-sided
+  counterfactual.
+- Query/key encoder-gradients are measurably, persistently negatively
+  correlated after initialization (cos(g_q,g_k) positive only at step0,
+  then negative at all 4 subsequent measured points including the best
+  checkpoint) -- real gradient conflict exists, yet the coupled update is
+  still net-beneficial.
+- Representation collapse is real and early (effective rank 23.9->4.5 by
+  step 20 of ~2260), only partially recovers, and is timing-aligned with
+  the onset of St0/S0t's degradation -- but Stt keeps improving well past
+  where collapse stabilizes, so collapse alone does not explain Stt's
+  sustained gain.
+- Query displacement exceeds candidate displacement throughout (opposite
+  of a "candidates drift more than queries" story).
+- Utility-group candidate displacement is U-shaped: oracle-top and
+  worst-utility ("bottom") candidates drift MORE than the "middle" group,
+  not simply "good candidates drift more."
+
+**Conservative conclusion (per spec's interpretation-rule)**: in this
+single ETTh1_720/MLP/seed0 diagnostic, the useful part of training is a
+property of the JOINT query+candidate update, not decomposable into
+"useful query adaptation harmed by candidate drift." No claim is made
+about generalization to other seeds/horizons/datasets/encoders.
+
+**Q12 answer (per spec's own pre-registered decision question) -- does
+this justify running A1 Frozen-Key?** **NO.** A1 (Frozen-Key) is
+mathematically equivalent to training under the St0 objective, and St0
+is the worst-performing non-baseline variant observed here, both in
+training and at test. If this pattern reproduces on a second seed, the
+evidence points away from Frozen-Key as a fix, not toward it -- the
+opposite of the outcome the spec's own Case-A framing anticipated as
+likely. Per the spec's explicit instruction, A1/A2/additional seeds/other
+horizons/datasets were NOT run this round regardless of this conclusion.
+18/18 unit tests pass. Full report:
+`research/J-shared-encoder-drift/TRACK-J-SHARED-ENCODER-DRIFT01.md`.

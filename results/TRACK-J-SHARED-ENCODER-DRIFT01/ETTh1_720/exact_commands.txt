@@ -1,0 +1,19 @@
+# TRACK-J-SHARED-ENCODER-DRIFT01 exact commands run
+
+# Unit tests
+python -m pytest tests/test_j_shared_encoder_drift01.py -q
+
+# Instrumentation ON/OFF equivalence check (short deterministic runs)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_j_shared_encoder_drift01.py \
+  --reference_ckpt "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth" --cell ETTh1_720_eq_off --train_epochs 1 --patience 1 \
+  --limit_batches 15 --diag_every_epoch1 10 --instrument off \
+  --out_dir /tmp/track_j_eq_out --checkpoints /tmp/track_j_eq_ckpt_off
+
+CUDA_VISIBLE_DEVICES=1 python scripts/train_j_shared_encoder_drift01.py \
+  --reference_ckpt "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth" --cell ETTh1_720_eq_on --train_epochs 1 --patience 1 \
+  --limit_batches 15 --diag_every_epoch1 10 --instrument on \
+  --out_dir /tmp/track_j_eq_out --checkpoints /tmp/track_j_eq_ckpt_on
+
+# Main A0 run (ETTh1_720, seed0, full 10 epochs, patience 5 -- ran to epoch 10 without early stop)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_j_shared_encoder_drift01.py \
+  --reference_ckpt "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth" --cell ETTh1_720
