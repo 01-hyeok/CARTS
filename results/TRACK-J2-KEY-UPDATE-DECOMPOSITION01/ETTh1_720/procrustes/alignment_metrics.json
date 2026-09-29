@@ -1,0 +1,51 @@
+{
+  "0": {
+    "residual_before": 102.71285247802734,
+    "residual_after": 70.08448791503906,
+    "residual_reduction_pct": 31.76658400171317,
+    "singular_values_sum": 4745.14990234375,
+    "is_orthogonal_check": 3.314018249511719e-05
+  },
+  "1": {
+    "residual_before": 103.09710693359375,
+    "residual_after": 74.87053680419922,
+    "residual_reduction_pct": 27.37862484111766,
+    "singular_values_sum": 4398.26220703125,
+    "is_orthogonal_check": 3.2901763916015625e-05
+  },
+  "2": {
+    "residual_before": 101.9679946899414,
+    "residual_after": 68.86431884765625,
+    "residual_reduction_pct": 32.4647708753565,
+    "singular_values_sum": 4829.9404296875,
+    "is_orthogonal_check": 3.4689903259277344e-05
+  },
+  "3": {
+    "residual_before": 101.82051849365234,
+    "residual_after": 76.07689666748047,
+    "residual_reduction_pct": 25.28333405390857,
+    "singular_values_sum": 4307.19580078125,
+    "is_orthogonal_check": 2.7894973754882812e-05
+  },
+  "4": {
+    "residual_before": 103.14501953125,
+    "residual_after": 73.01557922363281,
+    "residual_reduction_pct": 29.210756316245423,
+    "singular_values_sum": 4535.35009765625,
+    "is_orthogonal_check": 3.314018249511719e-05
+  },
+  "5": {
+    "residual_before": 100.83331298828125,
+    "residual_after": 78.17068481445312,
+    "residual_reduction_pct": 22.47533826093957,
+    "singular_values_sum": 4145.77587890625,
+    "is_orthogonal_check": 3.1828880310058594e-05
+  },
+  "6": {
+    "residual_before": 103.31649017333984,
+    "residual_after": 77.08563232421875,
+    "residual_reduction_pct": 25.388839482557056,
+    "singular_values_sum": 4229.96826171875,
+    "is_orthogonal_check": 3.123283386230469e-05
+  }
+}

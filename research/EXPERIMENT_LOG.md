@@ -3387,3 +3387,51 @@ which is the worst-performing non-baseline variant observed. Per the
 spec's explicit instruction, A1/A2/seed1/seed2/other horizons/datasets
 were NOT run this round regardless of this conclusion. Full report:
 `research/J-shared-encoder-drift/TRACK-J-SHARED-ENCODER-DRIFT01.md`.
+
+## TRACK-J2-KEY-UPDATE-DECOMPOSITION01 (2026-09-29, ETTh1_720, seed0)
+
+Direct causal follow-up to TRACK-J-SHARED-ENCODER-DRIFT01 (commit
+d3e0aa4). TRACK-J's St0/S0t were POST-HOC cross-time evaluations (Et(Xq)
+vs a frozen E0(Xk) snapshot), never actual training interventions -- this
+round runs two REAL interventions holding every other hyperparameter
+identical (re-audited from TRACK-J's own config.json/exact_commands.txt,
+not report prose): J1 StopGrad-Key (single shared encoder, candidates
+re-encoded every step then `.detach()`-ed before scoring -- zero
+candidate-side gradient, but candidate embeddings still move with the
+encoder) and J2 True-Frozen-Key (two encoders; E_k = deepcopy(E_q at
+init), fully frozen, one-time key bank K_0 never recomputed -- asserted
+byte-identical to a live re-encode after every single optimizer step
+throughout training, zero failures). Both verified to share J0's exact
+init hash and epoch-1 batch-order hash.
+
+Result (test split): **retMSE@10/Oracle regret ranking is J0 (0.9536) <
+J1 (1.0084) < J2 (1.0240)** -- Outcome E (J0>J1>J2, "joint co-adaptation
+is central"), consistent on val and test. But **Uniform Aggregate
+MSE@10 ranking reverses to J1 (0.5643) < J2 (0.5950) < J0 (0.6417)** --
+the same individual-vs-aggregate metric disagreement seen in TRACK-G/H,
+now reproduced in a genuine causal-intervention setting rather than a
+post-hoc diagnostic. J1 also has the best Recall@10 (0.0220 vs J0's
+0.0203). J1's `best_epoch=1` (stops improving almost immediately, early
+stops at epoch 6); J2 improves more gradually to `best_epoch=6` (full 10
+epochs, no early stop) but never approaches J0.
+
+Post-hoc Orthogonal Procrustes diagnostic (fit per-channel on TRAIN-
+MEMORY candidate embeddings only, R*=U@Vh from svd(Zt^T Z0), J0's
+best/epoch-10 checkpoint): recovers **58.9% of St0's original gap to the
+S00 baseline** and **more than 100% of S0t's gap** (aligned S0t actually
+beats S00) -- a substantial fraction of TRACK-J's originally-reported
+St0/S0t degradation is a coordinate-system-mismatch artifact, not (or not
+entirely) genuine harmful single-side adaptation, especially for S0t.
+Residual embedding-space discrepancy after best-fit rotation is still
+67.5-77.5% of the raw discrepancy though -- alignment is substantial but
+incomplete.
+
+**Revised conclusion on TRACK-J's "Frozen-Key not justified" claim**:
+needs qualification, not reversal. J2 (the actual trained Frozen-Key run)
+is still worse than J0 on individual retrieval quality (retMSE@10) --
+confirming that part of TRACK-J's conclusion on better evidence (a real
+run, not a post-hoc proxy). But J2 beats J0 on Uniform Aggregate MSE@10
+-- so "not justified" is too strong as an unqualified statement; the
+answer depends on which downstream objective is prioritized. 13/13 unit
+tests pass. Per spec, no additional seed/Weather/Stage-2/A2 was run. Full
+report: `research/J-shared-encoder-drift/TRACK-J2-KEY-UPDATE-DECOMPOSITION01.md`.

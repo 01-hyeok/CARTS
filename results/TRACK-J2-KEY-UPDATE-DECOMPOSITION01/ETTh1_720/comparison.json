@@ -1,0 +1,31 @@
+{
+  "test_metrics": {
+    "J0_joint_shared": {
+      "retmse10": 0.9535986185073853,
+      "recall10": 0.020256697067192624,
+      "ndcg10": 0.9659448266029358,
+      "oracle_regret": 0.4580338959183012,
+      "uniform_agg_mse10": 0.6417305831398282,
+      "best_epoch": 10
+    },
+    "J1_stopgrad_key": {
+      "retmse10": 1.0083508065768652,
+      "recall10": 0.02198660683019885,
+      "ndcg10": 0.9581867711884635,
+      "oracle_regret": 0.5127860988889422,
+      "uniform_agg_mse10": 0.5643467860562461,
+      "best_epoch": 1
+    },
+    "J2_true_frozen_key": {
+      "retmse10": 1.023965401308877,
+      "recall10": 0.019587053817563822,
+      "ndcg10": 0.9591674293790545,
+      "oracle_regret": 0.5284006893634796,
+      "uniform_agg_mse10": 0.5949537732771465,
+      "best_epoch": 6
+    }
+  },
+  "ranking_retmse10": "J0 < J1 < J2 (J0 best)",
+  "ranking_uniform_agg_mse10": "J1 < J2 < J0 (J1 best) -- REVERSED from retmse10",
+  "outcome": "Outcome E on retmse10 (J0>J1>J2); reversed on aggregate MSE"
+}

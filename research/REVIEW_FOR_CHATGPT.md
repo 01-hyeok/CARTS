@@ -4194,3 +4194,61 @@ likely. Per the spec's explicit instruction, A1/A2/additional seeds/other
 horizons/datasets were NOT run this round regardless of this conclusion.
 18/18 unit tests pass. Full report:
 `research/J-shared-encoder-drift/TRACK-J-SHARED-ENCODER-DRIFT01.md`.
+
+---
+
+# Addendum (2026-09-29): TRACK-J2-KEY-UPDATE-DECOMPOSITION01
+
+**Question**: TRACK-J's St0/S0t were POST-HOC cross-time evaluations
+(current query vs a frozen-at-init candidate snapshot, or vice versa),
+never actual training runs -- so "St0 was bad" cannot license conclusions
+about Frozen-Key TRAINING, and part of St0/S0t's badness could be simple
+coordinate-system mismatch rather than genuine harmful adaptation. This
+round isolates the causal contribution of candidate-side GRADIENT (J0 vs
+J1) separately from candidate-side MOVEMENT (J1 vs J2), via two real
+training interventions, plus a post-hoc Procrustes-alignment check of how
+much of St0/S0t's original badness is basis mismatch.
+
+**Design**: same ETTh1_720/MLP/raw-future-MSE/KL/cosine baseline as
+TRACK-J (re-audited from its own config.json, not report prose), same
+init (verified hash match), same batch order (verified hash match). J1
+StopGrad-Key: shared encoder, candidates re-encoded every step then
+detached before scoring (zero gradient, but embeddings still move). J2
+True-Frozen-Key: two encoders, key encoder frozen at init, one-time key
+bank never recomputed (verified byte-identical to a live re-encode after
+every optimizer step, zero failures, throughout training). J0 itself was
+NOT re-run -- its existing TRACK-J artifacts were reused directly.
+
+**Result -- individual retrieval and aggregate quality DISAGREE on which
+arm is best**:
+
+- retMSE@10 / Oracle regret (test): **J0 (0.9536) < J1 (1.0084) < J2
+  (1.0240)** -- Outcome E, "joint co-adaptation is central," consistent
+  on val and test.
+- Uniform Aggregate MSE@10 (test): **J1 (0.5643) < J2 (0.5950) < J0
+  (0.6417)** -- ranking REVERSES. J1 also wins on Recall@10.
+- This is the same individual-vs-aggregate metric disagreement pattern
+  already seen in TRACK-G and TRACK-H, now reproduced via genuine causal
+  training interventions rather than a post-hoc score-matrix diagnostic
+  -- a recurring, cross-track structural finding, not a one-off.
+
+**Procrustes alignment (post-hoc only, J0's existing best checkpoint, fit
+on train-memory candidates only, never touching val/test futures)**:
+recovers 58.9% of St0's original gap to the S00 baseline, and MORE than
+100% of S0t's gap (aligned S0t actually beats S00). A substantial share
+of TRACK-J's originally-reported St0/S0t degradation was a coordinate-
+mismatch artifact, especially for S0t -- but 67.5-77.5% of the raw
+embedding-space discrepancy remains after the best-fit global rotation,
+so alignment is a real, partial, not total, explanation.
+
+**Revised verdict on TRACK-J's Q12 ("Frozen-Key not justified")**:
+qualified, not reversed. The REAL trained Frozen-Key run (J2) is still
+worse than J0 on individual retrieval quality -- confirming that part of
+TRACK-J's conclusion on much better evidence than the original post-hoc
+St0 proxy. But J2 beats J0 on aggregate Top-10 quality -- so an
+unqualified "not justified" is too strong; the right answer depends on
+which downstream objective (per-candidate retrieval vs aggregate set
+quality) the eventual system prioritizes. 13/13 unit tests pass. Per
+spec, no additional seed, Weather, Stage-2, or A2 (asymmetric dual
+encoder) was run this round. Full report:
+`research/J-shared-encoder-drift/TRACK-J2-KEY-UPDATE-DECOMPOSITION01.md`.

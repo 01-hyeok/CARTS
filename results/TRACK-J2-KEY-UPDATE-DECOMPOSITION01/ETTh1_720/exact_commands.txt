@@ -1,0 +1,18 @@
+# TRACK-J2-KEY-UPDATE-DECOMPOSITION01 exact commands run
+
+# Unit tests
+python -m pytest tests/test_j2_key_update_decomposition01.py -q
+
+# J1 StopGrad-Key (full run, ETTh1_720, seed0)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_j2_key_update_decomposition01.py \
+  --reference_ckpt "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth" --arm J1_stopgrad_key --cell ETTh1_720
+
+# J2 True-Frozen-Key (full run, ETTh1_720, seed0)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_j2_key_update_decomposition01.py \
+  --reference_ckpt "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth" --arm J2_true_frozen_key --cell ETTh1_720
+
+# Post-hoc Orthogonal Procrustes diagnostic (on J0's existing best checkpoint)
+CUDA_VISIBLE_DEVICES=1 python scripts/diag_j2_procrustes01.py
+
+# J0 itself was NOT re-run -- reused from TRACK-J-SHARED-ENCODER-DRIFT01
+# (results/TRACK-J-SHARED-ENCODER-DRIFT01/ETTh1_720/, checkpoints/track_j_shared_encoder_drift01/ETTh1_720/checkpoint.pth)

@@ -1,0 +1,3 @@
+d3e0aa4 Add TRACK-J-SHARED-ENCODER-DRIFT01: A0 shared-encoder drift diagnostic
+# TRACK-J2's own files are all newly added; no pre-existing production file was modified
+# (J0/TRACK-J itself was not re-run or modified this round)
