@@ -1,0 +1,27 @@
+{
+  "arm_name": "B1_pca64_seed2",
+  "teacher_mode": "pca",
+  "pca_dim": 64,
+  "cell": "ETTh1_720",
+  "init_seed": 2,
+  "loader_seed": 2,
+  "best_epoch": 1,
+  "best_val_retmse10": 2.0082013767000593,
+  "test_model_top10_individual_mse": 0.9628136975834419,
+  "test_oracle_top10_individual_mse": 0.49783304340188295,
+  "test_oracle_regret": 0.4649806524163127,
+  "test_recall_at_10": 0.027427778561132446,
+  "test_ndcg_at_10": 0.9626999975645654,
+  "test_global_h720_mse": 0.5613336836093084,
+  "encoder_init_sha256": "d7d62a842b1ea9dc01c4187083e14bc080f063f4578b75a58d1de1734e8a526f",
+  "batch_order_hashes": {
+    "epoch1": "8173e9bebacc3f1ae3c295bd3e2aeebf09a853c7028d48b5a3a5a0b58c29ccb6",
+    "epoch2": "e4d49dc017aeeccf8d3e2d803ccfd8ddf6efbe22ff82c80450dd05e29df68547",
+    "epoch3": "29bf0f08a22133636c2bf18a1a6ddecd12a919315437c7b0521eecdfeebae27a",
+    "epoch4": "7567ae8c435797fa28c07175aaba66c0a532c72ce4ffd6827cf114af58f14c25",
+    "epoch5": "9c27a84f1cf7ca474a5a6fdea4da8fe027c4d10e86d3b2c88829a591944ea03b",
+    "epoch6": "5640849a440810656e4df3587abdbe78568bd87dac736dcb37c0377ada6844df"
+  },
+  "code_commit": "7d00d9e37ab751dd9b01178283badb338eb28008",
+  "wall_clock_seconds": 349.0480399131775
+}

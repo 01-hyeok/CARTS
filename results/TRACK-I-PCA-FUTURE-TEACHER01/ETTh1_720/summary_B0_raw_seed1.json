@@ -1,0 +1,27 @@
+{
+  "arm_name": "B0_raw_seed1",
+  "teacher_mode": "raw",
+  "pca_dim": null,
+  "cell": "ETTh1_720",
+  "init_seed": 1,
+  "loader_seed": 1,
+  "best_epoch": 1,
+  "best_val_retmse10": 1.9886288108581072,
+  "test_model_top10_individual_mse": 0.9537238209736342,
+  "test_oracle_top10_individual_mse": 0.49783304340188295,
+  "test_oracle_regret": 0.45589077580650494,
+  "test_recall_at_10": 0.027288954272307715,
+  "test_ndcg_at_10": 0.9637200027761373,
+  "test_global_h720_mse": 0.5536015300557816,
+  "encoder_init_sha256": "12cf72ed9eb55b28aac7b6b449b0a73dc34bb99b40e81801ddcfd08fa4e58734",
+  "batch_order_hashes": {
+    "epoch1": "d13e54f1c473245ea20257dc3e156ac1ac855c439cc2b66ffeafdfb0712c336f",
+    "epoch2": "0a797d0b9d8c709cc0c08352bc320e555c6956940fdb6115287d792f5daa792c",
+    "epoch3": "d97b90b3f268855fe7407145e5a7263b58764414b027aeb30eaf254746b437e4",
+    "epoch4": "8fc36bcf5925e251251cb6d21e90c64e3e5ebe49c7927f186c8105a3a987de8d",
+    "epoch5": "84fa3811d15d5d10a78cdc65e28b637cf3857aa108f76b38f857b4318210802a",
+    "epoch6": "76937b26dd68358abc50cf9bab317514735703b478a9cbd22434ab10c70c432a"
+  },
+  "code_commit": "7d00d9e37ab751dd9b01178283badb338eb28008",
+  "wall_clock_seconds": 345.6923780441284
+}

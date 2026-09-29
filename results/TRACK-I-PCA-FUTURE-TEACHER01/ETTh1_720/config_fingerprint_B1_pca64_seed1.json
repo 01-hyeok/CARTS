@@ -1,0 +1,40 @@
+{
+  "exp": "TRACK-I-PCA-FUTURE-TEACHER01",
+  "cell": "ETTh1_720",
+  "arm_name": "B1_pca64_seed1",
+  "teacher_mode": "pca",
+  "pca_dim_requested": 64,
+  "pca_actual_dims": {
+    "0": 64,
+    "1": 64,
+    "2": 64,
+    "3": 64,
+    "4": 64,
+    "5": 64,
+    "6": 64
+  },
+  "patch_len": 120,
+  "stride": 120,
+  "top_k": 10,
+  "tau_t": 0.02,
+  "tau_s": 0.1,
+  "init_seed": 1,
+  "loader_seed": 1,
+  "channels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "encoder_init_sha256": "12cf72ed9eb55b28aac7b6b449b0a73dc34bb99b40e81801ddcfd08fa4e58734",
+  "learning_rate": 0.001,
+  "batch_size": 32,
+  "epochs": 10,
+  "patience": 5,
+  "checkpoint_criterion": "min val model_top10_individual_mse (raw future MSE, always)",
+  "code_commit": "7d00d9e37ab751dd9b01178283badb338eb28008",
+  "param_count": 2704800
+}

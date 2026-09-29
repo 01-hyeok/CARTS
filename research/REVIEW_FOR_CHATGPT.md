@@ -4079,3 +4079,47 @@ diagnostics requested in the original spec were not logged during the 18
 runs. Weather, other horizons, Stage-2, new losses, temperature/patch
 sweeps, and new architectures were not started, per the spec's explicit
 scope limit.
+
+---
+
+# Addendum (2026-09-28/29): TRACK-H-DIRECT-SET-UTILITY01 (STOPPED, incomplete) + TRACK-I-PCA-FUTURE-TEACHER01
+
+**TRACK-H-DIRECT-SET-UTILITY01** tested a differentiable full-memory
+aggregate-prediction auxiliary loss (`L_ind + lambda*L_agg`, no Greedy Set
+Oracle) against the existing individual-KL-only objective. ETTh1_720
+full grid (H0-H3, 3 seeds) completed: the aggregate loss's effect is
+small and does not clear the pre-registered GO bar (uniform aggregate MSE
+>=2% improvement) -- H1 vs H0 improves individual retMSE slightly
+(-0.96%) but slightly *worsens* aggregate MSE (+0.25%); H3 vs H2 improves
+both marginally (-0.34%/-0.14%). Weather_720 was partially run (H0 3
+seeds, H1 2/3 seeds) then explicitly stopped by the user to prioritize
+TRACK-I; **this track has no bootstrap analysis, no chronological
+analysis, and no final report/verdict** -- it is left incomplete, not
+closed. A device-mismatch bug in an epoch-final diagnostic (fixed) cost
+one wasted ETTh1 joint-arm run before being caught; no other issues.
+Raw results only: `results/TRACK-H-DIRECT-SET-UTILITY01/`.
+
+**TRACK-I-PCA-FUTURE-TEACHER01** tested whether replacing the Stage-1 KL
+teacher's raw-future-MSE relevance geometry with a fixed, train-only-fit,
+low-dimensional PCA future-space distance produces a more learnable
+teacher distribution without losing Oracle retrieval quality. ETTh1_720,
+H=720 only (pre-registered: no horizon/dataset expansion without a
+reproduced H=720 improvement). Full-rank PCA+L2 sanity check passed
+exactly. Phase A (teacher-only, 7 arms): **PCA-64 (L2) preserves Oracle
+retrieval quality almost exactly** (+0.91% retMSE degradation, Recall@10
+=0.79 vs raw Oracle, well under the 3% threshold); PCA-16 and
+cosine-on-PCA both fail. Phase B (B0 raw vs B1 PCA-64, 3 **independently
+initialized, verified-paired** seeds; B0 seed0 reproduces the recorded
+p120 baseline exactly, abs diff 0.0): **PCA-64-teacher student is worse
+than raw-teacher student on raw retMSE@10 in 2 of 3 seeds (mean +0.72%
+worse)**; Recall@10 ties. Training diagnostics: the PCA teacher is
+consistently *easier to fit* (lower train KL every epoch/seed) despite
+being a *more diffuse* target (higher entropy) than the raw teacher --
+but this easier fit does not translate into better retrieval quality
+(spec interpretation-pattern 3). All 6 runs independently select
+best_epoch=1 (not PCA-specific -- both teachers show the same early-peak/
+degrade pattern). 14/14 unit tests pass. **Verdict: NO-GO.** Per the
+user's explicit conditional instruction, Stage-2 was not run (the
+required Stage-1 improvement precondition was not met); H=96 was not
+attempted per the pre-registered stopping rule. Full report:
+`research/I-pca-future-teacher/TRACK-I-PCA-FUTURE-TEACHER01.md`.

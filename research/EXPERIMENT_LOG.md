@@ -3264,3 +3264,75 @@ runs (only coarser per-epoch curves + final-epoch scalar displacement)
 and would require a fresh run to add. Weather, other horizons, Stage-2,
 new losses, and architecture sweeps were not started. Full report:
 `research/G-decoupled-metric-adaptation/TRACK-G-DECOUPLED-METRIC-ADAPTATION01.md`.
+
+## TRACK-H-DIRECT-SET-UTILITY01 (2026-09-28/29, ETTh1 portion only -- STOPPED, no report written)
+
+Tested whether adding a differentiable full-memory aggregate-prediction
+loss (`L = L_ind + lambda_agg * L_agg`, no Greedy Set Oracle) alongside
+the existing individual-KL objective improves Top-10 set usefulness
+(uniform aggregate MSE) without materially hurting individual retMSE@10,
+on ETTh1_720 and (originally) Weather_720. Pre-training N_eff diagnostic
+flagged both datasets' default tau_agg=0.1 as too diffuse; validation-only
+tau/lambda pilots selected tau_agg=0.02 (ETTh1) / 0.05 (Weather,
+dataset-specific) and lambda_agg=0.1 (shared, smallest value passing the
+pre-registered selection rule). Full H0-H3 x 3-seed grid completed on
+ETTh1_720 (12 runs; H0/H2 reproduce TRACK-G's A1/A5 exactly). A device-
+mismatch bug in the `encoder_param_displacement` diagnostic (CPU vs CUDA
+tensor, `train_h_direct_set_utility01.py` line ~417) crashed H2 seed0
+after a full training run completed but before its summary was written;
+fixed (`.to(p.device)`) and the batch re-run cleanly. ETTh1 result: the
+aggregate loss's effect is small and inconsistent -- H1 (frozen+agg)
+improves individual retMSE slightly (-0.96%) but slightly *worsens*
+aggregate MSE (+0.25%) relative to H0; H3 (joint+agg) improves both
+marginally (-0.34%/-0.14%) relative to H2. Neither clears the
+pre-registered GO threshold (uniform aggregate MSE >=2% improvement).
+Weather_720: H0 (3 seeds) and a partial H1 batch (seed0/1 complete,
+seed2 mid-training) were run before the user explicitly stopped the
+Weather portion of this track (2026-09-29) to prioritize
+TRACK-I-PCA-FUTURE-TEACHER01; Weather H0 seed0/seed1 results are saved
+for reference but Weather was never carried through bootstrap/GO analysis.
+ETTh1 low-LR control (H2/H3 encoder_lr=1e-4), full bootstrap/chronological
+analysis, and the formal report were never produced -- this track is
+**left incomplete, not closed with a verdict**. Raw results:
+`results/TRACK-H-DIRECT-SET-UTILITY01/`.
+
+## TRACK-I-PCA-FUTURE-TEACHER01 (2026-09-29)
+
+Tested whether replacing the Stage-1 KL teacher's relevance geometry --
+raw future MSE -- with a FIXED, train-only-fit, low-dimensional PCA
+future-space distance makes the teacher distribution easier for a plain-
+cosine student encoder to learn, while preserving raw-future-MSE Oracle
+retrieval quality. ETTh1_720, H=720 only (pre-registered stopping rule:
+no H=96/other-horizon/Weather expansion unless H=720 shows a reproduced
+improvement). Code audit confirmed candidate mask, train-only memory
+support, teacher/student/KL-direction, and checkpoint-selection criterion
+all match the spec's description; no prior PCA/latent-teacher experiment
+exists in this repository. Full-rank PCA + L2 sanity check PASSED exactly
+(byte-identical retMSE/ranking to raw MSE, both synthetically and on real
+data). Phase A (7 teacher-space arms, no student training): PCA-64 (L2)
+preserves Oracle retrieval quality almost exactly (+0.91% retMSE
+degradation, Recall@10=0.79 vs raw Oracle, well under the pre-registered
+3% threshold); PCA-16 fails (+6.02%); cosine-on-PCA fails badly (+29.8%,
+Spearman collapses to 0.49) -- L2/magnitude information in future space is
+load-bearing. Dimension 64 selected on validation only, fixed before
+Phase B, never revisited on test. Phase B (B0 raw-teacher vs B1 PCA-64-
+teacher, 3 independently-initialized PAIRED seeds -- verified identical
+`encoder_init_sha256` and `batch_order_sha256` within each pair; B0 seed0
+reproduces the recorded p120 baseline exactly, abs diff 0.0, confirming
+`teacher_mode=raw` is a true no-op): **PCA-64 student is worse than raw-
+teacher student on raw future retMSE@10 in 2 of 3 seeds (mean +0.72%
+worse)**; Recall@10 is statistically indistinguishable between arms.
+Training diagnostics show the PCA teacher IS consistently easier to fit
+(lower train KL every epoch, every seed) despite being a MORE diffuse
+target (higher entropy, lower top-1 mass) than the raw teacher -- but this
+better distribution-fit does not translate into better retrieval quality
+(spec interpretation-pattern 3: "distribution fitting improves, full-
+memory retMSE does not"). All 6 Phase B runs independently select
+best_epoch=1 (val retMSE degrades past epoch 1 for both teachers equally
+-- not PCA-specific). 14/14 unit tests pass (leakage, determinism, frozen-
+parameter, full-rank-preservation, raw-mode-passthrough, masked-softmax
+checks). Verdict: **NO-GO**. Per the user's explicit conditional
+instruction, Stage-2 was not run (the required Stage-1 improvement
+precondition was not met). H=96 was not attempted per the pre-registered
+stopping rule. Full report:
+`research/I-pca-future-teacher/TRACK-I-PCA-FUTURE-TEACHER01.md`.
