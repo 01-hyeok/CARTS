@@ -1,0 +1,16 @@
+{
+  "Q1_J0J1_P256_reproduction_pass": true,
+  "Q2_K1K2_FULL_reproduction_pass": true,
+  "Q3_D_J1_gt_D_J0_full": true,
+  "Q4_C_J1_lt_C_J0_full": true,
+  "Q5_Agg_J1_lt_Agg_J0_full": true,
+  "Q6_R_cross_full": 1.0623625845813485,
+  "Q7_J3_verdict": "FULL-TEST CONFIRMED",
+  "Q8_K2_vs_J1_retmse_pct_change_full": 11.477826313927322,
+  "Q9_exceeds_10pct_threshold": true,
+  "Q10_track_k_verdict": "CONFIRMED",
+  "Q11_K2_improves_agg_vs_J1_full": true,
+  "Q12_K2_improves_agg_vs_J1_p256": true,
+  "delta_agg_K2_vs_J1_full_pct": -3.028758269311285,
+  "delta_agg_K2_vs_J1_p256_pct": -3.5984089911961745
+}

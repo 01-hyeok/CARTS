@@ -1,0 +1,38 @@
+{
+  "J0": {
+    "path": "checkpoints/track_j_shared_encoder_drift01/ETTh1_720/checkpoint.pth",
+    "file_sha256": "6d51c52be5b97a758414349353bd9af1358502ec39f4074fdf53f9d74b5d7e4d",
+    "best_epoch": 10,
+    "n_candidates": 7201,
+    "top_k": 10,
+    "channels": 7,
+    "is_multislot": false
+  },
+  "J1": {
+    "path": "checkpoints/track_j2_key_update_decomposition01/ETTh1_720/J1_stopgrad_key/checkpoint.pth",
+    "file_sha256": "1b14877fce3c41114e83db1b832fdd6bd749df4888c8ff74468e34a6d730626c",
+    "best_epoch": 1,
+    "n_candidates": 7201,
+    "top_k": 10,
+    "channels": 7,
+    "is_multislot": false
+  },
+  "K1": {
+    "path": "checkpoints/track_k_multislot_predictive_retrieval01/ETTh1_720/K1_multislot_relevance/checkpoint.pth",
+    "file_sha256": "ac7120b5d0cc2c3d741add62599c24527ac2c0695dac8364703500f31ddd4170",
+    "best_epoch": 1,
+    "n_candidates": 7201,
+    "top_k": 10,
+    "channels": 7,
+    "is_multislot": true
+  },
+  "K2": {
+    "path": "checkpoints/track_k_multislot_predictive_retrieval01/ETTh1_720/K2_multislot_aggregate/checkpoint.pth",
+    "file_sha256": "9827f76d4698ff96a2df6eb867cff2c6eaeaf8f6a80a0db00044a6095ee629c1",
+    "best_epoch": 1,
+    "n_candidates": 7201,
+    "top_k": 10,
+    "channels": 7,
+    "is_multislot": true
+  }
+}

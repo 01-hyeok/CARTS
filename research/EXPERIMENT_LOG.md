@@ -3513,3 +3513,41 @@ individual-quality budget (K2)."** No coefficient sweep (`lambda_agg`/
 `beta`/`L_soft`), additional seed, Weather, or Stage-2 was run, per spec.
 16/16 unit tests pass. Full report:
 `research/K-multislot-predictive-retrieval/TRACK-K-MULTISLOT-PREDICTIVE-RETRIEVAL01.md`.
+
+## TRACK-L-EVAL-ALIGNMENT-FULLTEST01 (2026-09-29, ETTh1_720, NO TRAINING)
+
+Fixes an evaluation-population mismatch discovered after TRACK-K: J0/J1's
+saved `final_test_metrics.json` (from TRACK-J/J2) was computed on a fixed
+256-query probe (P256), while K1/K2's (from TRACK-K) was computed on the
+full 2161-query test split (FULL2161) -- different populations, so
+TRACK-K's original "K2 retMSE +11.16% vs J1" comparison was invalid
+(comparing different query sets, not different arms on the same set).
+Built one shared evaluator (`scripts/eval_l_aligned_population01.py`) and
+re-evaluated all four EXISTING checkpoints (J0 epoch10, J1/K1/K2 epoch1
+-- never re-selected, never re-trained) on BOTH P256 and FULL2161.
+
+All four reproduction gates passed at ~1e-8 (J0/J1 vs P256's saved
+values, K1/K2 vs FULL2161's saved values). Re-ran TRACK-J3's D/C
+decomposition and bootstrap on FULL2161 (previously P256-only):
+`D_J1(0.1006)>D_J0(0.0955)`, `C_J1(0.4635)<C_J0(0.5488)`,
+`R_cross=1.062` (vs 1.071 on P256 -- nearly identical), bootstrap CIs
+(10,000 reps, all 2161 queries x 7 channels) exclude zero on every
+metric. **TRACK-J3 verdict: FULL-TEST CONFIRMED**, not a probe artifact.
+
+Recomputed K2-vs-J1 retMSE degradation FULL-to-FULL (replacing the
+invalid original "+11.16%"): **+11.48%**, still exceeding the
+pre-registered 10% NO-GO threshold. **TRACK-K verdict: CONFIRMED**
+(original NO-GO stands on the corrected comparison -- if anything
+slightly worse than originally reported, not better). K2's aggregate
+advantage over J1 is confirmed real and population-independent (-3.03%
+FULL, -3.60% P256, both favoring K2). Ranking stability across
+populations is very high (retMSE and AggMSE orderings byte-identical
+between P256 and FULL2161; Recall@10 stable at the extremes with a minor
+J0/J1 mid-ranking swap, attributable to Recall@10's higher sampling
+variance at n=256 -- up to -9.5% relative vs FULL for some arms, while
+retMSE/Agg/C stay within ~1%). Per-channel FULL2161 pattern (channels
+0-3 strong, 4-6 weak/mixed) matches the original P256-only breakdown.
+14/14 unit tests pass. Per spec, no training, no checkpoint
+re-selection, no coefficient sweep, no additional seed, no Weather, no
+Stage-2. Full report:
+`research/L-eval-alignment/TRACK-L-EVAL-ALIGNMENT-FULLTEST01.md`.

@@ -4350,3 +4350,46 @@ more individual-candidate quality than the pre-registered budget
 allows."** No coefficient sweep, additional seed, Weather, or Stage-2 was
 run, per spec's explicit prohibition. 16/16 unit tests pass. Full report:
 `research/K-multislot-predictive-retrieval/TRACK-K-MULTISLOT-PREDICTIVE-RETRIEVAL01.md`.
+
+---
+
+# Addendum (2026-09-29): TRACK-L-EVAL-ALIGNMENT-FULLTEST01
+
+**Question**: J0/J1's saved test numbers (TRACK-J/J2) came from a fixed
+256-query probe; K1/K2's (TRACK-K) came from the full 2161-query test
+split. Different populations -- was TRACK-K's "+11.16%" K2-vs-J1
+comparison, and the resulting NO-GO, actually valid?
+
+**Method (NO TRAINING)**: one shared evaluator re-ran all four EXISTING
+checkpoints (never re-selected) on BOTH the 256-query probe (P256) and
+the full 2161-query split (FULL2161). All reproduction gates passed at
+~1e-8.
+
+**Result -- both prior conclusions CONFIRMED, not overturned, once
+properly aligned**:
+
+- **TRACK-J3 (complementarity)**: FULL-TEST CONFIRMED. On FULL2161:
+  `D_J1(0.1006)>D_J0(0.0955)`, `C_J1(0.4635)<C_J0(0.5488)`,
+  `R_cross=1.062` (P256 was 1.071 -- nearly identical), bootstrap CIs
+  (10,000 reps, all 2161 queries) exclude zero on every metric. Not a
+  probe artifact.
+- **TRACK-K (multi-slot)**: NO-GO CONFIRMED. The corrected, valid
+  FULL-to-FULL K2-vs-J1 retMSE degradation is **+11.48%** (replacing the
+  invalid mismatched-population "+11.16%") -- still exceeds the
+  pre-registered 10% threshold, if anything slightly worse than
+  originally reported. K2's aggregate advantage over J1 IS confirmed
+  real and population-independent (-3.03% FULL, -3.60% P256), and K2
+  still has the best Recall@10 of any arm -- but the individual-quality
+  cost that triggered NO-GO is real, not a mismatch artifact.
+- Ranking stability across populations is very high (retMSE and AggMSE
+  orderings byte-identical between P256/FULL2161); Recall@10 is noisier
+  at n=256 (up to -9.5% relative vs FULL) while retMSE/Agg/C stay within
+  ~1% -- P256 remains adequate for screening on the latter, less so for
+  precise Recall@10 comparisons.
+
+**Bottom line**: the population-mismatch bug was real and needed fixing,
+but fixing it did not change either verdict's direction -- both TRACK-J3
+and TRACK-K's original conclusions hold on the corrected, apples-to-apples
+comparison. No training, no checkpoint re-selection, no coefficient
+sweep, no additional seed, no Weather, no Stage-2 this round. Full
+report: `research/L-eval-alignment/TRACK-L-EVAL-ALIGNMENT-FULLTEST01.md`.

@@ -1,0 +1,6 @@
+# TRACK-L-EVAL-ALIGNMENT-FULLTEST01 exact commands run
+# NO TRAINING -- pure evaluation of existing J0/J1/K1/K2 checkpoints
+
+python -m pytest tests/test_l_eval_alignment_fulltest01.py -q
+
+CUDA_VISIBLE_DEVICES=1 python scripts/eval_l_aligned_population01.py

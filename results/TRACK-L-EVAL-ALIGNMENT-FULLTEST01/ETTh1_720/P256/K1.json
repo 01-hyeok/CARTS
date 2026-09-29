@@ -1,0 +1,16 @@
+{
+  "retmse10": 1.1423881641156706,
+  "D": 0.11423881842243386,
+  "C": 0.45791472286509816,
+  "agg_mse10": 0.5721535429932244,
+  "recall10": 0.019754464625813335,
+  "ndcg10": 0.941865699997704,
+  "oracle_regret": 0.646823451164112,
+  "mean_pairwise_error_dot": 0.5087941510285289,
+  "mean_pairwise_error_cosine": 0.41347092783585787,
+  "frac_error_cosine_neg": 0.11906002293211973,
+  "mean_future_pairwise_mse": 1.2671880413711603,
+  "mixed_sign_fraction": 0.8616614164368782,
+  "mean_abs_mu_h": 0.5432811925919461,
+  "n_queries": 256
+}
