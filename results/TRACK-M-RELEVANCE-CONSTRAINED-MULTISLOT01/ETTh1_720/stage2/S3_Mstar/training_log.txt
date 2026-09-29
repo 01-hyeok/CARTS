@@ -1,0 +1,10 @@
+[stage2_retrain01] S3_Mstar epoch 1 train_loss=0.60771 val_final_mse=1.532949 gate_mean=0.113
+[stage2_retrain01] S3_Mstar epoch 2 train_loss=0.56157 val_final_mse=1.524301 gate_mean=0.105
+[stage2_retrain01] S3_Mstar epoch 3 train_loss=0.55109 val_final_mse=1.507227 gate_mean=0.083
+[stage2_retrain01] S3_Mstar epoch 4 train_loss=0.54536 val_final_mse=1.515826 gate_mean=0.129
+[stage2_retrain01] S3_Mstar epoch 5 train_loss=0.54350 val_final_mse=1.544454 gate_mean=0.095
+[stage2_retrain01] S3_Mstar epoch 6 train_loss=0.56013 val_final_mse=1.499112 gate_mean=0.003
+[stage2_retrain01] S3_Mstar epoch 7 train_loss=0.55604 val_final_mse=1.558503 gate_mean=0.006
+[stage2_retrain01] S3_Mstar epoch 8 train_loss=0.55573 val_final_mse=1.541727 gate_mean=0.007
+[stage2_retrain01] S3_Mstar epoch 9 train_loss=0.55857 val_final_mse=1.594131 gate_mean=0.013
+[stage2_retrain01] S3_Mstar epoch 10 train_loss=0.55485 val_final_mse=1.532166 gate_mean=0.032

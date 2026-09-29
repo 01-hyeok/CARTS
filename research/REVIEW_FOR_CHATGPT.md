@@ -4393,3 +4393,66 @@ and TRACK-K's original conclusions hold on the corrected, apples-to-apples
 comparison. No training, no checkpoint re-selection, no coefficient
 sweep, no additional seed, no Weather, no Stage-2 this round. Full
 report: `research/L-eval-alignment/TRACK-L-EVAL-ALIGNMENT-FULLTEST01.md`.
+
+# Addendum (2026-09-29): TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01
+
+**Question**: TRACK-L confirmed K2's diagnosis -- genuine complementarity
+gain (`C` lower than J1's) but individual relevance (`D`/retMSE) worse
+than J1 by +11.48%, exceeding a pre-registered 10% budget. Can a
+relevance-protection loss term, added to K2 and nothing else, recover
+individual relevance while keeping the complementarity gain?
+
+**Method**: two new arms, both extending K2's exact loss/architecture
+(nothing else changed): **M1** (`L=L_K2 + gamma*R_set`, naive
+undifferentiated penalty, expected to fail/trade off) and **M2**
+(`L=L_K2 + gamma*ReLU(R_set - 1.05*T_J1(q,c))`, budget-gated against
+J1's own frozen train-split relevance, primary hypothesis).
+`R_set`/`R_m` reuse K2's exact Top-32 soft-selection code path, just
+weighting raw future-MSE instead of the future vector. `gamma=1.0`,
+`delta=0.05`, no sweep. New checkpoint-selection rule: min val AggMSE
+among epochs feasible w.r.t. `val_retMSE<=1.05xR_val_J1`.
+
+**Stage1 result -- STRONG_GO for BOTH arms, a genuine surprise**: M1
+(the control expected to fail per the spec's own stated rationale) fully
+Pareto-dominated K2 instead -- `D`, `C`, AND `AggMSE` all improved
+simultaneously. M2 (selected M\*) did best overall: test retMSE=0.988612
+(*better* than J1's own 1.005504), AggMSE=0.523593, retaining 236.7% of
+K2's aggregate gain (more than double). Both splits (validation, which
+gates the Stage2 trigger, and test) agree. The result complicates the
+pre-registered mechanistic story (per-slot vs set-average constraint)
+since neither M1 nor M2 actually tested a per-slot constraint -- both
+are set-average, differing only in whether the pressure is unconditional
+or budget-gated -- so this run shows K2's individual-relevance sacrifice
+was not an unavoidable trade-off, without pinning down exactly why M1
+alone already suffices.
+
+**Stage2 (triggered, validation-gated, M\*=M2) -- clean NO-GO**: reused
+the most recently validated Stage2 trainer unmodified
+(`train_setlossctrl_stage2_retrain02.py`), 4 frozen-retriever arms
+(S0=no-retrieval, S1=J1, S2=K2, S3=M\*), shared init, one fixed
+HostScorer aggregation shared across arms. Test final_mse: S1(J1)=
+**0.475650** (best of all four), S2(K2)=0.481361, S3(M\*)=0.485463
+(barely beats the no-retrieval S0=0.488790) -- despite M2's own
+retrieval branch being the *most accurate standalone* one of the three.
+Paired bootstrap (10,000 reps, query-unit): `MSE_S3-MSE_S1=+0.009813`,
+95% CI `[0.0067, 0.0130]`, entirely positive -- S3 significantly worse
+than S1 (and than S2). The trained gate suppresses M2's retrieval more
+than any other arm's (95.5% of queries at gate<0.02, vs J1 82.4%, K2
+22.3%). Gate-interpretation Case C: the Stage1 aggregate-MSE surrogate,
+even after a real, validated improvement, still doesn't track what the
+downstream fusion model finds useful.
+
+**Bottom line**: individual relevance CAN be preserved (even fully
+recovered) while keeping K2's complementarity gain -- that part of the
+hypothesis is confirmed, cleanly, on both arms. But that Stage1 Pareto
+improvement does not transfer to forecasting; M2's retrieval is in fact
+the *least* useful of the three to the trained gate, despite being the
+most accurate standalone. Open question for the reviewer: is downstream
+gate utility a function of a retrieval branch's correlation with the
+base forecaster's own errors rather than the branch's standalone
+accuracy (an error-complementarity structure one level up from TRACK-J3's,
+between retrieval and base, not just within retrieval)? Not measured
+here. No sweep, no additional seed, no Weather, no Stage2 architecture
+change, no test-based checkpoint or arm selection anywhere in this
+track. 18/18 Stage1 + 10/10 Stage2 unit tests pass. Full report:
+`research/M-relevance-constrained-multislot/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01.md`.

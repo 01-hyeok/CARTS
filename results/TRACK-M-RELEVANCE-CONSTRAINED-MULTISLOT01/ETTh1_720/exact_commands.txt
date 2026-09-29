@@ -1,0 +1,59 @@
+# TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01 -- exact commands (ETTh1_720)
+# GPU1 only, strictly sequential throughout.
+
+S1_720="checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth"
+S2_720="checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth"
+INIT="logs/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/shared_stage2_init_ETTh1_720.pth"
+
+## PART 4 -- J1 train-relevance reference + J1 validation baseline
+CUDA_VISIBLE_DEVICES=1 python scripts/precompute_m_j1_reference01.py
+
+## K2 validation baseline (for the validation-based Stage2 trigger check, PART 8/13/29)
+CUDA_VISIBLE_DEVICES=1 python -c "<inline: eval_l_aligned_population01.load_arm/run_population/macro_summary on K2, val split>"
+
+## PART 5/7/8 -- M1, M2 training (sequential, GPU1)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_m_relevance_constrained_multislot01.py \
+  --reference_ckpt "$S1_720" --arm M1_soft_relevance
+CUDA_VISIBLE_DEVICES=1 python scripts/train_m_relevance_constrained_multislot01.py \
+  --reference_ckpt "$S1_720" --arm M2_relevance_budget
+
+## Stage1 verdict: STRONG_GO (both M1, M2) -> Stage2 triggered, M* = M2
+
+## PART 14 audit: most recently validated Stage2 implementation =
+## scripts/train_setlossctrl_stage2_retrain02.py @ e7fd86cce19dd9c05716bbbaf0f0f0c83615f9a3
+## (reused UNMODIFIED). Sibling cache builder written for TRACK-M's own
+## retrievers: scripts/build_m_stage2_retrieval_cache01.py.
+
+## Cache build (S0 null / S1=J1 / S2=K2 / S3=M2), one HostScorer shared across all
+for ARM in S0_base S1_J1 S2_K2 S3_Mstar; do
+  CUDA_VISIBLE_DEVICES=1 python scripts/build_m_stage2_retrieval_cache01.py \
+    --arm "$ARM" --cell ETTh1_720 --reference_ckpt "$S1_720" --stage2_host "$S2_720" --pred_len 720
+done
+
+## Stage2 training (sequential, GPU1; S0 establishes shared_init_out, others load it)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_setlossctrl_stage2_retrain02.py \
+  --cell ETTh1_720 --arm_name S0_base --stage2_host "$S2_720" \
+  --cache_dir results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/stage2/cache/ETTh1_720/S0_base \
+  --checkpoints checkpoints/track_m_relevance_constrained_multislot01/stage2 \
+  --out_dir results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/stage2/train \
+  --seed 0 --train_epochs 10 --patience 5 --shared_init_out "$INIT"
+
+for ARM in S1_J1 S2_K2 S3_Mstar; do
+  CUDA_VISIBLE_DEVICES=1 python scripts/train_setlossctrl_stage2_retrain02.py \
+    --cell ETTh1_720 --arm_name "$ARM" --stage2_host "$S2_720" \
+    --cache_dir "results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/stage2/cache/ETTh1_720/$ARM" \
+    --checkpoints checkpoints/track_m_relevance_constrained_multislot01/stage2 \
+    --out_dir results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/stage2/train \
+    --seed 0 --train_epochs 10 --patience 5 --shared_init_in "$INIT"
+done
+
+## PART 20 -- paired bootstrap (query_start_idx unit, 10,000 reps)
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_m_stage2_bootstrap01.py
+
+## Sanity: full pytest suite (GPU1)
+CUDA_VISIBLE_DEVICES=1 python -m pytest tests/ -q
+
+# Note: `results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/stage2/{cache,train}/ETTh1_720/<arm>/`
+# holds the full retrain02 output tree per arm (checkpoints, per-epoch metrics,
+# training logs); `results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/ETTh1_720/stage2/<arm>/`
+# holds copies of the summary JSON/CSV files at the spec's canonical path (PART 25).

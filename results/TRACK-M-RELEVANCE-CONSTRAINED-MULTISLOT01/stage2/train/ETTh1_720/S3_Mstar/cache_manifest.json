@@ -1,0 +1,9 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "stage1_checkpoint_path": "/data/pjh_workspace/CARTS/checkpoints/track_m_relevance_constrained_multislot01/ETTh1_720/M2_relevance_budget/checkpoint.pth",
+  "stage1_checkpoint_hash": "9e3ef235281e1efb74aeb5a6ef21de72b4c1dc9d530a13c0c263bbece53606d2",
+  "cell": "ETTh1_720",
+  "arm_name": "S3_Mstar"
+}

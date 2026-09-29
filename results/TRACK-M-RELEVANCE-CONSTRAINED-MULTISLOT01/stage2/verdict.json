@@ -1,0 +1,18 @@
+{
+  "primary_comparison": "MSE_S3 - MSE_S1",
+  "primary_result": {
+    "mean_diff": 0.009813060919370214,
+    "ci_lo_2.5": 0.00670076820004709,
+    "ci_hi_97.5": 0.013007392282634353,
+    "ci_excludes_zero": true,
+    "n_queries": 2161
+  },
+  "stage2_go_criteria": "MSE_S3 < MSE_S1 with CI below 0, OR >=0.5% consistent improvement",
+  "stage2_go_met": false,
+  "reason": "S3 (M*) is SIGNIFICANTLY WORSE than S1 (J1): mean_diff=+0.009813, 95% CI=[0.006701, 0.013007], excludes zero (positive side). S3 is also significantly worse than S2 (K2).",
+  "strong_go_met": false,
+  "strong_go_reason": "STRONG GO requires S3 to beat S0, S1, AND S2 simultaneously -- S3 only beats S0.",
+  "verdict": "NO_GO",
+  "gate_case_classification": "Case C",
+  "gate_case_rationale": "M* (M2) achieved the BEST Stage1 retrieval-quality metrics of all arms (lowest D, lowest C, lowest AggMSE) and even the lowest standalone Stage2-cache projected_retrieval_branch_mse (0.562447, vs J1 0.578322 and K2 0.573898) -- yet Stage2 forecasting with M2-retrieval is WORSE than both J1-retrieval and K2-retrieval, and the trained gate learns to almost completely ignore M2 (gate_mean=0.004356, 95.5% of queries have gate<0.02 -- far more suppressed than J1 82.4% or K2 22.3%). This is PART 22 Case C: the Stage1 aggregate-MSE surrogate, even a genuinely improved one, remains misaligned with actual downstream forecasting utility as learned by the gate."
+}

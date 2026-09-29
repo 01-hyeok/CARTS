@@ -1,0 +1,11 @@
+{
+  "j1_checkpoint": "checkpoints/track_j2_key_update_decomposition01/ETTh1_720/J1_stopgrad_key/checkpoint.pth",
+  "j1_best_epoch": 1,
+  "n_candidates": 7201,
+  "top_k": 10,
+  "channels": 7,
+  "split_used": "train ONLY (flag=\"train\", shuffle=False) -- val/test never touched",
+  "n_train_queries": 7201,
+  "n_rows": 50407,
+  "T_J1_mean": 1.141211453182047
+}

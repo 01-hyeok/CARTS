@@ -1,0 +1,9 @@
+[stage2_retrain01] S2_K2 epoch 1 train_loss=0.61076 val_final_mse=1.535515 gate_mean=0.140
+[stage2_retrain01] S2_K2 epoch 2 train_loss=0.56160 val_final_mse=1.510101 gate_mean=0.097
+[stage2_retrain01] S2_K2 epoch 3 train_loss=0.55404 val_final_mse=1.505076 gate_mean=0.099
+[stage2_retrain01] S2_K2 epoch 4 train_loss=0.55128 val_final_mse=1.537052 gate_mean=0.112
+[stage2_retrain01] S2_K2 epoch 5 train_loss=0.54885 val_final_mse=1.525855 gate_mean=0.104
+[stage2_retrain01] S2_K2 epoch 6 train_loss=0.54859 val_final_mse=1.512008 gate_mean=0.100
+[stage2_retrain01] S2_K2 epoch 7 train_loss=0.54536 val_final_mse=1.653986 gate_mean=0.108
+[stage2_retrain01] S2_K2 epoch 8 train_loss=0.54692 val_final_mse=1.516504 gate_mean=0.038
+[stage2_retrain01] early stop at epoch 8 (best=3)

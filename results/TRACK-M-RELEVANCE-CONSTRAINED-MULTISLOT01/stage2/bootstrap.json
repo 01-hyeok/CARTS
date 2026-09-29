@@ -1,0 +1,49 @@
+{
+  "n_boot": 10000,
+  "seed": 0,
+  "resampling_unit": "query_start_idx (paired across arms)",
+  "n_common_queries": 2161,
+  "per_arm_mean_mse": {
+    "S0_base": 0.4887896782267375,
+    "S1_J1": 0.4756504030676696,
+    "S2_K2": 0.4813609736239342,
+    "S3_Mstar": 0.48546346398703977
+  },
+  "comparisons": {
+    "S1_J1_minus_S0_base": {
+      "mean_diff": -0.013139275159067933,
+      "ci_lo_2.5": -0.016155175994676554,
+      "ci_hi_97.5": -0.010207997774813035,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "S2_K2_minus_S0_base": {
+      "mean_diff": -0.007428704602803306,
+      "ci_lo_2.5": -0.00975919575333485,
+      "ci_hi_97.5": -0.005162408475603345,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "S3_Mstar_minus_S0_base": {
+      "mean_diff": -0.003326214239697719,
+      "ci_lo_2.5": -0.003820682845558077,
+      "ci_hi_97.5": -0.0028403221816169283,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "S3_Mstar_minus_S1_J1": {
+      "mean_diff": 0.009813060919370214,
+      "ci_lo_2.5": 0.00670076820004709,
+      "ci_hi_97.5": 0.013007392282634353,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "S3_Mstar_minus_S2_K2": {
+      "mean_diff": 0.004102490363105587,
+      "ci_lo_2.5": 0.0017011849703555968,
+      "ci_hi_97.5": 0.0065250756052675635,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    }
+  }
+}

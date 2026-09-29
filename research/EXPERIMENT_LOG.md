@@ -3551,3 +3551,69 @@ retMSE/Agg/C stay within ~1%). Per-channel FULL2161 pattern (channels
 re-selection, no coefficient sweep, no additional seed, no Weather, no
 Stage-2. Full report:
 `research/L-eval-alignment/TRACK-L-EVAL-ALIGNMENT-FULLTEST01.md`.
+
+## TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01 (2026-09-29, ETTh1_720)
+
+Direct follow-up to TRACK-J3/K/L. K2's diagnosis: genuine complementarity
+gain (lower cross-term `C`) but individual relevance (`D`) worse than J1
+by +11.48%, exceeding the 10% budget. Added a relevance-protection loss
+term to K2 -- and only that -- with two arms: M1 (`L=L_K2 +
+gamma*R_set`, naive control) and M2 (`L=L_K2 + gamma*ReLU(R_set -
+1.05*T_J1(q,c))`, budget-constrained, primary hypothesis), both
+`gamma=1.0`, M2's `delta=0.05`, no coefficient sweep. `R_set` reuses
+K2's exact Top-32 soft-gather code path, weighting raw future-MSE
+instead of the future vector. `T_J1(q,c)` precomputed once from J1's
+frozen checkpoint, TRAIN split only (7201x7=50407 rows, no val/test
+leakage). New constrained checkpoint-selection rule: min val AggMSE
+among epochs with `val_retMSE <= 1.05xR_val_J1` (both M1/M2 selected
+epoch 1, feasible throughout).
+
+**Stage1 result: STRONG_GO for both M1 and M2** (confirmed on both the
+validation-based assessment, which governs the Stage2 trigger, and the
+FULL2161 test table). Surprising finding: M1, the naive control expected
+to trade complementarity for individual relevance (or fail outright),
+instead Pareto-dominated K2 on every axis (`D`, `C`, `AggMSE` all
+improved simultaneously) -- undermining the pre-registered mechanistic
+hypothesis that only a set-average-specific formulation (M2) would
+avoid destroying complementarity. M2 (M\*, lower val AggMSE) still won
+the arm comparison: test retMSE=0.988612 (better than J1's own
+1.005504), AggMSE=0.523593 (K2-gain retention 236.7%, more than double
+K2's own gain). 18/18 Stage1 unit tests pass.
+
+Stage2 triggered per the pre-registered pseudocode (validation-based,
+never test-based). Reused the most recently validated Stage2
+implementation unmodified
+(`scripts/train_setlossctrl_stage2_retrain02.py`,
+`e7fd86cce19dd9c05716bbbaf0f0f0c83615f9a3`) with a new sibling cache
+builder for J1/K2/M2's own retrievers
+(`scripts/build_m_stage2_retrieval_cache01.py`); all past-issue guards
+(wrong cache schema, encoder-trainable, unauthorized seed) re-verified
+intact. Four arms (S0 base/no-retrieval, S1=J1, S2=K2, S3=M\*), shared
+init (SHA-verified identical), retrievers fully frozen, only the
+retrieval source differing (same fixed HostScorer alpha-weighting for
+all). Test final_mse: S0=0.488790, S1(J1)=**0.475650** (best),
+S2(K2)=0.481361, S3(M\*)=0.485463 (barely better than S0, worst of the
+three real-retrieval arms) -- despite M2's retrieval branch being the
+most accurate standalone one of the three (retrieval-branch-only MSE
+0.562447 vs J1 0.578322, K2 0.573898). Paired bootstrap (test split,
+query_start_idx unit, 10,000 reps): primary comparison `MSE_S3-MSE_S1 =
++0.009813`, 95% CI `[0.006701, 0.013007]` -- entirely positive, S3
+significantly WORSE than S1 (and also significantly worse than S2). The
+trained gate suppresses M2's retrieval more than any other arm's
+(gate_mean=0.0044, 95.5% of test queries at gate<0.02, vs J1's 82.4% and
+K2's 22.3%). **Stage2 verdict: NO-GO** (PART 21: `S3 > S1` with a
+favorable-side-excluding CI). Gate-interpretation case: **Case C** --
+Stage1's aggregate-MSE surrogate, even after a genuine validated
+improvement, remains misaligned with what the downstream gated fusion
+model finds useful for reducing forecast error; the standalone-accuracy
+vs gate-utility gap is flagged as an open question, not resolved by this
+run. 10/10 Stage2 unit tests pass.
+
+**Combined verdict: Stage1 STRONG_GO / Stage2 NO-GO.** The original
+scientific question ("can individual relevance be preserved while
+learning complementary retrieval sets?") is answered yes at the
+retrieval-quality level; the conditional follow-up ("does that Pareto
+improvement improve forecasting?") is answered no. No sweep, no
+additional seed, no Weather, no Stage2 architecture change, no
+test-based checkpoint/arm selection anywhere. Full report:
+`research/M-relevance-constrained-multislot/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01.md`.
