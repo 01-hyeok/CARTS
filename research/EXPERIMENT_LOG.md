@@ -3837,3 +3837,46 @@ the user's own stated protocol for when to proceed. 21/21 unit tests
 pass; full pytest suite unaffected (1302 passed, same 2 pre-existing
 failures). Full report:
 `research/Q-gate-capacity-calibration/TRACK-Q-GATE-CAPACITY-CALIBRATION01.md`.
+
+## TRACK-R-FINAL-METHOD-GENERALIZATION01 (2026-09-30, IN PROGRESS -- 2/24 settings, interim commit)
+
+Direct follow-up to TRACK-Q. Not architecture exploration: fixes the
+final method (M2 Relevance-Constrained Multi-Slot + Uniform aggregate +
+Mixture fusion + Trainable Global Lambda) and tests generalization
+across 2 datasets (ETTh1, Weather) x 4 horizons (96/192/336/720) x 3
+seeds -- 24 settings total. Per user redirect mid-track, execution
+order changed from seed-first to horizon/dataset-breadth-first (seed1/2
+replication deferred). This is an INTERIM commit covering the first 2
+completed settings at the user's explicit request to checkpoint
+progress, not a generalization verdict.
+
+**Phase A (ETTh1 H720 seed0) reproduction: PASS.** Stage1 M2 exactly
+matches historical reference (`retMSE=0.988612`, `C=0.424731`,
+`Agg=0.523593`); J1's checkpoint reproduced byte-identical (same
+SHA-256) to the historical TRACK-J2 checkpoint. The freshly-trained
+(PART 11-mandated, not reused) base forecaster landed at
+`test_mse=0.560354`, ~14.6% worse than TRACK-M's old frozen S0
+(0.488790) -- root-caused to construction-order-dependent random init
+(verified deterministic, not a bug); user reviewed and approved
+proceeding.
+
+**Results (seed0 only, n=1 per horizon so far)**:
+
+| Horizon | Base | Cosine+Stage2 | J1+Stage2 | M2+Stage2 |
+|---|---:|---:|---:|---:|
+| 96 | 0.392423 | 0.380437 | **0.374193** | 0.379448 |
+| 720 | 0.560354 | 0.550745 | 0.491584 | **0.484746** |
+
+Paired bootstrap (10k reps, query_start_idx unit): at H720, M2
+significantly beats Base, Cosine, AND J1 (`M2-J1=-0.0068`, CI
+`[-0.0083,-0.0054]`). At H96, M2 significantly beats Base, ties Cosine,
+and is significantly **WORSE** than J1 (`M2-J1=+0.0053`, CI
+`[0.0041,0.0064]`) -- Stage1 quality reverses too at H96 (M2's own
+`retMSE`/`C`/`AggMSE`/`Recall` are all worse than J1's, unlike at H720
+where M2 wins on every Stage1 metric). Reported honestly as an open,
+unresolved horizon-dependence finding per PART 24 -- no architecture
+change made in response. 16/16 unit tests pass; full pytest suite
+unaffected (1318 passed, same 2 pre-existing failures). Interim report:
+`research/R-final-method-generalization/TRACK-R-FINAL-METHOD-GENERALIZATION01.md`.
+Remaining: Weather H96 (in progress)/H720, ETTh1 H192/H336, and all
+seed1/2 replication.

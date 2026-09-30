@@ -4653,3 +4653,56 @@ has been settled, satisfying the pre-registered condition for moving
 past this fusion/consumer investigation. 21/21 unit tests pass. Full
 report:
 `research/Q-gate-capacity-calibration/TRACK-Q-GATE-CAPACITY-CALIBRATION01.md`.
+
+# Addendum (2026-09-30): TRACK-R-FINAL-METHOD-GENERALIZATION01 (INTERIM, 2/24 settings)
+
+**Question**: does the now-fixed final method (M2 + Uniform + Mixture +
+Trainable Global Lambda) actually generalize across horizons and
+datasets, or was "works at ETTh1 H720" the whole story? This is the
+paper-main-table generalization track -- no architecture exploration
+allowed from here on.
+
+**Status**: only 2 of the planned 24 (dataset x horizon x seed) settings
+are complete so far (ETTh1 H720 seed0, ETTh1 H96 seed0), committed at
+the user's explicit request to checkpoint progress before continuing.
+Execution order was redirected mid-track from seed-first to
+horizon/dataset-breadth-first per the user's own instruction (cover
+more horizons/datasets at seed0 before spending compute on seed
+replication) -- this is a deliberate, user-directed scope choice, not
+an interruption.
+
+**Phase A reproduction (ETTh1 H720 seed0): clean PASS.** Stage1 M2
+matches historical numbers exactly; J1's checkpoint reproduced
+byte-identical to the historical one. The freshly-trained base
+forecaster (required per spec -- unlike prior tracks, TRACK-R does NOT
+reuse one frozen base across all settings) came out ~14.6% worse than
+the old frozen baseline used throughout TRACK-N/O/P/Q; traced to
+construction-order-dependent random initialization (verified
+deterministic within this pipeline, not a bug) and approved by the user
+to proceed as-is.
+
+**Early, genuinely interesting (and reported honestly, unresolved)
+finding**: at H720, M2 (the proposed method) beats Base, a non-learned
+Cosine baseline, AND the single-retriever J1 baseline, on both Stage1
+retrieval-quality metrics and Stage2 forecast MSE (all via a 10k-rep
+paired bootstrap, all significant). At H96, this REVERSES cleanly: M2's
+own Stage1 metrics (retMSE, C, AggMSE, Recall) are all slightly worse
+than J1's, and downstream, M2 is significantly worse than J1 in
+forecast MSE too (M2 still beats the no-retrieval Base, and ties a
+non-learned Cosine baseline). Both horizons are internally consistent
+(Stage1 ranking predicts Stage2 ranking correctly in each case) -- what
+differs is which retriever wins, by horizon. Per the pre-registered STOP
+rule, no architecture/loss change was made in response; this is flagged
+as an open question for the remaining grid to resolve (currently n=1 per
+horizon -- far too early to call this a real horizon-dependence pattern
+versus single-run noise).
+
+**Not yet answerable**: none of the five main research questions
+(RQ1-RQ5: does relevance-constrained training improve retrieval
+quality; does that transfer to forecasting; is the gain robust across
+horizons/datasets/seeds; does M2 beat the learned single-retriever
+baseline generally; how much does the final forecaster rely on
+retrieval) can be answered yet with only 2 of 24 settings and zero seed
+replication. This addendum documents interim, in-progress state only.
+16/16 unit tests pass. Full report (interim):
+`research/R-final-method-generalization/TRACK-R-FINAL-METHOD-GENERALIZATION01.md`.

@@ -1,0 +1,11 @@
+{
+  "j1_checkpoint": "checkpoints/track_r_final_method_generalization01/ETTh1/H96/seed0/J1/ETTh1_96/J1_stopgrad_key/checkpoint.pth",
+  "j1_best_epoch": 1,
+  "n_candidates": 8449,
+  "top_k": 10,
+  "channels": 7,
+  "split_used": "train ONLY -- val/test never touched",
+  "n_train_queries": 8449,
+  "n_rows": 59143,
+  "T_J1_mean": 0.656213335519162
+}

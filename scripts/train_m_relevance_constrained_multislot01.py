@@ -138,7 +138,16 @@ def main():
     ap.add_argument('--checkpoints', default='checkpoints/track_m_relevance_constrained_multislot01')
     ap.add_argument('--limit_batches', type=int, default=0, help='SMOKE ONLY')
     ap.add_argument('--smoke_test', action='store_true')
+    ap.add_argument('--j1_ref_dir', default=None,
+                    help='TRACK-R generalization: override J1_REF_DIR for non-ETTh1_720 settings; '
+                         'defaults to the original TRACK-M path (unchanged behavior) if omitted')
+    ap.add_argument('--skip_init_hash_check', action='store_true',
+                    help='TRACK-R generalization: EXPECTED_INIT_HASH is ETTh1_720/seed0-specific; a '
+                         'different horizon/dataset/seed legitimately produces a different init hash.')
     cli = ap.parse_args()
+    if cli.j1_ref_dir is not None:
+        global J1_REF_DIR
+        J1_REF_DIR = Path(cli.j1_ref_dir)
     is_m2 = cli.arm == 'M2_relevance_budget'
     assert cli.gamma == GAMMA_DEFAULT and cli.delta == DELTA_DEFAULT, \
         '[ISSUE][ABORT] PART 6 forbids gamma/delta sweep -- fixed values only'
@@ -151,7 +160,8 @@ def main():
 
     exp, args, model = build_model(cli, device)
     channels = list(range(int(args.enc_in)))
-    assert state_hash(model) == EXPECTED_INIT_HASH, '[ISSUE][ABORT] init hash mismatch vs J0/J1/K2'
+    if not cli.skip_init_hash_check:
+        assert state_hash(model) == EXPECTED_INIT_HASH, '[ISSUE][ABORT] init hash mismatch vs J0/J1/K2'
     d_model = int(args.d_model)
 
     slot_heads = SlotHeads(d_model, N_SLOTS).to(device)

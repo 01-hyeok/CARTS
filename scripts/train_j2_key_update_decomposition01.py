@@ -108,6 +108,10 @@ def main():
     ap.add_argument('--checkpoints', default='checkpoints/track_j2_key_update_decomposition01')
     ap.add_argument('--limit_batches', type=int, default=0, help='SMOKE ONLY')
     ap.add_argument('--smoke_test', action='store_true')
+    ap.add_argument('--skip_init_hash_check', action='store_true',
+                    help='TRACK-R generalization: EXPECTED_J0_INIT_HASH is ETTh1_720/seed0-specific; '
+                         'a different horizon/dataset/seed legitimately produces a different init hash. '
+                         'Default (unset) preserves the exact original ETTh1_720 safety-check behavior.')
     cli = ap.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -121,8 +125,9 @@ def main():
     channels = list(range(int(args.enc_in)))
 
     init_hash = state_hash(model)
-    assert init_hash == EXPECTED_J0_INIT_HASH, (
-        f'[ISSUE][ABORT] init hash mismatch: {init_hash} != J0 {EXPECTED_J0_INIT_HASH}')
+    if not cli.skip_init_hash_check:
+        assert init_hash == EXPECTED_J0_INIT_HASH, (
+            f'[ISSUE][ABORT] init hash mismatch: {init_hash} != J0 {EXPECTED_J0_INIT_HASH}')
 
     E_k = None
     K0 = None

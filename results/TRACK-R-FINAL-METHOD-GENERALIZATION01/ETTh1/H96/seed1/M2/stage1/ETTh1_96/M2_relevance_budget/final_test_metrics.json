@@ -1,0 +1,16 @@
+{
+  "best_epoch": 6,
+  "no_feasible_checkpoint": false,
+  "diagnostic_min_violation_epoch": {
+    "epoch": 5,
+    "val_retmse10": 1.0661518394106257,
+    "violation": 0.0
+  },
+  "retmse10": 0.7509628622921408,
+  "agg_mse10": 0.4429894283692878,
+  "recall10": 0.028248269512397138,
+  "ndcg10": 0.9691690056285481,
+  "D": 0.07509628825537454,
+  "C": 0.3678931414209656,
+  "n_queries_seen": 2785
+}

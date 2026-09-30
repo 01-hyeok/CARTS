@@ -1,0 +1,52 @@
+{
+  "completed_settings": [
+    [
+      "ETTh1",
+      720,
+      0
+    ],
+    [
+      "ETTh1",
+      96,
+      0
+    ]
+  ],
+  "in_progress_settings": [
+    [
+      "Weather",
+      96,
+      0
+    ]
+  ],
+  "pending_settings_count": 21,
+  "hyperparameters": {
+    "M2_slots": 10,
+    "M2_L_soft": 32,
+    "M2_tau_t": 0.1,
+    "M2_tau_s": 0.1,
+    "M2_lambda_agg": 1.0,
+    "M2_beta": 0.05,
+    "M2_gamma": 1.0,
+    "M2_delta": 0.05,
+    "stage1_top_k": 10,
+    "stage1_optimizer": "Adam",
+    "stage1_lr": 0.001,
+    "stage1_batch_size": 32,
+    "stage1_epochs": 10,
+    "stage1_patience": 5,
+    "base_forecaster_architecture": "BaseForecastHead(mode=per_channel_linear)",
+    "base_forecaster_optimizer": "Adam",
+    "base_forecaster_lr": 0.001,
+    "base_forecaster_epochs": 10,
+    "base_forecaster_patience": 5,
+    "stage2_lambda_init": "a=0 -> lambda=0.5",
+    "stage2_optimizer": "Adam",
+    "stage2_lr": 0.001,
+    "stage2_epochs": 10,
+    "stage2_patience": 5
+  },
+  "B1_cosine_definition": "cosine similarity on raw delta-last input window, no encoder, no training (documented ambiguity resolution, AUDIT.md)",
+  "base_forecaster_seed_variance_finding": "ETTh1 H720 seed0 fresh base (0.560354) differs from TRACK-M historical S0 (0.488790) due to construction-order RNG differences; verified deterministic and bug-free; user reviewed and approved proceeding as-is",
+  "user_redirected_execution_order": "seed-first -> horizon/dataset-breadth-first, per user instruction mid-track (seed1/2 replication deferred)",
+  "git_commit_at_track_start": "b5c8803011faed824f1e8602309dda9d86be89b2 (TRACK-Q)"
+}

@@ -1,0 +1,14 @@
+{
+  "best_epoch": 1,
+  "val_mse": 1.6681190034616635,
+  "test_mse": 0.5603537775422718,
+  "test_mae": 0.5269773269191218,
+  "init_sha256": "1433d1a32b22fafeb9d0dce77424b0023089c061da7d8687ce8a78cffbaedb0a",
+  "final_sha256": "ee1031e9c8b1474b79461ee775b359a45b4f0e09421408648c480ac3f0ddd3d6",
+  "batch_order_epoch1_sha256": "ed5ae8650de28798be6f0318a2238bce4a291d53db81e6f937f480fdbb770ae1",
+  "wall_clock_seconds": 5.813011884689331,
+  "seed": 0,
+  "pred_len": 720,
+  "seq_len": 720,
+  "channels": 7
+}
