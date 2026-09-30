@@ -1,0 +1,6 @@
+{
+  "source": "TRACK-P P6 (fixed lambda=0.42, reused verbatim)",
+  "lambda": 0.42,
+  "final_mse": 0.463969,
+  "final_mae": 0.477169
+}

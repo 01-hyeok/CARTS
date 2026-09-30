@@ -1,0 +1,10 @@
+{
+  "source": "TRACK-P P4 (query-conditioned MLP gate, reused verbatim)",
+  "final_mse": 0.475686,
+  "final_mae": 0.480704,
+  "gate_mean": 0.142886,
+  "gate_median": 0.000335,
+  "gate_lt_0.02": 0.592,
+  "gate_gt_0.10": 0.344,
+  "gate_gt_0.50": 0.0797
+}
