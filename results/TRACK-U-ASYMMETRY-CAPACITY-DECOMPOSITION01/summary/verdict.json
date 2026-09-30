@@ -1,0 +1,51 @@
+{
+  "status": "INTERIM (Phase A complete: ETTh1 H96 + H720, seed0 only; Weather/multi-seed pending decision)",
+  "stage2_test_mse": {
+    "ETTh1_H96": {"U0": 0.373682, "U1": 0.375317, "U2": 0.375630, "U3": 0.379204},
+    "ETTh1_H720": {"U0": 0.529134, "U1": 0.524125, "U2": 0.506902, "U3": 0.492096}
+  },
+  "contrasts": {
+    "ETTh1_H96": {
+      "ContrastA_capacity_U1_minus_U0": {"stage1": 0.003643, "stage2": 0.001636, "sig": true, "direction": "U1 WORSE than U0"},
+      "ContrastB_asymmetry_U2_minus_U1": {"stage1": 0.004683, "stage2": 0.000313, "sig_stage1": true, "sig_stage2": false, "direction": "U2 slightly worse than U1 at stage1, no sig diff at stage2"},
+      "ContrastB2_asymmetry_U3_minus_U1": {"stage1": 0.016927, "stage2": 0.003887, "sig": true, "direction": "U3 clearly WORSE than U1"},
+      "ContrastC_direction_U2_minus_U3": {"stage1": -0.012244, "stage2": -0.003574, "sig": true, "direction": "U2 (query-only) significantly BETTER than U3 (key-only)"}
+    },
+    "ETTh1_H720": {
+      "ContrastA_capacity_U1_minus_U0": {"stage1": -0.013604, "stage2": -0.005009, "sig": true, "direction": "U1 better than U0, but a small effect"},
+      "ContrastB_asymmetry_U2_minus_U1": {"stage1": -0.038026, "stage2": -0.017222, "sig": true, "direction": "U2 substantially better than U1 -- large asymmetry effect"},
+      "ContrastB2_asymmetry_U3_minus_U1": {"stage1": -0.088002, "stage2": -0.032029, "sig": true, "direction": "U3 substantially better than U1 -- even larger asymmetry effect"},
+      "ContrastC_direction_U2_minus_U3": {"stage1": 0.049976, "stage2": 0.014807, "sig": true, "direction": "U3 (key-only) significantly BETTER than U2 (query-only) -- the OPPOSITE of what TRACK-T2's query-only framing implicitly assumed"}
+    }
+  },
+  "d_c_decomposition_vs_U0": {
+    "ETTh1_H96": {
+      "U1": {"delta_D_pct": 0.78, "delta_C_pct": 0.90, "pattern": "both D and C get slightly WORSE"},
+      "U2": {"delta_D_pct": -7.09, "delta_C_pct": 3.80, "pattern": "D improves, C worsens (matches TRACK-T2's original finding)"},
+      "U3": {"delta_D_pct": -4.01, "delta_C_pct": 6.74, "pattern": "D improves LESS than U2, C worsens MORE than U2 -- explains why U3 is the worst arm at H96"}
+    },
+    "ETTh1_H720": {
+      "U1": {"delta_D_pct": -0.12, "delta_C_pct": -2.46, "pattern": "D essentially flat, small C improvement -- pure capacity effect is modest and almost entirely a C effect"},
+      "U2": {"delta_D_pct": -13.61, "delta_C_pct": -7.04, "pattern": "both D and C improve substantially"},
+      "U3": {"delta_D_pct": -8.36, "delta_C_pct": -17.06, "pattern": "D improves LESS than U2, but C improves MUCH MORE than U2 (-17.1% vs -7.0%) -- explains why U3 is the BEST arm at H720, driven almost entirely by an outsized complementarity gain"}
+    }
+  },
+  "projection_diagnostics_note": "post-hoc only, never used for model/checkpoint selection. At H720 (the setting where U3 wins), U3's own projection has the SMALLEST movement from identity (Frobenius norm 1.96 vs U1's 3.35 and U2's 4.84) and the BEST condition number (4.24 vs U1's 9.99 and U2's 198.06, the latter notably ill-conditioned) -- the best-performing arm's projection is the most conservative/well-behaved, not the most dramatically transformed one.",
+  "bootstrap_significance": "all pairwise comparisons (U1-U0, U2-U1, U3-U1, U2-U3, U2-U0) are statistically significant at both Stage1 AggMSE and Stage2 forecast MSE, at BOTH horizons, with the single exception of U2-U1 at H96 Stage2 (not significant, CI includes zero).",
+  "case_assessment": {
+    "ETTh1_H720": "Closest to CASE B (asymmetry supported: U2 AND U3 both clearly beat U1, and U1's own improvement over U0 is much smaller than either asymmetric arm's) -- but with an additional, unregistered DIRECTION effect on top: U3 (key-only) significantly and substantially outperforms U2 (query-only), the opposite bias from what the track's own framing (built around TRACK-T2's query-only finding) implicitly assumed. This does not match pre-registered Case C (which anticipated query-role-specificity, i.e. U2 special) -- empirically it is CANDIDATE/KEY-role specificity that dominates at H720.",
+    "ETTh1_H96": "Fits no pre-registered case (all four assume some arm beats U0; here EVERY arm is worse than U0). Within the harmful arms, the same direction-asymmetry appears in reverse: U3 (key-only) is harmed MORE than U2 (query-only), mirroring H720's finding that key-only transformation has the LARGER effect in whichever direction that horizon favors."
+  },
+  "rq_answers": {
+    "Q1_h720_gain_explained_by_capacity_alone": "NO. U1 (same D^2 parameters, symmetric) recovers only 22.5% of U0-to-U2's stage2 gain (-0.0050 of -0.0222) and only 13.5% of U0-to-U3's stage2 gain (-0.0050 of -0.0370). Capacity alone is a real but small effect; most of the gain requires broken symmetry.",
+    "Q2_asymmetric_beats_symmetric_same_params": "YES, decisively, at H720: both U2 and U3 significantly and substantially beat U1 at identical parameter count (U2-U1=-0.0172, U3-U1=-0.0320, both stage2-significant). At H96, asymmetric does NOT beat symmetric -- U2 is statistically indistinguishable from U1 at stage2, and U3 is significantly WORSE than U1.",
+    "Q3_query_only_vs_key_only_direction_matters": "YES, strongly, and the direction reverses TRACK-T2's implicit framing. At H720, key-only (U3) significantly beats query-only (U2) by -0.0148 (stage2, sig). At H96, query-only (U2) significantly beats key-only (U3) by -0.0036 (stage2, sig) -- i.e. U3's extra effect (whichever direction) is consistently LARGER in magnitude than U2's at both horizons; it just happens to be beneficial at H720 and harmful at H96.",
+    "Q4_h720_dc_split_capacity_vs_asymmetry": "Capacity (U1 vs U0): D flat (-0.12%), C down modestly (-2.46%) -- a small, C-only effect. Asymmetry on top (U2/U3 vs U1): D drops substantially (-13.5% for U2, -8.2% for U3 relative to U0) AND C drops further and by far the most for U3 (-17.06% vs U0, more than double U1's C effect) -- asymmetry unlocks both a D benefit and a much larger C benefit, with the C benefit being the dominant single mechanism for U3's win.",
+    "Q5_h96_d_improves_c_worsens_in_shared_projection_too": "Partially. U1 shows the SAME qualitative pattern as U2/U3 in the sense that individual relevance does not save it -- but unlike U2/U3, U1's D also gets slightly WORSE (not better) at H96 (+0.78%), alongside a slightly worse C (+0.90%). So U1 does not even get U2's small D-improvement; H96's 'D improves but C worsens' story is specific to the asymmetric arms (U2/U3), not a generic shared-projection phenomenon.",
+    "Q6_final_hypothesis_selection": "ASYMMETRIC QUERY/KEY MATCHING, with an additional and unexpected finding that the effect is driven more by the KEY/CANDIDATE-side transformation than the query-side one at H720. Neither pure 'learned symmetric metric' (Case A/E) nor a clean 'query-role-specific' story (pre-registered Case C) is supported. The mechanism is real but not yet fully explained -- why key-side transformation would matter MORE than query-side is not addressed by this track's diagnostics and should be treated as an open question, not over-interpreted.",
+    "Q7_next_step": "Per PART 21's decision rule, this result is CASE B-like (asymmetry supported) -> adopt asymmetric query/key matching as the mechanism, do NOT add further new scorer structures, and proceed to Weather + multi-seed replication. The additional direction-effect finding (key-side dominance at H720, reversed at H96) should be carried into that replication as an explicit thing to check for transfer, not as grounds for a new architecture-search track."
+  },
+  "stop_rule_compliance": "No Multi-Slot, StopGrad, overlap loss, aggregate loss, relevance budget, Set Oracle, query-conditioned gate, pair-MLP, Mahalanobis, new loss, architecture search, or per-horizon/learning-rate tuning was introduced anywhere in this track.",
+  "validity": "No STOP/VALIDITY trigger (PART 20) was encountered: encoder init hash identical across all 4 arms per setting; projection init SHA-256 bit-identical across U1/U2/U3 per setting (and consistent across horizons too, since the seed is dataset-independent); parameter counts verified 0/16384/16384/16384; batch order SHA-256 identical across all 4 arms per setting; checkpoint criterion identical (min val retmse10); shared TRACK-R base checkpoint confirmed via SHA-256; both U0 reproductions matched TRACK-T2's T0 exactly at every logged epoch.",
+  "next_step": "Weather H96 seed0 and Weather H720 seed0, identical protocol, to test whether the asymmetry effect (and its H96/H720 direction reversal) transfers to a second dataset -- per this track's own PART 21 decision rule (Case B outcome), no further architecture exploration before that."
+}

@@ -4909,3 +4909,67 @@ introduced anywhere in this track. Weather is withheld until this ETTh1
 validity audit was complete (per the track's own gate). Full report
 (interim):
 `research/T2-projection-multislot-decomposition/TRACK-T2-PROJECTION-MULTISLOT-DECOMPOSITION01.md`.
+
+# Addendum (2026-09-30): TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01 (INTERIM, ETTh1 H96+H720 only)
+
+**Question**: TRACK-T2's single largest finding was Query-only
+Projection beating True Original KL by a large margin at H720
+(0.529134 -> 0.506830). That one change simultaneously (1) adds `D^2`
+learnable parameters and (2) breaks the query/candidate
+symmetric-comparison constraint -- this track designs two
+parameter-matched controls to separate which of those two explanations
+is doing the work: **U1** (one shared `D x D` matrix applied to BOTH
+query and candidate -- same parameter count, symmetry PRESERVED) and
+**U3** (the mirror of query-only: transform only the candidate/key
+side). All four arms (U0 = 0 params, U1/U2/U3 = `D^2` params each)
+were retrained fresh with a verified bit-identical initial projection
+weight tensor across U1/U2/U3 (confirmed via SHA-256, both horizons).
+
+**Headline finding -- capacity is a small effect, asymmetry is a large
+one**: at H720, U1 (identical parameter count to U2/U3, but symmetric)
+recovers only **22.5%** of U0-to-U2's total Stage2 gain and only
+**13.5%** of U0-to-U3's -- decisive evidence that simply adding
+learnable metric capacity is NOT what drove TRACK-T2's result. Both
+asymmetric arms significantly and substantially beat U1 at the exact
+same parameter count.
+
+**The genuinely unexpected finding**: `U3 (key/candidate-only)
+significantly BEATS U2 (query-only)` at H720 (Stage2 MSE 0.492096 vs
+0.506902) -- the OPPOSITE of what TRACK-T2's own framing (built
+entirely around a query-only projection) implicitly assumed. At H96,
+the same asymmetry dominance reappears in reverse: U3 is harmed MORE
+than U2 (both worse than U0, but U3 significantly worse). In other
+words, the candidate/key-side transformation has a LARGER effect than
+the query-side transformation at both horizons -- it just happens to
+help at H720 and hurt at H96.
+
+**Mechanism (D/C decomposition)**: consistent across both horizons, U3's
+effect on the complementarity term `C` is always the largest in
+magnitude of the three arms -- at H720, `C` improves -17.1% for U3 vs
+-7.0% for U2 (vs U0); at H96, `C` worsens +6.7% for U3 vs +3.8% for U2.
+This single `C`-magnitude pattern explains both why U3 wins at H720 and
+why it loses worst at H96. A post-hoc-only diagnostic (never used for
+model selection) adds a genuinely counter-intuitive wrinkle: at H720,
+the WINNING arm (U3) has the projection matrix that moved LEAST from
+identity and was the best-conditioned of the three (condition number
+4.2 vs U2's 198) -- the best-performing transformation here is the most
+conservative one, not the most dramatically altered one.
+
+**Case assessment**: H720 is closest to this track's pre-registered
+"Case B" (asymmetry supported: both U2 and U3 clearly beat U1, whose
+own gain over U0 is much smaller than either) -- but with an
+unregistered direction effect on top that does NOT match the
+pre-registered "Case C" (which anticipated query-role-specificity);
+empirically it is candidate/KEY-role specificity that dominates, and
+this track's own diagnostics do not explain why -- flagged explicitly
+as an open, unresolved question rather than over-interpreted into a new
+hypothesis. Per the track's own pre-registered decision rule, a
+Case-B-like outcome at H720 means: adopt asymmetric query/key matching
+as the confirmed mechanism, do NOT launch further new-scorer
+architecture exploration, and move to Weather + multi-seed replication
+-- carrying the key-vs-query direction-reversal finding into that
+replication as something to check for transfer, not as grounds for
+another architecture-search track. 16/16 equivalence unit tests pass;
+all pairwise arm comparisons are bootstrap-significant except one
+(U2-U1 at H96 Stage2). Full report (interim):
+`research/U-asymmetry-capacity-decomposition/TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01.md`.

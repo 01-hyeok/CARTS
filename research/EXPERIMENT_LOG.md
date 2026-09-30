@@ -4035,3 +4035,59 @@ Interim report:
 `research/T2-projection-multislot-decomposition/TRACK-T2-PROJECTION-MULTISLOT-DECOMPOSITION01.md`.
 Remaining: Weather H96/H720 seed0, withheld per this track's own
 validity gate until the ETTh1 audit above was complete.
+
+## TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01 (2026-09-30, IN PROGRESS -- ETTh1 H96+H720 complete, Weather/multi-seed pending)
+
+Direct mechanism-identification follow-up to TRACK-T2's single largest
+finding (Original KL -> Query-only Projection, H720: 0.529134 ->
+0.506830). That change simultaneously adds D^2 learnable parameters
+AND breaks query/candidate symmetry -- this track separates the two
+with parameter-matched controls: U0 (0 params, true Original KL), U1
+(D^2 params, ONE shared matrix applied to BOTH sides -- symmetry
+preserved), U2 (D^2 params, query-only -- TRACK-T2's own T1
+architecture), U3 (D^2 params, key/candidate-only -- the mirror of U2).
+All four retrained fresh on GPU1 with a verified bit-identical initial
+projection weight across U1/U2/U3 (same fixed-seed generator call in
+each arm's own process). No Multi-Slot/StopGrad/overlap/aggregate/
+budget/new-loss/architecture-search anywhere in this track. 16/16
+equivalence unit tests pass. A pipeline pre-flight test found the cache
+-builder wastefully computing Spearman on train/val splits whose
+metrics are never saved -- fixed (4min->1min per arm) before any real
+run, no science change.
+
+**Results (ETTh1, seed0, n=2 horizons)**:
+
+| Arm | H96 Stage2 MSE | H720 Stage2 MSE |
+|---|---:|---:|
+| U0 | 0.373682 | 0.529134 |
+| U1 (shared symmetric) | 0.375317 | 0.524125 |
+| U2 (query-only) | 0.375630 | 0.506902 |
+| U3 (key-only) | 0.379204 | **0.492096** |
+
+**Headline finding**: at H720, U1 (same D^2 parameters as U2/U3, but
+symmetric) recovers only 22.5% of U0-to-U2's total gain and only 13.5%
+of U0-to-U3's -- decisive evidence that CAPACITY alone is a small
+effect and ASYMMETRY is what matters (both U2 and U3 significantly beat
+U1 at identical parameter count). The genuinely unexpected result: U3
+(key-only) significantly BEATS U2 (query-only) at H720 -- the opposite
+of what TRACK-T2's query-only framing implicitly assumed -- while at
+H96 the same key-side dominance appears in reverse (U3 is harmed MORE
+than U2, both being worse than U0). D/C decomposition shows this
+tracks a consistent mechanism: U3's effect on the complementarity term
+C is always the largest in magnitude of the three arms at both
+horizons (H720: C -17.1% vs U2's -7.0%; H96: C +6.7% vs U2's +3.8%),
+which is what drives it to be both the best arm at H720 and the worst
+at H96. Post-hoc diagnostics (never used for selection) found U3's own
+learned projection at H720 moved LEAST from identity and was the
+best-conditioned of the three -- the winning arm is the most
+conservative one, not the most dramatically transformed. Case
+assessment: closest to the pre-registered "Case B" (asymmetry
+supported) at H720, but with an unregistered direction effect
+(candidate/key-role specificity, not query-role specificity as
+pre-registered Case C anticipated) that this track's own diagnostics
+do not explain and flags as an open question rather than
+over-interpreting. Per the track's own pre-registered decision rule,
+this Case-B-like outcome means: adopt asymmetric query/key matching as
+the mechanism, do not add further new scorer structures, move to
+Weather + multi-seed replication. Interim report:
+`research/U-asymmetry-capacity-decomposition/TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01.md`.

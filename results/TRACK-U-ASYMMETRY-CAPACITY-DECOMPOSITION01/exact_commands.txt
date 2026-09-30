@@ -1,0 +1,30 @@
+# TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01 -- exact commands
+# GPU1 ONLY (standing rule), confirmed fully free before launch.
+# All four arms (U0/U1/U2/U3) retrained fresh for this track (see AUDIT.md
+# for why U1/U2/U3 could not reuse existing TRACK-T/TRACK-T2 checkpoints).
+
+ETTH1_REF_96="checkpoints/soft_set_mse/stage1/ETTh1/seq96_pred96/stage1_carts_softset_ETTh1_96_S0_wce_RelationStage1_ETTh1_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl96_pl96_0/checkpoint.pth"
+ETTH1_REF_720="checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth"
+
+export CUDA_VISIBLE_DEVICES=1
+bash scripts/run_u_one_setting01.sh ETTh1 "$ETTH1_REF_96" 96 0
+bash scripts/run_u_one_setting01.sh ETTh1 "$ETTH1_REF_720" 720 0
+
+# NOTE: before the real run, a pipeline-integration pre-flight test found
+# build_u_cache01.py's cache-building step (spearman computed on every
+# split, though only test-split metrics are ever saved) took 4+ minutes
+# per arm -- fixed to only compute spearman on the 'test' split (no
+# science change, saved test-split metrics numerically identical
+# before/after) before any real run was launched. See AUDIT.md.
+
+## Per-setting paired bootstrap (U1-U0, U2-U1, U3-U1, U2-U3, U2-U0)
+BASE_96="checkpoints/track_r_final_method_generalization01/ETTh1/H96/seed0/base/checkpoint.pth"
+BASE_720="checkpoints/track_r_final_method_generalization01/ETTh1/H720/seed0/base/checkpoint.pth"
+python scripts/compute_u_bootstrap01.py --reference_ckpt "$ETTH1_REF_96" --pred_len 96 --seq_len 96 --seed 0 \
+  --dataset ETTh1 --horizon 96 --base_checkpoint "$BASE_96"
+python scripts/compute_u_bootstrap01.py --reference_ckpt "$ETTH1_REF_720" --pred_len 720 --seq_len 720 --seed 0 \
+  --dataset ETTh1 --horizon 720 --base_checkpoint "$BASE_720"
+
+## Remaining (Weather / multi-seed, per PART 21's decision rule):
+# bash scripts/run_u_one_setting01.sh Weather <WEATHER_REF_96> 96 0
+# bash scripts/run_u_one_setting01.sh Weather <WEATHER_REF_720> 720 0
