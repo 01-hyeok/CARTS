@@ -1,0 +1,81 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 0,
+  "n_boot": 10000,
+  "resampling_unit": "query_start_idx",
+  "stage1_agg_mse": {
+    "T1_minus_T0": {
+      "mean_diff": 0.008425078852707437,
+      "ci_lo_2.5": 0.0057621679445678505,
+      "ci_hi_97.5": 0.011125374309036418,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "T2_minus_T1": {
+      "mean_diff": 0.006185394488074407,
+      "ci_lo_2.5": 0.0037882843116027447,
+      "ci_hi_97.5": 0.008608272691095108,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "T4_minus_T1": {
+      "mean_diff": 0.006153264938714902,
+      "ci_lo_2.5": 0.003296869391344715,
+      "ci_hi_97.5": 0.009019679528271485,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "T10_minus_T1": {
+      "mean_diff": 0.005444824096330406,
+      "ci_lo_2.5": 0.0026494120748937664,
+      "ci_hi_97.5": 0.008250970965589076,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "T10_minus_T0": {
+      "mean_diff": 0.013869902949037843,
+      "ci_lo_2.5": 0.010221534875059363,
+      "ci_hi_97.5": 0.017606285821305356,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    }
+  },
+  "stage2_forecast_mse": {
+    "T1_minus_T0": {
+      "mean_diff": 0.001994641898350399,
+      "ci_lo_2.5": 0.0007749066262420675,
+      "ci_hi_97.5": 0.0031968484250444055,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "T2_minus_T1": {
+      "mean_diff": 0.0013261050092895754,
+      "ci_lo_2.5": 0.00023870973454878617,
+      "ci_hi_97.5": 0.0024395007674901654,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "T4_minus_T1": {
+      "mean_diff": 0.0006077737873503721,
+      "ci_lo_2.5": -0.0005805535815803324,
+      "ci_hi_97.5": 0.0017902309651515,
+      "ci_excludes_zero": false,
+      "n_queries": 2785
+    },
+    "T10_minus_T1": {
+      "mean_diff": -0.00013764510516418375,
+      "ci_lo_2.5": -0.0012722439385776674,
+      "ci_hi_97.5": 0.001002772807392761,
+      "ci_excludes_zero": false,
+      "n_queries": 2785
+    },
+    "T10_minus_T0": {
+      "mean_diff": 0.0018569967931862151,
+      "ci_lo_2.5": 0.0004355568951079405,
+      "ci_hi_97.5": 0.0032427668394905446,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    }
+  }
+}

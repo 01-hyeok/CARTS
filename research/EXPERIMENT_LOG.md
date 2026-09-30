@@ -3983,3 +3983,55 @@ Multi-Slot architecture alone. No StopGrad/overlap/aggregate/budget was
 added in response to H96's result, per the track's own STOP rule.
 Interim report: `research/T-pure-multislot-validation/TRACK-T-PURE-MULTISLOT-VALIDATION01.md`.
 Remaining: Weather H96/H720 seed0 (Phase B), then seed1/2 replication.
+
+## TRACK-T2-PROJECTION-MULTISLOT-DECOMPOSITION01 (2026-09-30, IN PROGRESS -- ETTh1 H96+H720 complete, Weather pending)
+
+Direct confound-removal follow-up to TRACK-T. Audit found TRACK-T's own
+S1 arm was NOT true Original KL: it used `SlotHeads(n_slots=1,
+std=1e-3)`, a trainable query-projection matrix `W_1`, optimizer-updated
+every step -- so TRACK-T's `S1->S10` comparison actually measured
+*single-projected-head -> multi-slot*, not *Original KL -> multi-slot*.
+This track adds a genuine T0 (zero projection parameters, the literal
+`train_j_shared_encoder_drift01.py` reference implementation, run
+completely unmodified) to separate `G_Proj = MSE(T0)-MSE(T1)` from
+`G_MS(S) = MSE(T1)-MSE(T_S)`. T1/T2/T4/T10 were NOT retrained -- read
+read-only from the existing, untouched TRACK-T results; only T0 required
+new execution, on GPU1 (standing rule) after confirming it fully free.
+10/10 equivalence unit tests pass (score/loss/gradient equivalence to
+Original KL, optimizer-parameter check, full-gradient-both-branches,
+teacher/init/batch-order/checkpoint-criterion identity, exact Top-10
+reduction). Two path/variable bugs were found and fixed during
+execution (extra `{cell}` checkpoint subdirectory; undefined `memory_x`
+reference) -- neither invalidated the already-completed Stage1 training,
+only cache-build/Stage2 were re-run after each fix.
+
+**Reproduction check**: T0's freshly-trained Stage2 MSE matched
+TRACK-S's historical Original-KL value exactly at both horizons (H96:
+0.373682=0.373682; H720: 0.529134=0.529134) -- confirms clean,
+deterministic comparison, no STOP/VALIDITY trigger encountered.
+
+**Headline finding**: at H720, `G_Proj` (T0->T1) = -0.022304 (highly
+significant), more than DOUBLE `G_MS` (T1->T10) = -0.009239 (also
+significant) -- the single trainable projection accounts for 70.7% of
+the total T0->T10 improvement, multi-slot for 29.3%. TRACK-T's original
+framing ("Multi-Slot helps at H720") is not wrong that multi-slot helps
+-- it does, significantly -- but substantially overstates its share:
+most of what TRACK-T attributed to Multi-Slot was actually the
+projection confound. D/C decomposition shows the projection step
+improves BOTH D (-13.6%) and C (-7.0%) together at H720 (the cleanest
+single-step win in the whole track), while the "D const, C down"
+pattern TRACK-T originally reported applies specifically to the
+multi-slot increment ON TOP of an already-improved T1 baseline, not to
+the full T0->T10 gain as previously framed. At H96, the reversal is
+sharper than TRACK-T knew: true T0 is significantly BETTER than the old
+confounded S1 (projection is actively harmful there, not neutral),
+while multi-slot on top remains statistically negligible either way.
+Recall shows an interesting dissociation specific to the multi-slot step
+at H720 (recall drops 11.9% relative from T1->T10 while C and forecast
+keep improving), but NOT for the projection step (recall, D, C, and
+forecast all improve together there). No StopGrad/overlap/aggregate/
+budget/Set-Oracle/new-scorer/tuning was added anywhere in this track.
+Interim report:
+`research/T2-projection-multislot-decomposition/TRACK-T2-PROJECTION-MULTISLOT-DECOMPOSITION01.md`.
+Remaining: Weather H96/H720 seed0, withheld per this track's own
+validity gate until the ETTh1 audit above was complete.

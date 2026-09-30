@@ -4837,3 +4837,75 @@ Per the track's own STOP rule, no StopGrad/overlap/aggregate/budget
 term was added in response to H96's negative-ish result -- reported
 as-is. 20/20 unit tests pass. Full report (interim):
 `research/T-pure-multislot-validation/TRACK-T-PURE-MULTISLOT-VALIDATION01.md`.
+
+# Addendum (2026-09-30): TRACK-T2-PROJECTION-MULTISLOT-DECOMPOSITION01 (INTERIM, ETTh1 H96+H720 only)
+
+**Question**: a code audit found TRACK-T's own "S1" arm was not
+actually TRUE Original KL -- it used `SlotHeads(n_slots=1, std=1e-3)`,
+which is a trainable query-projection matrix `W_1` that gets
+optimizer-updated during training, not a parameterless cosine score. So
+TRACK-T's `S1->S10` sweep measured *single-projected-head -> multi-slot*,
+not *Original KL -> multi-slot*, confounding "does adding a trainable
+query projection help" with "does adding multiple slots help." This
+track adds a genuine **T0** (zero projection parameters -- literally
+`train_j_shared_encoder_drift01.py` run completely unmodified, the
+actual historical Original-KL/J0 reference implementation, not a
+reimplementation) to separate the two effects cleanly. T1-T10 were kept
+exactly as TRACK-T produced them -- not retrained, read read-only.
+
+**Reproduction sanity check (important)**: T0's freshly-trained Stage2
+MSE matched TRACK-S's historical Original-KL value EXACTLY at both
+horizons (H96: 0.373682; H720: 0.529134) -- the pipeline is
+deterministic and this comparison is clean; no validity concern arose.
+
+**Headline result -- this meaningfully revises TRACK-T's own framing**:
+at H720, decomposing the total T0->T10 improvement (`G_total=0.0315`)
+into `G_Proj` (T0->T1, the projection alone) and `G_MS` (T1->T10, the
+additional multi-slot contribution) gives `G_Proj=-0.0223` (70.7% of the
+total, highly significant) vs `G_MS=-0.0092` (29.3%, still
+significant). **The single trainable query projection is the dominant
+contributor at H720, more than double the size of the full multi-slot
+effect** -- TRACK-T's original conclusion that "Multi-Slot helps at
+H720" is directionally correct (multi-slot IS a real, independent,
+significant contributor) but substantially overstated its share of the
+credit.
+
+The D/C mechanism is also revised: the projection step alone improves
+BOTH `D` (-13.6% relative) and `C` (-7.0% relative) together at H720 --
+the single cleanest win of any step in the whole decomposition. The
+"D roughly constant, C down" pattern TRACK-T reported as its headline
+mechanism turns out to describe specifically the smaller multi-slot
+increment on top of an already-improved T1 baseline (D +1.8%, C -3.3%),
+not the full T0->T10 gain as originally framed.
+
+At H96, the picture sharpens in the other direction: true T0
+significantly BEATS the old confounded S1 (0.373682 vs 0.375676) --
+i.e. adding the projection is not merely unhelpful, it is actively
+HARMFUL at this horizon (D improves slightly but C worsens by more, a
+net loss), while multi-slot on top remains statistically negligible
+either way, matching TRACK-T's own null finding there.
+
+A secondary finding on Recall (addresses this session's recurring
+"recall doesn't track downstream success" theme): at H720, recall@10
+more than DOUBLES from T0 to T1, moving in the same direction as every
+other metric -- no dissociation there. But from T1 to T10 (the
+multi-slot step specifically), recall DROPS 11.9% relative while `C`
+and forecast MSE keep improving -- the dissociation is specific to
+multi-slot, not to the projection mechanism.
+
+**Revised bottom line (Q7 in the track's own report)**: Multi-Slot can
+still be maintained as a real, independent contributor at H720 -- it
+survives the confound removal with statistical significance -- but NOT
+as "the main driver" of the H720 improvement as TRACK-T's own report
+implied. The more accurate framing going forward is "query projection
+is the dominant mechanism, with multi-slot as a smaller but genuine
+additional contributor," and at H96 the projection mechanism is
+actively counterproductive rather than merely inert. 10/10 equivalence
+unit tests pass (score/loss/gradient equivalence to the literal
+Original-KL reference, no slot-head parameters in T0's optimizer, exact
+Top-10 selection reduction, shared/deterministic batch order, identical
+encoder init hash across all 5 arms). No new loss/architecture/tuning
+introduced anywhere in this track. Weather is withheld until this ETTh1
+validity audit was complete (per the track's own gate). Full report
+(interim):
+`research/T2-projection-multislot-decomposition/TRACK-T2-PROJECTION-MULTISLOT-DECOMPOSITION01.md`.

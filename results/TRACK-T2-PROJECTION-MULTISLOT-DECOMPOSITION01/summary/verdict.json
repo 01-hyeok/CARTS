@@ -1,0 +1,65 @@
+{
+  "status": "INTERIM (Phase A complete: ETTh1 H96 + H720, seed0 only; Weather not started per PART 20 gate)",
+  "reproduction_check": {
+    "H96": {"T0_test_mse": 0.373682, "historical_TRACK_S_original_kl": 0.373682, "match": "exact"},
+    "H720": {"T0_test_mse": 0.529134, "historical_TRACK_S_original_kl": 0.529134, "match": "exact"},
+    "note": "Both T0 runs reproduced the historical Original-KL/J0 reference exactly, confirming pipeline determinism and validating the comparison as clean."
+  },
+  "stage2_test_mse": {
+    "ETTh1_H96": {"T0": 0.373682, "T1": 0.375676, "T2": 0.377003, "T4": 0.376284, "T10": 0.375539},
+    "ETTh1_H720": {"T0": 0.529134, "T1": 0.506830, "T2": 0.504628, "T4": 0.500167, "T10": 0.497591}
+  },
+  "effect_decomposition": {
+    "ETTh1_H96": {"G_Proj_T0_to_T1": -0.001995, "G_MS_T1_to_T10": 0.000138, "G_total_T0_to_T10": -0.001857,
+                 "direction": "T1 is WORSE than T0 (projection is actively harmful at H96); G_MS not significant",
+                 "G_Proj_pct_of_total": 107.4},
+    "ETTh1_H720": {"G_Proj_T0_to_T1": 0.022304, "G_MS_T1_to_T10": 0.009239, "G_total_T0_to_T10": 0.031543,
+                  "direction": "both projection and multi-slot significantly improve forecast MSE at H720",
+                  "G_Proj_pct_of_total": 70.7, "G_MS_pct_of_total": 29.3,
+                  "note": "single-projection effect (G_Proj) is more than TWICE as large as the full multi-slot effect (G_MS) -- projection is the DOMINANT contributor, not multi-slot"}
+  },
+  "d_c_decomposition": {
+    "ETTh1_H96": {
+      "T0_to_T1_projection_step": {"delta_D": -0.004820, "delta_D_pct": -7.08, "delta_C": 0.013245, "delta_C_pct": 3.83,
+                                   "pattern": "projection IMPROVES individual relevance (D down) but HURTS complementarity (C up) -- opposite-direction tradeoff, net effect negative"},
+      "T1_to_T10_multislot_step": {"delta_D": 0.006864, "delta_D_pct": 10.85, "delta_C": -0.001419, "delta_C_pct": -0.40,
+                                   "pattern": "same as TRACK-T's own finding: D worsens, C flat/noisy, no complementarity benefit"}
+    },
+    "ETTh1_H720": {
+      "T0_to_T1_projection_step": {"delta_D": -0.013003, "delta_D_pct": -13.61, "delta_C": -0.038575, "delta_C_pct": -7.03,
+                                   "pattern": "projection improves BOTH individual relevance AND complementarity substantially -- the strongest, cleanest win of any single step in this track"},
+      "T1_to_T10_multislot_step": {"delta_D": 0.001509, "delta_D_pct": 1.83, "delta_C": -0.016757, "delta_C_pct": -3.28,
+                                   "pattern": "D approx constant, C down -- matches TRACK-T's original 'success pattern', but now shown to apply specifically to the MULTI-SLOT increment on top of an already-improved T1 baseline, not to the full T0->T10 gain"}
+    }
+  },
+  "recall_pattern": {
+    "ETTh1_H96": {"T0": 0.053516, "T1": 0.054804, "T10": 0.046494,
+                 "note": "T0->T1 recall rises slightly (consistent with T1's small D improvement); T1->T10 recall drops while C/Agg do NOT improve -- no interesting recall/complementarity dissociation at H96"},
+    "ETTh1_720": {"T0": 0.022377, "T1": 0.057183, "T10": 0.050400,
+                 "note": "T0->T1 recall MORE THAN DOUBLES alongside genuine D/C/forecast improvement (consistent direction). T1->T10 recall DROPS (0.0572->0.0504, -11.9% relative) while C and forecast CONTINUE to improve -- this is the interesting recall/complementarity dissociation, and it is specific to the multi-slot step, not the projection step."}
+  },
+  "bootstrap_significance": {
+    "ETTh1_H96": {"T1_vs_T0": "sig, T1 worse (both stage1 and stage2)", "T2_vs_T1": "sig, worse",
+                 "T4_vs_T1": "stage1 sig worse, stage2 not sig", "T10_vs_T1": "stage1 sig worse, stage2 not sig",
+                 "T10_vs_T0": "sig, T10 worse than T0 (both levels)"},
+    "ETTh1_H720": {"T1_vs_T0": "sig, T1 better (both stage1 and stage2, large effect)",
+                  "T2_vs_T1": "stage1 not sig, stage2 sig better", "T4_vs_T1": "sig better (both levels)",
+                  "T10_vs_T1": "sig better (both levels)", "T10_vs_T0": "sig better (both levels, largest total effect)"}
+  },
+  "case_assessment": {
+    "ETTh1_H720": "Case B -- Projection + Multi-Slot BOTH contribute, with a clean monotonic T0 > T1 > T4 > T10 ordering and C decreasing at every step. However, the two contributions are NOT equal in size: projection alone accounts for 70.7% of the total T0->T10 gain, multi-slot for 29.3%. The track's original framing ('Multi-Slot helps at H720') undersells how much of that apparent benefit was actually the single-projection confound.",
+    "ETTh1_H96": "Fits none of the four pre-registered cases (all four implicitly assume T0 <= T1, i.e. projection helps or is neutral). Here projection is actively HARMFUL (T0 significantly beats T1 at both Stage1 and Stage2), and multi-slot on top is statistically negligible. A fifth, unregistered pattern: 'projection actively hurts, multi-slot does nothing to recover or worsen it further.'"
+  },
+  "rq_answers": {
+    "Q1_is_existing_S1_different_from_true_original_kl": "YES, substantively. At H96, true T0 is actually BETTER than the old (confounded) S1 (0.373682 vs 0.375676, significant). At H720, true T0 is MUCH WORSE than the old S1 (0.529134 vs 0.506830, a 4.2% relative difference, significant, large) -- the old TRACK-T S1 was never a valid Original-KL baseline.",
+    "Q2_does_projection_give_independent_gain": "Horizon-dependent and itself reversed in sign: at H720, YES, a large and highly significant gain (G_Proj=-0.0223, 70.7% of the eventual T0->T10 total gain). At H96, NO -- the projection is significantly HARMFUL (G_Proj=+0.0020).",
+    "Q3_do_multiple_slots_add_gain_beyond_single_projection": "YES at H720 (T2/T4/T10 all significantly beat T1 at Stage2, monotonically), but this additional gain (29.3% of the total T0->T10 effect) is smaller than the projection step's own gain. NO at H96 (T4/T10 not significantly different from T1; T2 significantly worse).",
+    "Q4_does_h720_improvement_still_mean_d_const_c_down": "Only for the MULTI-SLOT increment (T1->T10): yes, D changes +1.8% while C changes -3.3%, matching the original pattern. For the PROJECTION increment (T0->T1): NO -- both D (-13.6%) and C (-7.0%) improve substantially together, a different and even stronger mechanism than 'D const, C down'.",
+    "Q5_does_recall_drop_while_c_agg_forecast_improve": "YES, but specifically for the multi-slot step at H720 (recall drops 11.9% relative from T1->T10 while C and forecast keep improving) -- NOT for the projection step, where recall, D, C, and forecast all improve together in the same direction.",
+    "Q6_which_stage_fails_at_h96": "BOTH stages fail to help, but the projection stage actively HURTS (not just fails to help) -- this is the primary source of H96's mild degradation. The multi-slot stage on top is statistically neutral (not significantly different from T1), neither helping nor hurting further.",
+    "Q7_can_multislot_be_maintained_as_main_contribution": "NOT as previously framed. At H720, multi-slot IS a real, significant, independent contributor (29.3% of the total gain) -- this survives the confound removal. But it is NOT the dominant one; the single trainable projection contributes more than twice as much (70.7%). Any claim that 'Multi-Slot is the main driver of the H720 improvement' is not supported by this decomposition -- 'query projection, with multi-slot as a smaller additional contributor' is the more accurate description. At H96, neither component helps; the projection component is actively harmful."
+  },
+  "stop_rule_compliance": "No StopGrad, overlap loss, aggregate loss, relevance budget, Set Oracle, slot-specific teacher, new scorer, or hyperparameter tuning added anywhere in this track. T0 is the literal, unmodified Original-KL/J0 reference implementation (train_j_shared_encoder_drift01.py), not a reimplementation. T1-T10 were not retrained or modified.",
+  "validity": "No STOP/VALIDITY trigger (PART 19) was encountered: T0 score/loss/gradient equivalence verified (10/10 unit tests pass), encoder init hash identical across all 5 arms per setting, T0's checkpoint has zero slot_heads_state_dict, checkpoint criterion identical (min val retMSE@10) across all arms, shared TRACK-R base checkpoint confirmed identical, and both T0 reproductions matched their historical reference exactly.",
+  "next_step": "Weather H96 seed0 and Weather H720 seed0, identical protocol, to test whether this decomposition (projection dominant at H720, projection harmful at H96) transfers to a second dataset -- per PART 20's gate, this was withheld until the ETTh1 validity audit above was complete."
+}
