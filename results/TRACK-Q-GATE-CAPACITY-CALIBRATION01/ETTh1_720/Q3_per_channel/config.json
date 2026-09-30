@@ -1,0 +1,10 @@
+{
+  "gate_type": "per_channel",
+  "arm": "Q3_per_channel",
+  "n_trainable_params": 7,
+  "seed": 0,
+  "lr": 0.001,
+  "batch_size": 32,
+  "train_epochs": 10,
+  "patience": 5
+}

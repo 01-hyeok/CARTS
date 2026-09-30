@@ -1,0 +1,59 @@
+{
+  "H1_global_sufficient": {
+    "Q2_vs_Q1": {
+      "mean_diff": -0.00011369409466275238,
+      "ci_lo_2.5": -0.00018615580643563842,
+      "ci_hi_97.5": -4.289766040073397e-05,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "relative_pct": 0.024504674808608413,
+    "verdict": "CONFIRMED: statistically significant but practically negligible (0.025% relative) -- a single trainable global lambda matches the fixed validation-grid-search lambda."
+  },
+  "H2_per_channel_meaningful": {
+    "Q3_vs_Q2": {
+      "mean_diff": -8.936265672262705e-05,
+      "ci_lo_2.5": -0.0001332455686621509,
+      "ci_hi_97.5": -4.4853335064575124e-05,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "relative_pct": 0.019265213638448877,
+    "verdict": "NOT CONFIRMED: statistically significant but practically negligible (0.019% relative) -- per-channel variation does not provide meaningful additional benefit over global."
+  },
+  "H3_query_gate_overcomplex": {
+    "Q4_vs_Q2": {
+      "mean_diff": 0.01183099999999998
+    },
+    "Q4_vs_Q3": {
+      "mean_diff": 0.011919705115331096,
+      "ci_lo_2.5": 0.010421274867544898,
+      "ci_hi_97.5": 0.01343502828757391,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "verdict": "CONFIRMED: Q4 is ~2.5% relative WORSE than Q2/Q3, both highly significant -- the current query-conditioned MLP gate is over-complex/miscalibrated relative to trivial alternatives."
+  },
+  "H4_prior_helps_query_gate": {
+    "Q5_vs_Q4": {
+      "mean_diff": -0.0015373521108199247,
+      "ci_lo_2.5": -0.002896502524724662,
+      "ci_hi_97.5": -0.0002628562631484595,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "relative_pct": 0.32318632686686694,
+    "verdict": "CONFIRMED (small): Q5 significantly beats Q4 (0.32% relative), but Q5 STILL falls ~2.2% short of Q1/Q2/Q3 -- calibration prior helps the query gate but does not fix it enough to justify its complexity."
+  },
+  "decision_table_case": "Case A -- Global scalar sufficient",
+  "case_A_criteria": {
+    "Q2_approx_Q1": true,
+    "Q3_no_meaningful_improvement": true,
+    "Q5_no_meaningful_improvement_vs_Q2_Q3": true
+  },
+  "final_recommendation": "M2 + Uniform + Mixture + (Trainable) Global Lambda (Q2)",
+  "final_recommendation_rationale": "Q1 (0 params, fixed via a separate validation grid search) and Q2 (1 param, learned end-to-end via plain gradient descent) are statistically distinguishable but practically identical (<0.03% relative). Q2 is preferred as the deployable choice since it self-calibrates during training without a separate offline grid-search step, while remaining exactly as simple (a single scalar). Per-channel (Q3) and query-conditioned (Q4/Q5) gates all either add negligible value (Q3, <0.02% relative) or actively hurt (Q4/Q5, 2-3% relative worse) -- their added complexity is not justified by any of PART 23's priority criteria.",
+  "Q7_final_gate_type": "global",
+  "Q8_generalization_ready": "YES",
+  "Q8_rationale": "A single Stage2 fusion/gate structure (M2 + Uniform + Mixture + Global Lambda) is now fixed by this track's evidence; horizon/dataset/seed generalization can proceed per the user's own stated protocol."
+}

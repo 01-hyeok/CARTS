@@ -1,0 +1,25 @@
+# TRACK-Q-GATE-CAPACITY-CALIBRATION01 -- exact commands (ETTh1_720)
+# GPU1 only, strictly sequential. Retriever=M2, aggregation=Uniform,
+# fusion=mixture fixed throughout. Q0/Q1/Q4 reused verbatim from
+# TRACK-N/P (no retraining) -- see AUDIT.md.
+
+## Reproduction gates (Q0, Uniform M2, Q1, Q4) -- inline verification, see AUDIT.md/report
+
+## Q2/Q3/Q5 training (sequential, GPU1; no Exp_Stage2_Relation/Model constructed)
+CUDA_VISIBLE_DEVICES=1 python scripts/train_q_gate_capacity01.py --gate_type global --seed 0
+CUDA_VISIBLE_DEVICES=1 python scripts/train_q_gate_capacity01.py --gate_type per_channel --seed 0
+CUDA_VISIBLE_DEVICES=1 python scripts/train_q_gate_capacity01.py --gate_type query_prior --seed 0
+
+## Analysis: per-(query,channel) lambda/gain, oracle calibration, lambda bins
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_q_analysis01.py
+
+## PART 19 -- paired bootstrap (query_start_idx unit, 10,000 reps)
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_q_bootstrap01.py
+
+## Sanity: full pytest suite (GPU1)
+CUDA_VISIBLE_DEVICES=1 python -m pytest tests/ -q
+
+# S2_720 (Stage2 host, config-only, never trained): checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth
+# S0 common frozen base: checkpoints/track_m_relevance_constrained_multislot01/stage2/ETTh1_720/S0_base/checkpoint.pth
+# M2 retriever: checkpoints/track_m_relevance_constrained_multislot01/ETTh1_720/M2_relevance_budget/checkpoint.pth
+# Q4 checkpoint reused directly: checkpoints/track_p_fusion_semantics_audit01/ETTh1_720/P4_M2_mixture/checkpoint.pth

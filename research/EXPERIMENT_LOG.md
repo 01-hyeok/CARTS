@@ -3787,3 +3787,53 @@ in this track per the STOP rule. 20/20 unit tests (23 spec items) pass;
 full pytest suite unaffected (1281 passed, same 2 pre-existing
 failures). Full report:
 `research/P-fusion-semantics/TRACK-P-FUSION-SEMANTICS-AUDIT01.md`.
+
+## TRACK-Q-GATE-CAPACITY-CALIBRATION01 (2026-09-30, ETTh1_720, retriever/aggregation/fusion all fixed)
+
+Direct follow-up to TRACK-P. Everything fixed (retriever=M2,
+aggregation=Uniform, fusion=mixture, common frozen base=TRACK-M's S0);
+single question: how much gate complexity does exploiting M2's
+retrieval actually need? Six arms: Q0 (base), Q1 (TRACK-P's fixed
+lambda=0.42, reused), Q2 (1-parameter trainable global lambda, init at
+neutral 0.5), Q3 (7-parameter trainable per-channel lambda), Q4
+(TRACK-P's P4 query-conditioned MLP gate, reused), Q5 (new: global
+-prior query gate, `lambda=sigmoid(b+MLP([B,R]))`, `b` init at
+`logit(0.42)`, MLP last layer zero-init so training starts at exactly
+lambda=0.42 for every query -- tests query-conditioning vs. calibration
+confound). `relation_mixer`/`Model` never constructed for Q2/Q3/Q5: the
+cached `B`/`R` are consumed directly by a lightweight gate in plain
+PyTorch (all Stage2 auxiliary losses are off for this host, verified,
+so this is exactly the real objective). All 4 reproduction gates pass
+to <4e-7. Q2's optimizer audit (PART 8, gradient trajectory, first 10
+steps) is clean -- prerequisite for trusting Q3/Q5.
+
+**Result**: Q2 (`test_mse=0.463855`, `lambda->0.40`) and Q3
+(`0.463766`) both recover the TRACK-N fixed-lambda level (`Q1=0.463969`)
+via plain gradient descent, matching it to within 0.02-0.04% relative --
+statistically detectable (large n) but practically negligible
+differences among Q1/Q2/Q3 (all <0.05% relative, paired bootstrap).
+Q4 (`0.475686`) and Q5 (`0.474148`) are both clearly, meaningfully WORSE
+than Q1/Q2/Q3 (>2% relative, both highly significant). Q5 does
+significantly beat Q4 (-0.32% relative) and roughly doubles the fraction
+of queries where retrieval measurably helps (37.5%->67.1%) -- the
+calibration/init fix genuinely alleviates Q4's over-suppression problem
+(median lambda 0.00033 -> 0.1499) -- but does not close the gap to the
+trivial global-lambda baselines. Calibration-vs-oracle-lambda* analysis
+confirms this from another angle: the CONSTANT-lambda arms (Q1/Q2) have
+the lowest MAE against the highly variable oracle lambda* of any arm,
+including the query-conditioned ones.
+
+**Decision-table verdict: Case A -- Global scalar sufficient.** All
+three criteria hold (Q2~=Q1, Q3 no meaningful gain over Q2, Q5 no
+meaningful gain over Q2/Q3). **Final Stage2 structure fixed: M2 +
+Uniform + Mixture + Trainable Global Lambda (Q2)** -- 1 parameter,
+self-calibrating via ordinary training, no separate offline grid search
+needed. Per-channel and query-conditioned complexity (Q3/Q4/Q5) are NOT
+justified by any of the pre-registered priority criteria (validation
+MSE, CI, practical magnitude, parameter count, calibration stability).
+Q8: generalization to other horizons/Weather/seeds is now READY (YES) --
+a single fusion/gate structure has been fixed by evidence, satisfying
+the user's own stated protocol for when to proceed. 21/21 unit tests
+pass; full pytest suite unaffected (1302 passed, same 2 pre-existing
+failures). Full report:
+`research/Q-gate-capacity-calibration/TRACK-Q-GATE-CAPACITY-CALIBRATION01.md`.

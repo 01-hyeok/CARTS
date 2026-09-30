@@ -1,0 +1,27 @@
+{
+  "Q0_base": {
+    "expected": 0.48879,
+    "got": 0.4887896776199341,
+    "absdiff": 3.223800659202247e-07,
+    "pass": true
+  },
+  "uniform_M2": {
+    "expected": 0.523593,
+    "got": 0.5235927104949951,
+    "absdiff": 2.895050048579151e-07,
+    "pass": true
+  },
+  "Q1_fixed_global": {
+    "expected": 0.463969,
+    "got": 0.46396908164024353,
+    "absdiff": 8.164024350998389e-08,
+    "pass": true
+  },
+  "Q4_query_gate": {
+    "expected": 0.475686,
+    "got": 0.47568571374916907,
+    "absdiff": 2.862508309275924e-07,
+    "pass": true
+  },
+  "all_pass": true
+}

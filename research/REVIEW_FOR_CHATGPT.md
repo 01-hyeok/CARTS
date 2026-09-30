@@ -4600,3 +4600,56 @@ multi-slot consumer redesign, NOT generalization, NOT a new Stage1
 retriever objective. Not executed in this track per the STOP rule.
 20/20 unit tests (23 spec items) pass. Full report:
 `research/P-fusion-semantics/TRACK-P-FUSION-SEMANTICS-AUDIT01.md`.
+
+# Addendum (2026-09-30): TRACK-Q-GATE-CAPACITY-CALIBRATION01
+
+**Question**: TRACK-P fixed fusion semantics (mixture beats residual),
+but the learned query-conditioned gate (P4/Q4) still trailed TRACK-N's
+trivial fixed validation lambda by ~1.2-1.3% MSE. Given retriever=M2,
+aggregation=Uniform, fusion=mixture all held fixed, how much gate
+complexity is actually needed?
+
+**Method**: six arms spanning the complexity spectrum -- Q0 (base), Q1
+(fixed lambda=0.42, TRACK-N/P reused), Q2 (1-param trainable global
+lambda, neutral 0.5 init), Q3 (7-param trainable per-channel lambda), Q4
+(the existing 184K-param query-conditioned MLP gate, TRACK-P's P4
+reused), Q5 (new: same MLP architecture but with a global-prior additive
+bias initialized to `logit(0.42)` and a zero-initialized delta network,
+so training starts at exactly the known-good lambda for every query --
+designed to separate "is query-conditioning itself the problem" from
+"is bad calibration/init the problem"). `relation_mixer`/the full Stage2
+model are never constructed for Q2/Q3/Q5 -- cached base and retrieval
+tensors feed a tiny standalone gate module directly (verified to be
+exactly the real training objective, since all Stage2 auxiliary losses
+are off for this host). Q2's optimizer trajectory was audited first
+(gradient magnitude, first 10 steps, no stuck/saturation) before
+trusting Q3/Q5.
+
+**Result -- decisive, and simpler than expected**: Q2 (`0.463855`) and
+Q3 (`0.463766`) both match Q1's fixed-lambda level via plain gradient
+descent (Q2's lambda converges to 0.40, within tolerance of 0.42) --
+every pairwise difference among Q1/Q2/Q3 is statistically significant
+(large n) but practically negligible (<0.05% relative, well under the
+pre-registered 0.2% threshold). Q4 and Q5 are both clearly, meaningfully
+WORSE (>2% relative, highly significant) than any of Q1/Q2/Q3. Q5 does
+fix HALF of Q4's known over-suppression problem in a real, measurable
+way (fraction of queries where retrieval helps: 37.5%->67.1%; median
+lambda: 0.0003->0.15) -- confirming calibration/init was a genuine
+contributing issue -- but doesn't close the gap to the trivial
+baselines. A separate oracle-lambda-calibration analysis independently
+confirms the same story: the constant-lambda arms track the (highly
+variable) oracle lambda* better (lowest MAE) than either query
+-conditioned gate does.
+
+**Bottom line: Case A of the decision table -- a global scalar is
+sufficient.** Final Stage2 structure is now fixed:
+**M2 + Uniform + Mixture + Trainable Global Lambda (1 parameter)**.
+Per-channel and query-conditioned complexity add no justified value
+(none pass the pre-registered practical-significance/parameter-count
+tradeoff criteria) despite one of them (Q4) having 184,577 parameters.
+**Generalization to other horizons, Weather, and additional seeds is
+now READY (Q8: YES)** -- a single, evidence-backed fusion/gate structure
+has been settled, satisfying the pre-registered condition for moving
+past this fusion/consumer investigation. 21/21 unit tests pass. Full
+report:
+`research/Q-gate-capacity-calibration/TRACK-Q-GATE-CAPACITY-CALIBRATION01.md`.
