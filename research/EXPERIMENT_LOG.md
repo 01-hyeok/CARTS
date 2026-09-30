@@ -3672,3 +3672,68 @@ retriever architecture/loss must not be changed again until the Stage2
 consumption question is resolved. 18/18 unit tests pass; full pytest
 suite: 1242 passed, the same 2 pre-existing unrelated failures. Full
 report: `research/N-forecast-conditional-utility/TRACK-N-FORECAST-CONDITIONAL-UTILITY01.md`.
+
+## TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01 (2026-09-30, ETTh1_720, NO RETRIEVER TRAINING)
+
+Direct follow-up to TRACK-N. Core principle: the Stage1 retriever (J1,
+M2) is never touched. 2x2 design -- Axis A: retriever (J1/M2) x Axis B:
+aggregation (Uniform/Host) -- all four arms sharing the EXACT SAME
+frozen common base (TRACK-M's S0 checkpoint, `base_head` never updated)
+and, critically, the EXACT SAME fresh-init trainable "consumer"
+(intended to be `relation_mixer`+`gate`, PART 4's explicit design goal).
+
+**Critical prerequisite finding, discovered mid-track**: `relation_mixer`
+is structurally gradient-dead in this pipeline. `model.num_source_slots()
+== 1` for the S2_720 host config (`source_mode='auto'`, a
+`pearson_self_top1` relation graph), so `RelationMixer`'s `softmax(...,
+dim=1)` operates over a size-1 axis -- mathematically the constant
+function `beta≡1`, zero Jacobian. Verified empirically (weight hash
+identical after 10 full training epochs) and analytically (isolated
+unit test: real forward+backward gives `relation_mixer` gradients of
+exactly 0.0 while `gate`'s are large and nonzero). This is an
+architecture-level fact of the single-aggregated-source cache convention
+used by EVERY Stage2 track this session (TRACK-A-SET-LOSS-CONTROL02,
+TRACK-M, TRACK-N) -- not a bug introduced here -- and it CORRECTS
+TRACK-N's own stated Gate-Only confound diagnosis: S0's `relation_mixer`
+was never trained at all (same degeneracy), so "loaded from S0" and
+"fresh init" are literally the same value. Only `gate` genuinely trains
+anywhere in this whole pipeline. Reported transparently rather than
+silently reframed; O1-O4 remain a valid controlled comparison (confirmed
+identical base_head/consumer-init/trainable-names across all four arms
+via `shared_init_fingerprint.json`), just measuring gate-only
+consumption, not mixer+gate as originally intended.
+
+**Aggregation diagnostic (independent of training)**: Host weighting IS
+quality-aware for both retrievers (Spearman(alpha, candidate MSE)
+negative: J1 -0.051, M2 -0.147; the weighted mean individual MSE is
+*better* than the Uniform mean for both). The `D_w`/damage inflation
+found in TRACK-N is a pure CONCENTRATION effect (effective K collapsing
+10->8.25 for J1, 10->5.76 for M2), not a quality-weighting failure.
+
+**Primary Stage2 result (paired bootstrap, 10k reps, query_start_idx
+unit)**: all four arms (O1=J1+Uniform 0.489349, O2=J1+Host 0.490523,
+O3=M2+Uniform 0.488924, O4=M2+Host 0.489104) land within 0.4% of the
+no-retrieval base O0=0.488790 -- three of four differences are
+statistically significant (large n) but all practically negligible, and
+mostly in the WORSE direction (only O3 is statistically tied with O0).
+**Decision-table Case 4**: Stage2 consumer architecture itself fails to
+exploit real retrieval information for ANY retriever/aggregation tested
+-- retriever must not change, consumer needs redesign. Despite this,
+**M2 significantly beats J1 under identical treatment in BOTH
+aggregation modes** (O3<O1: `-0.000425`, CI `[-0.00063,-0.00023]`; O4<O2:
+`-0.001420`, CI `[-0.00189,-0.00098]`) -- and the Host-penalty
+interaction is significantly NEGATIVE (the gate absorbs more of M2's
+standalone Host damage than J1's), opposite the direction TRACK-N found
+for standalone retrieval quality alone.
+
+**Verdict**: Q7 (keep M2 as main retriever?) = **YES** -- M2 is never
+worse than, often better than, J1 across every honest comparison run
+this session. Q8 (next experiment: Stage1 forecast-conditional retriever
+vs Stage2 consumer refinement?) = **Stage2 consumer refinement** --
+every piece of TRACK-N/O evidence points the same direction: M2's
+retrieval already carries real downstream value; the current consumer
+(a single scalar/per-channel gate, alone, with a structurally-inert
+mixer) cannot realize it, while a trivial non-learned validation
+-calibrated lambda (TRACK-N) already gets close. 21/21 unit tests pass;
+full pytest suite unaffected. Full report:
+`research/O-frozen-base-retrieval-consumer/TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01.md`.

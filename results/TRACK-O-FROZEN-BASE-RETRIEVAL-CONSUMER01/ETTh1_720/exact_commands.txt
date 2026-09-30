@@ -1,0 +1,27 @@
+# TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01 -- exact commands (ETTh1_720)
+# GPU1 only, strictly sequential. NO retriever/Stage1 training anywhere.
+# Retrieval caches (Uniform J1/M2 from TRACK-N, Host J1/M2 from TRACK-M) are
+# REUSED verbatim, not rebuilt -- see AUDIT.md.
+
+## PART 8 -- reproduction gate against the reused caches (inline script, see AUDIT.md)
+
+## PARTS 9-10 -- aggregation diagnostic (effective K, weighted individual MSE,
+## Spearman(alpha,MSE), D/C decomposition), independent of Stage2 training
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_o_aggregation_diagnostic01.py
+
+## PART 4/11-15 -- Frozen-Base + Trainable-Consumer training (O1-O4, sequential)
+for ARM in O1_J1_uniform O2_J1_host O3_M2_uniform O4_M2_host; do
+  CUDA_VISIBLE_DEVICES=1 python scripts/train_o_frozen_base_consumer01.py \
+    --arm "$ARM" --cell ETTh1_720 --seed 0 --train_epochs 10 --patience 5
+done
+
+## PART 21 -- paired bootstrap (query_start_idx unit, 10,000 reps) + interaction analysis
+CUDA_VISIBLE_DEVICES=1 python scripts/compute_o_bootstrap01.py
+
+## Sanity: full pytest suite (GPU1)
+CUDA_VISIBLE_DEVICES=1 python -m pytest tests/ -q
+
+# S2_720 (Stage2 host, supplies base_head + HostScorer + model config):
+# checkpoints/stage2/ETTh1/seq720_pred720/stage2_carts_softset_s2_ETTh1_720_S0_wce_RelationStage2_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_s2_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth
+# S0 common frozen base (TRACK-M):
+# checkpoints/track_m_relevance_constrained_multislot01/stage2/ETTh1_720/S0_base/checkpoint.pth

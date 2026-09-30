@@ -1,0 +1,71 @@
+{
+  "n_boot": 10000,
+  "seed": 0,
+  "resampling_unit": "query_start_idx",
+  "n_common_queries": 2161,
+  "per_arm_mean_mse": {
+    "O0_base": 0.4887896707520227,
+    "O1_J1_uniform": 0.48934915763865133,
+    "O2_J1_host": 0.49052316733721724,
+    "O3_M2_uniform": 0.4889243876200371,
+    "O4_M2_host": 0.48910361965570887
+  },
+  "comparisons": {
+    "O1_J1_uniform_minus_O0_base": {
+      "mean_diff": 0.0005594868866286306,
+      "ci_lo_2.5": 0.000348111002437498,
+      "ci_hi_97.5": 0.0007821601561681366,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O2_J1_host_minus_O0_base": {
+      "mean_diff": 0.0017334965851945714,
+      "ci_lo_2.5": 0.0013174938792186114,
+      "ci_hi_97.5": 0.0021828802815332064,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O3_M2_uniform_minus_O0_base": {
+      "mean_diff": 0.0001347168680144261,
+      "ci_lo_2.5": -1.2381628590124395e-05,
+      "ci_hi_97.5": 0.00027956356678445935,
+      "ci_excludes_zero": false,
+      "n_queries": 2161
+    },
+    "O4_M2_host_minus_O0_base": {
+      "mean_diff": 0.00031394890368619156,
+      "ci_lo_2.5": 9.791213417428339e-05,
+      "ci_hi_97.5": 0.0005339386516536402,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O3_M2_uniform_minus_O1_J1_uniform": {
+      "mean_diff": -0.00042477001861420457,
+      "ci_lo_2.5": -0.0006265762367633579,
+      "ci_hi_97.5": -0.00023097662545640624,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O4_M2_host_minus_O2_J1_host": {
+      "mean_diff": -0.0014195476815083798,
+      "ci_lo_2.5": -0.0018906089310456293,
+      "ci_hi_97.5": -0.0009811300382686953,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O3_M2_uniform_minus_O4_M2_host": {
+      "mean_diff": -0.00017923203567176546,
+      "ci_lo_2.5": -0.00036443255907239215,
+      "ci_hi_97.5": 8.597672468310728e-06,
+      "ci_excludes_zero": false,
+      "n_queries": 2161
+    },
+    "O1_J1_uniform_minus_O2_J1_host": {
+      "mean_diff": -0.0011740096985659407,
+      "ci_lo_2.5": -0.001581849499481908,
+      "ci_hi_97.5": -0.0008015960582507425,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    }
+  }
+}

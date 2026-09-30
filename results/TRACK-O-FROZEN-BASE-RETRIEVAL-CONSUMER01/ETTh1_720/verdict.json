@@ -1,0 +1,74 @@
+{
+  "critical_prerequisite_finding": "relation_mixer is structurally gradient-dead in this pipeline (num_source_slots()==1, softmax over a size-1 axis is the constant function beta=1 with zero Jacobian) -- confirmed empirically (weight hashes identical pre/post training) and analytically (isolated unit test). Only `gate` genuinely trains in ANY arm. See AUDIT.md.",
+  "scenario_A_M2_confirmed": {
+    "criteria": "MSE_O3<MSE_O1 (CI<0) AND MSE_O3<MSE_O0",
+    "O3_vs_O1": {
+      "mean_diff": -0.00042477001861420457,
+      "ci_lo_2.5": -0.0006265762367633579,
+      "ci_hi_97.5": -0.00023097662545640624,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O3_lt_O1_met": true,
+    "O3_vs_O0": {
+      "mean_diff": 0.0001347168680144261,
+      "ci_lo_2.5": -1.2381628590124395e-05,
+      "ci_hi_97.5": 0.00027956356678445935,
+      "ci_excludes_zero": false,
+      "n_queries": 2161
+    },
+    "O3_lt_O0_met": false,
+    "verdict": "NOT MET (O3 beats O1 significantly, but does not clearly beat O0)"
+  },
+  "scenario_B_M2_competitive": {
+    "criteria": "|relative gap O3 vs O1| < 0.5% AND both beat O0",
+    "relative_gap_O3_vs_O1_pct": 0.08685008041294724,
+    "both_beat_O0": false,
+    "verdict": "PARTIALLY MET (gap is tiny, 0.087%, favoring M2) but neither arm clearly beats O0"
+  },
+  "aggregation_verdict": {
+    "O1_vs_O2_J1_uniform_vs_host": {
+      "mean_diff": -0.0011740096985659407,
+      "ci_lo_2.5": -0.001581849499481908,
+      "ci_hi_97.5": -0.0008015960582507425,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O3_vs_O4_M2_uniform_vs_host": {
+      "mean_diff": -0.00017923203567176546,
+      "ci_lo_2.5": -0.00036443255907239215,
+      "ci_hi_97.5": 8.597672468310728e-06,
+      "ci_excludes_zero": false,
+      "n_queries": 2161
+    },
+    "interaction_O4_minus_O3_minus_O2_minus_O1": {
+      "definition": "(O4_M2_host - O3_M2_uniform) - (O2_J1_host - O1_J1_uniform)",
+      "interpretation": "positive => Host penalty is LARGER for M2 than for J1",
+      "mean_diff": -0.0009947776628941752,
+      "ci_lo_2.5": -0.0014247808155501568,
+      "ci_hi_97.5": -0.0005871476766716713,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "note": "Uniform significantly beats Host for J1 (O1<O2). For M2, Uniform vs Host is NOT significant (O3 vs O4 CI includes zero). The interaction term is significant and NEGATIVE: the Host penalty (Host-Uniform) is actually SMALLER for M2 (+0.00018) than for J1 (+0.00117) once a trainable gate is allowed to partially compensate -- opposite direction from TRACK-N's standalone-retrieval-quality damage finding (there M2 suffered MORE %-damage). The gate can partially absorb the standalone Host degradation, more so for M2 than J1."
+  },
+  "decision_table_case": "Case 4",
+  "case_4_rationale": "All four arms land within [-0.00001, +0.0017] of O0 (base_mse=0.488790) -- 3/4 differences are statistically significant (large n) but ALL are practically negligible (<0.4% relative), and none represent a genuine, meaningful improvement over the trivial no-retrieval baseline (O1/O2/O4 are actually slightly WORSE than O0; O3 is statistically tied). This is Case 4's own trigger condition: Stage2 consumer architecture itself fails to exploit real retrieval information, for ANY retriever or aggregation tested. Retriever must NOT be changed; consumer architecture needs redesign.",
+  "secondary_finding_M2_relatively_better": {
+    "O3_vs_O1": {
+      "mean_diff": -0.00042477001861420457,
+      "ci_lo_2.5": -0.0006265762367633579,
+      "ci_hi_97.5": -0.00023097662545640624,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "O4_vs_O2": {
+      "mean_diff": -0.0014195476815083798,
+      "ci_lo_2.5": -0.0018906089310456293,
+      "ci_hi_97.5": -0.0009811300382686953,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "note": "Despite neither retriever achieving a meaningful absolute win over O0, M2 SIGNIFICANTLY beats J1 pairwise under IDENTICAL treatment in BOTH aggregation modes -- consistent with TRACK-N's finding that M2's retrieval carries real, competitive-to-superior conditional utility that the current consumer (gate alone, mixer dead) fails to fully realize for either retriever, but fails LESS for M2."
+  }
+}

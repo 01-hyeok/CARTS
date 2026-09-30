@@ -1,0 +1,9 @@
+{
+  "definition": "(O4_M2_host - O3_M2_uniform) - (O2_J1_host - O1_J1_uniform)",
+  "interpretation": "positive => Host penalty is LARGER for M2 than for J1",
+  "mean_diff": -0.0009947776628941752,
+  "ci_lo_2.5": -0.0014247808155501568,
+  "ci_hi_97.5": -0.0005871476766716713,
+  "ci_excludes_zero": true,
+  "n_queries": 2161
+}

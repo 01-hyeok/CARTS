@@ -1,0 +1,27 @@
+{
+  "arm": "O2_J1_host",
+  "seed": 0,
+  "base_head_sha256": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5",
+  "consumer_init_sha256": {
+    "relation_mixer": "cb7166e474f3daf47cdf0af3c4bbf0f9a2b065f3bc74da412e94fabc9c1836b3",
+    "gate": "93f8fcbcf28eb805bad97cf4e8bc7429d69aaeee6e95abee32314100c60bd60d"
+  },
+  "frozen_submodule_sha256_before": {
+    "base_head": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5",
+    "relation_concat_projection": "b7723d81c07d22dc881fee9d47037e26722d2bec792aefa6f22f3023aaa946b3",
+    "stage1_encoder": "c2d7268b793992baf229794607e07b7f5bf91e63f2f7107f282a15aef6518d41",
+    "shared_cross_projection": "ca80123a1a0bbbaf11fe2ba7bd1cb5c8c1c0d6a61eae47027dea606ff950f17f"
+  },
+  "trainable_parameter_names": [
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight",
+    "relation_mixer.score_net.0.bias",
+    "relation_mixer.score_net.0.weight",
+    "relation_mixer.score_net.2.bias",
+    "relation_mixer.score_net.2.weight"
+  ],
+  "trainable_parameter_count": 276994,
+  "cache_dir": "/data/pjh_workspace/CARTS/results/TRACK-M-RELEVANCE-CONSTRAINED-MULTISLOT01/stage2/cache/ETTh1_720/S1_J1"
+}

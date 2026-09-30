@@ -1,0 +1,130 @@
+diff --git a/research/EXPERIMENT_LOG.md b/research/EXPERIMENT_LOG.md
+index 2f8d0ed..501fca8 100644
+--- a/research/EXPERIMENT_LOG.md
++++ b/research/EXPERIMENT_LOG.md
+@@ -3672,3 +3672,68 @@ retriever architecture/loss must not be changed again until the Stage2
+ consumption question is resolved. 18/18 unit tests pass; full pytest
+ suite: 1242 passed, the same 2 pre-existing unrelated failures. Full
+ report: `research/N-forecast-conditional-utility/TRACK-N-FORECAST-CONDITIONAL-UTILITY01.md`.
++
++## TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01 (2026-09-30, ETTh1_720, NO RETRIEVER TRAINING)
++
++Direct follow-up to TRACK-N. Core principle: the Stage1 retriever (J1,
++M2) is never touched. 2x2 design -- Axis A: retriever (J1/M2) x Axis B:
++aggregation (Uniform/Host) -- all four arms sharing the EXACT SAME
++frozen common base (TRACK-M's S0 checkpoint, `base_head` never updated)
++and, critically, the EXACT SAME fresh-init trainable "consumer"
++(intended to be `relation_mixer`+`gate`, PART 4's explicit design goal).
++
++**Critical prerequisite finding, discovered mid-track**: `relation_mixer`
++is structurally gradient-dead in this pipeline. `model.num_source_slots()
++== 1` for the S2_720 host config (`source_mode='auto'`, a
++`pearson_self_top1` relation graph), so `RelationMixer`'s `softmax(...,
++dim=1)` operates over a size-1 axis -- mathematically the constant
++function `beta≡1`, zero Jacobian. Verified empirically (weight hash
++identical after 10 full training epochs) and analytically (isolated
++unit test: real forward+backward gives `relation_mixer` gradients of
++exactly 0.0 while `gate`'s are large and nonzero). This is an
++architecture-level fact of the single-aggregated-source cache convention
++used by EVERY Stage2 track this session (TRACK-A-SET-LOSS-CONTROL02,
++TRACK-M, TRACK-N) -- not a bug introduced here -- and it CORRECTS
++TRACK-N's own stated Gate-Only confound diagnosis: S0's `relation_mixer`
++was never trained at all (same degeneracy), so "loaded from S0" and
++"fresh init" are literally the same value. Only `gate` genuinely trains
++anywhere in this whole pipeline. Reported transparently rather than
++silently reframed; O1-O4 remain a valid controlled comparison (confirmed
++identical base_head/consumer-init/trainable-names across all four arms
++via `shared_init_fingerprint.json`), just measuring gate-only
++consumption, not mixer+gate as originally intended.
++
++**Aggregation diagnostic (independent of training)**: Host weighting IS
++quality-aware for both retrievers (Spearman(alpha, candidate MSE)
++negative: J1 -0.051, M2 -0.147; the weighted mean individual MSE is
++*better* than the Uniform mean for both). The `D_w`/damage inflation
++found in TRACK-N is a pure CONCENTRATION effect (effective K collapsing
++10->8.25 for J1, 10->5.76 for M2), not a quality-weighting failure.
++
++**Primary Stage2 result (paired bootstrap, 10k reps, query_start_idx
++unit)**: all four arms (O1=J1+Uniform 0.489349, O2=J1+Host 0.490523,
++O3=M2+Uniform 0.488924, O4=M2+Host 0.489104) land within 0.4% of the
++no-retrieval base O0=0.488790 -- three of four differences are
++statistically significant (large n) but all practically negligible, and
++mostly in the WORSE direction (only O3 is statistically tied with O0).
++**Decision-table Case 4**: Stage2 consumer architecture itself fails to
++exploit real retrieval information for ANY retriever/aggregation tested
++-- retriever must not change, consumer needs redesign. Despite this,
++**M2 significantly beats J1 under identical treatment in BOTH
++aggregation modes** (O3<O1: `-0.000425`, CI `[-0.00063,-0.00023]`; O4<O2:
++`-0.001420`, CI `[-0.00189,-0.00098]`) -- and the Host-penalty
++interaction is significantly NEGATIVE (the gate absorbs more of M2's
++standalone Host damage than J1's), opposite the direction TRACK-N found
++for standalone retrieval quality alone.
++
++**Verdict**: Q7 (keep M2 as main retriever?) = **YES** -- M2 is never
++worse than, often better than, J1 across every honest comparison run
++this session. Q8 (next experiment: Stage1 forecast-conditional retriever
++vs Stage2 consumer refinement?) = **Stage2 consumer refinement** --
++every piece of TRACK-N/O evidence points the same direction: M2's
++retrieval already carries real downstream value; the current consumer
++(a single scalar/per-channel gate, alone, with a structurally-inert
++mixer) cannot realize it, while a trivial non-learned validation
++-calibrated lambda (TRACK-N) already gets close. 21/21 unit tests pass;
++full pytest suite unaffected. Full report:
++`research/O-frozen-base-retrieval-consumer/TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01.md`.
+diff --git a/research/REVIEW_FOR_CHATGPT.md b/research/REVIEW_FOR_CHATGPT.md
+index 6c5dc54..76cdd89 100644
+--- a/research/REVIEW_FOR_CHATGPT.md
++++ b/research/REVIEW_FOR_CHATGPT.md
+@@ -4505,3 +4505,52 @@ joint mixer+gate training with real nonzero retrieval from the start,
+ and/or reconsidering the aggregation scheme for multi-slot retrievers),
+ not a new retrieval objective. 18/18 unit tests pass. Full report:
+ `research/N-forecast-conditional-utility/TRACK-N-FORECAST-CONDITIONAL-UTILITY01.md`.
++
++# Addendum (2026-09-30): TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01
++
++**Question**: with a genuinely fair, fully controlled comparison (same
++frozen base, same fresh trainable consumer, only retriever/aggregation
++differing), is M2 actually worse than J1 downstream, or was Stage2
++consuming it wrong?
++
++**Critical mid-track discovery**: `relation_mixer` -- the module this
++track set out to make trainable alongside `gate` -- turns out to be
++structurally gradient-dead in this whole session's Stage2 pipeline.
++`model.num_source_slots()==1` for the production host config, so its
++internal `softmax(..., dim=1)` is mathematically the constant `beta≡1`
++with zero gradient, for ANY input. Confirmed both empirically (10 epochs
++of training left its weights byte-identical to init) and analytically
++(isolated forward+backward test). This retroactively corrects TRACK-N's
++own diagnosis of its Gate-Only confound: S0's "trained" mixer was never
++actually trained either (same degeneracy), so freezing it there vs.
++using a fresh init here are the SAME thing. Only `gate` ever trains,
++anywhere, in this pipeline -- reported transparently, not glossed over.
++
++**Result**: all four arms (O1=J1+Uniform, O2=J1+Host, O3=M2+Uniform,
++O4=M2+Host) land within 0.4% of the no-retrieval baseline -- **Case 4**
++of the pre-registered decision table: the Stage2 consumer architecture
++itself (not the retriever) fails to exploit real retrieval value, for
++either retriever or aggregation. But even so, **M2 significantly beats
++J1 pairwise under identical treatment in BOTH aggregation modes**, and
++the Host-aggregation penalty is significantly SMALLER for M2 downstream
++than for J1 (opposite of TRACK-N's standalone-quality-damage finding --
++the gate absorbs more of M2's Host damage than J1's). The aggregation
++diagnostic also refines TRACK-N's mechanism: Host weighting IS
++quality-aware (negative Spearman correlation between weight and
++candidate error, for both retrievers) -- the `D_w` inflation TRACK-N
++found is a pure weight-CONCENTRATION effect (effective K collapsing,
++much more severely for M2: 10->5.76 vs J1's 10->8.25), not a
++quality-weighting failure.
++
++**Bottom line**: M2 is never worse than, and often significantly better
++than, J1 across every honest, controlled comparison run this session
++(TRACK-M Stage1, TRACK-N oracle/calibrated-lambda, this track's O3/O4).
++**Q7 (keep M2 as main retriever): YES.** **Q8 (next experiment): Stage2
++consumer refinement, not a new Stage1 retriever** -- the concrete,
++actionable target is now the dead-mixer finding itself: either the
++consumer needs genuinely multi-slot retrieval to attend over (defeating
++the pre-aggregation-before-cache convention every track has used), or
++the fusion architecture needs to be replaced with something that can at
++least match the trivial validation-calibrated linear lambda TRACK-N
++already showed works. 21/21 unit tests pass. Full report:
++`research/O-frozen-base-retrieval-consumer/TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01.md`.

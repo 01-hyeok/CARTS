@@ -4505,3 +4505,52 @@ joint mixer+gate training with real nonzero retrieval from the start,
 and/or reconsidering the aggregation scheme for multi-slot retrievers),
 not a new retrieval objective. 18/18 unit tests pass. Full report:
 `research/N-forecast-conditional-utility/TRACK-N-FORECAST-CONDITIONAL-UTILITY01.md`.
+
+# Addendum (2026-09-30): TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01
+
+**Question**: with a genuinely fair, fully controlled comparison (same
+frozen base, same fresh trainable consumer, only retriever/aggregation
+differing), is M2 actually worse than J1 downstream, or was Stage2
+consuming it wrong?
+
+**Critical mid-track discovery**: `relation_mixer` -- the module this
+track set out to make trainable alongside `gate` -- turns out to be
+structurally gradient-dead in this whole session's Stage2 pipeline.
+`model.num_source_slots()==1` for the production host config, so its
+internal `softmax(..., dim=1)` is mathematically the constant `beta≡1`
+with zero gradient, for ANY input. Confirmed both empirically (10 epochs
+of training left its weights byte-identical to init) and analytically
+(isolated forward+backward test). This retroactively corrects TRACK-N's
+own diagnosis of its Gate-Only confound: S0's "trained" mixer was never
+actually trained either (same degeneracy), so freezing it there vs.
+using a fresh init here are the SAME thing. Only `gate` ever trains,
+anywhere, in this pipeline -- reported transparently, not glossed over.
+
+**Result**: all four arms (O1=J1+Uniform, O2=J1+Host, O3=M2+Uniform,
+O4=M2+Host) land within 0.4% of the no-retrieval baseline -- **Case 4**
+of the pre-registered decision table: the Stage2 consumer architecture
+itself (not the retriever) fails to exploit real retrieval value, for
+either retriever or aggregation. But even so, **M2 significantly beats
+J1 pairwise under identical treatment in BOTH aggregation modes**, and
+the Host-aggregation penalty is significantly SMALLER for M2 downstream
+than for J1 (opposite of TRACK-N's standalone-quality-damage finding --
+the gate absorbs more of M2's Host damage than J1's). The aggregation
+diagnostic also refines TRACK-N's mechanism: Host weighting IS
+quality-aware (negative Spearman correlation between weight and
+candidate error, for both retrievers) -- the `D_w` inflation TRACK-N
+found is a pure weight-CONCENTRATION effect (effective K collapsing,
+much more severely for M2: 10->5.76 vs J1's 10->8.25), not a
+quality-weighting failure.
+
+**Bottom line**: M2 is never worse than, and often significantly better
+than, J1 across every honest, controlled comparison run this session
+(TRACK-M Stage1, TRACK-N oracle/calibrated-lambda, this track's O3/O4).
+**Q7 (keep M2 as main retriever): YES.** **Q8 (next experiment): Stage2
+consumer refinement, not a new Stage1 retriever** -- the concrete,
+actionable target is now the dead-mixer finding itself: either the
+consumer needs genuinely multi-slot retrieval to attend over (defeating
+the pre-aggregation-before-cache convention every track has used), or
+the fusion architecture needs to be replaced with something that can at
+least match the trivial validation-calibrated linear lambda TRACK-N
+already showed works. 21/21 unit tests pass. Full report:
+`research/O-frozen-base-retrieval-consumer/TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01.md`.
