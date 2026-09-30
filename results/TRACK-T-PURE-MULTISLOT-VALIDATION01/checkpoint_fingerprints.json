@@ -1,0 +1,54 @@
+{
+  "ETTh1_H96_seed0": {
+    "base_checkpoint_path": "checkpoints/track_r_final_method_generalization01/ETTh1/H96/seed0/base/checkpoint.pth",
+    "base_state_sha256": "73fd9506dedd92ef65ed94d3a06d21718a435f71522872272f6be7c0cddce482",
+    "arms": {
+      "S1": {
+        "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+        "final_model_hash": "916e05cd798dbee77ea8797866d0768d7ad9e15802be91f56e5fc28c39e8b219",
+        "best_epoch": 9
+      },
+      "S2": {
+        "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+        "final_model_hash": "cb802ad73c370a6dee001e04dd704d3e01c5bcfcd8cac439f40bb87183961ece",
+        "best_epoch": 9
+      },
+      "S4": {
+        "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+        "final_model_hash": "7b5f9ea21d6b1426fc6770c840a758ca9cff0d5b10843856046b72b8c1b6f1f4",
+        "best_epoch": 1
+      },
+      "S10": {
+        "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+        "final_model_hash": "128b74ee85d26e4fd1452a76d544f4fa89b2d63dad0cd183d1e16dc316e1fe47",
+        "best_epoch": 1
+      }
+    }
+  },
+  "ETTh1_H720_seed0": {
+    "base_checkpoint_path": "checkpoints/track_r_final_method_generalization01/ETTh1/H720/seed0/base/checkpoint.pth",
+    "base_state_sha256": "ee1031e9c8b1474b79461ee775b359a45b4f0e09421408648c480ac3f0ddd3d6",
+    "arms": {
+      "S1": {
+        "init_hash": "b37fa4031f538e4b5f5c522ae22e7d03613e4ee66283d2637656c7c4f872372e",
+        "final_model_hash": "ddabfa03560c72c81b10bf1dd49694c35503941b35eeeebf3b784c204ebe2c3f",
+        "best_epoch": 6
+      },
+      "S2": {
+        "init_hash": "b37fa4031f538e4b5f5c522ae22e7d03613e4ee66283d2637656c7c4f872372e",
+        "final_model_hash": "fcc3c37f2a029f6207d5399713585fc234e5a72a4707ff7ba473cfcae66502d9",
+        "best_epoch": 6
+      },
+      "S4": {
+        "init_hash": "b37fa4031f538e4b5f5c522ae22e7d03613e4ee66283d2637656c7c4f872372e",
+        "final_model_hash": "1d6e47445cf51a67b41ef7be45f33e5fbdc4a31275c5ebb68030740c1713eab0",
+        "best_epoch": 6
+      },
+      "S10": {
+        "init_hash": "b37fa4031f538e4b5f5c522ae22e7d03613e4ee66283d2637656c7c4f872372e",
+        "final_model_hash": "8c6ab13b0102f96e5bb9d76e72f242a2c4b77cbec152d00ad418a9c4b43581e4",
+        "best_epoch": 6
+      }
+    }
+  }
+}

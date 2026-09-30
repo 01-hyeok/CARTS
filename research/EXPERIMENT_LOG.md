@@ -3937,3 +3937,49 @@ replication are the direct next steps to distinguish a real trend from
 a two-point artifact. No new loss/teacher/slot/gate design introduced
 anywhere in this track, per its own STOP rule. Full report:
 `research/S-kl-contribution-decomposition/TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01.md`.
+
+## TRACK-T-PURE-MULTISLOT-VALIDATION01 (2026-09-30, IN PROGRESS -- Phase A (ETTh1 H96+H720) complete, Phase B (Weather) pending)
+
+Isolates the Multi-Slot architecture completely: Original KL's shared
+encoder/teacher/full-gradient KL objective held byte-identical, ONLY
+`num_slots in {1,2,4,10}` differs -- NO StopGrad-Key, NO overlap
+penalty, NO aggregate future loss, NO relevance budget anywhere in this
+track (unlike TRACK-K/TRACK-M's Multi-Slot, which stack those on top).
+GPU1 only (queued after TRACK-R released it, per the project's standing
+rule; an earlier attempt on a separately-allocated GPU4 was corrected
+per explicit user instruction and its partial artifacts deleted). Base
+forecaster reused read-only from TRACK-R per setting; init hash
+identical across all 4 arms per setting (H720's `b37fa4031f538e4b...`
+matches the session-wide historical J0/J1/K2/M2 hash exactly). 20/20
+unit tests pass; full pytest suite unaffected (1338 passed, same 2
+pre-existing failures).
+
+**Results (ETTh1, seed0, n=2 horizons so far)**:
+
+| S | H96 Stage2 MSE | H720 Stage2 MSE |
+|---:|---:|---:|
+| 1 | 0.375676 | 0.506830 |
+| 2 | 0.377003 (sig worse) | 0.504628 (sig better) |
+| 4 | 0.376284 (n.s.) | 0.500167 (sig better) |
+| 10 | 0.375539 (n.s., best) | 0.497591 (sig better, best) |
+
+At H720, forecast MSE decreases monotonically and significantly with
+`num_slots`; at H96, results are flat-to-mildly-worse. D/C decomposition
+gives a clean mechanistic account: at H720, `D` (individual relevance)
+stays essentially flat (+1.8% relative S1->S10) while `C`
+(complementarity) decreases monotonically (-3.3% relative) -- exactly
+the pre-registered "success pattern" (D const, C down, Agg down,
+forecast down). At H96, `D` instead worsens (+10.9% relative) while `C`
+stays flat/noisy -- no complementarity benefit, a small relevance cost.
+Slot-specialization diagnostics (no overlap penalty used) explain the
+difference mechanistically: at H720 slots' own Top-10 sets stay
+meaningfully differentiated even at S=10 (top-10 overlap 21%->27%
+across S=2->10), while at H96 they collapse toward redundancy fast
+(3%->63% across S=2->10). This replicates, in complete isolation from
+StopGrad-Key/overlap/aggregate/budget, the same H96-vs-H720 reversal
+TRACK-R and TRACK-S already observed for the full M2 method and for
+StopGrad-Key's own contribution -- now shown to be present in the
+Multi-Slot architecture alone. No StopGrad/overlap/aggregate/budget was
+added in response to H96's result, per the track's own STOP rule.
+Interim report: `research/T-pure-multislot-validation/TRACK-T-PURE-MULTISLOT-VALIDATION01.md`.
+Remaining: Weather H96/H720 seed0 (Phase B), then seed1/2 replication.

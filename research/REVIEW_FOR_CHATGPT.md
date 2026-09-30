@@ -4767,3 +4767,73 @@ explaining) TRACK-R's own H96/H720 M2-vs-J1 reversal finding. H192/H336
 attribution claim can be made. No new loss/teacher/slot/gate design
 introduced anywhere in this track. Full report (interim):
 `research/S-kl-contribution-decomposition/TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01.md`.
+
+# Addendum (2026-09-30): TRACK-T-PURE-MULTISLOT-VALIDATION01 (INTERIM, Phase A only -- ETTh1 H96+H720, seed0)
+
+**Question**: TRACK-S showed the M2-vs-J1 reversal (J1 wins at H96, M2
+wins at H720) traces mechanistically to StopGrad-Key's C-term effect.
+This track asks the complementary question: does the **Multi-Slot
+architecture itself**, completely isolated from StopGrad-Key, overlap
+penalty, aggregate future loss, and relevance budget (none of which
+exist anywhere in this track's code), produce the same H96-vs-H720
+pattern on its own? Teacher, shared encoder, and full-gradient KL
+objective are held byte-identical to Original KL/J0; only
+`num_slots in {1,2,4,10}` varies across the four arms (T0-T3).
+
+**Method note (GPU)**: an earlier attempt ran on a separately-allocated
+free GPU (GPU4), reading this track's own "실행 순서" instruction the
+way TRACK-S's much more explicit GPU-allocation instruction had been
+read. The user corrected this: the project's standing rule is GPU1-only
+with no per-track exceptions absent TRACK-S-level explicitness. The
+GPU4 run was killed, partial artifacts deleted, and the track re-run
+from scratch on GPU1, queued to start only once TRACK-R had released it.
+
+**Results (ETTh1, seed0, n=2 horizons)**:
+
+| S | H96 Stage2 MSE | H720 Stage2 MSE |
+|---:|---:|---:|
+| 1 | 0.375676 | 0.506830 |
+| 2 | 0.377003 (sig worse) | 0.504628 (sig better) |
+| 4 | 0.376284 (n.s.) | 0.500167 (sig better) |
+| 10 | 0.375539 (n.s., best) | 0.497591 (sig better, best) |
+
+At H720, increasing `num_slots` monotonically and significantly
+improves BOTH Stage1 AggMSE and Stage2 forecast MSE. At H96, results are
+flat to mildly worse (S2 significantly worse than S1; S4/S10 not
+significantly different).
+
+**Mechanistic finding**: the D/C decomposition (`Agg = D + C`) shows a
+clean, horizon-dependent pattern. At H720, `D` (individual relevance)
+stays essentially flat (+1.8% relative from S1 to S10) while `C`
+(cross-candidate complementarity) decreases monotonically and mostly
+significantly (-3.3% relative) -- exactly the pre-registered "ideal"
+pattern (D constant, C down, Agg down, forecast down). At H96, the
+pattern INVERTS in kind: `D` worsens meaningfully (+10.9% relative)
+while `C` stays flat/noisy with no significant directional trend --
+Multi-Slot buys no complementarity benefit at H96 and costs a small
+amount of individual relevance instead. A new diagnostic (slot Top-10
+overlap, measured with NO overlap penalty ever applied as a loss) gives
+a mechanistic explanation for the difference: at H720 the slots' own
+independently-computed Top-10 sets stay meaningfully differentiated
+even at S=10 (overlap 21%->27% across S=2->10), whereas at H96 they
+collapse toward near-redundancy fast (3%->63% across S=2->10) --
+slots simply fail to specialize usefully at the short horizon.
+
+**Significance (this is the key result)**: this is the cleanest
+mechanistic isolation of the H96-vs-H720 reversal produced so far across
+TRACK-R/S/T, because Multi-Slot is tested here with EVERY other
+architectural difference (StopGrad-Key, overlap penalty, aggregate loss,
+relevance budget) completely absent. It shows the reversal is not
+solely a StopGrad-Key phenomenon (TRACK-S's finding) -- the Multi-Slot
+structure alone, with nothing else changed, reproduces the same
+qualitative horizon-dependence. TRACK-M's full M2 method combines BOTH
+mechanisms (StopGrad-Key inherited via its ancestor J1, plus Multi-Slot
+plus a relevance-budget constraint); this track isolates just the
+Multi-Slot piece and finds it independently horizon-dependent in the
+same direction.
+
+**Not yet tested**: Weather (Phase B, RQ7) and seed1/2 replication.
+Per the track's own STOP rule, no StopGrad/overlap/aggregate/budget
+term was added in response to H96's negative-ish result -- reported
+as-is. 20/20 unit tests pass. Full report (interim):
+`research/T-pure-multislot-validation/TRACK-T-PURE-MULTISLOT-VALIDATION01.md`.

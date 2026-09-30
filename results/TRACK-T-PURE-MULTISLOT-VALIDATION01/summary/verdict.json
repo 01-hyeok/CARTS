@@ -1,0 +1,50 @@
+{
+  "status": "INTERIM (Phase A complete: ETTh1 H96 + H720, seed0 only; Phase B (Weather) not yet run)",
+  "stage2_test_mse": {
+    "ETTh1_H96": {"S1": 0.375676, "S2": 0.377003, "S4": 0.376284, "S10": 0.375539},
+    "ETTh1_H720": {"S1": 0.506830, "S2": 0.504628, "S4": 0.500167, "S10": 0.497591}
+  },
+  "stage1_agg_mse": {
+    "ETTh1_H96": {"S1": 0.422343, "S2": 0.428528, "S4": 0.428496, "S10": 0.427788},
+    "ETTh1_H720": {"S1": 0.592796, "S2": 0.593632, "S4": 0.582993, "S10": 0.577547}
+  },
+  "d_c_decomposition": {
+    "ETTh1_H96": {"D_S1": 0.063250, "D_S10": 0.070114, "D_relative_change_pct": 10.85,
+                 "C_S1": 0.359093, "C_S10": 0.357674, "C_relative_change_pct": -0.40,
+                 "pattern": "D increases meaningfully, C essentially flat (noisy, no clear decrease) -- does NOT match the section-20 success pattern"},
+    "ETTh1_H720": {"D_S1": 0.082536, "D_S10": 0.084045, "D_relative_change_pct": 1.83,
+                  "C_S1": 0.510260, "C_S10": 0.493503, "C_relative_change_pct": -3.28,
+                  "pattern": "D nearly constant, C clearly and monotonically decreases -- MATCHES the section-20 success pattern (D approx const, C down, Agg down, Forecast down)"}
+  },
+  "slot_specialization": {
+    "ETTh1_H96": {"top10_overlap_S2": 0.0277, "top10_overlap_S4": 0.5398, "top10_overlap_S10": 0.6328,
+                 "note": "overlap rises very fast with S -- slots are largely redundant by S=4"},
+    "ETTh1_H720": {"top10_overlap_S2": 0.2114, "top10_overlap_S4": 0.2366, "top10_overlap_S10": 0.2653,
+                  "note": "overlap stays low and rises slowly with S -- slots remain meaningfully differentiated even at S=10"}
+  },
+  "bootstrap_significance": {
+    "ETTh1_H96": {"S2_vs_S1_stage1": "sig, worse", "S4_vs_S1_stage1": "sig, worse", "S10_vs_S1_stage1": "sig, worse",
+                 "S2_vs_S1_stage2": "sig, worse", "S4_vs_S1_stage2": "not sig", "S10_vs_S1_stage2": "not sig"},
+    "ETTh1_H720": {"S2_vs_S1_stage1": "not sig", "S4_vs_S1_stage1": "sig, better", "S10_vs_S1_stage1": "sig, better",
+                  "S2_vs_S1_stage2": "sig, better", "S4_vs_S1_stage2": "sig, better", "S10_vs_S1_stage2": "sig, better (largest)"}
+  },
+  "case_assessment": {
+    "ETTh1_H720": "Case A -- Multi-Slot effect present: S>1 consistently and significantly improves Stage1 AggMSE AND Stage2 forecast MSE, monotonically in S, via the D-const/C-down mechanism.",
+    "ETTh1_H96": "Fits neither Case A, B, C, nor D cleanly. Not Case B (slot collapse) in the strict sense -- forecast at S2 is significantly WORSE than S1, not merely 'no different'. Not Case C -- C does not decrease at all (stays flat/noisy), only D worsens. Closest description: slots DO specialize by S=4 (per overlap stats) but that specialization does not translate into complementarity gains at this horizon -- specialization without benefit, plus a small individual-relevance cost."
+  },
+  "rq_answers": {
+    "RQ1_multislot_improves_retrieval_alone": "Horizon-dependent: YES at H720 (Stage1 AggMSE significantly better, monotonic in S), NO at H96 (Stage1 AggMSE significantly WORSE for every S>1).",
+    "RQ2_increasing_s_reduces_c": "YES at H720 (monotonic, -3.3% relative at S10 vs S1, all vs-S1 comparisons except S2 significant). NO at H96 (C is flat/noisy, no monotonic decrease, no significant improvement at any S).",
+    "RQ3_c_reduction_without_sacrificing_d": "At H720: YES -- D changes only +1.8% relative while C changes -3.3%, a clean asymmetric D-const/C-down pattern. (Not applicable at H96 since C never decreases there.)",
+    "RQ4_improved_set_quality_transfers_to_forecast": "YES at H720 -- Stage1 AggMSE and Stage2 forecast MSE improve together, monotonically in S, both significant from S4 onward. Consistent (null) at H96 -- neither improves.",
+    "RQ5_is_s10_necessary": "At H720, S10 gives the single best Stage1 AND Stage2 result of all arms tested, better than S4 -- marginal gain from S4->S10 (-0.0026 stage2) is smaller than S1->S4 (-0.0045), suggesting diminishing but not yet fully saturated returns; S=10 not shown to be strictly necessary vs. S=4, but is not wasteful either. At H96 the question is moot (no arm beats S1 significantly).",
+    "RQ6_effect_stronger_at_h720_than_h96": "YES, unambiguously -- this is the track's central finding, replicating the same horizon-dependence pattern TRACK-R/TRACK-S already observed for the full M2 method, now shown to arise from the Multi-Slot architecture in ISOLATION (no StopGrad-Key, no overlap penalty, no aggregate loss, no relevance budget).",
+    "RQ7_transfers_eth1_to_weather": "NOT YET TESTED -- Phase B (Weather H96/H720 seed0) has not been run."
+  },
+  "part_30_final_question": {
+    "question": "Does giving Original-future-aligned-KL retrieval multiple independent query slots, alone, improve set complementarity and forecasting?",
+    "answer": "YES at H720, NO (mildly negative) at H96 -- the answer to the track's core question is itself horizon-dependent on the one dataset tested so far. This is a genuine, mechanistically-explained (D-const/C-down at H720; D-up/C-flat at H96) effect of num_slots in isolation, not an artifact of StopGrad-Key/overlap/aggregate/budget terms (none of which are present in this track)."
+  },
+  "stop_rule_compliance": "No StopGrad, overlap penalty, aggregate loss, relevance budget, slot-specific teacher, or slot-count fine-tuning added anywhere in this track, despite the H96 negative-ish result. Reported honestly as-is per PART 25/26.",
+  "next_step": "Phase B: Weather H96 seed0 and Weather H720 seed0, identical protocol, no hyperparameter changes."
+}
