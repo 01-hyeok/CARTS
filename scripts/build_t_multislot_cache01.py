@@ -38,6 +38,7 @@ def build_split(exp, args, model, slot_heads, split, device, chunk_size=4096):
     channels = list(range(int(args.enc_in)))
     _, loader = exp._get_data(flag=split, shuffle=False)
     all_start, all_R, all_D, all_C, all_Agg, all_Recall, all_NDCG, all_ret = [], [], [], [], [], [], [], []
+    all_D_pq, all_C_pq = [], []  # TRACK-V: per-query (channel-averaged) D/C for bootstrap
 
     for batch_x, batch_y, batch_start_idx in loader:
         batch_x = batch_x.float().to(device)
@@ -45,6 +46,8 @@ def build_split(exp, args, model, slot_heads, split, device, chunk_size=4096):
         cand_mask, counts = exp._candidate_mask(batch_start_idx)
         bsz = batch_x.size(0)
         rel_out = torch.zeros(bsz, args.pred_len, len(channels), device=device)
+        D_pc = torch.zeros(bsz, len(channels), device=device)  # per-query, per-channel D
+        C_pc = torch.zeros(bsz, len(channels), device=device)
         for c in channels:
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
             query_future = batch_y[:, :, c]
@@ -68,12 +71,17 @@ def build_split(exp, args, model, slot_heads, split, device, chunk_size=4096):
             all_D.append(D_.cpu()); all_C.append(C_.cpu()); all_Agg.append(agg_mse.cpu())
             all_Recall.append(recall.cpu()); all_NDCG.append(ndcg.cpu())
             all_ret.append(ind_mse_i.mean(dim=-1).cpu())
+            D_pc[:, c] = D_
+            C_pc[:, c] = C_
 
         all_start.append(batch_start_idx.clone() if torch.is_tensor(batch_start_idx)
                          else torch.as_tensor(batch_start_idx))
         all_R.append(rel_out.cpu())
+        all_D_pq.append(D_pc.mean(dim=-1).cpu())
+        all_C_pq.append(C_pc.mean(dim=-1).cpu())
 
     cache = {'query_start_idx': torch.cat(all_start), 'relation_outputs': torch.cat(all_R),
+            'D_per_query': torch.cat(all_D_pq), 'C_per_query': torch.cat(all_C_pq),
             'channels': channels, 'pred_len': args.pred_len, 'split': split}
     metrics = None
     if all_D:
@@ -88,7 +96,7 @@ def build_split(exp, args, model, slot_heads, split, device, chunk_size=4096):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--reference_ckpt', required=True)
-    ap.add_argument('--num_slots', type=int, required=True, choices=(1, 2, 4, 10))
+    ap.add_argument('--num_slots', type=int, required=True, choices=(1, 2, 4, 5, 10))  # TRACK-V: +5
     ap.add_argument('--pred_len', type=int, required=True)
     ap.add_argument('--seq_len', type=int, required=True)
     ap.add_argument('--seed', type=int, required=True)

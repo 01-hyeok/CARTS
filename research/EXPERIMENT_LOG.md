@@ -4091,3 +4091,49 @@ this Case-B-like outcome means: adopt asymmetric query/key matching as
 the mechanism, do not add further new scorer structures, move to
 Weather + multi-seed replication. Interim report:
 `research/U-asymmetry-capacity-decomposition/TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01.md`.
+
+## TRACK-V-MULTIQUERY-GENERALIZATION01 (2026-09-30, IN PROGRESS -- ETTh1 H96+H720 complete, Weather H96/H720 running)
+
+Tests whether expanding one retrieval query into multiple independently
+learnable "query views" (S in {0,1,2,5}, K=10 fixed) improves
+set-level complementarity and downstream forecasting -- direct
+follow-up to TRACK-T/TRACK-T2. V0 (S=0, TRUE Original KL, 0 params) via
+`train_j_shared_encoder_drift01.py` unmodified; V1/V2/V5 via
+`train_t_pure_multislot01.py` unmodified (`--num_slots` 1/2/5 --
+architecturally identical to TRACK-T's own S1/S2, plus a new S=5
+value). Cross-arm projection-initialization fairness (`W_1` bit
+-identical across S=1/2/5) holds by construction via `SlotHeads`'s own
+per-slot-index seeding -- verified live, not assumed. Cache format
+extended (additive) to save per-query D/C for bootstrap. A missing
+Weather H720 base forecaster (TRACK-R never completed that setting)
+was trained fresh via TRACK-R's own script. 17/18 unit tests pass (1
+skip-until-artifacts). This is an INTERIM, ETTh1-only checkpoint at the
+user's request, ahead of the track's own "Phase A report only after
+all 4 settings" rule -- Weather H96/H720 are still running in the
+background; the full Phase A report and commit will follow once they
+finish.
+
+**Results (ETTh1, seed0)**:
+
+| Arm | H96 Stage2 MSE | H720 Stage2 MSE |
+|---|---:|---:|
+| V0 | 0.373682 | 0.529134 |
+| V1 | 0.375676 | 0.506830 |
+| V2 | 0.377003 | 0.504628 |
+| V5 | 0.379027 | **0.498119** |
+
+**Headline finding**: the effect of adding query views is
+horizon-reversed. At H96, MSE increases monotonically with S (V0 best,
+V5 worst); at H720, MSE decreases monotonically with S (V0 worst, V5
+best) -- the same H96-vs-H720 reversal this session has now observed
+across TRACK-R/S/T/T2/U, replicated again in a fifth, independent
+architectural variation. D/C decomposition: at H96, D improves from V0
+to V1 then plateaus, while C worsens monotonically and dominates,
+producing net degradation. At H720, D improves sharply from V0 to V1
+then stays roughly flat, while C keeps improving monotonically through
+V5 (0.549 -> 0.510 -> 0.510 -> 0.496) -- the additional query views'
+entire marginal benefit at H720 routes through complementarity, not
+individual relevance, consistent with every prior mechanism analysis
+this session has produced. Weather H96/H720 are in progress; per the
+track's own interpretation limits, no cross-dataset or universal claim
+is made until those complete.

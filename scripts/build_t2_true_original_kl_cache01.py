@@ -56,6 +56,8 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
     _, loader = exp._get_data(flag=split, shuffle=False)
     all_start, all_R, all_D, all_C, all_Agg, all_Recall, all_NDCG, all_ret, all_spearman = \
         [], [], [], [], [], [], [], [], []
+    all_D_pq, all_C_pq = [], []  # TRACK-V: per-query (channel-averaged) D/C for bootstrap
+    compute_spearman = (split == 'test')  # spearman is only ever saved from test metrics -- skip elsewhere
 
     for batch_x, batch_y, batch_start_idx in loader:
         batch_x = batch_x.float().to(device)
@@ -63,6 +65,8 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
         cand_mask, counts = exp._candidate_mask(batch_start_idx)
         bsz = batch_x.size(0)
         rel_out = torch.zeros(bsz, args.pred_len, len(channels), device=device)
+        D_pc = torch.zeros(bsz, len(channels), device=device)
+        C_pc = torch.zeros(bsz, len(channels), device=device)
         for c in channels:
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
             query_future = batch_y[:, :, c]
@@ -85,17 +89,22 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
             from scripts.train_patch_retrieval_expert01 import ndcg_at_k, recall_at_k
             recall = recall_at_k(picks_t, oracle_idx, TOP_K)
             ndcg = ndcg_at_k(picks_t, d_raw, cand_mask, TOP_K)
-            spearman = spearman_batch(scores.mean(dim=1), d_raw, cand_mask)
             all_D.append(D_.cpu()); all_C.append(C_.cpu()); all_Agg.append(agg_mse.cpu())
             all_Recall.append(recall.cpu()); all_NDCG.append(ndcg.cpu())
             all_ret.append(ind_mse_i.mean(dim=-1).cpu())
-            all_spearman.append(spearman)
+            if compute_spearman:
+                all_spearman.append(spearman_batch(scores.mean(dim=1), d_raw, cand_mask))
+            D_pc[:, c] = D_
+            C_pc[:, c] = C_
 
         all_start.append(batch_start_idx.clone() if torch.is_tensor(batch_start_idx)
                          else torch.as_tensor(batch_start_idx))
         all_R.append(rel_out.cpu())
+        all_D_pq.append(D_pc.mean(dim=-1).cpu())
+        all_C_pq.append(C_pc.mean(dim=-1).cpu())
 
     cache = {'query_start_idx': torch.cat(all_start), 'relation_outputs': torch.cat(all_R),
+            'D_per_query': torch.cat(all_D_pq), 'C_per_query': torch.cat(all_C_pq),
             'channels': channels, 'pred_len': args.pred_len, 'split': split}
     metrics = None
     if all_D:
@@ -103,8 +112,9 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
         assert torch.allclose(D_cat + C_cat, Agg_cat, atol=1e-3)
         metrics = {'retmse10': float(torch.cat(all_ret).mean()), 'D': float(D_cat.mean()),
                   'C': float(C_cat.mean()), 'agg_mse10': float(Agg_cat.mean()),
-                  'recall10': float(torch.cat(all_Recall).mean()), 'ndcg10': float(torch.cat(all_NDCG).mean()),
-                  'spearman': float(sum(all_spearman) / len(all_spearman))}
+                  'recall10': float(torch.cat(all_Recall).mean()), 'ndcg10': float(torch.cat(all_NDCG).mean())}
+        if all_spearman:
+            metrics['spearman'] = float(sum(all_spearman) / len(all_spearman))
     return cache, metrics
 
 

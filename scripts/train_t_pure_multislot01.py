@@ -75,7 +75,7 @@ from scripts.train_patch_retrieval_expert01 import ndcg_at_k, recall_at_k
 
 EPS = 1e-8
 TOP_K = 10
-VALID_NUM_SLOTS = (1, 2, 4, 10)
+VALID_NUM_SLOTS = (1, 2, 4, 5, 10)  # TRACK-V-MULTIQUERY-GENERALIZATION01: additive extension, adds 5
 
 
 def compute_scores_full_grad(model, slot_heads, batch_x, memory_x, c):

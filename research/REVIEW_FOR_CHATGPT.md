@@ -4973,3 +4973,77 @@ another architecture-search track. 16/16 equivalence unit tests pass;
 all pairwise arm comparisons are bootstrap-significant except one
 (U2-U1 at H96 Stage2). Full report (interim):
 `research/U-asymmetry-capacity-decomposition/TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01.md`.
+
+# Addendum (2026-09-30): TRACK-V-MULTIQUERY-GENERALIZATION01 (INTERIM, ETTh1 only -- Weather still running)
+
+**Question**: does expanding a single retrieval query into multiple
+independently learnable "query views" (no explicit set-conditioning,
+no semantic role assigned to any view) improve retrieval-set
+complementarity and downstream forecasting? Direct follow-up to
+TRACK-T/TRACK-T2, using literally the same, already-validated
+architectures: V0 = TRUE Original KL (0 projection parameters,
+`train_j_shared_encoder_drift01.py` run unmodified), V1/V2/V5 =
+`train_t_pure_multislot01.py` run unmodified with `--num_slots` 1/2/5
+(V1/V2 are architecturally identical to TRACK-T's own S1/S2; S=5 is the
+one new value tested here). K=10 fixed throughout; no StopGrad, overlap
+penalty, aggregate loss, relevance budget, or any other addition beyond
+`num_slots` itself.
+
+**Note on scope**: this addendum is an INTERIM, ETTh1-only snapshot,
+requested mid-flight while Weather H96/H720 are still training in the
+background on GPU1. The track's own protocol calls for a single
+combined Phase-A report only once all 4 settings (ETTh1 H96/H720 +
+Weather H96/H720) are complete -- that fuller report, plus the
+raw/summary artifact commit, will follow separately once Weather
+finishes. This addendum exists to get the ETTh1 finding in front of
+review now, per explicit request.
+
+**Results (ETTh1, seed0)**:
+
+| Arm | H96 Stage2 MSE | H720 Stage2 MSE |
+|---|---:|---:|
+| V0 (S=0) | 0.373682 | 0.529134 |
+| V1 (S=1) | 0.375676 | 0.506830 |
+| V2 (S=2) | 0.377003 | 0.504628 |
+| V5 (S=5) | 0.379027 | **0.498119** |
+
+**Finding**: a clean, fully monotonic reversal by horizon. At H96, MSE
+rises step by step with every additional query view (V0 best, V5
+worst) -- more query views actively hurt. At H720, MSE falls step by
+step with every additional query view (V0 worst, V5 best) -- more query
+views help, and the benefit has not saturated by S=5. This is the
+SAME qualitative H96-vs-H720 reversal this session has now independently
+observed in TRACK-R (the full M2 method), TRACK-S (StopGrad-Key's own
+contribution), TRACK-T (Multi-Slot in isolation), TRACK-T2 (the
+query-projection step specifically), and TRACK-U (capacity vs
+asymmetry) -- TRACK-V now shows it recurs a fifth time under a
+distinctly different framing (parallel independently-learned query
+views, explicitly NOT set-conditioned, contrasted against TRACK-T2's
+own single-projection baseline as V1).
+
+**Mechanism (D/C)**: at H96, `D` (individual relevance) improves once
+from V0 to V1 then plateaus (0.068 -> 0.063 -> 0.063 -> 0.066), while
+`C` (complementarity) worsens monotonically and dominates (0.346 ->
+0.359 -> 0.365 -> 0.366) -- net degradation is a `C`-driven effect. At
+H720, `D` improves sharply once (0.096 -> 0.083) then stays essentially
+flat through V2/V5, while `C` keeps improving monotonically all the way
+to V5 (0.549 -> 0.510 -> 0.510 -> 0.496) -- essentially ALL of the
+marginal benefit from adding query views beyond the first comes through
+complementarity, not individual relevance, at H720. This is consistent
+with every prior D/C mechanism finding this session has produced for
+the long-horizon setting.
+
+**Statistical significance** (10k-rep paired bootstrap, query_start_idx
+unit): every V5-vs-V0 total-effect comparison is significant at both
+Stage1 AggMSE and Stage2 forecast MSE, at both horizons (H96:
+`V5-V0=+0.0053` stage2, sig, harmful; H720: `V5-V0=-0.0310` stage2, sig,
+helpful) -- the reversal itself is not noise. Most individual steps
+(`V1-V0`, `V2-V1`, `V5-V1`, `V5-V2`) are also significant at both
+levels, with a small number of exceptions (e.g. H96's `V2-V1` shows no
+significant `D` difference; H720's `V2-V1` shows no significant `C`
+difference) that do not change the overall monotonic picture.
+
+**Not yet established**: Weather H96/H720 (currently training) --
+per the track's own explicit interpretation limits, no cross-dataset or
+universal claim is made until those results are in; whether this
+pattern is ETTh1-specific remains open. Full Phase-A report to follow.

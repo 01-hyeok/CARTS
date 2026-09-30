@@ -1,0 +1,155 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 96,
+  "seed": 0,
+  "n_boot": 10000,
+  "resampling_unit": "query_start_idx",
+  "stage1_agg_mse": {
+    "V1_minus_V0": {
+      "mean_diff": 0.008425078852707437,
+      "ci_lo_2.5": 0.0057621679445678505,
+      "ci_hi_97.5": 0.011125374309036418,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V2_minus_V1": {
+      "mean_diff": 0.006185394488074407,
+      "ci_lo_2.5": 0.0037882843116027447,
+      "ci_hi_97.5": 0.008608272691095108,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V1": {
+      "mean_diff": 0.009483807885775233,
+      "ci_lo_2.5": 0.007192733549718583,
+      "ci_hi_97.5": 0.01180644342177539,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V2": {
+      "mean_diff": 0.003298413397700825,
+      "ci_lo_2.5": 0.0014530578035613795,
+      "ci_hi_97.5": 0.0051075509597197895,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V0": {
+      "mean_diff": 0.01790888673848267,
+      "ci_lo_2.5": 0.0145650367500324,
+      "ci_hi_97.5": 0.021277096093610542,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    }
+  },
+  "stage1_D": {
+    "V1_minus_V0": {
+      "mean_diff": -0.00482015150266447,
+      "ci_lo_2.5": -0.005128293619315597,
+      "ci_hi_97.5": -0.004509932058503855,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V2_minus_V1": {
+      "mean_diff": 1.2409649588689341e-05,
+      "ci_lo_2.5": -0.0002632695182662999,
+      "ci_hi_97.5": 0.0002894242552796267,
+      "ci_excludes_zero": false,
+      "n_queries": 2785
+    },
+    "V5_minus_V1": {
+      "mean_diff": 0.0028706149216507237,
+      "ci_lo_2.5": 0.0025996401317792154,
+      "ci_hi_97.5": 0.0031463297782883823,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V2": {
+      "mean_diff": 0.0028582052720620347,
+      "ci_lo_2.5": 0.0026424315454073827,
+      "ci_hi_97.5": 0.00307655894670709,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V0": {
+      "mean_diff": -0.0019495365810137462,
+      "ci_lo_2.5": -0.0023244977353853,
+      "ci_hi_97.5": -0.0015754907978849095,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    }
+  },
+  "stage1_C": {
+    "V1_minus_V0": {
+      "mean_diff": 0.013245231049600152,
+      "ci_lo_2.5": 0.010842550978719974,
+      "ci_hi_97.5": 0.01568011891832525,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V2_minus_V1": {
+      "mean_diff": 0.006172986448988238,
+      "ci_lo_2.5": 0.004007781202130728,
+      "ci_hi_97.5": 0.008357047794296454,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V1": {
+      "mean_diff": 0.006613193832244222,
+      "ci_lo_2.5": 0.004543103724651212,
+      "ci_hi_97.5": 0.00869954408004318,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V2": {
+      "mean_diff": 0.00044020738325598426,
+      "ci_lo_2.5": -0.0012227410269998135,
+      "ci_hi_97.5": 0.0020812903422213528,
+      "ci_excludes_zero": false,
+      "n_queries": 2785
+    },
+    "V5_minus_V0": {
+      "mean_diff": 0.019858424881844375,
+      "ci_lo_2.5": 0.016836843751170262,
+      "ci_hi_97.5": 0.022896763133269667,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    }
+  },
+  "stage2_forecast_mse": {
+    "V1_minus_V0": {
+      "mean_diff": 0.001994641898350399,
+      "ci_lo_2.5": 0.0007749066262420675,
+      "ci_hi_97.5": 0.0031968484250444055,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V2_minus_V1": {
+      "mean_diff": 0.0013261050092895754,
+      "ci_lo_2.5": 0.00023870973454878617,
+      "ci_hi_97.5": 0.0024395007674901654,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V1": {
+      "mean_diff": 0.0033506605071910193,
+      "ci_lo_2.5": 0.0022821347395382834,
+      "ci_hi_97.5": 0.004443826914716452,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V2": {
+      "mean_diff": 0.002024555497901444,
+      "ci_lo_2.5": 0.0012036690227620478,
+      "ci_hi_97.5": 0.002849318026372731,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    },
+    "V5_minus_V0": {
+      "mean_diff": 0.005345302405541418,
+      "ci_lo_2.5": 0.003811986553524512,
+      "ci_hi_97.5": 0.006878548508486584,
+      "ci_excludes_zero": true,
+      "n_queries": 2785
+    }
+  }
+}
