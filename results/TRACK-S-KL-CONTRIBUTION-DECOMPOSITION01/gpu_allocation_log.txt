@@ -1,0 +1,15 @@
+TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01 -- GPU allocation (PART 1)
+
+nvidia-smi at track start (2026-09-30, ~05:44 UTC):
+  GPU0: 27% util, 3226/81920 MiB  -- other/unrelated process, untouched
+  GPU1: 66% util, 3126/81920 MiB  -- TRACK-R (Weather H96 seed0 running) -- NEVER touched
+  GPU2:  0% util,    4/81920 MiB  -- fully free -> TRACK-S allocated here
+  GPU3:  0% util,    0/4096  MiB  -- display GPU, not used
+  GPU4:  0% util, 57854/81920 MiB -- high memory held but idle (other process), not used
+
+Decision: TRACK-S runs with CUDA_VISIBLE_DEVICES=2 throughout, verified
+via `nvidia-smi` immediately after launch (GPU1 util 72%/mem 3472MiB =
+TRACK-R continuing unaffected; GPU2 util 31%/mem 2174MiB = TRACK-S
+running). TRACK-R's GPU1 process (PID chain rooted at the Weather H96
+seed0 driver) was never killed, signalled, or resource-constrained by
+any TRACK-S action.

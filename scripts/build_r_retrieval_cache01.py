@@ -76,7 +76,7 @@ def build_split(retriever, exp, args, model, slot_heads, split, device, chunk_si
             if retriever == 'cosine':
                 s = cosine_scores(batch_x, exp.memory_x, c, cand_mask)
                 picks_t = stable_topk_indices(s, TOP_K, largest=True)
-            elif retriever == 'j1':
+            elif retriever in ('j1', 'original_kl'):
                 z_q = encode_raw(model, batch_x, c)
                 z_k = encode_raw(model, exp.memory_x, c)
                 s = arm_score(z_q, z_k, None).masked_fill(~cand_mask, float('-inf'))
@@ -118,7 +118,7 @@ def build_split(retriever, exp, args, model, slot_heads, split, device, chunk_si
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--retriever', required=True, choices=('cosine', 'j1', 'm2'))
+    ap.add_argument('--retriever', required=True, choices=('cosine', 'j1', 'm2', 'original_kl'))
     ap.add_argument('--reference_ckpt', required=True)
     ap.add_argument('--pred_len', type=int, required=True)
     ap.add_argument('--seq_len', type=int, required=True)
@@ -140,7 +140,7 @@ def main():
     model.eval()
     slot_heads = None
 
-    if cli.retriever in ('j1', 'm2'):
+    if cli.retriever in ('j1', 'm2', 'original_kl'):
         assert cli.retriever_checkpoint, '--retriever_checkpoint required for j1/m2'
         bl = torch.load(cli.retriever_checkpoint, map_location=device)
         model.load_state_dict(bl['model_state_dict'])

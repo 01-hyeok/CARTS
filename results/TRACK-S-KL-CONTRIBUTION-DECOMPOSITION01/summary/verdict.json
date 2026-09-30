@@ -1,0 +1,26 @@
+{
+  "status": "INTERIM (2/4 ETTh1 horizons, seed0 only)",
+  "gain_decomposition": {
+    "H96": {
+      "G_KL_pct": 52.1,
+      "G_SG_pct": -3.9,
+      "G_MS_pct": -40.5,
+      "note": "G_SG not significant (CI includes zero); G_MS significant NEGATIVE (M2 hurts)"
+    },
+    "H720": {
+      "G_KL_pct": 28.6,
+      "G_SG_pct": 49.7,
+      "G_MS_pct": 9.0,
+      "note": "all three effects significant; G_SG is the single LARGEST component"
+    }
+  },
+  "mechanistic_finding": "StopGrad-Key's contribution operates almost entirely through improving cross-candidate complementarity (C), not individual relevance (D). delta_C_SG (C_J1 - C_OriginalKL) is essentially zero at H96 (-0.0006) but large and negative (-0.0854, i.e. J1's C is much better) at H720 -- exactly matching the horizon pattern in the downstream Stage2 gain. This reproduces and extends TRACK-J3's original D/C decomposition finding.",
+  "hypothesis_verdicts": {
+    "H_A_future_aligned_KL_is_main": "PARTIALLY SUPPORTED at H96 (G_KL=52%, largest single component there) but NOT at H720 (G_KL=29%, smaller than G_SG)",
+    "H_B_stopgrad_key_also_core": "STRONGLY SUPPORTED at H720 (G_SG=50%, the single largest component, highly significant) but NOT SUPPORTED at H96 (G_SG~0, not significant)",
+    "H_C_multislot_long_horizon_only": "SUPPORTED so far (H96: G_MS significantly NEGATIVE; H720: G_MS significantly POSITIVE, 9% of total) -- consistent with only 2 horizons, needs H192/H336 to confirm a genuine trend vs. a two-point artifact",
+    "H_D_M2_wins_everywhere": "NOT SUPPORTED -- M2 loses to J1 at H96 (significant)"
+  },
+  "case_assessment": "No single PART 22 Case (1-4) cleanly fits both horizons simultaneously. H96 alone matches a Case-1-like pattern (Cosine->OriginalKL is the whole story; StopGrad-Key and Multi-Slot add nothing or hurt). H720 alone matches a Case-2/3 blend (StopGrad-Key is the single largest contributor, AND Multi-Slot adds a smaller but real, significant further gain on top). The honest reading with only 2 of 4 horizons and 1 seed is that contribution is HORIZON-DEPENDENT, not yet a settled single verdict -- H192/H336 and seed1/2 are needed before committing to one Case.",
+  "next_steps": "Add Original KL arm to ETTh1 H192/H336 as soon as TRACK-R produces those settings (per PART 6); extend to seed1/2 once TRACK-R's seed replication resumes (per PART 7)."
+}

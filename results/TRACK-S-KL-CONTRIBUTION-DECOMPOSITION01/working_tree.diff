@@ -1,0 +1,165 @@
+diff --git a/research/EXPERIMENT_LOG.md b/research/EXPERIMENT_LOG.md
+index ba7423f..265fd57 100644
+--- a/research/EXPERIMENT_LOG.md
++++ b/research/EXPERIMENT_LOG.md
+@@ -3880,3 +3880,60 @@ unaffected (1318 passed, same 2 pre-existing failures). Interim report:
+ `research/R-final-method-generalization/TRACK-R-FINAL-METHOD-GENERALIZATION01.md`.
+ Remaining: Weather H96 (in progress)/H720, ETTh1 H192/H336, and all
+ seed1/2 replication.
++
++## TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01 (2026-09-30, IN PROGRESS -- 2/4 ETTh1 horizons, interim commit)
++
++Run in PARALLEL with TRACK-R (GPU2, TRACK-R's GPU1 verified untouched
++throughout via `nvidia-smi`), without stopping, modifying, or
++overwriting any TRACK-R artifact. Not a new architecture: decomposes
++the already-established Base->M2 forecasting gain into three sequential
++steps -- Raw Cosine -> **Original KL** (new arm trained this track,
++single shared encoder, both query AND candidate/key gradients ON,
++identical to historical TRACK-J "J0") -> StopGrad-Key KL (=J1, reused
++read-only from TRACK-R) -> Multi-Slot M2 (=M2, reused read-only from
++TRACK-R). `train_j_shared_encoder_drift01.py` audited line-by-line and
++used completely unmodified for the new Original KL arm; only
++`build_r_retrieval_cache01.py` was minimally extended
++(`--retriever original_kl`) to build its cache. Base/Cosine/J1/M2
++checkpoints and gates all reused read-only from TRACK-R -- no
++retraining beyond the new Original KL arm.
++
++**Results (ETTh1, seed0, n=2 horizons so far)**:
++
++| Horizon | Base | Cosine | Original KL | J1 | M2 |
++|---|---:|---:|---:|---:|---:|
++| 96 | 0.392423 | 0.380437 | 0.373682 | 0.374193 | 0.379448 |
++| 720 | 0.560354 | 0.550745 | 0.529134 | 0.491584 | 0.484746 |
++
++H720's Original KL checkpoint reproduced byte-identical (SHA-256 match)
++to the historical TRACK-J J0 checkpoint -- further confirmation of
++whole-session pipeline determinism.
++
++**Gain decomposition** (`G_total = MSE_Base - MSE_M2`, 10k-rep paired
++bootstrap, query_start_idx unit): at H96, `G_KL` (Cosine->OriginalKL) is
++52.1% of the total gain and the largest single component, while `G_SG`
++(OriginalKL->J1, i.e. StopGrad-Key's marginal contribution) is
++statistically ZERO (CI includes 0) and `G_MS` (J1->M2) is significantly
++NEGATIVE (-40.5%). At H720, the ranking flips: `G_SG` is 49.7% and the
++largest single component (highly significant), `G_KL` is 28.6%, and
++`G_MS` is a smaller but significant positive 9.0%.
++
++**Mechanistic finding**: extending TRACK-J3's original D/C decomposition
++(previously only ever computed at H720) to H96 shows StopGrad-Key's
++downstream benefit routes entirely through the cross-candidate
++complementarity term `C`, not individual relevance `D` (`D` is actually
++slightly better for Original KL than J1 at both horizons). `delta_C_SG`
++(`C_J1 - C_OriginalKL`) is ~0 at H96 (`-0.0006`) but large and negative
++at H720 (`-0.0854`) -- this difference in `C`, not `D`, exactly explains
++why `G_SG` is horizon-dependent.
++
++**Interim verdict**: no single pre-registered Case (1-4) cleanly fits
++both horizons -- H96 alone resembles "future-aligned KL is the whole
++story", H720 alone resembles "StopGrad-Key is the dominant contributor,
++Multi-Slot adds a smaller further gain on top." Reported honestly as
++horizon-dependent and unresolved with only 2/4 horizons and 1 seed;
++H192/H336 (pending TRACK-R producing those base settings) and seed1/2
++replication are the direct next steps to distinguish a real trend from
++a two-point artifact. No new loss/teacher/slot/gate design introduced
++anywhere in this track, per its own STOP rule. Full report:
++`research/S-kl-contribution-decomposition/TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01.md`.
+diff --git a/research/REVIEW_FOR_CHATGPT.md b/research/REVIEW_FOR_CHATGPT.md
+index 38ca38e..89d5b78 100644
+--- a/research/REVIEW_FOR_CHATGPT.md
++++ b/research/REVIEW_FOR_CHATGPT.md
+@@ -4706,3 +4706,64 @@ retrieval) can be answered yet with only 2 of 24 settings and zero seed
+ replication. This addendum documents interim, in-progress state only.
+ 16/16 unit tests pass. Full report (interim):
+ `research/R-final-method-generalization/TRACK-R-FINAL-METHOD-GENERALIZATION01.md`.
++
++# Addendum (2026-09-30): TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01 (INTERIM, 2/4 ETTh1 horizons)
++
++**Question**: the session's final method's gain over Base is now
++established (TRACK-R), but WHERE does it actually come from -- the
++future-aligned KL training objective itself, the StopGrad-Key
++modification, or Multi-Slot (M2)? Not a new architecture -- pure
++attribution of an already-observed gain, run in parallel with TRACK-R
++(GPU2, verified free at start; TRACK-R's GPU1 verified untouched
++throughout) without stopping or modifying TRACK-R in any way.
++
++**Method**: four arms evaluated identically -- Cosine (reused, no
++training), **Original KL** (the one new arm this track trains: single
++shared encoder, BOTH query and candidate/key gradients on, exactly
++TRACK-J's historical "J0" definition, run completely unmodified),
++StopGrad-Key/J1 (reused), Multi-Slot/M2 (reused). All Stage2 fusion/gate
++training identical across arms (same base checkpoint, same Uniform
++aggregation, same Mixture fusion, same Trainable Global Lambda). H720's
++freshly-trained Original KL checkpoint reproduced byte-identical
++(SHA-256) to the historical J0 checkpoint -- strong pipeline-determinism
++confirmation.
++
++**Results (seed0, n=2 horizons)**:
++
++| Horizon | Base | Cosine | Original KL | J1 (StopGrad-Key) | M2 |
++|---|---:|---:|---:|---:|---:|
++| 96 | 0.392423 | 0.380437 | 0.373682 | 0.374193 | 0.379448 |
++| 720 | 0.560354 | 0.550745 | 0.529134 | 0.491584 | 0.484746 |
++
++Gain decomposition (`G_KL`=Cosine->OriginalKL, `G_SG`=OriginalKL->J1,
++`G_MS`=J1->M2, all as % of `G_total`=Base->M2, 10k-rep paired
++bootstrap): at H96, `G_KL=52.1%` (largest, significant), `G_SG=-3.9%`
++(NOT significant, ~zero), `G_MS=-40.5%` (significant, M2 actively hurts
++here). At H720 the ranking inverts: `G_SG=49.7%` (largest, highly
++significant), `G_KL=28.6%` (significant), `G_MS=9.0%` (significant,
++smaller but real positive contribution).
++
++**Mechanistic explanation (new this track)**: extending TRACK-J3's
++original D/C error decomposition (previously computed only at H720) to
++H96 shows StopGrad-Key's entire downstream benefit, where it exists,
++routes through the cross-candidate complementarity term `C` and NOT
++individual candidate relevance `D` (Original KL's own `D` is actually
++marginally better than J1's `D` at both horizons -- StopGrad-Key never
++improves individual relevance). `delta_C_SG` (`C_J1 - C_OriginalKL`) is
++essentially zero at H96 (`-0.0006`) but large and negative at H720
++(`-0.0854`), which tracks `G_SG`'s horizon pattern exactly -- this is a
++genuine mechanistic account of *why* StopGrad-Key's benefit is
++horizon-dependent, not just a restatement that it is.
++
++**Interim verdict**: none of the four pre-registered "Case" attribution
++patterns cleanly fits both horizons simultaneously. H96 in isolation
++looks like "future-aligned KL training is the whole story, StopGrad-Key
++and Multi-Slot add nothing or actively hurt." H720 in isolation looks
++like "StopGrad-Key is the single dominant contributor, with Multi-Slot
++adding a smaller but real further gain on top." Reported as genuinely
++horizon-dependent and unresolved, consistent with (and mechanistically
++explaining) TRACK-R's own H96/H720 M2-vs-J1 reversal finding. H192/H336
++(pending TRACK-R) and seed1/2 replication are needed before any single
++attribution claim can be made. No new loss/teacher/slot/gate design
++introduced anywhere in this track. Full report (interim):
++`research/S-kl-contribution-decomposition/TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01.md`.
+diff --git a/scripts/build_r_retrieval_cache01.py b/scripts/build_r_retrieval_cache01.py
+index 093beda..9b16a92 100644
+--- a/scripts/build_r_retrieval_cache01.py
++++ b/scripts/build_r_retrieval_cache01.py
+@@ -76,7 +76,7 @@ def build_split(retriever, exp, args, model, slot_heads, split, device, chunk_si
+             if retriever == 'cosine':
+                 s = cosine_scores(batch_x, exp.memory_x, c, cand_mask)
+                 picks_t = stable_topk_indices(s, TOP_K, largest=True)
+-            elif retriever == 'j1':
++            elif retriever in ('j1', 'original_kl'):
+                 z_q = encode_raw(model, batch_x, c)
+                 z_k = encode_raw(model, exp.memory_x, c)
+                 s = arm_score(z_q, z_k, None).masked_fill(~cand_mask, float('-inf'))
+@@ -118,7 +118,7 @@ def build_split(retriever, exp, args, model, slot_heads, split, device, chunk_si
+ 
+ def main():
+     ap = argparse.ArgumentParser()
+-    ap.add_argument('--retriever', required=True, choices=('cosine', 'j1', 'm2'))
++    ap.add_argument('--retriever', required=True, choices=('cosine', 'j1', 'm2', 'original_kl'))
+     ap.add_argument('--reference_ckpt', required=True)
+     ap.add_argument('--pred_len', type=int, required=True)
+     ap.add_argument('--seq_len', type=int, required=True)
+@@ -140,7 +140,7 @@ def main():
+     model.eval()
+     slot_heads = None
+ 
+-    if cli.retriever in ('j1', 'm2'):
++    if cli.retriever in ('j1', 'm2', 'original_kl'):
+         assert cli.retriever_checkpoint, '--retriever_checkpoint required for j1/m2'
+         bl = torch.load(cli.retriever_checkpoint, map_location=device)
+         model.load_state_dict(bl['model_state_dict'])

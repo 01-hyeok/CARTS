@@ -3880,3 +3880,60 @@ unaffected (1318 passed, same 2 pre-existing failures). Interim report:
 `research/R-final-method-generalization/TRACK-R-FINAL-METHOD-GENERALIZATION01.md`.
 Remaining: Weather H96 (in progress)/H720, ETTh1 H192/H336, and all
 seed1/2 replication.
+
+## TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01 (2026-09-30, IN PROGRESS -- 2/4 ETTh1 horizons, interim commit)
+
+Run in PARALLEL with TRACK-R (GPU2, TRACK-R's GPU1 verified untouched
+throughout via `nvidia-smi`), without stopping, modifying, or
+overwriting any TRACK-R artifact. Not a new architecture: decomposes
+the already-established Base->M2 forecasting gain into three sequential
+steps -- Raw Cosine -> **Original KL** (new arm trained this track,
+single shared encoder, both query AND candidate/key gradients ON,
+identical to historical TRACK-J "J0") -> StopGrad-Key KL (=J1, reused
+read-only from TRACK-R) -> Multi-Slot M2 (=M2, reused read-only from
+TRACK-R). `train_j_shared_encoder_drift01.py` audited line-by-line and
+used completely unmodified for the new Original KL arm; only
+`build_r_retrieval_cache01.py` was minimally extended
+(`--retriever original_kl`) to build its cache. Base/Cosine/J1/M2
+checkpoints and gates all reused read-only from TRACK-R -- no
+retraining beyond the new Original KL arm.
+
+**Results (ETTh1, seed0, n=2 horizons so far)**:
+
+| Horizon | Base | Cosine | Original KL | J1 | M2 |
+|---|---:|---:|---:|---:|---:|
+| 96 | 0.392423 | 0.380437 | 0.373682 | 0.374193 | 0.379448 |
+| 720 | 0.560354 | 0.550745 | 0.529134 | 0.491584 | 0.484746 |
+
+H720's Original KL checkpoint reproduced byte-identical (SHA-256 match)
+to the historical TRACK-J J0 checkpoint -- further confirmation of
+whole-session pipeline determinism.
+
+**Gain decomposition** (`G_total = MSE_Base - MSE_M2`, 10k-rep paired
+bootstrap, query_start_idx unit): at H96, `G_KL` (Cosine->OriginalKL) is
+52.1% of the total gain and the largest single component, while `G_SG`
+(OriginalKL->J1, i.e. StopGrad-Key's marginal contribution) is
+statistically ZERO (CI includes 0) and `G_MS` (J1->M2) is significantly
+NEGATIVE (-40.5%). At H720, the ranking flips: `G_SG` is 49.7% and the
+largest single component (highly significant), `G_KL` is 28.6%, and
+`G_MS` is a smaller but significant positive 9.0%.
+
+**Mechanistic finding**: extending TRACK-J3's original D/C decomposition
+(previously only ever computed at H720) to H96 shows StopGrad-Key's
+downstream benefit routes entirely through the cross-candidate
+complementarity term `C`, not individual relevance `D` (`D` is actually
+slightly better for Original KL than J1 at both horizons). `delta_C_SG`
+(`C_J1 - C_OriginalKL`) is ~0 at H96 (`-0.0006`) but large and negative
+at H720 (`-0.0854`) -- this difference in `C`, not `D`, exactly explains
+why `G_SG` is horizon-dependent.
+
+**Interim verdict**: no single pre-registered Case (1-4) cleanly fits
+both horizons -- H96 alone resembles "future-aligned KL is the whole
+story", H720 alone resembles "StopGrad-Key is the dominant contributor,
+Multi-Slot adds a smaller further gain on top." Reported honestly as
+horizon-dependent and unresolved with only 2/4 horizons and 1 seed;
+H192/H336 (pending TRACK-R producing those base settings) and seed1/2
+replication are the direct next steps to distinguish a real trend from
+a two-point artifact. No new loss/teacher/slot/gate design introduced
+anywhere in this track, per its own STOP rule. Full report:
+`research/S-kl-contribution-decomposition/TRACK-S-KL-CONTRIBUTION-DECOMPOSITION01.md`.

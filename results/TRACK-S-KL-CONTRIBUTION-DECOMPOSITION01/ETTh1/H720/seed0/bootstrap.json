@@ -1,0 +1,37 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 720,
+  "seed": 0,
+  "n_boot": 10000,
+  "resampling_unit": "query_start_idx",
+  "comparisons": {
+    "OriginalKL_minus_Cosine": {
+      "mean_diff": -0.021610707678986832,
+      "ci_lo_2.5": -0.02475997158798119,
+      "ci_hi_97.5": -0.018508936231029307,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "J1_minus_OriginalKL": {
+      "mean_diff": -0.03754980883516685,
+      "ci_lo_2.5": -0.04003774721118545,
+      "ci_hi_97.5": -0.03509003988215902,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "M2_minus_J1": {
+      "mean_diff": -0.006838657841093283,
+      "ci_lo_2.5": -0.008285250173074014,
+      "ci_hi_97.5": -0.005413852969924924,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "M2_minus_OriginalKL": {
+      "mean_diff": -0.04438846667626013,
+      "ci_lo_2.5": -0.04701829843329975,
+      "ci_hi_97.5": -0.04183599635413928,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    }
+  }
+}
