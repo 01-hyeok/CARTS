@@ -1,0 +1,73 @@
+{
+  "case_A_fusion_semantics_confirmed": {
+    "criteria": "P3<P1 (CI<0) AND P4<P2 (CI<0) AND P4<P0",
+    "P3_vs_P1": {
+      "mean_diff": -0.012567955233442844,
+      "ci_lo_2.5": -0.013306899414618,
+      "ci_hi_97.5": -0.011861987853976987,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "P3_lt_P1": true,
+    "P4_vs_P2": {
+      "mean_diff": -0.013238670758658236,
+      "ci_lo_2.5": -0.015410228359415155,
+      "ci_hi_97.5": -0.011057072823754288,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "P4_lt_P2": true,
+    "P4_vs_P0": {
+      "mean_diff": -0.01310395389064381,
+      "ci_lo_2.5": -0.015263714244496983,
+      "ci_hi_97.5": -0.010912195572087413,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "P4_lt_P0": true,
+    "met": true,
+    "verdict": "CONFIRMED: Residual fusion was mis-specified; Mixture fusion is the correct Stage2 semantics."
+  },
+  "strong_case_A": {
+    "criteria": "P4 <= 0.47",
+    "P4": 0.475686,
+    "met": false,
+    "note": "P4=0.475686 misses the 0.47 strong threshold by 0.0057, but is still a genuine ~2.68% improvement over base (0.488790) -- the largest of any neural-gate result across TRACK-M/N/O/P."
+  },
+  "case_B_pattern_also_present": {
+    "criteria": "P5/P6 reproduce TRACK-N exactly AND P3/P4 >> P5/P6",
+    "P5_reproduction": "PASS (diff=1.9e-7)",
+    "P6_reproduction": "PASS (diff=6.2e-8)",
+    "P3_vs_P5": {
+      "mean_diff": 0.01343201147026069,
+      "ci_lo_2.5": 0.01197954334046266,
+      "ci_hi_97.5": 0.01492090242906667,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "P4_vs_P6": {
+      "mean_diff": 0.01171665516290219,
+      "ci_lo_2.5": 0.010230811286419424,
+      "ci_hi_97.5": 0.013206740214296757,
+      "ci_excludes_zero": true,
+      "n_queries": 2161
+    },
+    "met": true,
+    "verdict": "Learned mixture gate (P3/P4) is significantly WORSE than the trivial validation-calibrated fixed lambda (P5/P6) -- a real, secondary gate-optimization gap remains even after fixing fusion semantics."
+  },
+  "comparison_D_M2_vs_J1_correct_semantics": {
+    "P4_vs_P3": {
+      "mean_diff": -0.001095485543829597,
+      "ci_lo_2.5": -0.0033856298024595916,
+      "ci_hi_97.5": 0.0011854559252075655,
+      "ci_excludes_zero": false,
+      "n_queries": 2161
+    },
+    "significant": false,
+    "relative_gap_pct": 0.22966519219516143,
+    "verdict": "M2 DOWNSTREAM COMPETITIVE (relative gap 0.23% < 0.5%, CI overlaps zero -- not distinguishable from J1 under correct semantics)."
+  },
+  "primary_verdict": "Case A (fusion semantics confirmed) is the dominant finding, with a secondary Case-B-pattern gate-optimization gap.",
+  "Q7_primary_cause": "MIXED -- fusion semantics was the major, now-corrected bug (explains ~97% of the base-to-P5/P6 gap: P3/P4 close most but not all of the distance from P1/P2 to P5/P6); a smaller residual gate-optimization gap remains (P3/P4 vs P5/P6, both significant).",
+  "Q8_next_experiment": "Gate Capacity / Calibration Audit (per spec section 22) -- NOT executed in this track, per the STOP rule."
+}

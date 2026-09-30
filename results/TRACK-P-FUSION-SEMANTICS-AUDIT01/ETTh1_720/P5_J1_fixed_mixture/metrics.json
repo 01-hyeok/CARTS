@@ -1,0 +1,10 @@
+{
+  "arm": "P5_J1_fixed_mixture",
+  "lambda": 0.37,
+  "final_mse": 0.46334919093494775,
+  "final_mae": 0.4754694274927057,
+  "expected_mse": 0.463349,
+  "absdiff": 1.9093494774136133e-07,
+  "reproduction_pass": true,
+  "n_queries": 2161
+}

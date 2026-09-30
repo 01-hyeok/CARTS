@@ -3737,3 +3737,53 @@ mixer) cannot realize it, while a trivial non-learned validation
 -calibrated lambda (TRACK-N) already gets close. 21/21 unit tests pass;
 full pytest suite unaffected. Full report:
 `research/O-frozen-base-retrieval-consumer/TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01.md`.
+
+## TRACK-P-FUSION-SEMANTICS-AUDIT01 (2026-09-30, ETTh1_720, NO STAGE1 RETRIEVER TRAINING)
+
+Direct follow-up to TRACK-O. Single question: is Stage2's `residual`
+fusion (`y_final = y_base + lambda*y_ret`) mis-specified, since `y_ret`
+is a full alternative forecast, not a correction term? Tested against
+`mixture` fusion (`(1-lambda)*y_base + lambda*y_ret`, already
+implemented in `RetrievalGate` but never selected by any host config
+used this session). Only `fusion_mode` varied between arms -- same
+checkpoints, same Uniform caches, same frozen base/relation_mixer
+(`beta≡1` identity-pass re-asserted at runtime), same gate
+architecture/init/optimizer/schedule, confirmed byte-identical across
+all four learned arms via SHA fingerprinting. P1/P2 (residual) reused
+verbatim from TRACK-O's O1/O3; P5/P6 (fixed-lambda mixture,
+`lambda=0.37`/`0.42`) are pure closed-form re-evaluations of TRACK-N's
+own validation-selected values, no training. All 7 reproduction gates
+pass to <4e-7.
+
+**Result -- fusion semantics was the dominant bug**: switching ONLY the
+fusion formula took J1 from 0.489349 (worse than no-retrieval base
+0.488790) to **0.476781** (P3, -2.44%), and M2 from 0.488924 to
+**0.475686** (P4, -2.68%) -- both highly significant vs. their residual
+counterparts (paired bootstrap, 10k reps: `P3-P1=-0.01257`,
+`P4-P2=-0.01324`, both CIs entirely negative) and vs. the no-retrieval
+base (`P3-P0`, `P4-P0` both significant). Gate engagement jumped from
+near-zero (P1: 0.92%, P2: 4.6%) to genuinely active (P3: 12.0%, P4:
+14.3%) -- exactly the predicted signature. Semantic invariants confirmed
+analytically via a real `RetrievalGate`: mixture is idempotent when
+`B=R` (`Y=B=R` exactly, any lambda); residual is NOT (`B=R` still
+changes the output) -- the equation-level proof of the mis-specification,
+not just an empirical pattern.
+
+**Decision-table verdict: Case A confirmed** (not Strong -- P4=0.475686
+misses the `<=0.47` strong threshold by 0.0057, but is still the best
+neural-gate Stage2 result obtained anywhere this session). **A
+Case-B-pattern secondary gap is simultaneously present**: P3/P4 are
+still significantly worse than the fixed-lambda P5/P6 ceiling
+(`P3-P5=+0.0134`, `P4-P6=+0.0117`, both significant) -- fusion semantics
+explains most but not all of the gap; a smaller gate-optimization/
+-calibration issue remains. Under correct semantics, M2 vs J1 (`P4-P3`)
+is NOT significant (relative gap 0.23%, CI overlaps zero) --
+**M2 DOWNSTREAM COMPETITIVE**, neither retriever superior.
+
+**Verdict**: Q7 (primary cause) = **mixed, fusion semantics dominant**.
+Q8 (next experiment) = **Gate Capacity / Calibration Audit** (NOT
+multi-slot consumer redesign, NOT generalization) -- explicitly not run
+in this track per the STOP rule. 20/20 unit tests (23 spec items) pass;
+full pytest suite unaffected (1281 passed, same 2 pre-existing
+failures). Full report:
+`research/P-fusion-semantics/TRACK-P-FUSION-SEMANTICS-AUDIT01.md`.

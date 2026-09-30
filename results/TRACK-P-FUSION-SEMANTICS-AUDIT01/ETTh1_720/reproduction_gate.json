@@ -1,0 +1,45 @@
+{
+  "P0_base": {
+    "expected": 0.48879,
+    "got": 0.48878966783490063,
+    "absdiff": 3.321650993703962e-07,
+    "pass": true
+  },
+  "uniform_J1": {
+    "expected": 0.564026,
+    "got": 0.5640261535397141,
+    "absdiff": 1.5353971405396294e-07,
+    "pass": true
+  },
+  "uniform_M2": {
+    "expected": 0.523593,
+    "got": 0.523592702169795,
+    "absdiff": 2.978302049427839e-07,
+    "pass": true
+  },
+  "P1_residual": {
+    "expected": 0.489349,
+    "got": 0.4893491514322257,
+    "absdiff": 1.5143222570346282e-07,
+    "pass": true
+  },
+  "P2_residual": {
+    "expected": 0.488924,
+    "got": 0.48892438228725954,
+    "absdiff": 3.8228725951494624e-07,
+    "pass": true
+  },
+  "P5_fixed_mixture": {
+    "expected": 0.463349,
+    "got": 0.46334919093494775,
+    "absdiff": 1.9093494774136133e-07,
+    "pass": true
+  },
+  "P6_fixed_mixture": {
+    "expected": 0.463969,
+    "got": 0.4639690616984767,
+    "absdiff": 6.169847666104289e-08,
+    "pass": true
+  },
+  "all_pass": true
+}

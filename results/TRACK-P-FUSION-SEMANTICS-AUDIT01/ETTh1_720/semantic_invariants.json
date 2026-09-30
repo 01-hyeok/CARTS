@@ -1,0 +1,48 @@
+{
+  "scale_check": {
+    "B": [
+      [
+        2.0,
+        2.0
+      ]
+    ],
+    "R": [
+      [
+        2.0,
+        2.0
+      ]
+    ],
+    "lambda": 0.5,
+    "residual_output": [
+      [
+        3.0,
+        3.0
+      ]
+    ],
+    "residual_expected": [
+      [
+        3.0,
+        3.0
+      ]
+    ],
+    "mixture_output": [
+      [
+        2.0,
+        2.0
+      ]
+    ],
+    "mixture_expected": [
+      [
+        2.0,
+        2.0
+      ]
+    ],
+    "residual_matches": true,
+    "mixture_matches_B_eq_R": true
+  },
+  "mixture_lambda_0_identity_B": true,
+  "mixture_lambda_1_identity_R": true,
+  "mixture_B_eq_R_idempotence": true,
+  "residual_B_eq_R_changes_value": true,
+  "residual_B_eq_R_actual": 0.3943708539009094
+}

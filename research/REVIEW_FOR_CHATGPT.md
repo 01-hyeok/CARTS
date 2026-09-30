@@ -4554,3 +4554,49 @@ the fusion architecture needs to be replaced with something that can at
 least match the trivial validation-calibrated linear lambda TRACK-N
 already showed works. 21/21 unit tests pass. Full report:
 `research/O-frozen-base-retrieval-consumer/TRACK-O-FROZEN-BASE-RETRIEVAL-CONSUMER01.md`.
+
+# Addendum (2026-09-30): TRACK-P-FUSION-SEMANTICS-AUDIT01
+
+**Question**: TRACK-O showed the learned gate never beats the
+no-retrieval base under `residual` fusion (`y_base + lambda*y_ret`), even
+though TRACK-N proved real value exists (a fixed, validation-calibrated
+`mixture` lambda got much better test MSE). Was `residual` the wrong
+equation all along -- `y_ret` is a full alternative forecast, not a
+correction term?
+
+**Method**: change ONLY `fusion_mode` (`residual` -> `mixture`, already
+implemented in `RetrievalGate`, just never selected by any host config
+used this session) -- identical checkpoints, caches, gate architecture/
+init/optimizer/schedule otherwise (SHA-verified identical across all
+four learned arms). P1/P2 (residual) reused verbatim from TRACK-O; P5/P6
+(fixed-lambda mixture) are closed-form re-evaluations of TRACK-N's own
+numbers, no training. All 7 reproduction gates pass to <4e-7.
+
+**Result -- decisive**: switching only the equation took J1 from
+0.489349 (worse than base) to 0.476781 (-2.44%), M2 from 0.488924 to
+0.475686 (-2.68%) -- both highly significant vs. residual and vs. base
+(10k-rep paired bootstrap). Gate engagement jumped from near-zero (0.9%,
+4.6%) to genuinely active (12.0%, 14.3%). A real `RetrievalGate`
+instance confirms the equation-level proof, not just the empirical
+pattern: mixture is idempotent when `B=R` (`Y=B=R` exactly); residual is
+NOT (residual literally double-counts an accurate retrieval forecast).
+
+**But a secondary gap remains**: P3/P4 are still significantly worse
+than the fixed-lambda ceiling P5/P6 (~1.2-1.3% MSE gap, both CIs
+entirely positive) -- fusion semantics explains most, not all, of the
+original failure. Under correct semantics, M2 vs J1 is NOT
+significantly different (0.23% relative gap, CI overlaps zero) -- M2 is
+competitive, not superior or inferior.
+
+**Bottom line**: `residual` fusion was genuinely mis-specified; `mixture`
+is the correct Stage2 semantics for this architecture -- confirmed both
+analytically and empirically, for both retrievers. This is Case A of the
+pre-registered decision table (not Strong Case A -- P4 misses the 0.47
+threshold by 0.0057), combined with a Case-B-pattern secondary gate
+-optimization gap. **Next experiment should be a Gate Capacity /
+Calibration Audit** (candidates: global trainable lambda, per-channel
+lambda, query-conditioned scalar variants, horizon gate) -- NOT a
+multi-slot consumer redesign, NOT generalization, NOT a new Stage1
+retriever objective. Not executed in this track per the STOP rule.
+20/20 unit tests (23 spec items) pass. Full report:
+`research/P-fusion-semantics/TRACK-P-FUSION-SEMANTICS-AUDIT01.md`.

@@ -1,0 +1,29 @@
+{
+  "gate_init_sha256": {
+    "P1_J1_residual_reused_O1": "93f8fcbcf28eb805bad97cf4e8bc7429d69aaeee6e95abee32314100c60bd60d",
+    "P2_M2_residual_reused_O3": "93f8fcbcf28eb805bad97cf4e8bc7429d69aaeee6e95abee32314100c60bd60d",
+    "P3_J1_mixture": "93f8fcbcf28eb805bad97cf4e8bc7429d69aaeee6e95abee32314100c60bd60d",
+    "P4_M2_mixture": "93f8fcbcf28eb805bad97cf4e8bc7429d69aaeee6e95abee32314100c60bd60d"
+  },
+  "gate_init_identical_P1_P2_P3_P4": true,
+  "base_head_sha256": {
+    "P1_J1_residual_reused_O1": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5",
+    "P2_M2_residual_reused_O3": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5",
+    "P3_J1_mixture": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5",
+    "P4_M2_mixture": "fcdef6b2f01a56a9031e36dc67963bb3bd8922a9f7b33c7dcc7d83b0a21376e5"
+  },
+  "base_head_identical_P1_P2_P3_P4": true,
+  "trainable_parameter_names_P3": [
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight"
+  ],
+  "trainable_parameter_names_P4": [
+    "gate.net.0.bias",
+    "gate.net.0.weight",
+    "gate.net.2.bias",
+    "gate.net.2.weight"
+  ],
+  "trainable_names_P3_eq_P4": true
+}
