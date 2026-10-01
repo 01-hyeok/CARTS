@@ -272,8 +272,15 @@ def main():
     (out_dir / 'config.json').write_text(json.dumps(config, indent=2))
     print(f'[track_t] arm={arm} cell={cli.cell} N={config["n_candidates"]} init_hash={init_hash[:16]}')
 
-    def eval_channel(batch_x, batch_y, batch_start_idx, c, want_diag=False):
-        cand_mask, _ = exp._candidate_mask(batch_start_idx)
+    def eval_channel(batch_x, batch_y, batch_start_idx, c, cand_mask, want_diag=False):
+        # cand_mask is channel-independent (depends only on batch_start_idx) -- computed
+        # ONCE per batch by the caller, not per channel here. Recomputing it per channel
+        # was a pure performance bug (`exp._candidate_mask` does a `.cpu().numpy()` sync
+        # every call): a channels-x redundancy factor that scales badly with channel count
+        # and candidate-pool size (TRACK-V's Weather runs, 21 channels x 36696 candidates,
+        # were the first to make this severe enough to notice -- fixed before any further
+        # Weather run; ETTh1 runs already completed are unaffected in their results, only
+        # in how much slower they needlessly were).
         scores = compute_scores_full_grad(model, slot_heads, batch_x, exp.memory_x, c)
         memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
         query_future = batch_y[:, :, c]
@@ -362,10 +369,11 @@ def main():
             for batch_x, batch_y, batch_start_idx in val_loader:
                 batch_x = batch_x.float().to(device)
                 batch_y = batch_y.float().to(device)
+                cand_mask, _ = exp._candidate_mask(batch_start_idx)
                 bsz = batch_x.size(0)
                 per_ch = {}
                 for c in channels:
-                    res, _ = eval_channel(batch_x, batch_y, batch_start_idx, c, want_diag=False)
+                    res, _ = eval_channel(batch_x, batch_y, batch_start_idx, c, cand_mask, want_diag=False)
                     per_ch.setdefault('retmse10', []).append(res['model_ind_mse'].cpu())
                     per_ch.setdefault('agg_mse10', []).append(res['agg_mse'].cpu())
                     per_ch.setdefault('recall10', []).append(res['recall10'].cpu())
@@ -401,10 +409,11 @@ def main():
         for batch_x, batch_y, batch_start_idx in test_loader:
             batch_x = batch_x.float().to(device)
             batch_y = batch_y.float().to(device)
+            cand_mask, _ = exp._candidate_mask(batch_start_idx)
             bsz = batch_x.size(0)
             per_ch = {}
             for c in channels:
-                res, diag = eval_channel(batch_x, batch_y, batch_start_idx, c, want_diag=True)
+                res, diag = eval_channel(batch_x, batch_y, batch_start_idx, c, cand_mask, want_diag=True)
                 per_ch.setdefault('retmse10', []).append(res['model_ind_mse'].cpu())
                 per_ch.setdefault('agg_mse10', []).append(res['agg_mse'].cpu())
                 per_ch.setdefault('recall10', []).append(res['recall10'].cpu())

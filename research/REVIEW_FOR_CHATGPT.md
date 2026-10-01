@@ -4974,7 +4974,89 @@ all pairwise arm comparisons are bootstrap-significant except one
 (U2-U1 at H96 Stage2). Full report (interim):
 `research/U-asymmetry-capacity-decomposition/TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01.md`.
 
-# Addendum (2026-09-30): TRACK-V-MULTIQUERY-GENERALIZATION01 (INTERIM, ETTh1 only -- Weather still running)
+# Addendum (2026-10-01): TRACK-V-MULTIQUERY-GENERALIZATION01 (Phase A COMPLETE -- ETTh1 + Weather, H96 + H720)
+
+**This supersedes the 2026-09-30 ETTh1-only interim below** (kept
+further down for the record, not deleted). The key change: the
+ETTh1-only interim's headline claim -- a clean horizon-reversal
+replicated a fifth time -- does **not** hold once Weather is added.
+See "CORRECTION" below.
+
+**Question**: does expanding a single retrieval query into multiple
+independently learnable "query views" (no explicit set-conditioning,
+no semantic role assigned to any view) improve retrieval-set
+complementarity and downstream forecasting? Direct follow-up to
+TRACK-T/TRACK-T2, using the same, already-validated architectures: V0 =
+TRUE Original KL (0 projection parameters,
+`train_j_shared_encoder_drift01.py` unmodified), V1/V2/V5 =
+`train_t_pure_multislot01.py` unmodified with `--num_slots` 1/2/5. K=10
+fixed throughout; no StopGrad, overlap penalty, aggregate loss,
+relevance budget, or any other addition beyond `num_slots` itself.
+
+**Results, Stage2 forecast MSE (seed0)**:
+
+| Dataset | Horizon | V0 (S=0) | V1 (S=1) | V2 (S=2) | V5 (S=5) |
+|---|---:|---:|---:|---:|---:|
+| ETTh1 | 96 | 0.373682 | 0.375676 | 0.377003 | 0.379027 |
+| ETTh1 | 720 | 0.529134 | 0.506830 | 0.504628 | **0.498119** |
+| Weather | 96 | 0.172922 | 0.168924 | 0.170189 | **0.167800** |
+| Weather | 720 | 0.369832 | 0.336784 | 0.333277 | **0.330390** |
+
+All six adjacent/endpoint V-vs-V comparisons in all four settings are
+significant under a 10k-rep paired bootstrap (query_start_idx unit,
+seed=0), at Stage1 AggMSE, D, C, and Stage2 MSE alike -- including the
+small Weather H96 V2-V1 regression. None of the effects below are
+noise.
+
+**CORRECTION to the ETTh1-only interim's headline claim**: the interim
+reported "H96 degrades monotonically with more views, H720 improves
+monotonically -- a fifth replication of the session's horizon-reversal
+pattern." **Weather does not replicate the H96 direction.** At Weather
+H96, MSE falls (net) with more query views, non-monotonically (V0=
+0.1729 -> V1=0.1689 -> V2=0.1702 -> V5=**0.1678**, V5 best, with a small
+V2-over-V1 regression) -- the opposite of ETTh1 H96's clean monotonic
+degradation. At Weather H720, MSE falls monotonically with S exactly as
+ETTh1 H720 does (V0 worst, V5 best). **So "more query views help long
+horizon, hurt short horizon" is an ETTh1-specific pattern, not a
+dataset-general law** -- on Weather, more views help (net) at both
+horizons tested. The "replicated a fifth time" framing in the interim
+should be read as "replicated in 1 of 2 datasets," not as evidence the
+reversal generalizes.
+
+**What DOES generalize across both datasets/horizons**: the D/C
+mechanism shape, not the top-line MSE direction. In ETTh1 H720 and in
+Weather (both horizons), the first added view (V0->V1) improves both D
+and C sharply, and every subsequent view (V1->V2->V5) leaves D flat or
+slightly worse while C keeps improving monotonically -- essentially all
+marginal benefit beyond the first view routes through complementarity,
+not individual relevance. Weather D/C (stage1 test split, seed0):
+
+| Horizon | Arm | D | C | Agg=D+C |
+|---|---|---:|---:|---:|
+| 96 | V0 | 0.041786 | 0.184087 | 0.225874 |
+| 96 | V1 | 0.028764 | 0.169725 | 0.198490 |
+| 96 | V2 | 0.033330 | 0.168144 | 0.201474 |
+| 96 | V5 | 0.036274 | 0.151665 | 0.187939 |
+| 720 | V0 | 0.068043 | 0.468142 | 0.536184 |
+| 720 | V1 | 0.048746 | 0.382419 | 0.431165 |
+| 720 | V2 | 0.049549 | 0.352911 | 0.402460 |
+| 720 | V5 | 0.053411 | 0.333391 | 0.386803 |
+
+**Operational note**: during Weather H720 execution, a healthy but
+stdout-buffered training process was briefly misdiagnosed as stuck and
+killed (no data lost, checkpoint already saved); this also surfaced and
+fixed a real, independent performance bug (`eval_channel` recomputed
+`cand_mask` once per channel instead of once per batch -- fixed,
+pytest-verified, zero behavior change, only faster).
+
+**Not yet established**: Phase B (H192/H336) has not started. Per the
+track's own interpretation limits: no claim that multi-query is "good"
+or "bad" in general, no semantic-specialization claim about what the
+extra views learn.
+
+---
+
+# Addendum (2026-09-30): TRACK-V-MULTIQUERY-GENERALIZATION01 (INTERIM, ETTh1 only -- Weather still running, SUPERSEDED above)
 
 **Question**: does expanding a single retrieval query into multiple
 independently learnable "query views" (no explicit set-conditioning,

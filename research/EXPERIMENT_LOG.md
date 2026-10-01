@@ -4092,7 +4092,7 @@ the mechanism, do not add further new scorer structures, move to
 Weather + multi-seed replication. Interim report:
 `research/U-asymmetry-capacity-decomposition/TRACK-U-ASYMMETRY-CAPACITY-DECOMPOSITION01.md`.
 
-## TRACK-V-MULTIQUERY-GENERALIZATION01 (2026-09-30, IN PROGRESS -- ETTh1 H96+H720 complete, Weather H96/H720 running)
+## TRACK-V-MULTIQUERY-GENERALIZATION01 (2026-09-30/10-01, Phase A COMPLETE -- ETTh1 + Weather, H96 + H720)
 
 Tests whether expanding one retrieval query into multiple independently
 learnable "query views" (S in {0,1,2,5}, K=10 fixed) improves
@@ -4107,33 +4107,83 @@ per-slot-index seeding -- verified live, not assumed. Cache format
 extended (additive) to save per-query D/C for bootstrap. A missing
 Weather H720 base forecaster (TRACK-R never completed that setting)
 was trained fresh via TRACK-R's own script. 17/18 unit tests pass (1
-skip-until-artifacts). This is an INTERIM, ETTh1-only checkpoint at the
-user's request, ahead of the track's own "Phase A report only after
-all 4 settings" rule -- Weather H96/H720 are still running in the
-background; the full Phase A report and commit will follow once they
-finish.
+skip-until-artifacts). An ETTh1-only interim was posted mid-run at the
+user's request (2026-09-30 14:29 UTC); this entry supersedes it with
+the full Phase A result (ETTh1 + Weather, H96 + H720), per the track's
+own "Phase A report only after all 4 settings" rule, before any Phase B
+(H192/H336) work begins.
 
-**Results (ETTh1, seed0)**:
+During Weather H720 execution, a healthy but stdout-buffered V1
+training process was misdiagnosed as stuck and killed unnecessarily
+(no data lost -- its checkpoint had already saved); this also surfaced
+a real, unrelated performance bug (`eval_channel` recomputing
+`cand_mask` once per channel instead of once per batch, fixed,
+pytest-verified with zero behavior change) and a practice change
+(`PYTHONUNBUFFERED=1` for all subsequent backgrounded launches, and
+checkpoint-timestamp verification instead of log-tail-silence alone
+when a run is suspected stuck).
 
-| Arm | H96 Stage2 MSE | H720 Stage2 MSE |
-|---|---:|---:|
-| V0 | 0.373682 | 0.529134 |
-| V1 | 0.375676 | 0.506830 |
-| V2 | 0.377003 | 0.504628 |
-| V5 | 0.379027 | **0.498119** |
+**Results, Stage2 forecast MSE (seed0)**:
 
-**Headline finding**: the effect of adding query views is
-horizon-reversed. At H96, MSE increases monotonically with S (V0 best,
-V5 worst); at H720, MSE decreases monotonically with S (V0 worst, V5
-best) -- the same H96-vs-H720 reversal this session has now observed
-across TRACK-R/S/T/T2/U, replicated again in a fifth, independent
-architectural variation. D/C decomposition: at H96, D improves from V0
-to V1 then plateaus, while C worsens monotonically and dominates,
-producing net degradation. At H720, D improves sharply from V0 to V1
-then stays roughly flat, while C keeps improving monotonically through
-V5 (0.549 -> 0.510 -> 0.510 -> 0.496) -- the additional query views'
-entire marginal benefit at H720 routes through complementarity, not
-individual relevance, consistent with every prior mechanism analysis
-this session has produced. Weather H96/H720 are in progress; per the
-track's own interpretation limits, no cross-dataset or universal claim
-is made until those complete.
+| Dataset | Horizon | V0 | V1 | V2 | V5 |
+|---|---:|---:|---:|---:|---:|
+| ETTh1 | 96 | 0.373682 | 0.375676 | 0.377003 | 0.379027 |
+| ETTh1 | 720 | 0.529134 | 0.506830 | 0.504628 | **0.498119** |
+| Weather | 96 | 0.172922 | 0.168924 | 0.170189 | **0.167800** |
+| Weather | 720 | 0.369832 | 0.336784 | 0.333277 | **0.330390** |
+
+Paired bootstrap (10,000 replicates, query_start_idx resampling unit,
+seed=0) on all six adjacent/endpoint comparisons per setting: every
+single V-vs-V stage2/agg/D/C comparison in all four settings is
+significant (`sig=True`), including the small Weather H96 V2-V1
+regression (+0.001265) and the small ETTh1 H96 V1-V0 regression
+(magnitude not re-quoted here, already in the ETTh1 interim) -- none of
+these are noise.
+
+**Headline finding, CORRECTED from the ETTh1-only interim**: the
+ETTh1-only interim claimed a clean "H96 degrades monotonically / H720
+improves monotonically" horizon-reversal, framed as a fifth replication
+of the TRACK-R/S/T/T2/U pattern. **Weather does not replicate this
+reversal.** At Weather H96, MSE does NOT rise monotonically with more
+query views the way ETTh1 H96 does -- instead it falls non-monotonically
+(V0=0.1729 -> V1=0.1689 -> V2=0.1702 -> V5=**0.1678**, V5 best, V2 a
+small regression off V1). At Weather H720, MSE falls monotonically with
+S exactly as ETTh1 H720 does (V0 worst, V5 best, not yet saturated).
+**So the "more views only help at long horizon, hurt at short horizon"
+claim is an ETTh1-specific pattern, not a universal one** -- on
+Weather, more query views help (net) at BOTH horizons, just
+non-monotonically at H96. This is the single biggest correction this
+track makes to the session's running horizon-reversal narrative, and it
+means the earlier framing ("replicated a fifth time") should be read as
+"replicated in 1 of 2 datasets tested," not as a dataset-general law.
+
+**D/C decomposition holds up better across datasets than the top-line
+MSE reversal does.** In both ETTh1 H720 and Weather (both horizons),
+the pattern is consistent: the first added view (V0->V1) improves both
+D (individual relevance) and C (complementarity) sharply; every
+subsequent view (V1->V2->V5) leaves D flat or slightly worse while C
+keeps improving monotonically, so essentially all marginal benefit
+beyond the first view routes through complementarity, not individual
+relevance -- this part of the mechanism (not the top-line direction)
+is the one that generalizes across both datasets and both horizons
+tested so far.
+
+**Weather D/C numbers (seed0, stage1 test split)**:
+
+| Horizon | Arm | D | C | Agg=D+C |
+|---|---|---:|---:|---:|
+| 96 | V0 | 0.041786 | 0.184087 | 0.225874 |
+| 96 | V1 | 0.028764 | 0.169725 | 0.198490 |
+| 96 | V2 | 0.033330 | 0.168144 | 0.201474 |
+| 96 | V5 | 0.036274 | 0.151665 | 0.187939 |
+| 720 | V0 | 0.068043 | 0.468142 | 0.536184 |
+| 720 | V1 | 0.048746 | 0.382419 | 0.431165 |
+| 720 | V2 | 0.049549 | 0.352911 | 0.402460 |
+| 720 | V5 | 0.053411 | 0.333391 | 0.386803 |
+
+Per the track's own interpretation limits: no claim is made that
+multi-query is "good" or "bad" in general, no semantic-specialization
+claim is made about what the extra query views learn, and the
+horizon-reversal claim from the ETTh1 interim is explicitly walked back
+to a dataset-specific (not universal) finding as described above. Phase
+B (H192/H336) has not yet started.
