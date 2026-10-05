@@ -422,7 +422,11 @@ hyperparameters or add regularisation to `W_q`/`W_k`, do not try
 Mahalanobis, and do not modify `SetConditioner` or unfreeze the encoder,
 without the reviewer's/user's explicit approval first.
 
-**Standing constraint, unchanged:** `FULL MEMORY -> DIRECT TOP-K` (D-0010).
-Top-100/Top-M/shortlist/coarse-retrieval/reranker are not to be proposed as
-the current or next research direction. Historical P100 usage remains
-factual record in `EXPERIMENT_LOG.md`, not reopened.
+**Candidate-support update (2026-10-05):** D-0010 is superseded by
+D-0015 for the new V0/V1/V2/V5/Router comparison. Candidate support is now an
+explicit controlled setting, `candidate_pool_mode in {full, top100}`. In
+`top100` mode the pool is computed once from an arm-independent frozen
+reference retriever, cached, and reused unchanged by every compared arm/router;
+individual arms may rescore candidates but may not redefine support. Historical
+full-memory experiments remain unchanged and must still be interpreted under
+their original protocol.
