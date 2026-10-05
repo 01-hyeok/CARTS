@@ -142,6 +142,7 @@ class SharedCandidatePool:
             "candidate_pool_size": TOP100_SIZE,
             "candidate_pool_cache_dir": str(self.cache_dir),
             "candidate_pool_source": self.metadata.get("source"),
-            "candidate_pool_reference_model_hash": self.metadata.get("reference_model_state_sha256"),
+            "candidate_pool_score_definition": self.metadata.get("score_definition"),
+            "candidate_pool_reference_ckpt_for_data_config": self.metadata.get("reference_ckpt_for_data_config"),
             "candidate_pool_split_fingerprints": self.metadata.get("split_fingerprints", {}),
         }
