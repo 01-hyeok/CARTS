@@ -154,7 +154,7 @@ confirms a decision.
   diagnostics (EXP-1/EXP-2's P100 arms, EXP-C01's coarse-vs-full comparisons)
   remain in `EXPERIMENT_LOG.md` unchanged — this decision governs *future*
   proposals only, not the append-only historical record.
-- **Status:** active
+- **Status:** superseded by D-0015
 
 ## D-0009 — EXP-FRR01 (residual-conditioned full-memory retrieval) closed: STOP, no 3-seed confirmation
 
@@ -312,3 +312,22 @@ confirms a decision.
   standing rule)
 
 
+
+
+## D-0015 — Candidate support becomes configurable; shared Top-100 is allowed
+
+- **Date:** 2026-10-05
+- **Decided by:** user
+- **Decision:** Supersede D-0010's prohibition on Top-100 support for the new
+  V0/V1/V2/V5/Router comparison. Candidate support is now an explicit setting:
+  `candidate_pool_mode in {full, top100}`. In `top100` mode, the pool must be
+  computed exactly once from an arm-independent frozen reference retriever,
+  cached, and reused unchanged by V0/V1/V2/V5 and Router. Individual arms may
+  learn/recompute their own scores but may not redefine the candidate support.
+- **Evidence:** direct user instruction on 2026-10-05: "한 번 Top-100을 계산 →
+  cache → 모든 V0/V1/V2/V5/Router가 같은 pool을 재사용".
+- **Consequence:** Top-100 is no longer treated as a per-arm shortlist/reranker
+  design. It is a controlled candidate-support condition for fair comparison
+  against full-memory support. The cache must carry fingerprints and fail fast
+  on query/channel/bank/mask mismatch.
+- **Status:** active
