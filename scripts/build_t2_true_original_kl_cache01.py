@@ -33,6 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts.shared_candidate_pool01 import SharedCandidatePool, VALID_POOL_MODES
 from scripts.train_factorial_e2e01 import arm_score, encode_raw, individual_utility_memsafe
 from scripts.train_margutil01 import build_experiment, memory_value
 from scripts.train_t_pure_multislot01 import hard_eval_decomposition, round_robin_topk_selection, spearman_batch
@@ -83,7 +84,6 @@ def build_split(exp, args, model, split, device, candidate_pool, chunk_size=4096
             rel_out[:, :, c] = r_c
 
             from models.RelationStage1 import stable_topk_indices
-from scripts.shared_candidate_pool01 import SharedCandidatePool, VALID_POOL_MODES
             oracle_idx = stable_topk_indices(d_raw.masked_fill(~cand_mask, float('inf')), TOP_K, largest=False)
             D_ = ind_mse_i.mean(dim=-1) / TOP_K
             agg_mse = ((r_c - query_future) ** 2).mean(dim=-1)
