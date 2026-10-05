@@ -119,3 +119,42 @@ paths, not per-arm branches); `Agg=D+C` holds; cross-arm init fairness
 holds bit-exactly; batch order is deterministic via the same shared
 `make_loader_generator`/`_get_data` path every arm already used in
 TRACK-T/TRACK-T2/TRACK-U.
+
+
+## 2026-10-05 candidate-support refactor — shared Top-100 or full memory
+
+The candidate universe is now an explicit controlled setting rather than being
+implicitly hard-coded to the native full support:
+
+- `--candidate_pool_mode full` (default): returns the original
+  `exp._candidate_mask(...)` unchanged. This is the backward-compatible path.
+- `--candidate_pool_mode top100 --candidate_pool_cache_dir <dir>`: intersects
+  the native mask with one precomputed query/channel-specific Top-100 pool.
+
+For `top100`, `scripts/build_v_shared_candidate_pool01.py` is run once before
+V0/V1/V2/V5. It uses an **arm-independent frozen reference retriever** with
+past-only cosine similarity, never a trained V-arm and never query futures.
+It writes `train.pt`, `val.pt`, `test.pt` with
+`candidate_indices[query, channel, 100]` plus `metadata.json`.
+
+Every V arm then instantiates the same
+`scripts.shared_candidate_pool01.SharedCandidatePool` and is allowed to
+recompute/learn its own scores only **inside that fixed support**. The shared
+pool therefore changes candidate support, not scorer identity. The same helper
+is the integration point for the planned Router; no V-specific Router script
+exists at this repository HEAD, so no unrelated historical router
+implementation was modified.
+
+Fail-fast checks prevent accidental support drift: candidate-bank size,
+channel list, split query IDs, tensor shape, SHA256 fingerprint, index range,
+and compatibility with the runtime native mask are all validated when the cache
+is loaded/applied. Retrieval-cache artifacts also record the candidate-pool
+metadata/fingerprints.
+
+`scripts/run_v_one_setting01.sh` accepts an optional sixth argument
+`full|top100` (or `CANDIDATE_POOL_MODE`). In `top100` mode it builds the
+shared pool once before V0 and passes the exact same cache directory to
+V0/V1/V2/V5 Stage-1 and retrieval-cache builders. Stage-2 remains unchanged and
+consumes each arm's retrieval output as before.
+
+No experiment was executed as part of this refactor.
