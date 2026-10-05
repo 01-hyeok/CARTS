@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build one future-blind shared Top-100 candidate pool for TRACK-V.
 
-The selector is the frozen reference checkpoint's ordinary past-only cosine
-retriever. It is deliberately arm-independent: V0/V1/V2/V5 (and a later
-router) all consume exactly the same cached [query, channel, 100] support.
+The selector is fixed raw delta-last cosine on the input history (no learned
+encoder, no arm checkpoint, no future). It is deliberately arm-independent:
+V0/V1/V2/V5 (and a later router) all consume exactly the same cached
+[query, channel, 100] support.
 """
 import argparse
 import json
@@ -18,13 +19,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from models.RelationStage1 import stable_topk_indices
 from scripts.shared_candidate_pool01 import TOP100_SIZE, tensor_sha256
-from scripts.train_factorial_e2e01 import arm_score, encode_raw
-from scripts.train_j_shared_encoder_drift01 import state_hash
 from scripts.train_margutil01 import build_experiment
 
 
 @torch.no_grad()
-def build_split(exp, model, split, channels, key_cache, device):
+def build_split(exp, split, channels, device):
     _, loader = exp._get_data(flag=split, shuffle=False)
     starts_all, pools_all = [], []
     for batch_x, _, batch_start_idx in loader:
@@ -39,8 +38,14 @@ def build_split(exp, model, split, channels, key_cache, device):
             batch_x.size(0), len(channels), TOP100_SIZE, dtype=torch.long, device="cpu"
         )
         for ci, c in enumerate(channels):
-            z_q = encode_raw(model, batch_x, c)
-            score = arm_score(z_q, key_cache[c], None)
+            # Fixed coarse retriever: direct cosine in raw delta-last history.
+            # This exactly matches the established non-learned baseline used by
+            # build_r_retrieval_cache01.cosine_scores.
+            q = batch_x[:, :, c] - batch_x[:, -1:, c]
+            k = exp.memory_x[:, :, c] - exp.memory_x[:, -1:, c]
+            q = torch.nn.functional.normalize(q, dim=-1)
+            k = torch.nn.functional.normalize(k, dim=-1)
+            score = q @ k.t()
             idx = stable_topk_indices(
                 score.masked_fill(~base_mask, float("-inf")),
                 TOP100_SIZE,
@@ -97,22 +102,14 @@ def main():
         },
     )
     exp._ensure_memory()
-    model = exp.model.module if hasattr(exp.model, "module") else exp.model
-    model.to(device)
-    model.eval()
-    for p in model.parameters():
-        p.requires_grad_(False)
-
     channels = list(range(int(args.enc_in)))
-    with torch.no_grad():
-        key_cache = {c: encode_raw(model, exp.memory_x, c) for c in channels}
 
     out_dir = Path(cli.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     split_fingerprints = {}
     split_sizes = {}
     for split in ("train", "val", "test"):
-        payload = build_split(exp, model, split, channels, key_cache, device)
+        payload = build_split(exp, split, channels, device)
         torch.save(payload, out_dir / f"{split}.pt")
         fp = tensor_sha256(payload["candidate_indices"])
         split_fingerprints[split] = fp
@@ -125,9 +122,9 @@ def main():
     metadata = {
         "mode": "top100",
         "pool_size": TOP100_SIZE,
-        "source": "frozen_reference_encoder_past_only_cosine",
-        "reference_ckpt": cli.reference_ckpt,
-        "reference_model_state_sha256": state_hash(model),
+        "source": "raw_delta_last_cosine_past_only",
+        "reference_ckpt_for_data_config": cli.reference_ckpt,
+        "score_definition": "cosine(x[:,:,c]-x[:,-1:,c], memory_x[:,:,c]-memory_x[:,-1:,c])",
         "n_candidates": int(exp.memory_x.size(0)),
         "channels": channels,
         "pred_len": int(cli.pred_len),
