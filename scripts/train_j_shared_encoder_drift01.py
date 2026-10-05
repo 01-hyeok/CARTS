@@ -392,15 +392,18 @@ def main():
                 row_disp.append({'step': step, 'epoch': epoch, 'channel': c, 'side': 'query', **qd})
                 row_disp.append({'step': step, 'epoch': epoch, 'channel': c, 'side': 'candidate', **kd})
 
-                # utility-group candidate displacement (oracle top10 / top100-minus-top10 / middle / bottom)
+                # Utility-group displacement uses the SAME effective support as retrieval.
+                # In top100 mode, candidates outside the shared cached pool are never allowed
+                # to leak back into diagnostics via a full-bank argsort.
                 d_raw_c = fixed[c]['d_raw']  # [n_probe, N], lower = better
-                order = d_raw_c.argsort(dim=-1)  # ascending utility distance = best first
-                n_cand = order.size(1)
-                top10 = order[:, :10]
-                top100 = order[:, 10:100]
-                mid_lo, mid_hi = n_cand // 3, 2 * n_cand // 3
+                support_mask = fixed[c]['cand_mask']
+                order = d_raw_c.masked_fill(~support_mask, float('inf')).argsort(dim=-1)
+                n_valid = int(support_mask.sum(dim=-1).min().item())
+                top10 = order[:, :min(10, n_valid)]
+                top100 = order[:, min(10, n_valid):min(100, n_valid)]
+                mid_lo, mid_hi = n_valid // 3, 2 * n_valid // 3
                 middle = order[:, mid_lo:mid_hi]
-                bottom = order[:, mid_hi:]
+                bottom = order[:, mid_hi:n_valid]
                 for gname, gidx in (('oracle_top10', top10), ('oracle_top100_excl_top10', top100),
                                     ('middle', middle), ('bottom', bottom)):
                     g_disp = k_disp[gidx]  # [n_probe, group_size]
