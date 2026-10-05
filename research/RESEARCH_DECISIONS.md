@@ -321,7 +321,7 @@ confirms a decision.
 - **Decision:** Supersede D-0010's prohibition on Top-100 support for the new
   V0/V1/V2/V5/Router comparison. Candidate support is now an explicit setting:
   `candidate_pool_mode in {full, top100}`. In `top100` mode, the pool must be
-  computed exactly once from an arm-independent frozen reference retriever,
+  computed exactly once from an arm-independent fixed raw delta-last cosine retriever,
   cached, and reused unchanged by V0/V1/V2/V5 and Router. Individual arms may
   learn/recompute their own scores but may not redefine the candidate support.
 - **Evidence:** direct user instruction on 2026-10-05: "한 번 Top-100을 계산 →
