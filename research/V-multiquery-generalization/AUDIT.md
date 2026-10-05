@@ -132,7 +132,7 @@ implicitly hard-coded to the native full support:
   the native mask with one precomputed query/channel-specific Top-100 pool.
 
 For `top100`, `scripts/build_v_shared_candidate_pool01.py` is run once before
-V0/V1/V2/V5. It uses an **arm-independent frozen reference retriever** with
+V0/V1/V2/V5. It uses an **arm-independent fixed raw delta-last cosine retriever** with
 past-only cosine similarity, never a trained V-arm and never query futures.
 It writes `train.pt`, `val.pt`, `test.pt` with
 `candidate_indices[query, channel, 100]` plus `metadata.json`.
