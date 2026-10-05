@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # TRACK-V-MULTIQUERY-GENERALIZATION01 -- one (dataset, horizon, seed)
 # setting: trains V0 (TRUE Original KL, num_query_views=0, via
-# train_j_shared_encoder_drift01.py UNMODIFIED) and V1/V2/V5 (via
-# train_t_pure_multislot01.py UNMODIFIED, --num_slots 1/2/5 -- this
+# train_j_shared_encoder_drift01.py) and V1/V2/V5 (via
+# train_t_pure_multislot01.py, --num_slots 1/2/5 -- this
 # script IS TRACK-T's own Pure Multi-Slot trainer; V1/V2 are
 # architecturally IDENTICAL to TRACK-T's S1/S2, V5 is a new
 # --num_slots value the script already supports generically via
@@ -10,6 +10,8 @@
 # gives W_1(S=1)==W_1(S=2)==W_1(S=5) and W_2(S=2)==W_2(S=5) for free
 # -- PART 4's cross-arm initialization-fairness requirement holds by
 # construction, verified by this track's own unit tests).
+# Candidate support is controlled by CANDIDATE_POOL_MODE=full|top100.
+# top100 is built ONCE before any arm and the exact cache is reused by all arms.
 #
 # Usage: run_v_one_setting01.sh <Dataset> <reference_ckpt> <pred_len> <seed> <base_checkpoint> [full|top100]
 set -euo pipefail
