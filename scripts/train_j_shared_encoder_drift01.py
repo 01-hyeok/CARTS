@@ -47,6 +47,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from models.RelationStage1 import stable_topk_indices
 from scripts.rng_control01 import batch_order_sha256, make_loader_generator, set_global_seeds
+from scripts.shared_candidate_pool01 import SharedCandidatePool, VALID_POOL_MODES
 from scripts.train_factorial_e2e01 import arm_score, encode_raw, individual_utility_memsafe
 from scripts.train_horizon_retrieval_expert01 import kl_loss, normalized_teacher_prob
 from scripts.train_margutil01 import build_experiment, memory_value
@@ -100,24 +101,25 @@ def build_probe_set(exp, val_loader, n_probe, device):
     probe_x = all_x[idx].to(device)
     probe_y = all_y[idx].to(device)
     probe_start = all_starts[idx]
-    cand_mask, _ = exp._candidate_mask(probe_start)
-    return {'x': probe_x, 'y': probe_y, 'start_idx': probe_start, 'cand_mask': cand_mask,
+    base_mask, _ = exp._candidate_mask(probe_start)
+    return {'x': probe_x, 'y': probe_y, 'start_idx': probe_start, 'base_mask': base_mask,
            'n': probe_x.size(0)}
 
 
-def precompute_probe_fixed(exp, args, probe, channels, device, chunk_size):
+def precompute_probe_fixed(exp, args, probe, channels, device, chunk_size, candidate_pool, split):
     """Per-channel raw teacher distance / oracle Top-K / candidate-future
     reconstruction for the probe set -- computed ONCE, identical across
     every diagnostic step and every S-variant (spec section 5)."""
     out = {}
     memory_y, memory_x_last = exp.memory_y, exp.memory_x_last
     for c in channels:
+        cand_mask = candidate_pool.apply(probe['base_mask'], probe['start_idx'], c, split)
         memory_c, offset_c = memory_value(args, probe['x'], memory_y, memory_x_last, c)
         query_future = probe['y'][:, :, c]
         d_raw = -individual_utility_memsafe(memory_c, offset_c, query_future, chunk_size)
-        oracle_idx = stable_topk_indices(d_raw.masked_fill(~probe['cand_mask'], float('inf')), 10, largest=False)
+        oracle_idx = stable_topk_indices(d_raw.masked_fill(~cand_mask, float('inf')), 10, largest=False)
         out[c] = dict(memory_c=memory_c, offset_c=offset_c, query_future=query_future,
-                     d_raw=d_raw, oracle_idx=oracle_idx)
+                     d_raw=d_raw, oracle_idx=oracle_idx, cand_mask=cand_mask)
     return out
 
 
@@ -192,7 +194,7 @@ def _flat_grad(params):
 
 
 def gradient_conflict_diagnostic(model, exp, args, cli, batch_x, batch_y, batch_start_idx, channels, device,
-                                 point_name):
+                                 point_name, candidate_pool):
     """Query-branch vs key-branch encoder-gradient decomposition on a FIXED
     batch (spec section 13). Diagnostic only -- never calls optimizer.step(),
     never mutates model weights; grad buffers are zeroed before returning so
@@ -211,8 +213,9 @@ def gradient_conflict_diagnostic(model, exp, args, cli, batch_x, batch_y, batch_
     model.eval()
     params = list(model.parameters())
     rows = []
-    cand_mask, _ = exp._candidate_mask(batch_start_idx)
+    base_mask, _ = exp._candidate_mask(batch_start_idx)
     for c in channels:
+        cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, 'train')
         model.zero_grad(set_to_none=True)
         z_q = encode_raw(model, batch_x, c)
         z_k = encode_raw(model, exp.memory_x, c)
@@ -282,6 +285,9 @@ def main():
     ap.add_argument('--checkpoints', default='checkpoints/track_j_shared_encoder_drift01')
     ap.add_argument('--limit_batches', type=int, default=0, help='SMOKE ONLY')
     ap.add_argument('--smoke_test', action='store_true')
+    ap.add_argument('--candidate_pool_mode', choices=VALID_POOL_MODES, default='full')
+    ap.add_argument('--candidate_pool_cache_dir', default=None,
+                    help='shared pool cache built once by build_v_shared_candidate_pool01.py; required for top100')
     cli = ap.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -310,8 +316,11 @@ def main():
     _, val_loader = exp._get_data(flag='val', shuffle=False)
     _, test_loader = exp._get_data(flag='test', shuffle=False)
 
+    candidate_pool = SharedCandidatePool(cli.candidate_pool_mode, cli.candidate_pool_cache_dir,
+                                         int(exp.memory_x.size(0)), channels, cli.top_k)
+
     probe = build_probe_set(exp, val_loader, cli.n_probe, device)
-    fixed = precompute_probe_fixed(exp, args, probe, channels, device, cli.chunk_size)
+    fixed = precompute_probe_fixed(exp, args, probe, channels, device, cli.chunk_size, candidate_pool, 'val')
     (out_dir / 'probe_query_ids.json').write_text(json.dumps(
         {'start_idx': probe['start_idx'].tolist(), 'n_probe': probe['n']}, indent=2))
 
@@ -322,13 +331,15 @@ def main():
               'learning_rate': cli.learning_rate, 'train_epochs': cli.train_epochs, 'patience': cli.patience,
               'init_seed': cli.init_seed, 'loader_seed': cli.loader_seed, 'n_probe': probe['n'],
               'n_candidates': int(exp.memory_x.size(0)), 'geometry_subset_size': int(geom_subset_idx.numel()),
+              **candidate_pool.describe(),
               'checkpoint_criterion': 'min val model_top10_individual_mse', 'instrument': cli.instrument}
     (out_dir / 'config.json').write_text(json.dumps(config, indent=2))
     print(f'[track_j] cell={cli.cell} encoder=mlp N={config["n_candidates"]} n_probe={probe["n"]} '
          f'init_hash={init_hash[:16]} instrument={cli.instrument}')
 
     if cli.smoke_test:
-        _smoke(exp, args, model, E0, probe, fixed, channels, optimizer, cli, train_loader, val_loader, device)
+        _smoke(exp, args, model, E0, probe, fixed, channels, optimizer, cli, train_loader, val_loader, device,
+               candidate_pool)
         return
 
     step_rows = []
@@ -362,7 +373,7 @@ def main():
                 for v_name, s_mat in s_variants.items():
                     if step > 0 and v_name == 'S00':
                         continue  # S00 never changes past step0 -- cached, not recomputed
-                    m, idx = variant_metrics(s_mat, probe['cand_mask'], fixed[c], cli.top_k)
+                    m, idx = variant_metrics(s_mat, fixed[c]['cand_mask'], fixed[c], cli.top_k)
                     row_fourway.append({'step': step, 'epoch': epoch, 'channel': c, 'variant': v_name, **m})
                     key = (v_name, c)
                     if step == 0:
@@ -438,10 +449,11 @@ def main():
             batch_x = batch_x.float().to(device)
             batch_y = batch_y.float().to(device)
             last_batch_epoch1 = (batch_x, batch_y, batch_start_idx)
-            cand_mask, _ = exp._candidate_mask(batch_start_idx)
+            base_mask, _ = exp._candidate_mask(batch_start_idx)
             optimizer.zero_grad()
             batch_loss = 0.0
             for c in channels:
+                cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, 'train')
                 z_q = encode_raw(model, batch_x, c)
                 E = encode_raw(model, exp.memory_x, c)
                 memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
@@ -468,7 +480,7 @@ def main():
                 if global_step == max(1, round(0.5 * n_epoch1_steps)):
                     pct = '50pct_epoch1'
                 grad_diag_rows += gradient_conflict_diagnostic(
-                    model, exp, args, cli, batch_x, batch_y, batch_start_idx, channels, device, pct)
+                    model, exp, args, cli, batch_x, batch_y, batch_start_idx, channels, device, pct, candidate_pool)
                 print(f'[track_j] gradient-conflict diag at {pct} (global_step={global_step})')
 
             do_diag = (cli.instrument == 'on') and (
@@ -485,7 +497,7 @@ def main():
 
         if cli.instrument == 'on' and epoch == 1:
             grad_diag_rows += gradient_conflict_diagnostic(
-                model, exp, args, cli, *last_batch_epoch1, channels, device, 'epoch1_end')
+                model, exp, args, cli, *last_batch_epoch1, channels, device, 'epoch1_end', candidate_pool)
 
         # end-of-epoch: mandatory diagnostic + full val eval (checkpoint selection, UNCHANGED metric)
         f, g, ch, d, u = run_diagnostic(step=global_step, epoch=epoch)
@@ -501,10 +513,11 @@ def main():
             for batch_x, batch_y, batch_start_idx in val_loader:
                 batch_x = batch_x.float().to(device)
                 batch_y = batch_y.float().to(device)
-                cand_mask, _ = exp._candidate_mask(batch_start_idx)
+                base_mask, _ = exp._candidate_mask(batch_start_idx)
                 bsz = batch_x.size(0)
                 per_ch = {}
                 for c in channels:
+                    cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, 'val')
                     z_q = encode_raw(model, batch_x, c)
                     E = encode_raw(model, exp.memory_x, c)
                     memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
@@ -538,14 +551,14 @@ def main():
     model.train()
     if cli.instrument == 'on':
         grad_diag_rows += gradient_conflict_diagnostic(
-            model, exp, args, cli, first_batch[0], first_batch[1], first_batch[2], channels, device, 'best_checkpoint')
+            model, exp, args, cli, first_batch[0], first_batch[1], first_batch[2], channels, device, 'best_checkpoint', candidate_pool)
         max_rel_diff = max((r['equivalence_rel_diff'] for r in grad_diag_rows), default=0.0)
         print(f'[track_j] gradient-conflict equivalence check: max rel diff across all points = {max_rel_diff:.2e} '
              f'({"PASS" if max_rel_diff < 1e-3 else "[ISSUE] exceeds tolerance"})')
     final_f, final_g, _, _, _ = run_diagnostic(step=-1, epoch=-1)  # final test-time four-way, best checkpoint
     # test-split four-way (single pass, best checkpoint) -- reuse same probe machinery but on test split
     test_probe = build_probe_set(exp, test_loader, cli.n_probe, device)
-    test_fixed = precompute_probe_fixed(exp, args, test_probe, channels, device, cli.chunk_size)
+    test_fixed = precompute_probe_fixed(exp, args, test_probe, channels, device, cli.chunk_size, candidate_pool, 'test')
     test_fourway = []
     model.eval()
     with torch.no_grad():
@@ -557,7 +570,7 @@ def main():
             s_variants = {'S00': arm_score(zq_0, zk_0, None), 'St0': arm_score(zq_t, zk_0, None),
                          'S0t': arm_score(zq_0, zk_t, None), 'Stt': arm_score(zq_t, zk_t, None)}
             for v_name, s_mat in s_variants.items():
-                m, _ = variant_metrics(s_mat, test_probe['cand_mask'], test_fixed[c], cli.top_k)
+                m, _ = variant_metrics(s_mat, test_fixed[c]['cand_mask'], test_fixed[c], cli.top_k)
                 test_fourway.append({'channel': c, 'variant': v_name, **m})
 
     import csv
@@ -591,16 +604,18 @@ def main():
          f'wall_seconds={time.time()-t0:.1f}')
 
 
-def _smoke(exp, args, model, E0, probe, fixed, channels, optimizer, cli, train_loader, val_loader, device):
+def _smoke(exp, args, model, E0, probe, fixed, channels, optimizer, cli, train_loader, val_loader, device,
+           candidate_pool):
     model.train()
     for bi, (batch_x, batch_y, batch_start_idx) in enumerate(train_loader):
         if bi >= 2:
             break
         batch_x = batch_x.float().to(device)
         batch_y = batch_y.float().to(device)
-        cand_mask, _ = exp._candidate_mask(batch_start_idx)
+        base_mask, _ = exp._candidate_mask(batch_start_idx)
         optimizer.zero_grad()
         for c in channels:
+            cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, 'train')
             z_q = encode_raw(model, batch_x, c)
             E = encode_raw(model, exp.memory_x, c)
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
