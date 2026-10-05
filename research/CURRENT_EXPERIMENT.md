@@ -425,8 +425,8 @@ without the reviewer's/user's explicit approval first.
 **Candidate-support update (2026-10-05):** D-0010 is superseded by
 D-0015 for the new V0/V1/V2/V5/Router comparison. Candidate support is now an
 explicit controlled setting, `candidate_pool_mode in {full, top100}`. In
-`top100` mode the pool is computed once from an arm-independent frozen
-reference retriever, cached, and reused unchanged by every compared arm/router;
+`top100` mode the pool is computed once from an arm-independent fixed raw delta-last cosine
+retriever, cached, and reused unchanged by every compared arm/router;
 individual arms may rescore candidates but may not redefine support. Historical
 full-memory experiments remain unchanged and must still be interpreted under
 their original protocol.
