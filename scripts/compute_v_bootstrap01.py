@@ -94,6 +94,7 @@ def main():
     ap.add_argument('--dataset', required=True)
     ap.add_argument('--horizon', type=int, required=True)
     ap.add_argument('--base_checkpoint', required=True)
+    ap.add_argument('--candidate_pool_mode', choices=('full', 'top100'), default='full')
     cli = ap.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -103,6 +104,8 @@ def main():
     channels = int(args.enc_in)
 
     root = REPO_ROOT / f'results/TRACK-V-MULTIQUERY-GENERALIZATION01/{cli.dataset}/H{cli.horizon}/seed{cli.seed}'
+    if cli.candidate_pool_mode == 'top100':
+        root = root / 'pool_top100'
 
     base = BaseForecastHead(seq_len=cli.seq_len, pred_len=cli.pred_len, channels=channels,
                             mode='per_channel_linear').to(device)
