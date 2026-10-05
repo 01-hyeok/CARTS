@@ -35,8 +35,16 @@ if [ ! -f "$BASE_CKPT" ]; then
 fi
 
 CELL="${DATASET}_${PRED_LEN}"
-OUT_ROOT="results/TRACK-V-MULTIQUERY-GENERALIZATION01/${DATASET}/H${PRED_LEN}/seed${SEED}"
-CK_ROOT="checkpoints/track_v_multiquery_generalization01/${DATASET}/H${PRED_LEN}/seed${SEED}"
+OUT_ROOT_BASE="results/TRACK-V-MULTIQUERY-GENERALIZATION01/${DATASET}/H${PRED_LEN}/seed${SEED}"
+CK_ROOT_BASE="checkpoints/track_v_multiquery_generalization01/${DATASET}/H${PRED_LEN}/seed${SEED}"
+if [[ "$CANDIDATE_POOL_MODE" == "top100" ]]; then
+  OUT_ROOT="${OUT_ROOT_BASE}/pool_top100"
+  CK_ROOT="${CK_ROOT_BASE}/pool_top100"
+else
+  # Backward compatibility: full-support runs keep the historical paths.
+  OUT_ROOT="$OUT_ROOT_BASE"
+  CK_ROOT="$CK_ROOT_BASE"
+fi
 POOL_CACHE="${OUT_ROOT}/shared_candidate_pool/top100"
 POOL_ARGS=(--candidate_pool_mode "$CANDIDATE_POOL_MODE")
 if [[ "$CANDIDATE_POOL_MODE" == "top100" ]]; then
