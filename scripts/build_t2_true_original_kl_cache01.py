@@ -51,7 +51,7 @@ def compute_scores_true_original_kl(model, batch_x, memory_x, c):
 
 
 @torch.no_grad()
-def build_split(exp, args, model, split, device, chunk_size=4096):
+def build_split(exp, args, model, split, device, candidate_pool, chunk_size=4096):
     channels = list(range(int(args.enc_in)))
     _, loader = exp._get_data(flag=split, shuffle=False)
     all_start, all_R, all_D, all_C, all_Agg, all_Recall, all_NDCG, all_ret, all_spearman = \
@@ -62,12 +62,13 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
     for batch_x, batch_y, batch_start_idx in loader:
         batch_x = batch_x.float().to(device)
         batch_y = batch_y.float().to(device)
-        cand_mask, counts = exp._candidate_mask(batch_start_idx)
+        base_mask, counts = exp._candidate_mask(batch_start_idx)
         bsz = batch_x.size(0)
         rel_out = torch.zeros(bsz, args.pred_len, len(channels), device=device)
         D_pc = torch.zeros(bsz, len(channels), device=device)
         C_pc = torch.zeros(bsz, len(channels), device=device)
         for c in channels:
+            cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, split)
             memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
             query_future = batch_y[:, :, c]
             u = individual_utility_memsafe(memory_c, offset_c, query_future, chunk_size)
@@ -82,6 +83,7 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
             rel_out[:, :, c] = r_c
 
             from models.RelationStage1 import stable_topk_indices
+from scripts.shared_candidate_pool01 import SharedCandidatePool, VALID_POOL_MODES
             oracle_idx = stable_topk_indices(d_raw.masked_fill(~cand_mask, float('inf')), TOP_K, largest=False)
             D_ = ind_mse_i.mean(dim=-1) / TOP_K
             agg_mse = ((r_c - query_future) ** 2).mean(dim=-1)
@@ -105,7 +107,7 @@ def build_split(exp, args, model, split, device, chunk_size=4096):
 
     cache = {'query_start_idx': torch.cat(all_start), 'relation_outputs': torch.cat(all_R),
             'D_per_query': torch.cat(all_D_pq), 'C_per_query': torch.cat(all_C_pq),
-            'channels': channels, 'pred_len': args.pred_len, 'split': split}
+            'channels': channels, 'pred_len': args.pred_len, 'split': split, **candidate_pool.describe()}
     metrics = None
     if all_D:
         D_cat, C_cat, Agg_cat = torch.cat(all_D), torch.cat(all_C), torch.cat(all_Agg)
@@ -126,6 +128,8 @@ def main():
     ap.add_argument('--seed', type=int, required=True)
     ap.add_argument('--retriever_checkpoint', required=True)
     ap.add_argument('--out_dir', required=True)
+    ap.add_argument('--candidate_pool_mode', choices=VALID_POOL_MODES, default='full')
+    ap.add_argument('--candidate_pool_cache_dir', default=None)
     cli = ap.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -147,11 +151,14 @@ def main():
     for p in model.parameters():
         p.requires_grad_(False)
 
+    candidate_pool = SharedCandidatePool(cli.candidate_pool_mode, cli.candidate_pool_cache_dir,
+                                         int(exp.memory_x.size(0)), list(range(int(args.enc_in))), TOP_K)
+
     out_dir = Path(cli.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     test_metrics = None
     for split in ('train', 'val', 'test'):
-        cache, metrics = build_split(exp, args, model, split, device)
+        cache, metrics = build_split(exp, args, model, split, device, candidate_pool)
         torch.save(cache, out_dir / f'{split}.pt')
         print(f'[build_t2_cache] T0/{split}: n={cache["query_start_idx"].numel()}'
              + (f' retmse10={metrics["retmse10"]:.6f} agg={metrics["agg_mse10"]:.6f}' if metrics else ''))
