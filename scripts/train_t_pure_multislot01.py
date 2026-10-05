@@ -64,6 +64,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from models.RelationStage1 import stable_topk_indices
 from scripts.rng_control01 import batch_order_sha256, make_loader_generator
+from scripts.shared_candidate_pool01 import SharedCandidatePool, VALID_POOL_MODES
 from scripts.train_factorial_e2e01 import encode_raw, individual_utility_memsafe
 from scripts.train_horizon_retrieval_expert01 import normalized_teacher_prob
 from scripts.train_j_shared_encoder_drift01 import build_model, state_hash
@@ -233,6 +234,9 @@ def main():
                     help='non-ETTh1_720 settings legitimately produce a different init hash')
     ap.add_argument('--expected_init_hash', default=None,
                     help='if set (and --skip_init_hash_check not given), assert state_hash(model) equals this')
+    ap.add_argument('--candidate_pool_mode', choices=VALID_POOL_MODES, default='full')
+    ap.add_argument('--candidate_pool_cache_dir', default=None,
+                    help='shared pool cache built once by build_v_shared_candidate_pool01.py; required for top100')
     cli = ap.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -262,18 +266,22 @@ def main():
     _, val_loader = exp._get_data(flag='val', shuffle=False)
     _, test_loader = exp._get_data(flag='test', shuffle=False)
 
+    candidate_pool = SharedCandidatePool(cli.candidate_pool_mode, cli.candidate_pool_cache_dir,
+                                         int(exp.memory_x.size(0)), channels, cli.top_k)
+
     config = {'cell': cli.cell, 'arm': arm, 'num_slots': cli.num_slots, 'slot_std': cli.slot_std,
               'tau_t': cli.tau_t, 'tau_s': cli.tau_s, 'top_k': cli.top_k, 'batch_size': cli.batch_size,
               'learning_rate': cli.learning_rate, 'train_epochs': cli.train_epochs, 'patience': cli.patience,
               'init_seed': cli.init_seed, 'loader_seed': cli.loader_seed,
-              'n_candidates': int(exp.memory_x.size(0)),
+              'n_candidates': int(exp.memory_x.size(0)), **candidate_pool.describe(),
               'checkpoint_criterion': 'min val retmse10 (round-robin Top-10 individual MSE) -- '
                                       'IDENTICAL to Original-KL/J0\'s own criterion, PART 10'}
     (out_dir / 'config.json').write_text(json.dumps(config, indent=2))
     print(f'[track_t] arm={arm} cell={cli.cell} N={config["n_candidates"]} init_hash={init_hash[:16]}')
 
-    def eval_channel(batch_x, batch_y, batch_start_idx, c, want_diag=False):
-        cand_mask, _ = exp._candidate_mask(batch_start_idx)
+    def eval_channel(batch_x, batch_y, batch_start_idx, c, split, want_diag=False):
+        base_mask, _ = exp._candidate_mask(batch_start_idx)
+        cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, split)
         scores = compute_scores_full_grad(model, slot_heads, batch_x, exp.memory_x, c)
         memory_c, offset_c = memory_value(args, batch_x, exp.memory_y, exp.memory_x_last, c)
         query_future = batch_y[:, :, c]
@@ -298,9 +306,10 @@ def main():
                 break
             batch_x = batch_x.float().to(device)
             batch_y = batch_y.float().to(device)
-            cand_mask, _ = exp._candidate_mask(batch_start_idx)
+            base_mask, _ = exp._candidate_mask(batch_start_idx)
             optimizer.zero_grad()
             for c in channels:
+                cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, 'train')
                 scores = compute_scores_full_grad(model, slot_heads, batch_x, exp.memory_x, c)
                 assert scores.shape[1] == cli.num_slots
                 s_masked = scores.masked_fill(~cand_mask.unsqueeze(1), float('-inf'))
@@ -334,10 +343,11 @@ def main():
             batch_x = batch_x.float().to(device)
             batch_y = batch_y.float().to(device)
             starts.append(batch_start_idx.clone() if torch.is_tensor(batch_start_idx) else torch.as_tensor(batch_start_idx))
-            cand_mask, _ = exp._candidate_mask(batch_start_idx)
+            base_mask, _ = exp._candidate_mask(batch_start_idx)
             optimizer.zero_grad()
             batch_loss = 0.0
             for c in channels:
+                cand_mask = candidate_pool.apply(base_mask, batch_start_idx, c, 'train')
                 scores = compute_scores_full_grad(model, slot_heads, batch_x, exp.memory_x, c)
                 s_masked = scores.masked_fill(~cand_mask.unsqueeze(1), float('-inf'))
                 p_m = torch.softmax(s_masked / cli.tau_s, dim=-1)
@@ -365,7 +375,7 @@ def main():
                 bsz = batch_x.size(0)
                 per_ch = {}
                 for c in channels:
-                    res, _ = eval_channel(batch_x, batch_y, batch_start_idx, c, want_diag=False)
+                    res, _ = eval_channel(batch_x, batch_y, batch_start_idx, c, 'val', want_diag=False)
                     per_ch.setdefault('retmse10', []).append(res['model_ind_mse'].cpu())
                     per_ch.setdefault('agg_mse10', []).append(res['agg_mse'].cpu())
                     per_ch.setdefault('recall10', []).append(res['recall10'].cpu())
@@ -404,7 +414,7 @@ def main():
             bsz = batch_x.size(0)
             per_ch = {}
             for c in channels:
-                res, diag = eval_channel(batch_x, batch_y, batch_start_idx, c, want_diag=True)
+                res, diag = eval_channel(batch_x, batch_y, batch_start_idx, c, 'test', want_diag=True)
                 per_ch.setdefault('retmse10', []).append(res['model_ind_mse'].cpu())
                 per_ch.setdefault('agg_mse10', []).append(res['agg_mse'].cpu())
                 per_ch.setdefault('recall10', []).append(res['recall10'].cpu())
