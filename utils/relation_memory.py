@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 class Stage1WindowDataset(Dataset):
     """Return batch_x, future-only batch_y, and a start index for Stage-1."""
 
-    def __init__(self, base_dataset):
+    def __init__(self, base_dataset, include_time_mark=False):
         self.base_dataset = base_dataset
         self.seq_len = base_dataset.seq_len
         self.pred_len = base_dataset.pred_len
@@ -18,16 +18,26 @@ class Stage1WindowDataset(Dataset):
         self.data = self.data_x
         self.channel_names = getattr(base_dataset, 'channel_names', None)
         self.starts = np.arange(len(base_dataset), dtype=np.int64) + int(getattr(base_dataset, 'border1', 0))
+        # TRACK-W-TIMESTAMP-FUSION01: additive, default-off. When True,
+        # __getitem__ also returns the query's own past timestamp window
+        # (seq_x_mark) -- never seq_y_mark (future calendar), which must
+        # never reach any encoder. Default (False) is byte-identical to
+        # every other track's existing behavior.
+        self.include_time_mark = include_time_mark
+        if include_time_mark:
+            self.data_stamp = np.asarray(base_dataset.data_stamp, dtype=np.float32)
 
     def __len__(self):
         return len(self.base_dataset)
 
     def __getitem__(self, index):
         item = self.base_dataset[index]
-        _, seq_x, seq_y, _, _ = item
+        _, seq_x, seq_y, seq_x_mark, _ = item
         future = seq_y[-self.pred_len:]
         if self.teacher_mse_space == 'raw' and getattr(self.base_dataset, 'scale', False):
             future = self.base_dataset.inverse_transform(future)
+        if self.include_time_mark:
+            return seq_x, future, np.int64(self.starts[index]), seq_x_mark
         return seq_x, future, np.int64(self.starts[index])
 
     def get_all_valid_starts(self):

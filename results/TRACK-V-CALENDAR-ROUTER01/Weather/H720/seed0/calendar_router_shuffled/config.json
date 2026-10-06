@@ -1,0 +1,11 @@
+{
+  "exp": "TRACK-V-CALENDAR-ROUTER01",
+  "cell": "Weather_720",
+  "tau_h": 1.0,
+  "shuffle_calendar": true,
+  "shuffle_seed": 0,
+  "router_param_count": 735,
+  "n_channels": 21,
+  "n_heads": 5,
+  "checkpoint_policy": "DUAL -- primary=min_val_hard_retmse10 (Stage-2 uses ONLY this), secondary=min_val_router_kl (diagnostic only)"
+}

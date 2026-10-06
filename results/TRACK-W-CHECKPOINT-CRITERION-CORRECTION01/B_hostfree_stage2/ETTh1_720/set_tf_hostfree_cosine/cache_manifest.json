@@ -1,0 +1,11 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "host_free": true,
+  "stage1_checkpoint_path": "checkpoints/track_w_checkpoint_criterion_correction01/B_hostfree_stage1/ETTh1_720/set_tf_hostfree_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "306027b784e8da13ed95b2478a81254aeccb0ee3f2584d12b22331fc42b41f8a",
+  "config_hash": "427d435c363b188419e28bdb8b0aafc7e06dd726423ee035435d074109fdb79d",
+  "cell": "ETTh1_720",
+  "arm_name": "set_tf_hostfree_cosine"
+}

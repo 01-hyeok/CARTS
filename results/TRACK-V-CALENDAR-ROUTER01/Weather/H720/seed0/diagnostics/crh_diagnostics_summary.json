@@ -1,0 +1,58 @@
+{
+  "A_v5_roundrobin_retmse10": 22.373228116442885,
+  "B_calendar_router_retmse10": 21.918010997799964,
+  "C_oracle_head_retmse10": 21.351491928100586,
+  "D_fixed_best_head_global_retmse10": 21.711715698242188,
+  "D_fixed_best_head_per_channel_retmse10": 21.773448944091797,
+  "E_shuffled_calendar_retmse10": 21.711716800290507,
+  "oracle_gain_vs_roundrobin": 1.0217361883422988,
+  "oracle_gain_vs_fixed_global": 0.36022377014160156,
+  "router_gain_vs_roundrobin": 0.4552171186429206,
+  "router_gain_vs_fixed_global": -0.2062952995577767,
+  "router_gain_vs_shuffled": -0.20629419750945743,
+  "oracle_head_fraction": {
+    "H1": 0.48542332649230957,
+    "H2": 0.22144311666488647,
+    "H3": 0.10544078797101974,
+    "H4": 0.11165260523557663,
+    "H5": 0.07604014873504639
+  },
+  "router_selected_head_fraction": {
+    "H1": 0.8368974924087524,
+    "H2": 0.09218795597553253,
+    "H3": 0.016385413706302643,
+    "H4": 0.0172825139015913,
+    "H5": 0.03724662959575653
+  },
+  "global_best_fixed_head": "H1",
+  "per_channel_best_fixed_head": [
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H2",
+    "H1",
+    "H2",
+    "H2",
+    "H1",
+    "H2",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1",
+    "H1"
+  ],
+  "router_accuracy_vs_oracle": 0.44468528032302856,
+  "router_regret": {
+    "mean": 0.5665171146392822,
+    "median": 0.0008479197276756167,
+    "p90": 0.6996991038322449,
+    "near_zero_fraction": 0.4734409749507904
+  }
+}

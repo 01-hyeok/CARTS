@@ -12,7 +12,7 @@ data_dict = {
 }
 
 
-def data_provider(args, flag, shuffle=None, generator=None):
+def data_provider(args, flag, shuffle=None, generator=None, include_time_mark=False):
     Data = data_dict[args.data]
     timeenc = 0 if args.embed != 'timeF' else 1
 
@@ -39,7 +39,7 @@ def data_provider(args, flag, shuffle=None, generator=None):
         seasonal_patterns=None # We do not use this option.
     )
     if getattr(args, 'task_name', None) in ('stage1_relation', 'stage2_relation'):
-        data_set = Stage1WindowDataset(data_set)
+        data_set = Stage1WindowDataset(data_set, include_time_mark=include_time_mark)
 
     print(flag, len(data_set))
     data_loader = DataLoader(

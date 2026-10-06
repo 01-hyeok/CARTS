@@ -1,0 +1,7 @@
+[stage2_retrain01] individual_tf_hostfree_cosine epoch 1 train_loss=0.55641 val_final_mse=1.577496 gate_mean=0.417
+[stage2_retrain01] individual_tf_hostfree_cosine epoch 2 train_loss=0.50612 val_final_mse=1.600122 gate_mean=0.337
+[stage2_retrain01] individual_tf_hostfree_cosine epoch 3 train_loss=0.50426 val_final_mse=1.671692 gate_mean=0.360
+[stage2_retrain01] individual_tf_hostfree_cosine epoch 4 train_loss=0.49832 val_final_mse=1.591570 gate_mean=0.373
+[stage2_retrain01] individual_tf_hostfree_cosine epoch 5 train_loss=0.49651 val_final_mse=1.607472 gate_mean=0.383
+[stage2_retrain01] individual_tf_hostfree_cosine epoch 6 train_loss=0.49074 val_final_mse=1.641458 gate_mean=0.402
+[stage2_retrain01] early stop at epoch 6 (best=1)

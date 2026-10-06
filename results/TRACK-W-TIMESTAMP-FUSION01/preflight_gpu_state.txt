@@ -1,0 +1,45 @@
+=== preflight GPU state, Fri Oct  2 08:55:09 UTC 2026 ===
+--- nvidia-smi ---
+Fri Oct  2 08:55:09 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.104.05             Driver Version: 535.104.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off | 00000000:01:00.0 Off |                    0 |
+| N/A   54C    P0             225W / 230W |  10526MiB / 81920MiB |     92%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+|   1  NVIDIA A100-SXM4-80GB          Off | 00000000:47:00.0 Off |                    0 |
+| N/A   54C    P0             230W / 230W |  25988MiB / 81920MiB |     94%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+|   2  NVIDIA A100-SXM4-80GB          Off | 00000000:81:00.0 Off |                    0 |
+| N/A   47C    P0              70W / 230W |      4MiB / 81920MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+|   3  NVIDIA DGX Display             Off | 00000000:C1:00.0 Off |                  N/A |
+| 33%   39C    P8              N/A /  50W |      0MiB /  4096MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+|   4  NVIDIA A100-SXM4-80GB          Off | 00000000:C2:00.0 Off |                    0 |
+| N/A   47C    P0              93W / 230W |  57854MiB / 81920MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
++---------------------------------------------------------------------------------------+
+--- ps (GPU1-relevant processes) ---
+root     2993057  0.0  0.0 692444 34764 ?        Sl   Sep26   0:00 /root/.local/bin/uv tool uvx --python 3.13 --with onnxruntime>=1.20 --with protobuf<7 --from chroma-mcp==0.2.6 chroma-mcp --client-type persistent --data-dir /root/.claude-mem/chroma
+root     2993068 13.7  0.2 25101288 1350356 ?    Sl   Sep26 1104:24 /root/.cache/uv/archive-v0/dYNjkw9lFzFQH66u/bin/python /root/.cache/uv/archive-v0/dYNjkw9lFzFQH66u/bin/chroma-mcp --client-type persistent --data-dir /root/.claude-mem/chroma
+root     3838937  0.0  0.0   3896  2864 ?        S    Oct01   0:00 bash /tmp/claude-0/-data-pjh-workspace-CARTS/75d8ccfc-81b9-4c06-bf8e-a96e67afbc48/scratchpad/run_w_caseB_all.sh
+root     3861414  100  0.9 48642672 5116300 ?    Rl   Oct01 1034:43 python -u scripts/train_w_hostfree_corrected01.py --cell Weather_720 --arm_name set_tf_hostfree_cosine --pred_len 720 --reference_ckpt checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_RelationStage1_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl720_pl720_0/checkpoint.pth
+--- existing TRACK-W CASE-B job being preserved ---
+PID 3838937 (bash runner) / 3861414 (active python child: Weather_720/set_tf_hostfree_cosine, train_w_hostfree_corrected01.py)
+This process and its files/checkpoints/results/logs will NOT be touched by TRACK-W-TIMESTAMP-FUSION01.

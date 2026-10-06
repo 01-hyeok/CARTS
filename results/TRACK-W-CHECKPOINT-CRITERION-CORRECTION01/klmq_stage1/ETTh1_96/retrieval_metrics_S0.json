@@ -1,0 +1,14 @@
+{
+  "exp": "TRACK-W-CHECKPOINT-CRITERION-CORRECTION01",
+  "correction": "B (Original KL / Multi-Query)",
+  "case": "A (re-selection, no retraining -- full epoch trajectory already existed)",
+  "cell": "ETTh1_96",
+  "arm": "S0",
+  "num_slots": 0,
+  "old_best_epoch": 9,
+  "old_best_val_metric": 0.9798258996676347,
+  "new_best_epoch": 5,
+  "new_best_val_kl": 1.4270033259580122,
+  "test_kl": 1.0722719545210286,
+  "recomputed_match": true
+}

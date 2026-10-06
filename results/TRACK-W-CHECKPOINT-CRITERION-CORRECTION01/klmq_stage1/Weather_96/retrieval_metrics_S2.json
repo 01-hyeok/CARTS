@@ -1,0 +1,14 @@
+{
+  "exp": "TRACK-W-CHECKPOINT-CRITERION-CORRECTION01",
+  "correction": "B (Original KL / Multi-Query)",
+  "case": "A (re-selection, no retraining -- full epoch trajectory already existed)",
+  "cell": "Weather_96",
+  "arm": "S2",
+  "num_slots": 2,
+  "old_best_epoch": 10,
+  "old_best_val_metric": 0.6744212814833012,
+  "new_best_epoch": 10,
+  "new_best_val_kl": 0.7647577941204542,
+  "test_kl": 0.6847302678578288,
+  "recomputed_match": true
+}

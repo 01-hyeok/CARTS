@@ -1,0 +1,11 @@
+{
+  "value_space": "delta",
+  "offset_included": false,
+  "cache_schema_version": "corrected_delta_v1",
+  "host_free": true,
+  "stage1_checkpoint_path": "checkpoints/track_w_checkpoint_criterion_correction01/B_hostfree_stage1/Weather_720/individual_tf_hostfree_cosine/checkpoint.pth",
+  "stage1_checkpoint_hash": "d79087b6f3cb15877c8590f9020f30592d5e0da2af12fdf5bd3f5c678e6c1521",
+  "config_hash": "a4063d2db1fda7b2a88da6b5ddf1ab98bc166b7d806e2496c4cd089d970972aa",
+  "cell": "Weather_720",
+  "arm_name": "individual_tf_hostfree_cosine"
+}

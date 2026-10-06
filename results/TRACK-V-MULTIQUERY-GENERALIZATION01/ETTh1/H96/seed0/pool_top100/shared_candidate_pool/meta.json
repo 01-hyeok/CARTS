@@ -1,0 +1,14 @@
+{
+  "dataset": "ETTh1",
+  "seq_len": 96,
+  "pred_len": 96,
+  "candidate_mask": "raft",
+  "candidate_pool_mode": "coarse_topk",
+  "candidate_pool_size": 100,
+  "candidate_pool_metric": "delta_last_cosine",
+  "split": "test",
+  "channel_count": 7,
+  "n_memory_candidates": 8449,
+  "memory_starts_fingerprint": "4bb1c8414d2bdab6d83b8d67a224463118e74d4ce8c6c0004a87486801f797f9",
+  "query_start_idx_fingerprint": "8032235c801312c31d61f60867bed3c256b555e7a6d0d915f47243f778942214"
+}

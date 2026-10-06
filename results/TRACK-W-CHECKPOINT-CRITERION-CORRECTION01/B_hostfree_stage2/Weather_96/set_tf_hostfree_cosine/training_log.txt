@@ -1,0 +1,10 @@
+[stage2_retrain01] set_tf_hostfree_cosine epoch 1 train_loss=0.58140 val_final_mse=0.494431 gate_mean=0.261
+[stage2_retrain01] set_tf_hostfree_cosine epoch 2 train_loss=0.53120 val_final_mse=0.475470 gate_mean=0.316
+[stage2_retrain01] set_tf_hostfree_cosine epoch 3 train_loss=0.51875 val_final_mse=0.473486 gate_mean=0.268
+[stage2_retrain01] set_tf_hostfree_cosine epoch 4 train_loss=0.51188 val_final_mse=0.605112 gate_mean=0.254
+[stage2_retrain01] set_tf_hostfree_cosine epoch 5 train_loss=0.50504 val_final_mse=0.481400 gate_mean=0.195
+[stage2_retrain01] set_tf_hostfree_cosine epoch 6 train_loss=0.50662 val_final_mse=0.471919 gate_mean=0.287
+[stage2_retrain01] set_tf_hostfree_cosine epoch 7 train_loss=0.53231 val_final_mse=0.482516 gate_mean=0.173
+[stage2_retrain01] set_tf_hostfree_cosine epoch 8 train_loss=0.50983 val_final_mse=0.475438 gate_mean=0.262
+[stage2_retrain01] set_tf_hostfree_cosine epoch 9 train_loss=0.50523 val_final_mse=0.472142 gate_mean=0.265
+[stage2_retrain01] set_tf_hostfree_cosine epoch 10 train_loss=0.51117 val_final_mse=0.556307 gate_mean=0.399

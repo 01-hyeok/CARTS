@@ -1,0 +1,21 @@
+{
+  "exp": "TRACK-V-SHARED-TOP100-01",
+  "cell": "Weather_720",
+  "arm": "V0",
+  "num_query_views": 0,
+  "candidate_pool_mode": "coarse_topk",
+  "candidate_pool_size": 100,
+  "candidate_pool_metric": "delta_last_cosine",
+  "full_candidate_count": 35448,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "b37fa4031f538e4b5f5c522ae22e7d03613e4ee66283d2637656c7c4f872372e",
+  "checkpoint_policy": "DUAL -- primary=min_val_retmse10 (Stage-2 uses ONLY this one, for direct comparability with existing Full-memory TRACK-V results), secondary=min_val_kl (diagnostic only, never fed to Stage-2)"
+}

@@ -1,0 +1,22 @@
+{
+  "exp": "CANDIDATE-POOL01",
+  "cell": "ETTh1_96",
+  "arm": "V2",
+  "num_query_views": 2,
+  "candidate_pool_mode": "coarse_topk",
+  "candidate_pool_size": 100,
+  "candidate_pool_metric": "delta_last_cosine",
+  "full_candidate_count": 8449,
+  "learned_candidates_encoded_per_query": 100,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "checkpoint_criterion": "min_val_kl",
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1"
+}

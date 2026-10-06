@@ -77,8 +77,9 @@ class Exp_Stage1_Relation(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-    def _get_data(self, flag, shuffle=None, generator=None):
-        return data_provider(self.args, flag, shuffle=shuffle, generator=generator)
+    def _get_data(self, flag, shuffle=None, generator=None, include_time_mark=False):
+        return data_provider(self.args, flag, shuffle=shuffle, generator=generator,
+                             include_time_mark=include_time_mark)
 
     def _select_optimizer(self):
         return optim.Adam([p for p in self.model.parameters() if p.requires_grad], lr=self.args.learning_rate)
@@ -86,7 +87,13 @@ class Exp_Stage1_Relation(Exp_Basic):
     def _ensure_memory(self):
         if self.memory_sampler is not None:
             return
-        train_data, _ = self._get_data(flag='train', shuffle=False)
+        # TRACK-W-TIMESTAMP-FUSION01: additive opt-in, default False for
+        # every other track. Set `exp._include_time_mark_for_memory = True`
+        # before calling `_ensure_memory()` to also carry `data_stamp` on
+        # the returned train_data (used downstream to build memory_x_mark).
+        train_data, _ = self._get_data(
+            flag='train', shuffle=False,
+            include_time_mark=getattr(self, '_include_time_mark_for_memory', False))
         self.train_data_for_memory = train_data
         self.memory_sampler = RelationMemorySampler(
             train_data,

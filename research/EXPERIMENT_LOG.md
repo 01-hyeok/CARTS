@@ -4187,3 +4187,197 @@ claim is made about what the extra query views learn, and the
 horizon-reversal claim from the ETTh1 interim is explicitly walked back
 to a dataset-specific (not universal) finding as described above. Phase
 B (H192/H336) has not yet started.
+
+---
+
+## 2026-10-06 -- TRACK-V-MULTIQUERY-GENERALIZATION01, Shared-Top-100 (P100) re-run
+
+**[repo]** New infrastructure (`utils/candidate_pool.py`, reused unmodified
+everywhere downstream) factors retrieval into a `full` vs `coarse_topk`
+candidate universe. `coarse_topk` mode computes a future-blind,
+parameter-free delta-last-cosine score over the FULL memory bank, takes
+the GLOBAL top-100 indices per (query, channel), gathers only those 100
+histories, and only then feeds them to any learned encoder -- proven by
+17 unit tests (`tests/test_candidate_pool01.py`,
+`tests/test_retriever_pool01.py`) including a numerical-equivalence
+proof against the legacy full-memory `compute_scores_full_grad_slots`
+path (`atol=1e-5`) and a spy-based proof that the encoder sees exactly
+`B*M` rows, never `B*N`. Two real bugs were caught and fixed before any
+reported number below: a `torch.no_grad()` scope that accidentally
+wrapped the student side of the KL loss (zero training gradient; never
+affected any prior experiment -- verified by direct source re-inspection
+of `train_t_pure_multislot01.py` and `train_w_timestamp_stage1_01.py`,
+both already correct), and a missing `+offset` term in the
+`coarse_topk` branch's `y_sel` gather that silently corrupted
+`agg_mse`/`C` (caught by cross-checking the trainer's own logged test
+metrics against the independently-recomputed cache-builder metrics on
+the same checkpoint -- they disagreed before the fix, matched exactly
+after).
+
+**Question**: does the TRACK-R/S/T/T2/U/V "multi-query view helps more
+at long horizon" pattern (established and re-confirmed several times
+this session under Full-memory candidate support) survive once every
+arm (Raw Cosine, V0 zero-projection, V1/V2/V5 multi-query) is forced to
+retrieve from the exact SAME pre-computed Shared Top-100 pool per
+(dataset, horizon, seed) cell, rather than each arm searching the full
+memory bank with its own learned scorer?
+
+**Protocol**: P100 pool built once per cell (future-blind delta-last
+cosine, fingerprinted, shared unmodified by every arm). Each V-arm
+(V0/V1/V2/V5) trained with a dual checkpoint from one trajectory
+(`best_retmse` PRIMARY -- the only one ever fed to Stage2 cache/lambda
+fitting; `best_kl` diagnostic-only). Raw Cosine (R0) is untrained --
+same delta-last-cosine metric re-applied within the P100 pool, no
+learning at all. All 4 settings (ETTh1 H96/H720, Weather H96/H720),
+seed=0. Existing Full-memory TRACK-V results were never touched --
+this is a wholly new `pool_top100/` subtree.
+
+**Result -- Stage2 (lambda-fitted) test MSE, best_retmse checkpoint only:**
+
+| Cell | R0 (Raw Cosine) | V0 (zero-proj) | V1 | V2 | V5 (5-head) |
+|---|---:|---:|---:|---:|---:|
+| ETTh1 H96 | 0.38044 | **0.38352** | 0.39421 | 0.39428 | 0.39426 |
+| ETTh1 H720 | **0.55076** | 0.54380 | 0.59241 | 0.59493 | 0.59140 |
+| Weather H96 | 0.19527 | **0.17808** | 0.19697 | 0.19926 | 0.19948 |
+| Weather H720 | 0.61366 | **0.45762** | 1.08076 | 1.05974 | 1.07541 |
+
+(bold = best arm in that row; ETTh1 H720's best is R0, not V0, by a
+margin of 0.007 -- the only row where a non-V0 arm wins.)
+
+**Headline finding -- this REVERSES the session's running multi-query
+narrative.** Under Shared-Top-100 candidate support, V0 (the single
+zero-projection query, i.e. no multi-query mechanism at all) is best or
+effective-tied-for-best in 3/4 cells, and every multi-query arm
+(V1/V2/V5) is worse than V0 in EVERY cell, clustering close to each
+other (no V0->V1->V2->V5 monotonic improvement survives anywhere). The
+effect is small at ETTh1 H96/H720 (~1-3% relative) but severe at
+Weather H720: V0=0.458 vs. V1/V2/V5 all in 1.06-1.08, i.e. multi-query
+is **more than 2x worse** than the single-query baseline once candidate
+support is capped to a shared 100-item pool. This is the exact opposite
+of the Full-memory Phase-A finding on the same Weather_720 cell, where
+more query views monotonically improved MSE.
+
+**Interpretation constraint (not yet reviewer-validated):** this is
+consistent with the hypothesis that the Full-memory multi-query benefit
+was mediated primarily by multi-query's ability to expand *effective
+retrievable candidate coverage* across the full memory bank (different
+query views surface different candidates that a single query would
+miss), not by a re-ranking/combination benefit within a fixed small
+set. Once every arm is forced to share the identical pre-selected
+Top-100 pool, multi-query has no additional candidates left to surface
+-- it can only re-rank within a set a single zero-projection query
+already selects about as well -- and the extra heads/slots appear to
+add parameter-count and optimization noise without a compensating
+benefit. This is an interpretation, not yet reviewer-checked; no
+semantic-specialization or "multi-query is useless" universal claim is
+made.
+
+**Not yet done**: the original TRACK-V Phase B (H192/H336) has never
+been run, in either Full-memory or P100 form.
+
+---
+
+## 2026-10-06 -- TRACK-V-CALENDAR-ROUTER01 (Calendar-Routed V5 Retrieval, CRH-V5)
+
+**[repo]** New track, built entirely on top of the Shared-Top-100
+infrastructure above (same P100 pool per cell, reused unmodified; V5's
+own `best_retmse` checkpoint from the Shared-Top-100 run reused
+directly, never retrained). Tests whether V5's 5 independently-learned
+slot heads show query-dependent utility specialization, and whether a
+deliberately tiny calendar-only router (zero-init per-channel
+`Linear(6,5)`, input = 6-D cyclic `[sin/cos(hour, weekday, day-of-year)]`
+computed from `forecast_start_idx` read off the real source CSV, NEVER
+touching the time-series input/encoder) can route each query to its
+best-performing head. V5 is fully frozen during router training
+(verified both by a smoke-test gradient assertion and by
+`tests/test_crh_v5_integration01.py::test_v5_frozen_during_router_backward`).
+Head-Oracle label = `argmin_h` of each head's own per-query Top-10-
+within-P100 individual future MSE (never the aggregate metric). Router
+trained via `KL(soft_head_teacher || router)` alone; hard-argmax Top-1
+head selection at inference (never a soft mixture). Dual checkpoint for
+both V5 (reused) and the Router (`best_retmse` PRIMARY, only one fed to
+Stage2). CRH-Shuffled control: identical router architecture/training,
+calendar features deterministically permuted across queries (seed=0)
+while head-teacher labels stay real -- isolates whether real calendar
+semantics (vs. "any fixed input") drive any observed gain. All 4
+settings complete (ETTh1 H96/H720, Weather H96/H720, seed=0).
+
+**Result -- test-split retMSE@10 by baseline (spec section 15, A-E):**
+
+| Cell | A: V5 RoundRobin | B: Calendar Router | C: Oracle Head | D: Fixed-Best-Head (global/per-ch) | E: Shuffled-Calendar |
+|---|---:|---:|---:|---:|---:|
+| ETTh1 H96 | 1.62190 | 1.61886 | **1.57719** | 1.61811 / 1.60749 | 1.61879 |
+| ETTh1 H720 | 2.45978 | 2.45686 | **2.44575** | 2.45380 / 2.45380 | 2.45497 |
+| Weather H96 | 8.56912 | 8.60838 | **7.48944** | 8.41428 / 8.03564 | 8.41609 |
+| Weather H720 | 22.37323 | 21.91801 | **21.35149** | 21.71172 / 21.77345 | 21.71172 |
+
+**Oracle head fraction (test), router's own selected-head fraction (test), router accuracy vs. oracle label, router regret (mean/median/p90/near-zero-fraction):**
+
+| Cell | Oracle dominant head (frac) | Router dominant pick (frac) | Router acc. vs. oracle | Regret mean / median / p90 / near-zero-frac |
+|---|---|---|---:|---|
+| ETTh1 H96 | H1 (0.655) | H1 (0.531) + H2 (0.400) | 0.372 | 0.0417 / 0.000 / 0.0823 / 0.697 |
+| ETTh1 H720 | H1 (0.812) | H5 (0.647) + H3 (0.346), H1=**0.0** | 0.067 | 0.0111 / 0.000 / 0.0204 / 0.861 |
+| Weather H96 | H3 (0.517) | H3 (0.761, overshoot) | 0.494 | 1.119 / 0.000 / 0.444 / 0.537 |
+| Weather H720 | H1 (0.485) | H1 (0.837, overshoot) | 0.445 | 0.567 / 0.0008 / 0.700 / 0.473 |
+
+**Stage2 (lambda-fitted) test MSE, V5-RoundRobin vs. CRH (best_retmse V5 + best_retmse Router):**
+
+| Cell | V5 RoundRobin Stage2 | CRH Stage2 | Delta |
+|---|---:|---:|---:|
+| ETTh1 H96 | 0.39426 | 0.39455 | +0.00029 (worse) |
+| ETTh1 H720 | 0.59140 | 0.59139 | -0.00001 (flat) |
+| Weather H96 | 0.19948 | 0.19860 | -0.00088 (better, noise-level) |
+| Weather H720 | 1.07541 | 1.06915 | -0.00626 (better, ~0.6%) |
+
+**Checkpoint comparison**: in 3/4 cells (ETTh1 H720, Weather H96,
+Weather H720) `best_retmse` and `best_kl` select the SAME or an
+adjacent epoch for the Router (epoch 1 in all three for `best_retmse`);
+only ETTh1 H96 shows a real divergence (`best_retmse`=epoch 20 vs.
+`best_kl`=epoch 4), and even there the two checkpoints' retmse10 differ
+by only 0.0005.
+
+**Strict conclusion (not spun positively, per explicit instruction):**
+
+1. **Head specialization is real and present in every cell.** Oracle
+   Head beats V5 RoundRobin in all 4 cells (gain 0.014-1.080 in
+   absolute retMSE@10, i.e. 0.6%-12.6% relative), and the oracle's
+   dominant-head fraction is never ≥90% (range 48.5%-81.2%), so this is
+   not a degenerate single-head-always-wins setup -- there is genuine,
+   non-trivial headroom from routing.
+2. **The calendar router captures essentially none of that headroom.**
+   Router gain over RoundRobin is ≤2% of the oracle's own gain in every
+   cell except Weather H720 (where it's ~42% of the oracle gain but
+   still leaves >50% of the headroom on the table), and in Weather H96
+   the router is literally WORSE than RoundRobin (-0.039, i.e. routing
+   actively hurts there).
+3. **In 3 of 4 cells, the CRH-Shuffled control matches or beats the
+   real-calendar router** (ETTh1 H96: shuffled -0.00008 better than
+   real, i.e. indistinguishable; ETTh1 H720: shuffled 0.0019 better
+   than real; Weather H720: shuffled 0.206 better than real). Only at
+   Weather H96 does real calendar clearly beat shuffled (real 8.608 vs.
+   shuffled 8.416 -- but note both are WORSE than plain RoundRobin
+   8.569 there, so this is "real calendar hurts less than shuffled
+   calendar hurts," not a positive result). This means the router's
+   small gains, where they exist, are not demonstrably driven by real
+   calendar semantics.
+4. **A dumb, calendar-free Fixed-Best-Head baseline (chosen once from
+   validation, no per-query information at all) matches or beats the
+   learned calendar router in every single cell.** This is the
+   strongest single piece of evidence that the 6-D calendar signal, as
+   used here, carries no usable per-query head-routing information
+   beyond what a static global/per-channel prior already captures.
+5. **Router accuracy vs. the oracle label is low everywhere (6.7%-
+   49.4%, vs. 20% random-chance for 5 heads)** and in every cell the
+   router's own selected-head distribution either systematically
+   overshoots the oracle's already-dominant head (Weather H96/H720) or
+   collapses onto a DIFFERENT head than the oracle's dominant one
+   entirely (ETTh1 H720: oracle dominant=H1 at 81%, router picks H1
+   0% of the time).
+
+Taken together, this matches the spec's own anticipated negative
+outcome in its strongest form: head specialization exists, but the
+6-D calendar signal, trained via this architecture/loss, does not
+carry usable routing information -- the router's behavior is
+better described as learning a near-static per-channel head prior
+(similar to Fixed-Best-Head) than as a genuine calendar-conditioned
+routing function. No positive framing is warranted from these numbers.
