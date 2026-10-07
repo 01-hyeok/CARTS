@@ -1,0 +1,14 @@
+{
+  "dataset": "Weather",
+  "horizon": 720,
+  "old_rr_best_epoch": 6,
+  "new_mean_best_epoch": 9,
+  "epoch_changed": true,
+  "old_rr_best_val_retmse10": 0.8902744054794312,
+  "new_mean_best_val_retmse10": 0.8426254391670227,
+  "new_mean_test_retmse10": 0.47110700607299805,
+  "new_mean_test_top10_overlap_vs_roundrobin": 0.1907021701335907,
+  "corrected_stage2_test_mse": 0.34229210019111633,
+  "corrected_stage2_test_mae": 0.34755539894104004,
+  "corrected_stage2_lambda": 0.5542343258857727
+}

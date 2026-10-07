@@ -1,0 +1,15 @@
+{
+  "dataset": "Weather",
+  "horizon": 720,
+  "candidate_support": "pool_top100",
+  "old_rr_best_epoch": 1,
+  "new_mean_best_epoch": 1,
+  "epoch_changed": false,
+  "old_rr_best_val_retmse10": 10.905686378479004,
+  "new_mean_best_val_retmse10": 10.766088485717773,
+  "new_mean_test_retmse10": 22.388328552246094,
+  "new_mean_test_top10_overlap_vs_roundrobin": 0.8137169480323792,
+  "corrected_stage2_test_mse": 1.0975234508514404,
+  "corrected_stage2_test_mae": 0.5207439661026001,
+  "corrected_stage2_lambda": 0.37698060274124146
+}

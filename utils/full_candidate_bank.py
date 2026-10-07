@@ -22,6 +22,7 @@ per channel instead of O(L*C). Proven in `tests/test_full_candidate_bank01.py`
 and in the age=0 parity tests against the real legacy path.
 """
 import torch
+import torch.nn.functional as F
 
 from models.RelationStage1 import transform_relation_features
 
@@ -35,6 +36,20 @@ def encode_raw_channel_first(model, x, c):
     features = transform_relation_features(x_c, model.relation_input_space)
     target = torch.stack([view[..., 0] for view in features], dim=1)  # [B, F, L']
     return model.encoder(target)
+
+
+def compute_scores_full_grad_channel_first(model, slot_heads, batch_x, memory_x, c):
+    """A1 (channel-first) drop-in for `train_t_pure_multislot01.
+    compute_scores_full_grad` -- bit-exact equivalent (proven by
+    `tests/test_v_meanmix_checkpoint_correction01.py` and this module's
+    own age=0 parity tests), candidate-side gradient stays ON (no
+    `.detach()`), full-N candidate support unchanged. The ONLY
+    difference from the legacy function is encode order. Shared by every
+    new V0-V5-family trainer per the standing A1-default policy."""
+    z_q = encode_raw_channel_first(model, batch_x, c)
+    q = slot_heads(z_q)
+    k_full = F.normalize(encode_raw_channel_first(model, memory_x, c), dim=-1)
+    return torch.einsum('bsd,nd->bsn', q, k_full)
 
 
 class FullCandidateBank:

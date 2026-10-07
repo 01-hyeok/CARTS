@@ -47,7 +47,22 @@ responsibility-weighted per-head loss makes every V5 head individually
 better AND more similar to the other heads (Top-10 overlap roughly
 10x'd), while real per-query Oracle-vs-Fixed-Head headroom (9.9-12.1%)
 still exists — not a pattern the spec's own taxonomy anticipated.
-correlation is mixed.**
+Later the same day, Phase A+B's Base Forecaster/Raw Cosine baseline
+backfill completed for all 8 settings (Weather's Base Forecaster beats
+every retrieval arm at every horizon; ETTh1 keeps its horizon
+reversal); an inference-only Round-Robin-vs-Mean-Mixture re-evaluation
+(**TRACK-V-MEANMIX-INFERENCE01**) was built, smoke-tested, run partway
+(20/32 cells), and then ABORTED by explicit user decision once it was
+noticed the reused Stage1 checkpoints were themselves Round-Robin
+-selected — a confound that made its own result uninterpretable; it
+was superseded the same day by **TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01**
+(V5 only, now COMPLETE for Full-memory 8 cells + Shared-Top-100 4
+cells), which re-selects the Stage1 checkpoint under Mean-Mixture
+validation RetMSE@10 before re-evaluating — checkpoint selection
+changes in 5/8 Full-memory cells (0/4 P100 cells, all early-stopped at
+epoch 1), and the downstream Stage2 effect is dataset-dependent, not a
+uniform win: ETTh1 improves slightly at H96/H192, Weather worsens at
+every cell where the checkpoint changed (up to +3.6% at H720).
 
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
 engineer; **[user]** = supplied by the researcher, not independently
@@ -5379,3 +5394,80 @@ carving out differentiated experts. Weather H96 is still training;
 Weather H720 has not started. Final conclusion (spec section 24,
 whether a router is worth building) deferred to the completed 4-cell
 report.
+
+---
+
+# Addendum (2026-10-07) -- Baseline backfill, TRACK-V-MEANMIX-INFERENCE01 (ABORTED), TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01
+
+**[repo]** Phase A+B Base Forecaster (B0) + Raw Cosine (R0) baseline
+backfill, all 8 settings (ETTh1/Weather x H96/H192/H336/H720), computed
+via the existing unmodified `build_r_retrieval_cache01.py --retriever
+cosine` + `train_r_stage2_lambda01.py`. Weather's Base Forecaster beats
+every retrieval arm at every horizon; ETTh1 keeps its horizon reversal
+(V0 best at H96/H192, V5 best at H336/H720).
+
+**[repo] TRACK-V-MEANMIX-INFERENCE01 -- ABORTED, superseded.** Built a
+32-cell inference-only re-evaluation: kept every existing V0/V1/V2/V5
+Stage1 checkpoint frozen and read-only, swapped ONLY the canonical
+inference selection rule from Round-Robin to a new Mean-Mixture rule
+(`mean_mixture_topk_selection`) that exactly matches V1/V2/V5's own
+training-loss aggregation (`p_bar = mean_h softmax(scores_h/tau_s)`).
+V0/V1 100% Top-10 agreement with Round-Robin confirmed by construction
+(mandatory gate); V2/V5 genuinely differ. Ran 20/32 cells, then the
+user identified a real methodological problem and ordered it stopped:
+the frozen Stage1 checkpoint was ITSELF originally model-selected via
+Round-Robin validation retMSE@10, so "swap only the inference rule"
+confounds the inference-rule effect with the checkpoint's own
+selection history. Terminated cleanly; see
+`results/TRACK-V-MEANMIX-INFERENCE01/ABORTED.md`.
+
+**[repo] TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 -- COMPLETE (V5 only, Full-memory 8 cells + Shared-Top-100 4 cells).**
+Corrects the confound above: re-selects the V5 Stage1 checkpoint by
+**validation Mean-Mixture RetMSE@10** (within the SAME candidate
+-support regime -- full memory or the Top-100 pool -- the checkpoint
+was trained under; test split never touched for selection), THEN
+builds a Mean-Mixture retrieval cache from that re-selected checkpoint,
+THEN retrains Stage2 with the unmodified `train_r_stage2_lambda01.py`.
+One Stage1 retrain was required (ETTh1 H336, historical run
+early-stopped at epoch 7/best_epoch=2; retrained with a new
+`--disable_early_stopping` flag, reproducing epochs 1-7 byte-for-byte
+identically -- same batch-order hashes, same val metrics to full
+precision -- before continuing to epoch 10). This fixed-epoch,
+no-early-stopping policy is now standing for all future Stage1 work.
+
+Full-memory, 8 cells:
+
+| Dataset | H | Old ep(RR) | New ep(Mean) | Changed? | Overlap vs RR | Hist. RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 9 | 10 | yes | 0.372 | 0.37903 | 0.37472 | -1.14% |
+| ETTh1 | 192 | 8 | 6 | yes | 0.430 | 0.43152 | 0.42368 | -1.82% |
+| ETTh1 | 336 | 2 | 2 | no | 0.649 | 0.44089 | 0.44241 | +0.34% |
+| ETTh1 | 720 | 6 | 6 | no | 0.589 | 0.49812 | 0.50368 | +1.12% |
+| Weather | 96 | 10 | 10 | no | 0.129 | 0.16780 | 0.16818 | +0.22% |
+| Weather | 192 | 6 | 7 | yes | 0.184 | 0.19983 | 0.20414 | +2.15% |
+| Weather | 336 | 7 | 2 | yes | 0.143 | 0.24895 | 0.25133 | +0.95% |
+| Weather | 720 | 6 | 9 | yes | 0.191 | 0.33039 | 0.34229 | +3.60% |
+
+Shared-Top-100 (P100), 4 cells:
+
+| Dataset | H | Old ep(RR) | New ep(Mean) | Changed? | Overlap vs RR | Hist. RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 1 | 1 | no | 0.962 | 0.39426 | 0.39421 | -0.01% |
+| ETTh1 | 720 | 1 | 1 | no | 0.984 | 0.59140 | 0.59148 | +0.01% |
+| Weather | 96 | 1 | 1 | no | 0.785 | 0.19948 | 0.19725 | -1.12% |
+| Weather | 720 | 1 | 1 | no | 0.814 | 1.07541 | 1.09752 | +2.06% |
+
+**Reading, not spun positively**: the train/inference mismatch is real
+-- it changes which Stage1 epoch is selected in 5/8 Full-memory cells
+(0/4 P100 cells, which all early-stopped at epoch 1 with no
+alternative to prefer). But "correcting" it is NOT a uniform win:
+ETTh1 improves slightly at H96/H192 (-1.1% to -1.8%) and worsens
+slightly at H336/H720 (+0.3% to +1.1%); Weather worsens at every cell
+where the checkpoint changed, up to +3.6% at H720. P100's overlap-vs-RR
+is much higher than Full-memory's (0.78-0.98 vs 0.13-0.65, expected
+since a 100-candidate pool leaves little room for heads to diverge)
+and its Stage2 deltas are smaller but still mixed in sign. This is
+closest to the spec's own pre-registered Case D (Round-Robin's forced
+cross-head complementarity may have been inadvertently helping Weather
+specifically) but is offered as a hypothesis, not an established
+causal claim -- no further mechanism investigation has been run.

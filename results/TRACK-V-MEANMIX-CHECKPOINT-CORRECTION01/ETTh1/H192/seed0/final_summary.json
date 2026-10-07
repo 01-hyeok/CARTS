@@ -1,0 +1,14 @@
+{
+  "dataset": "ETTh1",
+  "horizon": 192,
+  "old_rr_best_epoch": 8,
+  "new_mean_best_epoch": 6,
+  "epoch_changed": true,
+  "old_rr_best_val_retmse10": 1.3200180530548096,
+  "new_mean_best_val_retmse10": 1.255266547203064,
+  "new_mean_test_retmse10": 0.653008759021759,
+  "new_mean_test_top10_overlap_vs_roundrobin": 0.4301440119743347,
+  "corrected_stage2_test_mse": 0.4236762225627899,
+  "corrected_stage2_test_mae": 0.4347226321697235,
+  "corrected_stage2_lambda": 0.5117504000663757
+}

@@ -4577,3 +4577,132 @@ still justifies a router is an open question the final 4-cell report
 (spec section 24) will need to answer explicitly, once Weather H96/H720
 complete -- Weather H96 is still training as of this entry; Weather
 H720 has not started.
+
+---
+
+## 2026-10-07 -- Phase A+B Base Forecaster + Raw Cosine baseline completion (8 settings)
+
+**[repo]** Filled in the missing Base Forecaster (B0) and Raw Cosine (R0)
+rows for the full TRACK-V-MULTIQUERY-GENERALIZATION01 Phase A+B table
+(ETTh1/Weather x H96/H192/H336/H720). Computed fresh, via the EXISTING
+UNMODIFIED `scripts/build_r_retrieval_cache01.py --retriever cosine` +
+`scripts/train_r_stage2_lambda01.py`, for every (dataset, horizon) cell
+that did not already have one: Weather H96/H192/H336/H720 (all four),
+ETTh1 H192/H336 (ETTh1 H96/H720 and Weather H96's base already existed
+under `TRACK-R-FINAL-METHOD-GENERALIZATION01`). Output under
+`results/TRACK-V-MULTIQUERY-GENERALIZATION01/<DS>/H<H>/seed0/raw_cosine/`.
+No new mechanism; this is pure baseline backfill.
+
+**Headline finding**: Weather's Base Forecaster beats every retrieval
+arm (Raw Cosine, V0, V1, V2, V5) at every one of its 4 horizons --
+retrieval adds nothing on Weather in this project's current form. ETTh1
+continues to show the horizon-dependent reversal already documented
+elsewhere in this log (V0/no-multi-query best at H96/H192, V5 best at
+H336/H720).
+
+---
+
+## 2026-10-07 -- TRACK-V-MEANMIX-INFERENCE01 (inference-only RR-vs-Mean-Mixture swap) ABORTED, superseded
+
+**[repo]** Built a 32-cell (2 dataset x 4 horizon x 4 arm) re-evaluation
+that kept every existing V0/V1/V2/V5 Stage1 checkpoint frozen
+(read-only, no retraining) and only swapped the canonical inference
+selection rule from `round_robin_topk_selection` to a new
+`mean_mixture_topk_selection` (`utils/mean_mixture_selection.py`) that
+exactly matches what V1/V2/V5's own training loss already computes
+(`p_bar = mean_h softmax(scores_h/tau_s)`). Smoke-tested cleanly on
+ETTh1_96 (V0/V1 100% Top-10 agreement with Round-Robin by construction,
+V2/V5 genuinely differ) and ran 20/32 real cells (all of ETTh1, most of
+Weather) before the user flagged a methodological problem and ordered
+it stopped: the Stage1 checkpoint being reused was ITSELF originally
+selected via Round-Robin validation retMSE@10, so swapping only the
+inference rule confounds "effect of the rule swap" with "the
+checkpoint was chosen for the other rule." Terminated cleanly (SIGTERM,
+no SIGKILL needed); partial results preserved under
+`results/TRACK-V-MEANMIX-INFERENCE01/` with an `ABORTED.md` marker.
+Superseded by TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 below. See
+`research/RESEARCH_DECISIONS.md` D-0015.
+
+---
+
+## 2026-10-07 -- TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 (V5, Full-memory 8-cell + Shared-Top-100 4-cell)
+
+**[repo]** Corrects the flaw identified above: re-selects the V5 Stage1
+checkpoint using validation Mean-Mixture RetMSE@10 (computed WITHIN the
+same candidate-support regime the checkpoint was trained under -- full
+memory or the Top-100 pool) instead of Round-Robin, THEN builds a
+Mean-Mixture retrieval cache with that re-selected checkpoint, THEN
+retrains Stage2 with the EXISTING UNMODIFIED `train_r_stage2_lambda01.py`.
+New files only (`scripts/eval_v5_meanmix_checkpoint_selection01.py`,
+`scripts/build_v_meanmix_cache01.py`, their Shared-Top-100 counterparts
+`..._pool01.py`, `scripts/run_v5_meanmix_checkpoint_correction01.sh`,
+`scripts/run_v5_meanmix_checkpoint_correction_pool01.sh`); no historical
+TRACK-V/TRACK-V-SHARED-TOP100 artifact was overwritten. One Stage1
+retrain was required: ETTh1 H336's historical run had early-stopped at
+epoch 7 (best_epoch=2, patience=5), so epochs 8-10 did not exist for
+the new criterion to consider -- retrained with a new backward
+-compatible `--disable_early_stopping` flag added to
+`scripts/train_t_pure_multislot01.py` (default off, preserves all other
+historical runs' exact behavior; reproduced epochs 1-7 byte-for-byte
+identically to the original run -- same batch-order hashes, same
+val_metrics to full precision -- before continuing cleanly to epoch 10).
+This fixed-epoch policy (no early stopping, save every epoch, select
+post-hoc) is now the standing default for all future Stage1 experiments
+(`research/RESEARCH_DECISIONS.md` D-0015). A1 channel-first scoring
+(`utils/full_candidate_bank.py: compute_scores_full_grad_channel_first`
+/ `compute_scores_pool_channel_first`, both proven bit-exact-equivalent
+to the legacy path on real checkpoints) was applied from the Weather
+H336 cell onward per the project's standing new-experiment default;
+earlier cells in this same run used the legacy path, with no numerical
+difference since the two are mathematically identical.
+
+**Result -- Full-memory, 8 cells:**
+
+| Dataset | H | Old epoch (RR) | New epoch (Mean) | Changed? | Top10 overlap vs RR | Historical RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 9 | 10 | yes | 0.372 | 0.37903 | 0.37472 | -1.14% |
+| ETTh1 | 192 | 8 | 6 | yes | 0.430 | 0.43152 | 0.42368 | -1.82% |
+| ETTh1 | 336 | 2 | 2 | no | 0.649 | 0.44089 | 0.44241 | +0.34% |
+| ETTh1 | 720 | 6 | 6 | no | 0.589 | 0.49812 | 0.50368 | +1.12% |
+| Weather | 96 | 10 | 10 | no | 0.129 | 0.16780 | 0.16818 | +0.22% |
+| Weather | 192 | 6 | 7 | yes | 0.184 | 0.19983 | 0.20414 | +2.15% |
+| Weather | 336 | 7 | 2 | yes | 0.143 | 0.24895 | 0.25133 | +0.95% |
+| Weather | 720 | 6 | 9 | yes | 0.191 | 0.33039 | 0.34229 | +3.60% |
+
+**Result -- Shared-Top-100 (P100), 4 cells:**
+
+| Dataset | H | Old epoch (RR) | New epoch (Mean) | Changed? | Top10 overlap vs RR | Historical RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 1 | 1 | no | 0.962 | 0.39426 | 0.39421 | -0.01% |
+| ETTh1 | 720 | 1 | 1 | no | 0.984 | 0.59140 | 0.59148 | +0.01% |
+| Weather | 96 | 1 | 1 | no | 0.785 | 0.19948 | 0.19725 | -1.12% |
+| Weather | 720 | 1 | 1 | no | 0.814 | 1.07541 | 1.09752 | +2.06% |
+
+**Checkpoint-selection criterion, explicit for both tables**: the
+reused Stage1 retrieval checkpoint is selected by minimum validation
+Mean-Mixture RetMSE@10 (test split never touched); Stage2's own
+checkpoint is selected by minimum validation blended MSE
+(`train_r_stage2_lambda01.py`'s own unmodified criterion), not retMSE
+at all.
+
+**Reading, not spun positively**: the checkpoint-selection criterion
+swap (Round-Robin -> Mean-Mixture) actually changes which epoch is
+picked in 5 of 8 Full-memory cells and 0 of 4 P100 cells (P100's
+checkpoints all early-stopped at epoch 1, leaving no alternative epoch
+for either criterion to prefer). Where the checkpoint changes, the
+downstream Stage2 effect is dataset-dependent and NOT uniformly
+positive: ETTh1 improves at H96/H192 (~1-2%) and worsens slightly at
+H336/H720 (~0.3-1.1%); Weather worsens at every changed cell, up to
++3.6% at H720. P100's overlap-vs-RR is much higher than Full-memory's
+(0.78-0.98 vs 0.13-0.65) because a 100-candidate pool leaves far less
+room for heads to diverge, and its Stage2 deltas are correspondingly
+smaller and still mixed in sign. Overall: the train/inference mismatch
+is real (it does change checkpoint selection in most Full-memory
+cells), but "correcting" it is not a uniform win -- it helps ETTh1's
+shorter horizons, hurts Weather uniformly, and this project's own
+spec-mandated interpretation discipline (Case A/B/C/D, TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01
+spec section 12) rules out calling this a clean success: it is closest
+to Case D (the previous Round-Robin selection may have been
+inadvertently exploiting forced cross-head complementarity that helps
+Weather specifically), but this is offered as a hypothesis, not a
+established causal claim.

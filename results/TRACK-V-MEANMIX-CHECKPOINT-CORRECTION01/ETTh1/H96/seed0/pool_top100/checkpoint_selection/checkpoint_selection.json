@@ -1,0 +1,63 @@
+{
+  "rows": [
+    {
+      "epoch": 1,
+      "checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V5/checkpoint_epoch1.pth",
+      "old_rr_val_retmse10": 2.181342363357544,
+      "new_mean_val_retmse10": 2.174672842025757,
+      "new_mean_val_agg_mse10": 1.5848236083984375,
+      "new_mean_val_recall10": 0.06423698365688324,
+      "new_mean_val_ndcg10": 0.5678699612617493
+    },
+    {
+      "epoch": 2,
+      "checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V5/checkpoint_epoch2.pth",
+      "old_rr_val_retmse10": 2.3082799911499023,
+      "new_mean_val_retmse10": 2.2950990200042725,
+      "new_mean_val_agg_mse10": 1.5596243143081665,
+      "new_mean_val_recall10": 0.06273403763771057,
+      "new_mean_val_ndcg10": 0.5222942233085632
+    },
+    {
+      "epoch": 3,
+      "checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V5/checkpoint_epoch3.pth",
+      "old_rr_val_retmse10": 2.401310920715332,
+      "new_mean_val_retmse10": 2.3832101821899414,
+      "new_mean_val_agg_mse10": 1.620821475982666,
+      "new_mean_val_recall10": 0.059194665402173996,
+      "new_mean_val_ndcg10": 0.49233242869377136
+    },
+    {
+      "epoch": 4,
+      "checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V5/checkpoint_epoch4.pth",
+      "old_rr_val_retmse10": 2.4387621879577637,
+      "new_mean_val_retmse10": 2.4240243434906006,
+      "new_mean_val_agg_mse10": 1.6668487787246704,
+      "new_mean_val_recall10": 0.05716337636113167,
+      "new_mean_val_ndcg10": 0.4781019687652588
+    },
+    {
+      "epoch": 5,
+      "checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V5/checkpoint_epoch5.pth",
+      "old_rr_val_retmse10": 2.426262855529785,
+      "new_mean_val_retmse10": 2.4018657207489014,
+      "new_mean_val_agg_mse10": 1.6117064952850342,
+      "new_mean_val_recall10": 0.05750705674290657,
+      "new_mean_val_ndcg10": 0.47714799642562866
+    },
+    {
+      "epoch": 6,
+      "checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V5/checkpoint_epoch6.pth",
+      "old_rr_val_retmse10": 2.4396913051605225,
+      "new_mean_val_retmse10": 2.4105277061462402,
+      "new_mean_val_agg_mse10": 1.596414566040039,
+      "new_mean_val_recall10": 0.058430369943380356,
+      "new_mean_val_ndcg10": 0.47074615955352783
+    }
+  ],
+  "old_rr_best_epoch": 1,
+  "old_rr_best_val_retmse10": 2.181342363357544,
+  "new_mean_best_epoch": 1,
+  "new_mean_best_val_retmse10": 2.174672842025757,
+  "epoch_changed": false
+}

@@ -222,6 +222,10 @@ def main():
     ap.add_argument('--learning_rate', type=float, default=1e-3)
     ap.add_argument('--train_epochs', type=int, default=10)
     ap.add_argument('--patience', type=int, default=5)
+    ap.add_argument('--disable_early_stopping', action='store_true',
+                    help='run all --train_epochs without early stopping, saving every '
+                         'epoch checkpoint (TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 fixed-epoch '
+                         'policy) -- default False preserves exact historical early-stopping behavior')
     ap.add_argument('--chunk_size', type=int, default=4096)
     ap.add_argument('--init_seed', type=int, default=0)
     ap.add_argument('--loader_seed', type=int, default=0)
@@ -267,6 +271,7 @@ def main():
               'learning_rate': cli.learning_rate, 'train_epochs': cli.train_epochs, 'patience': cli.patience,
               'init_seed': cli.init_seed, 'loader_seed': cli.loader_seed,
               'n_candidates': int(exp.memory_x.size(0)),
+              'disable_early_stopping': cli.disable_early_stopping,
               'checkpoint_criterion': 'min val retmse10 (round-robin Top-10 individual MSE) -- '
                                       'IDENTICAL to Original-KL/J0\'s own criterion, PART 10'}
     (out_dir / 'config.json').write_text(json.dumps(config, indent=2))
@@ -394,7 +399,7 @@ def main():
             torch.save(payload, ckpt_dir / 'checkpoint.pth')
         print(f'[track_t] {arm} epoch={epoch} val_retmse10={val_retmse10:.6f} val_agg={val_metrics["agg_mse10"]:.6f} '
              f'(best={best["epoch"]}:{best["val_retmse10"]:.6f})')
-        if epoch - best['epoch'] >= cli.patience:
+        if not cli.disable_early_stopping and epoch - best['epoch'] >= cli.patience:
             print(f'[track_t] {arm} early stop at epoch {epoch} (best={best["epoch"]})')
             break
 

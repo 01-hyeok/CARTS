@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Mean-Mixture RetMSE@10 (test split NEVER used)",
+  "selected_epoch": 6,
+  "selected_checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H720/seed0/V5/stage1/checkpoint_epoch6.pth",
+  "tau_s": 0.1
+}

@@ -106,6 +106,23 @@ def expert_weighted_loss(responsibility, kl_vals):
     return (responsibility * kl_vals).sum(dim=1).mean()
 
 
+def hard_expert_loss(kl_vals, winner_idx):
+    """TRACK-HARD-EXPERT-V5-FULL01 spec section 4: L_hard(q) =
+    KL(p_T(q) || p_h*(q)(q)), batch mean, where h*(q) = argmin_h U_h(q).
+    `winner_idx` MUST already be computed under `torch.no_grad()`
+    (e.g. via `winner_margin_stats(U)[0]` or `U.argmin(dim=1)`) -- this
+    function only gathers the winning column of `kl_vals` and does not
+    itself detach anything, so a non-detached `winner_idx` would be a
+    caller bug, not something this function can guard against (indices
+    carry no gradient regardless, but the CALLER is responsible for
+    making sure `U`/`winner_idx` never backprop through the assignment
+    itself, per spec section 4.2's detach requirement). This is the
+    ONLY loss term in TRACK-HARD-EXPERT-V5-FULL01 -- no auxiliary term
+    is added here or anywhere else in that track."""
+    winner_kl = kl_vals.gather(dim=1, index=winner_idx.unsqueeze(1)).squeeze(1)
+    return winner_kl.mean()
+
+
 def head_pairwise_overlap(head_topk_idx):
     """head_topk_idx: [B,S,k]. Returns ({(h,j): overlap[B]} for h<j,
     union_size[B]) -- Top-K overlap fraction and per-query union size

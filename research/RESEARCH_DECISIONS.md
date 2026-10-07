@@ -312,3 +312,45 @@ confirms a decision.
   standing rule)
 
 
+## D-0015 — Fixed-epoch Stage1 policy; train/checkpoint-selection/inference mismatch in V5 identified and being corrected
+
+- **Date:** 2026-10-07
+- **Decided by:** user
+- **Decision:** (1) TRACK-V-MEANMIX-INFERENCE01 (inference-only RR-vs-Mean-Mixture
+  swap on frozen, Round-Robin-selected checkpoints) is superseded and its
+  in-flight run was terminated — see `results/TRACK-V-MEANMIX-INFERENCE01/ABORTED.md`.
+  Reason: swapping only the inference selection rule while keeping a
+  Stage1 checkpoint that was itself model-selected via Round-Robin
+  validation retMSE@10 confounds "effect of the inference-rule swap" with
+  "the checkpoint was chosen for the other rule" — flagged by the user as
+  methodologically inconsistent. (2) Replaced by
+  TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01: V5 only, 8 cells
+  (ETTh1/Weather x H96/H192/H336/H720), which re-selects the Stage1
+  checkpoint using validation Mean-Mixture RetMSE@10 (not Round-Robin)
+  before building the Mean-Mixture cache and retraining Stage2. (3) New
+  standing principle for all FUTURE Stage1 experiments: no early stopping
+  during training — run the full fixed `train_epochs`, save every epoch's
+  checkpoint, and pick the best epoch only AFTER training ends, under
+  whatever validation criterion the experiment actually cares about. Added
+  as a backward-compatible `--disable_early_stopping` flag to
+  `scripts/train_t_pure_multislot01.py` (default off, preserves all
+  historical runs' exact behavior; `tests/test_t_pure_multislot_validation01.py`
+  re-run clean, 20/20 pass after the change).
+- **Evidence:** user message, 2026-10-07 (full `TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01`
+  spec); code audit confirming `scripts/train_t_pure_multislot01.py`'s
+  historical checkpoint criterion is `min val retmse10 (round-robin Top-10
+  individual MSE)` (its own `config.json` field, PART 10 of TRACK-T);
+  filesystem audit of all 8 V5 Stage1 checkpoint directories under
+  `checkpoints/track_v_multiquery_generalization01/` confirming epoch
+  completeness (7/8 cells have `checkpoint_epoch{1..10}.pth`; ETTh1 H336
+  has only `checkpoint_epoch{1..7}.pth`, early-stopped at best_epoch=2,
+  patience=5 — matches the user's own pre-audit expectation exactly).
+- **Consequence:** ETTh1 H336 V5 Stage1 must be retrained once, with
+  `--disable_early_stopping`, otherwise reproducing every other historical
+  training-control exactly (same init/loader seed, tau_t/tau_s, slot_std,
+  batch size, LR, reference checkpoint), to obtain its missing
+  epoch 8-10 checkpoints. The other 7 V5 cells are evaluated from their
+  existing epoch checkpoints with no Stage1 retraining. V0/V1/V2 are out
+  of scope for this track.
+- **Status:** active
+
