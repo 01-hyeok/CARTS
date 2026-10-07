@@ -204,6 +204,13 @@ def test_no_early_stopping_branch_present():
 
 # -------------------- [12] No Router --------------------
 
+def test_checkpoint_criterion_is_mean_mixture_not_hard_loss_or_rr():
+    assert "'val_mean_retmse10'" in TRAINER_SRC
+    assert "best = {'val_mean_retmse10'" in TRAINER_SRC, \
+        '[ISSUE][ABORT] PRIMARY checkpoint selection must track val_mean_retmse10, not val_hard_loss or RR'
+    assert 'mean_mixture_topk_selection(scores, cand_mask, cli.tau_s, k=cli.top_k)' in TRAINER_SRC
+
+
 def test_no_router_parameters_or_imports():
     # code-level signals only (the docstring legitimately says "no Router is added" in prose)
     forbidden = ('class Router', 'Router(', 'import Router', 'router_ce', 'RouterCE', 'nn.Linear(6,',

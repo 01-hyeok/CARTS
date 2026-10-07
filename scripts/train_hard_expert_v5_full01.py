@@ -65,6 +65,7 @@ from utils.expert_head_metrics import (
     per_head_standalone_topk, winner_margin_stats,
 )
 from utils.full_candidate_bank import compute_scores_full_grad_channel_first
+from utils.mean_mixture_selection import mean_mixture_topk_selection
 
 TOP_K = 10
 NUM_SLOTS = 5
@@ -91,20 +92,30 @@ def hard_step(model, slot_heads, batch_x, batch_y, batch_start_idx, c, cand_mask
 
 @torch.no_grad()
 def hard_epoch_val_diagnostics(model, slot_heads, exp, args, cli, channels, device, val_loader):
-    """Lightweight per-epoch validation pass (spec sections 9-11): NOT
-    the expensive full per-head report (no overlap/union/spearman/
-    entropy here -- those are computed once, at the end, on the
-    SELECTED checkpoint only, via the shared `evaluate_and_save_head_report`,
-    for parity with Soft Expert). Returns winner fraction per head,
-    margin-distribution stats, the PRIMARY checkpoint criterion
-    (val_hard_loss), the legacy Round-Robin val retmse10 diagnostic, and
-    a flat per-(query,channel) winner tensor in a FIXED iteration order
-    (shuffle=False val_loader, channels inner loop) so epoch-to-epoch
-    winner identity is directly comparable for assignment-stability /
-    transition-matrix tracking."""
+    """Lightweight per-epoch validation pass. NOT the expensive full
+    per-head report (no overlap/union/spearman here -- those are
+    computed once, at the end, on the SELECTED checkpoint only, via
+    the shared `evaluate_and_save_head_report`, for parity with Soft
+    Expert). Computes THREE separate validation quantities, never
+    conflated:
+      - val_mean_retmse10: Mean-Mixture Top-10 retrieval MSE
+        (`mean_mixture_topk_selection`, matching the inference rule
+        this track actually ships) -- THIS IS THE PRIMARY CHECKPOINT
+        CRITERION (per the corrected spec: checkpoint selection must
+        use the SAME rule as inference, never Round-Robin).
+      - val_hard_loss: the Hard training objective itself (KL at the
+        oracle winner head) -- diagnostic only.
+      - val_rr_retmse10: legacy Round-Robin retrieval MSE -- diagnostic
+        only, kept for backward-compatible comparison, NEVER used for
+        selection.
+    Also returns winner-usage degeneracy diagnostics (fraction per
+    head, normalized entropy, dominant-head ratio, active-head count)
+    and a flat per-(query,channel) winner tensor in a FIXED iteration
+    order (shuffle=False val_loader, channels inner loop) for
+    epoch-to-epoch assignment-stability / transition-matrix tracking."""
     win_count = torch.zeros(NUM_SLOTS)
     margins, winner_flat = [], []
-    hard_kl_sum, rr_sum, n = 0.0, 0.0, 0
+    hard_kl_sum, rr_sum, mean_sum, n = 0.0, 0.0, 0.0, 0
     for batch_x, batch_y, batch_start_idx in val_loader:
         batch_x = batch_x.float().to(device)
         batch_y = batch_y.float().to(device)
@@ -123,6 +134,9 @@ def hard_epoch_val_diagnostics(model, slot_heads, exp, args, cli, channels, devi
             kl_vals, _ = kl_per_head(p_t, scores, cand_mask, cli.tau_s)
             hard_kl = kl_vals.gather(1, winner.unsqueeze(1)).squeeze(1)
 
+            mean_idx, _, _ = mean_mixture_topk_selection(scores, cand_mask, cli.tau_s, k=cli.top_k)
+            mean_ret = d_raw.gather(1, mean_idx).mean(dim=-1)
+
             oracle_idx = stable_topk_indices(d_raw.masked_fill(~cand_mask, float('inf')), cli.top_k, largest=False)
             res_rr = hard_eval_decomposition(scores, cand_mask, memory_c, offset_c, query_future, d_raw,
                                              oracle_idx, cli.top_k)
@@ -131,14 +145,25 @@ def hard_epoch_val_diagnostics(model, slot_heads, exp, args, cli, channels, devi
             margins.append(margin.cpu())
             hard_kl_sum += float(hard_kl.sum())
             rr_sum += float(res_rr['model_ind_mse'].sum())
+            mean_sum += float(mean_ret.sum())
             winner_flat.append(winner.cpu())
         n += bsz
     denom = max(n * len(channels), 1)
     margin_cat = torch.cat(margins)
     q = torch.quantile(margin_cat, torch.tensor([0.10, 0.25, 0.50, 0.75, 0.90]))
+    winner_fraction = (win_count / denom)
+    p = winner_fraction.clamp_min(1e-12)
+    usage_entropy = float(-(p * p.log()).sum())
+    usage_entropy_norm = usage_entropy / float(torch.log(torch.tensor(float(NUM_SLOTS))))
+    active_head_count = int((winner_fraction > 0.01).sum())
     return {
-        'winner_fraction': (win_count / denom).tolist(),
-        'max_winner_fraction': float((win_count / denom).max()),
+        'winner_fraction': winner_fraction.tolist(),
+        'max_winner_fraction': float(winner_fraction.max()),
+        'min_winner_fraction': float(winner_fraction.min()),
+        'winner_usage_entropy': usage_entropy,
+        'winner_usage_entropy_normalized': usage_entropy_norm,
+        'active_head_count': active_head_count,
+        'val_mean_retmse10': mean_sum / denom,
         'val_hard_loss': hard_kl_sum / denom,
         'val_rr_retmse10': rr_sum / denom,
         'margin_mean': float(margin_cat.mean()), 'margin_p10': float(q[0]), 'margin_p25': float(q[1]),
@@ -214,9 +239,12 @@ def main():
              'candidate_scoring': 'A1 channel-first (compute_scores_full_grad_channel_first), '
                                   'bit-exact equivalent to legacy -- new-experiment standing policy',
              'loss': 'L_hard = mean_q[ KL(p_T(q) || p_{argmin_h U_h(q)}(q)) ], winner detached, no Router',
-             'checkpoint_criterion': 'PRIMARY: min validation Hard objective loss (val_hard_loss), '
-                                     'epochs 1-10 only (epoch0 is diagnostic-only). Legacy Round-Robin '
-                                     'val retmse10 recorded as a DIAGNOSTIC ONLY, never used for selection.'}
+             'inference_rule': 'Mean-Mixture Top-K (mean_h softmax(scores_h/tau_s), NOT Round-Robin)',
+             'checkpoint_criterion': 'PRIMARY: min validation Mean-Mixture RetMSE@10 (val_mean_retmse10), '
+                                     'epochs 1-10 only (epoch0 is diagnostic-only) -- matches the inference '
+                                     'rule actually used downstream. The raw Hard training loss '
+                                     '(val_hard_loss) and legacy Round-Robin val retmse10 are recorded as '
+                                     'DIAGNOSTICS ONLY, never used for selection.'}
     (out_dir / 'config.json').write_text(json.dumps(config, indent=2))
     print(f'[hard_expert_v5] cell={cli.cell} N={n_candidates} init_hash={init_hash[:16]} '
          f'slot_heads_init_hash={slot_heads_init_hash[:16]}')
@@ -255,12 +283,13 @@ def main():
     diag0 = hard_epoch_val_diagnostics(model, slot_heads, exp, args, cli, channels, device, val_loader)
     winner_flat_by_epoch[0] = diag0.pop('winner_flat')
     epoch_diag_rows.append({'epoch': 0, **diag0})
-    save_epoch_checkpoint(0, diag0['val_hard_loss'])
-    print(f'[hard_expert_v5] epoch=0 (pre-training, diagnostic only) val_hard_loss={diag0["val_hard_loss"]:.6f} '
+    save_epoch_checkpoint(0, diag0['val_mean_retmse10'])
+    print(f'[hard_expert_v5] epoch=0 (pre-training, diagnostic only) val_mean_retmse10={diag0["val_mean_retmse10"]:.6f} '
          f'winner_fraction={[round(x,3) for x in diag0["winner_fraction"]]}')
 
     step_rows, batch_order_hashes = [], []
-    best = {'val_hard_loss': float('inf'), 'epoch': -1}
+    best = {'val_mean_retmse10': float('inf'), 'epoch': -1}
+    best_hard = {'val_hard_loss': float('inf'), 'epoch': -1}
     best_rr = {'val_rr_retmse10': float('inf'), 'epoch': -1}
     t0 = time.time()
     global_step = 0
@@ -291,16 +320,19 @@ def main():
         diag = hard_epoch_val_diagnostics(model, slot_heads, exp, args, cli, channels, device, val_loader)
         winner_flat_by_epoch[epoch] = diag.pop('winner_flat')
         epoch_diag_rows.append({'epoch': epoch, **diag})
-        save_epoch_checkpoint(epoch, diag['val_hard_loss'])
-        if diag['val_hard_loss'] < best['val_hard_loss']:
-            best = {'val_hard_loss': diag['val_hard_loss'], 'epoch': epoch}
+        save_epoch_checkpoint(epoch, diag['val_mean_retmse10'])
+        if diag['val_mean_retmse10'] < best['val_mean_retmse10']:
+            best = {'val_mean_retmse10': diag['val_mean_retmse10'], 'epoch': epoch}
+        if diag['val_hard_loss'] < best_hard['val_hard_loss']:
+            best_hard = {'val_hard_loss': diag['val_hard_loss'], 'epoch': epoch}
         if diag['val_rr_retmse10'] < best_rr['val_rr_retmse10']:
             best_rr = {'val_rr_retmse10': diag['val_rr_retmse10'], 'epoch': epoch}
-        print(f'[hard_expert_v5] epoch={epoch} val_hard_loss={diag["val_hard_loss"]:.6f} '
-             f'val_rr_retmse10(diag)={diag["val_rr_retmse10"]:.6f} '
+        print(f'[hard_expert_v5] epoch={epoch} val_mean_retmse10(PRIMARY)={diag["val_mean_retmse10"]:.6f} '
+             f'val_hard_loss(diag)={diag["val_hard_loss"]:.6f} val_rr_retmse10(diag)={diag["val_rr_retmse10"]:.6f} '
              f'winner%={[round(x*100,1) for x in diag["winner_fraction"]]} '
-             f'max_win={diag["max_winner_fraction"]:.3f} margin_median={diag["margin_median"]:.6f} '
-             f'(hard-best={best["epoch"]}:{best["val_hard_loss"]:.6f})')
+             f'max_win={diag["max_winner_fraction"]:.3f} usage_entropy_norm={diag["winner_usage_entropy_normalized"]:.3f} '
+             f'active_heads={diag["active_head_count"]} margin_median={diag["margin_median"]:.6f} '
+             f'(mean-best={best["epoch"]}:{best["val_mean_retmse10"]:.6f})')
         # NO early-stop break -- fixed train_epochs always, per spec section 8.
 
     # ---- assignment stability / transition matrix across epoch0..N (spec section 11) ----
@@ -317,7 +349,8 @@ def main():
         transition_counts += counts
     transition_matrix = (transition_counts / transition_counts.sum(dim=1, keepdim=True).clamp_min(1)).tolist()
 
-    # ---- PRIMARY checkpoint selection: min val_hard_loss, epochs 1-10 ONLY, test split never touched ----
+    # ---- PRIMARY checkpoint selection: min val_mean_retmse10 (Mean-Mixture, matching
+    # the inference rule this track ships), epochs 1-10 ONLY, test split never touched ----
     bl = torch.load(ckpt_dir / f'checkpoint_epoch{best["epoch"]}.pth', map_location=device)
     model.load_state_dict(bl['model_state_dict'])
     slot_heads.load_state_dict(bl['slot_heads_state_dict'])
@@ -349,18 +382,23 @@ def main():
         'note': 'row i, col j = P(winner_t = j | winner_{t-1} = i), aggregated over epoch0->1,...,9->10',
     }, indent=2))
     (out_dir / 'checkpoint_selection.json').write_text(json.dumps({
-        'objective_aligned_best_epoch': best['epoch'], 'objective_aligned_best_val_hard_loss': best['val_hard_loss'],
+        'primary_criterion': 'min validation Mean-Mixture RetMSE@10 (matches the inference rule used downstream)',
+        'mean_mixture_best_epoch': best['epoch'], 'mean_mixture_best_val_retmse10': best['val_mean_retmse10'],
+        'hard_loss_best_epoch': best_hard['epoch'], 'hard_loss_best_val_hard_loss': best_hard['val_hard_loss'],
         'legacy_rr_best_epoch': best_rr['epoch'], 'legacy_rr_best_val_rr_retmse10': best_rr['val_rr_retmse10'],
-        'epochs_agree': best['epoch'] == best_rr['epoch'],
-        'note': 'Round-Robin is NOT the Hard Expert training objective -- diagnostic only (spec section 13).',
+        'mean_vs_rr_epochs_agree': best['epoch'] == best_rr['epoch'],
+        'mean_vs_hard_epochs_agree': best['epoch'] == best_hard['epoch'],
+        'note': 'Round-Robin and the raw Hard training loss are NOT the checkpoint-selection criterion here '
+               '-- diagnostics only. Selection uses Mean-Mixture val retMSE@10 to avoid the exact '
+               'inference/selection-rule mismatch TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 identified.',
     }, indent=2))
     (out_dir / 'checkpoint_fingerprints.json').write_text(json.dumps(
         {'init_hash': init_hash, 'slot_heads_init_hash': slot_heads_init_hash, 'best_epoch': best['epoch'],
          'final_model_hash': state_hash(model), 'batch_order_hashes': batch_order_hashes}, indent=2))
     vram = torch.cuda.max_memory_allocated(device) / 2**20 if device.type == 'cuda' else 0.0
-    print(f'[hard_expert_v5] done. objective_best_epoch={best["epoch"]} legacy_rr_best_epoch={best_rr["epoch"]} '
-         f'test_retMSE@10(RR,diag)={final_test_metrics["retmse10"]:.6f} max_vram_mb={vram:.1f} '
-         f'wall_seconds={time.time()-t0:.1f}')
+    print(f'[hard_expert_v5] done. mean_mixture_best_epoch={best["epoch"]} hard_loss_best_epoch={best_hard["epoch"]} '
+         f'legacy_rr_best_epoch={best_rr["epoch"]} test_retMSE@10(RR,diag)={final_test_metrics["retmse10"]:.6f} '
+         f'max_vram_mb={vram:.1f} wall_seconds={time.time()-t0:.1f}')
 
 
 if __name__ == '__main__':
