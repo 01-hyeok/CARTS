@@ -1,0 +1,7 @@
+epoch,checkpoint_path,old_rr_val_retmse10,new_mean_val_retmse10,new_mean_val_agg_mse10,new_mean_val_recall10,new_mean_val_ndcg10
+1,checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/pool_top100/Weather_720/V2/checkpoint_epoch1.pth,10.70367431640625,10.398488998413086,2.4954936504364014,0.05404673144221306,0.44065365195274353
+2,checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/pool_top100/Weather_720/V2/checkpoint_epoch2.pth,10.921797752380371,10.823410987854004,2.7271857261657715,0.053080953657627106,0.41605234146118164
+3,checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/pool_top100/Weather_720/V2/checkpoint_epoch3.pth,11.101628303527832,11.054153442382812,2.8507535457611084,0.05212460085749626,0.4061790108680725
+4,checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/pool_top100/Weather_720/V2/checkpoint_epoch4.pth,11.243728637695312,11.23175048828125,2.978538751602173,0.05238304287195206,0.39569002389907837
+5,checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/pool_top100/Weather_720/V2/checkpoint_epoch5.pth,11.247110366821289,11.293713569641113,3.061661720275879,0.0523390956223011,0.388064980506897
+6,checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/pool_top100/Weather_720/V2/checkpoint_epoch6.pth,11.28089427947998,11.351441383361816,3.1146399974823,0.05108976736664772,0.3875359296798706

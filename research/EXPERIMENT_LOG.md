@@ -4706,3 +4706,60 @@ to Case D (the previous Round-Robin selection may have been
 inadvertently exploiting forced cross-head complementarity that helps
 Weather specifically), but this is offered as a hypothesis, not a
 established causal claim.
+
+---
+
+## 2026-10-07 -- TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 scope expansion: V2 (num_slots=2), Full-memory 8-cell + Shared-Top-100 4-cell
+
+**[repo]** Identical methodology to the V5 run above, applied to V2
+(by explicit user decision to expand scope), reusing the SAME scripts
+unmodified (`eval_v5_meanmix_checkpoint_selection01.py`,
+`build_v_meanmix_cache01.py --arm V2`, and their P100 counterparts --
+all already generic over `--num_slots`/`--arm`, no new code needed).
+Two Full-memory cells needed a Stage1 retrain (filesystem-audited
+epoch completeness): ETTh1 H336 (historical run had only epoch1-7) and
+Weather H720 (historical run had only epoch1-9) -- both retrained with
+`--disable_early_stopping`, reproducing their respective historical
+epochs byte-for-byte (batch-order hashes and val_metrics identical to
+full precision) before continuing to epoch 10. The 4 P100 V2 cells all
+reused their existing epoch1-6 checkpoints read-only, same as V5's
+P100 cells.
+
+**Result -- Full-memory, 8 cells:**
+
+| Dataset | H | Old epoch (RR) | New epoch (Mean) | Changed? | Top10 overlap vs RR | Historical RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 9 | 9 | no | 0.548 | 0.37700 | 0.37450 | -0.66% |
+| ETTh1 | 192 | 8 | 6 | yes | 0.550 | 0.43051 | 0.42518 | -1.24% |
+| ETTh1 | 336 | 2 | 2 | no | 0.656 | 0.44285 | 0.43862 | -0.95% |
+| ETTh1 | 720 | 6 | 6 | no | 0.648 | 0.50463 | 0.50722 | +0.51% |
+| Weather | 96 | 10 | 10 | no | 0.344 | 0.17019 | 0.16872 | -0.87% |
+| Weather | 192 | 8 | 7 | yes | 0.425 | 0.20275 | 0.20571 | +1.46% |
+| Weather | 336 | 6 | 9 | yes | 0.431 | 0.25137 | 0.25396 | +1.03% |
+| Weather | 720 | 4 | 4 | no | 0.392 | 0.33328 | 0.33832 | +1.51% |
+
+**Result -- Shared-Top-100 (P100), 4 cells:**
+
+| Dataset | H | Old epoch (RR) | New epoch (Mean) | Changed? | Top10 overlap vs RR | Historical RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 1 | 1 | no | 0.998 | 0.39428 | 0.39429 | +0.00% |
+| ETTh1 | 720 | 1 | 1 | no | 0.996 | 0.59493 | 0.59491 | -0.00% |
+| Weather | 96 | 1 | 1 | no | 0.797 | 0.19926 | 0.19775 | -0.76% |
+| Weather | 720 | 1 | 1 | no | 0.829 | 1.05974 | 1.06957 | +0.93% |
+
+**Reading, consistent with V5's own result above**: the same
+dataset-dependent pattern replicates at S=2 -- checkpoint selection
+changes in 3/8 Full-memory cells (0/4 P100 cells, all stuck at epoch 1
+for either criterion); ETTh1 improves or is flat at every Full-memory
+horizon (-1.24% to +0.51%), Weather worsens at 3/4 Full-memory
+horizons (up to +1.51% at H720) and is mixed in P100. V2's
+overlap-vs-RR is systematically higher than V5's at the same cells
+(Full-memory: ETTh1 0.55-0.66 vs V5's 0.37-0.65; Weather 0.34-0.43 vs
+V5's 0.13-0.19) -- with only 2 heads instead of 5, Mean-Mixture and
+Round-Robin agree more often, so the correction has proportionally
+less room to matter, consistent with the effect size (V2's deltas are
+uniformly smaller in magnitude than V5's at the same cells). This
+strengthens, rather than overturns, the V5 reading: the train/inference
+mismatch's correction is real but dataset-dependent, not a universal
+improvement, and scales down (in both selection-changed frequency and
+effect size) as head count drops.

@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Mean-Mixture RetMSE@10 within Top-100 pool (test split NEVER used)",
+  "selected_epoch": 1,
+  "selected_checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H720/seed0/pool_top100/ETTh1_720/V2/checkpoint_epoch1.pth",
+  "tau_s": 0.1
+}

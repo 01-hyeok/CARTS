@@ -1,0 +1,11 @@
+epoch,checkpoint_path,old_rr_val_retmse10,new_mean_val_retmse10,new_mean_val_agg_mse10,new_mean_val_recall10,new_mean_val_ndcg10
+1,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch1.pth,1.7093422412872314,1.705130696296692,1.372342824935913,0.05130508169531822,0.9467857480049133
+2,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch2.pth,1.6006981134414673,1.5866748094558716,1.3245429992675781,0.06116194650530815,0.9546793699264526
+3,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch3.pth,1.6483819484710693,1.6095657348632812,1.3623344898223877,0.059433065354824066,0.9536761045455933
+4,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch4.pth,1.6247645616531372,1.5940948724746704,1.380907416343689,0.06096547842025757,0.9543794393539429
+5,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch5.pth,1.656380295753479,1.6186788082122803,1.3779984712600708,0.060269441455602646,0.9513270258903503
+6,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch6.pth,1.6241786479949951,1.5930176973342896,1.3826323747634888,0.06143137812614441,0.9543541073799133
+7,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch7.pth,1.6733759641647339,1.6496988534927368,1.4435609579086304,0.0643390342593193,0.9520569443702698
+8,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch8.pth,1.6413767337799072,1.6212974786758423,1.4093629121780396,0.06517542153596878,0.9527181386947632
+9,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch9.pth,1.6578747034072876,1.6431916952133179,1.4398319721221924,0.06313780695199966,0.9519973993301392
+10,checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V2/stage1_retrain/checkpoint_epoch10.pth,1.6320316791534424,1.605451226234436,1.4187859296798706,0.06368790566921234,0.9543532133102417

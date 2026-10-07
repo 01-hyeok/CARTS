@@ -1,0 +1,7 @@
+epoch,checkpoint_path,old_rr_val_retmse10,new_mean_val_retmse10,new_mean_val_agg_mse10,new_mean_val_recall10,new_mean_val_ndcg10
+1,checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V2/checkpoint_epoch1.pth,2.1773672103881836,2.1772301197052,1.59152090549469,0.06382149457931519,0.5673730373382568
+2,checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V2/checkpoint_epoch2.pth,2.315433979034424,2.315614938735962,1.5991053581237793,0.06155424565076828,0.5216832160949707
+3,checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V2/checkpoint_epoch3.pth,2.4055185317993164,2.4099011421203613,1.6809656620025635,0.057112082839012146,0.48959389328956604
+4,checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V2/checkpoint_epoch4.pth,2.4356236457824707,2.438450336456299,1.7149235010147095,0.05647601932287216,0.4777519106864929
+5,checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V2/checkpoint_epoch5.pth,2.4142534732818604,2.4107563495635986,1.6310253143310547,0.05797897279262543,0.4775298833847046
+6,checkpoints/track_v_multiquery_generalization01/ETTh1/H96/seed0/pool_top100/ETTh1_96/V2/checkpoint_epoch6.pth,2.431086778640747,2.4270288944244385,1.6420249938964844,0.05757886543869972,0.4699811339378357

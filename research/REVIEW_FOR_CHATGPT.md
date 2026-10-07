@@ -5471,3 +5471,45 @@ closest to the spec's own pre-registered Case D (Round-Robin's forced
 cross-head complementarity may have been inadvertently helping Weather
 specifically) but is offered as a hypothesis, not an established
 causal claim -- no further mechanism investigation has been run.
+
+---
+
+# Addendum (2026-10-07) -- TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 scope expansion: V2
+
+**[repo]** Same methodology as the V5 addendum above, applied to V2
+(num_slots=2), by explicit user decision. Reused the same scripts
+unmodified (already generic over num_slots/arm). Two Full-memory cells
+needed a Stage1 retrain (ETTh1 H336: only epoch1-7 existed; Weather
+H720: only epoch1-9 existed), both reproduced byte-for-byte before
+continuing to epoch 10.
+
+Full-memory, 8 cells:
+
+| Dataset | H | Old ep(RR) | New ep(Mean) | Changed? | Overlap vs RR | Hist. RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 9 | 9 | no | 0.548 | 0.37700 | 0.37450 | -0.66% |
+| ETTh1 | 192 | 8 | 6 | yes | 0.550 | 0.43051 | 0.42518 | -1.24% |
+| ETTh1 | 336 | 2 | 2 | no | 0.656 | 0.44285 | 0.43862 | -0.95% |
+| ETTh1 | 720 | 6 | 6 | no | 0.648 | 0.50463 | 0.50722 | +0.51% |
+| Weather | 96 | 10 | 10 | no | 0.344 | 0.17019 | 0.16872 | -0.87% |
+| Weather | 192 | 8 | 7 | yes | 0.425 | 0.20275 | 0.20571 | +1.46% |
+| Weather | 336 | 6 | 9 | yes | 0.431 | 0.25137 | 0.25396 | +1.03% |
+| Weather | 720 | 4 | 4 | no | 0.392 | 0.33328 | 0.33832 | +1.51% |
+
+Shared-Top-100 (P100), 4 cells:
+
+| Dataset | H | Old ep(RR) | New ep(Mean) | Changed? | Overlap vs RR | Hist. RR Stage2 MSE | Corrected Stage2 MSE | Delta |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| ETTh1 | 96 | 1 | 1 | no | 0.998 | 0.39428 | 0.39429 | +0.00% |
+| ETTh1 | 720 | 1 | 1 | no | 0.996 | 0.59493 | 0.59491 | -0.00% |
+| Weather | 96 | 1 | 1 | no | 0.797 | 0.19926 | 0.19775 | -0.76% |
+| Weather | 720 | 1 | 1 | no | 0.829 | 1.05974 | 1.06957 | +0.93% |
+
+**Reading**: the V5 pattern replicates at S=2 but scaled down -- fewer
+checkpoint-selection changes (3/8 vs V5's 5/8 Full-memory cells),
+higher overlap-vs-RR at matching cells (2 heads agree with Round-Robin
+more often than 5 do), and uniformly smaller Stage2 deltas in
+magnitude. Direction is consistent: ETTh1 improves/flat, Weather
+worsens at most changed cells. Strengthens rather than overturns the
+V5 conclusion -- the correction's effect scales with head count and is
+dataset-dependent, not a universal win.
