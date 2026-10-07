@@ -1,0 +1,19 @@
+{
+  "cell": "ETTh1_192",
+  "relation_encoder_type": "mlp",
+  "relation_self_fill": "linear",
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "n_probe": 256,
+  "n_candidates": 8257,
+  "geometry_subset_size": 500,
+  "checkpoint_criterion": "min val model_top10_individual_mse",
+  "instrument": "off"
+}

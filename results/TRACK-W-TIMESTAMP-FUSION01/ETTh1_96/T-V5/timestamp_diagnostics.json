@@ -1,0 +1,9 @@
+{
+  "value_proj_weight_norm": 2.964097261428833,
+  "time_proj_weight_norm": 3.78594970703125,
+  "value_proj_grad_norm_sample": 0.060268063098192215,
+  "time_proj_grad_norm_sample": 0.05101699009537697,
+  "value_branch_output_norm_mean": 5.835916042327881,
+  "time_branch_output_norm_mean": 1.9825406074523926,
+  "time_over_value_output_ratio": 0.3397136958573481
+}

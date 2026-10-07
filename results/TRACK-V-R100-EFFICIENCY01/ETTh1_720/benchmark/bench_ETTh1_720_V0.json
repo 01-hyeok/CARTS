@@ -1,0 +1,83 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "V0",
+  "n_steps": 150,
+  "refresh_interval": 100,
+  "timing": {
+    "A0_legacy": {
+      "config": "A0_legacy",
+      "n_steps": 150,
+      "wall_seconds": 5.76587176322937,
+      "sec_per_step": 0.0384391450881958,
+      "peak_vram_mib": 1639.2900390625
+    },
+    "A1_channelfirst": {
+      "config": "A1_channelfirst",
+      "n_steps": 150,
+      "wall_seconds": 6.650401830673218,
+      "sec_per_step": 0.04433601220448812,
+      "peak_vram_mib": 1639.2900390625
+    },
+    "R100": {
+      "config": "R100",
+      "n_steps": 150,
+      "wall_seconds": 6.176364183425903,
+      "sec_per_step": 0.041175761222839356,
+      "peak_vram_mib": 1639.2900390625
+    }
+  },
+  "speedup_R100_over_A0": 0.9335381774769568,
+  "speedup_R100_over_A1": 1.07675027462263,
+  "vram_reduction_pct_R100_vs_A0": 0.0,
+  "channel_first_preprocessing_equivalence": [
+    {
+      "channel": 0,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 1,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 2,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 3,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 4,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 5,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 6,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "total_training_wall_seconds": 3468.196063518524,
+  "avg_sec_per_step": 0.16658982746270604,
+  "avg_non_refresh_step_seconds": 0.16635384055763794,
+  "avg_refresh_step_seconds": 0.19014961902911848,
+  "single_refresh_mean_seconds": 0.024605965876317287,
+  "pct_wall_time_in_refresh": 0.08808842995584945,
+  "total_optimizer_steps": 9176
+}

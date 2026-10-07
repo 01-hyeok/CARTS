@@ -38,6 +38,15 @@ real, but the calendar router captures almost none of the oracle
 headroom and is matched or beaten by both a shuffled-calendar control
 and a static calendar-free baseline in every cell). Full detail,
 protocol, and numbers for both are in their own addenda below.
+As of 2026-10-07, two more addenda are added: **TRACK-V Phase B
+(H192/H336)** is now COMPLETE (all 4 cells) — the horizon-dependent
+reversal now holds at 4 ETTh1 horizons (H96/H192 reverse, H336/H720
+don't), Weather shows no reversal at any of its 4 horizons; and
+**TRACK-EXPERT-V5-FULL01** is INTERIM (2/4 cells, ETTh1 H96+H720) — a
+responsibility-weighted per-head loss makes every V5 head individually
+better AND more similar to the other heads (Top-10 overlap roughly
+10x'd), while real per-query Oracle-vs-Fixed-Head headroom (9.9-12.1%)
+still exists — not a pattern the spec's own taxonomy anticipated.
 correlation is mixed.**
 
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
@@ -5285,3 +5294,88 @@ supported by these numbers. STOP candidates per the diagnostics
 script's own flags fired in multiple cells (oracle-head-dominance <90%
 so routing contribution genuinely possible in principle, yet oracle
 gain over RoundRobin is not captured by the router in practice).
+
+---
+
+# Addendum (2026-10-07): TRACK-V-MULTIQUERY-GENERALIZATION01 Phase B (H192/H336) -- COMPLETE, all 4 cells
+
+Extends Phase A (H96/H720) to the two remaining horizons, ETTh1 +
+Weather, via the EXISTING, UNMODIFIED Full-memory recipe
+(`run_v_one_setting01.sh`: V0 = TRUE Original KL, V1/V2/V5 = SlotHeads
+multi-query) -- zero code changes, only new (dataset, horizon) cells.
+
+**Prerequisite gap found and closed**: the `soft_set_mse S0_wce`
+Stage-1 reference checkpoint this whole multi-query lineage depends on
+had only ever been trained at pred_len {96, 720} -- never 192/336. A
+new script trained it fresh for all 4 new cells, S0_wce arm only.
+`--stage1_set_tau` (a SetMSE-loss temperature) was set to one shared
+value (0.015) for all four, including Weather H192/H336 which had
+never been separately calibrated -- verified, not assumed, to be
+mathematically inert for this arm: `set_mse_weight=0.0` makes
+`weighted_set = set_mse_weight * set_loss` exactly zero regardless of
+tau (`models/RelationStage1.py:5191`), independently confirmed from a
+real historical training log's own `self_set_mse_weighted_term:
+0.000000` metric. **Checkpoint selection, explicitly audited for every
+arm, is validation retMSE@10 (never the training/KL loss)** -- same
+criterion Phase A already used.
+
+**Stage-2 test MSE, all 4 new cells x 4 arms:**
+
+| Cell | V0 | V1 | V2 | V5 |
+|---|---:|---:|---:|---:|
+| ETTh1 H192 | **0.4258** | 0.4298 | 0.4305 | 0.4315 |
+| ETTh1 H336 | 0.4556 | 0.4442 | 0.4428 | **0.4409** |
+| Weather H192 | 0.2070 | 0.2061 | 0.2028 | **0.1998** |
+| Weather H336 | 0.2688 | 0.2530 | 0.2514 | **0.2489** |
+
+**Headline finding -- the horizon-dependent split now holds at 4 ETTh1
+horizons, not 2**: H192 reverses like H96 (V0 best, more views hurt);
+H336 behaves like H720 (V5 best, more views help monotonically).
+Weather shows no reversal at ANY of its 4 tested horizons (96/192/
+336/720) -- multi-query helps monotonically everywhere on Weather.
+This is the strongest evidence yet that the reversal is a genuine
+ETTh1-specific, horizon-dependent phenomenon (not noise, not an
+artifact of only having 2 horizons before) -- though still seed=0 only
+at every horizon.
+
+---
+
+# Addendum (2026-10-07): TRACK-EXPERT-V5-FULL01 -- INTERIM, 2/4 cells (ETTh1 H96 + H720)
+
+Tests whether V5's 5 SlotHeads, trained with a responsibility-weighted
+per-head KL loss instead of canonical Current-V5's mean-then-KL loss,
+become genuine query-dependent standalone retrieval experts. NOT an
+efficiency change -- full candidate N, fresh re-encode every step,
+candidate-side gradient ON throughout (18 tests confirm parity with
+canonical Full-V5 everywhere except the loss). Checkpoint criterion
+identical to Current-V5 (`min val round-robin retMSE@10`, never the
+training loss). Current-V5's own existing checkpoint is evaluated
+read-only through the identical shared diagnostic code for a byte-
+comparable report.
+
+**Round-robin retMSE@10 (primary metric) and Stage2, test split:**
+
+| Cell | Current-V5 | Expert-V5 | Stage2: V0 / Current-V5 / Expert-V5 |
+|---|---:|---:|---|
+| ETTh1 H96 | 0.6612 | **0.6394** | 0.3737 / 0.3790 / 0.3756 |
+| ETTh1 H720 | 0.8362 | **0.8188** | 0.5291 / 0.4981 / 0.5031 |
+
+**Interim finding -- a pattern not anticipated by the spec's own
+Case 1-5 taxonomy, reported as-is**: every individual head's
+standalone retMSE@10 AND KL improved under Expert-V5 (good), but the
+5 heads' retrieved Top-10 sets became dramatically MORE similar to
+each other, not less -- mean pairwise Top-10 overlap roughly 10x'd
+(ETTh1 H96: 0.062->0.594; H720: 0.246->0.705) and the mean 5-head
+union shrank by more than half (44.8->20.1; 33.7->16.9). This is the
+opposite of what "specialization" would predict. At the same time,
+Oracle (true per-query best head) still beats the single best Fixed
+head by a real 9.9-12.1% margin in both cells, and no head's win-
+fraction collapses (9.6%-27% band across all 5 in both cells) -- so
+query-dependent headroom genuinely exists, it just isn't showing up as
+set-level diversity between heads. Reading: the responsibility-
+weighted loss seems to make every head independently more competent
+(closing the gap between a "best" and "worst" head) rather than
+carving out differentiated experts. Weather H96 is still training;
+Weather H720 has not started. Final conclusion (spec section 24,
+whether a router is worth building) deferred to the completed 4-cell
+report.

@@ -1,0 +1,181 @@
+{
+  "cell": "Weather_720",
+  "arm": "V0",
+  "n_steps": 150,
+  "refresh_interval": 100,
+  "timing": {
+    "A0_legacy": {
+      "config": "A0_legacy",
+      "n_steps": 150,
+      "wall_seconds": 159.92331337928772,
+      "sec_per_step": 1.0661554225285848,
+      "peak_vram_mib": 7469.81396484375
+    },
+    "A1_channelfirst": {
+      "config": "A1_channelfirst",
+      "n_steps": 150,
+      "wall_seconds": 131.39293456077576,
+      "sec_per_step": 0.8759528970718384,
+      "peak_vram_mib": 6429.75048828125
+    },
+    "R100": {
+      "config": "R100",
+      "n_steps": 150,
+      "wall_seconds": 117.60039067268372,
+      "sec_per_step": 0.784002604484558,
+      "peak_vram_mib": 6429.75048828125
+    }
+  },
+  "speedup_R100_over_A0": 1.3598876029621456,
+  "speedup_R100_over_A1": 1.117283146843285,
+  "vram_reduction_pct_R100_vs_A0": 13.923552600606914,
+  "channel_first_preprocessing_equivalence": [
+    {
+      "channel": 0,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 1,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 2,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 3,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 4,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 5,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 6,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 7,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 8,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 9,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 10,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 11,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 12,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 13,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 14,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 15,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 16,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 17,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 18,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 19,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    },
+    {
+      "channel": 20,
+      "encoder_input_max_abs_diff": 0.0,
+      "encoder_output_max_abs_diff": 0.0,
+      "score_max_abs_diff": 0.0,
+      "top10_agreement": 1.0
+    }
+  ]
+}

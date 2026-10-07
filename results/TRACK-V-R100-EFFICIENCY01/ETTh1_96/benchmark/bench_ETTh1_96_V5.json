@@ -1,0 +1,33 @@
+{
+  "cell": "ETTh1_96",
+  "arm": "V5",
+  "n_steps": 150,
+  "refresh_interval": 100,
+  "timing": {
+    "A0_legacy": {
+      "config": "A0_legacy",
+      "n_steps": 150,
+      "wall_seconds": 5.679918527603149,
+      "sec_per_step": 0.03786612351735433,
+      "peak_vram_mib": 312.29931640625
+    },
+    "A1_channelfirst": {
+      "config": "A1_channelfirst",
+      "n_steps": 150,
+      "wall_seconds": 4.701918840408325,
+      "sec_per_step": 0.031346125602722166,
+      "peak_vram_mib": 312.08349609375
+    },
+    "R100": {
+      "config": "R100",
+      "n_steps": 150,
+      "wall_seconds": 4.228699207305908,
+      "sec_per_step": 0.028191328048706055,
+      "peak_vram_mib": 312.08349609375
+    }
+  },
+  "speedup_R100_over_A0": 1.343183387882017,
+  "speedup_R100_over_A1": 1.1119066667794288,
+  "vram_reduction_pct_R100_vs_A0": 0.06910687957422113,
+  "channel_first_preprocessing_equivalence": null
+}

@@ -1,0 +1,8 @@
+{
+  "spearman": 0.5272089535144697,
+  "mean_pairwise_slot_cosine": 0.951131159017066,
+  "slot_top1_overlap": 0.17448560311263347,
+  "slot_top10_overlap": 0.3680842246609826,
+  "unique_before_forced_uniqueness": 1.825514396449097,
+  "per_slot_entropy_mean": 8.103203462953328
+}

@@ -1,0 +1,6 @@
+{
+  "n_refreshes": 24,
+  "n_candidate_encoder_calls": 168,
+  "n_candidate_sequences_encoded": 1419432,
+  "query_encoder_calls": 16695
+}

@@ -1,0 +1,33 @@
+{
+  "cell": "Weather_720",
+  "arm": "V5",
+  "n_steps": 150,
+  "refresh_interval": 100,
+  "timing": {
+    "A0_legacy": {
+      "config": "A0_legacy",
+      "n_steps": 150,
+      "wall_seconds": 155.66352438926697,
+      "sec_per_step": 1.0377568292617798,
+      "peak_vram_mib": 7553.35791015625
+    },
+    "A1_channelfirst": {
+      "config": "A1_channelfirst",
+      "n_steps": 150,
+      "wall_seconds": 133.95582723617554,
+      "sec_per_step": 0.8930388482411703,
+      "peak_vram_mib": 6497.7861328125
+    },
+    "R100": {
+      "config": "R100",
+      "n_steps": 150,
+      "wall_seconds": 122.86970567703247,
+      "sec_per_step": 0.8191313711802165,
+      "peak_vram_mib": 6497.7861328125
+    }
+  },
+  "speedup_R100_over_A0": 1.266899139470833,
+  "speedup_R100_over_A1": 1.090226646983947,
+  "vram_reduction_pct_R100_vs_A0": 13.974867732991015,
+  "channel_first_preprocessing_equivalence": null
+}

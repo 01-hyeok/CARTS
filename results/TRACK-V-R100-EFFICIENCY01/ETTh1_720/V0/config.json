@@ -1,0 +1,18 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "V0",
+  "relation_encoder_type": "mlp",
+  "relation_self_fill": "linear",
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "n_candidates": 7201,
+  "refresh_interval": 100,
+  "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE, S=1 reduction -- IDENTICAL metric to V0 canonical's val_model_top10_individual_mse)"
+}

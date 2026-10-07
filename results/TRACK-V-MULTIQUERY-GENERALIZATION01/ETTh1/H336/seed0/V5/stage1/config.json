@@ -1,0 +1,17 @@
+{
+  "cell": "ETTh1_336",
+  "arm": "S5",
+  "num_slots": 5,
+  "slot_std": 0.001,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "n_candidates": 7969,
+  "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+}

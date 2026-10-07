@@ -1,0 +1,18 @@
+{
+  "cell": "ETTh1_96",
+  "arm": "V1",
+  "num_slots": 1,
+  "slot_std": 0.001,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "n_candidates": 8449,
+  "refresh_interval": 100,
+  "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to canonical T-track/V-track criterion"
+}

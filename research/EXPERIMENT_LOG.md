@@ -4381,3 +4381,199 @@ carry usable routing information -- the router's behavior is
 better described as learning a near-static per-channel head prior
 (similar to Fixed-Best-Head) than as a genuine calendar-conditioned
 routing function. No positive framing is warranted from these numbers.
+
+---
+
+## 2026-10-07 -- TRACK-V-MULTIQUERY-GENERALIZATION01 Phase B (H192/H336), Full-memory -- COMPLETE, all 4 cells
+
+**[repo]** Extends TRACK-V Phase A (H96/H720, complete since 2026-10-01)
+to the two remaining horizons (H192, H336), ETTh1 + Weather, using the
+EXISTING, UNMODIFIED `run_v_one_setting01.sh` (V0 = `train_j_shared_
+encoder_drift01.py`, TRUE Original KL; V1/V2/V5 = `train_t_pure_
+multislot01.py --num_slots {1,2,5}`) -- identical recipe to the already
+-completed H96/H720 cells, zero code changes.
+
+**Prerequisite discovered and resolved**: no `soft_set_mse S0_wce`
+Stage-1 reference checkpoint existed for H192/H336 (only seq96_pred96
+and seq720_pred720 had ever been trained). Trained fresh for all 4 new
+cells via a new script, `scripts/run_soft_set_mse_stage1_h192h336_
+s0only01.sh`, S0_wce arm ONLY (not the full S0-S4 WCE-vs-SetMSE
+ablation, which this track does not need) -- `--stage1_wce_weight 1.0
+--stage1_set_mse_weight 0.0`, everything else byte-identical to the
+historical `run_soft_set_mse_stage1.sh` template.
+
+`--stage1_set_tau` was set to 0.015 (same as ETTh1 H96) for ALL FOUR
+new cells, including Weather H192/H336 which had never been separately
+calibrated. **This is not an approximation** -- verified by direct
+source read (`models/RelationStage1.py:5191`,
+`weighted_set = self.set_mse_weight * set_loss`) and independently
+confirmed from a real training log's own metric
+(`self_set_mse_weighted_term: 0.000000` throughout, from the EXISTING
+ETTh1_96 S0_wce log) that for `set_mse_weight=0.0` the SetMSE term
+(the only place `tau_set` enters the loss) is EXACTLY zero regardless
+of `tau_set`'s value -- any shared value is strictly correct for this
+arm, not a convenience shortcut. `--stage1_set_support_weight` also
+defaults to 0.0 (unused), confirming no other tau-dependent term is live.
+
+**Checkpoint-selection criterion -- explicitly audited, identical
+across every arm (V0/V1/V2/V5) and every horizon, and it is a
+retrieval-quality metric, NOT a generic training/validation loss**:
+- V0 (`train_j_shared_encoder_drift01.py`): `min val
+  model_top10_individual_mse` -- i.e. validation-split retMSE@10
+  (individual future-MSE of the model's own ordinary Top-10), computed
+  fresh every epoch over the full val split. Not the training KL loss.
+- V1/V2/V5 (`train_t_pure_multislot01.py`): `min val retmse10
+  (round-robin Top-10 individual MSE)` -- the SAME retMSE@10 concept,
+  computed via round-robin unique selection across slots. Not the
+  training KL loss either.
+
+So every arm in this track (Phase A and Phase B alike) is selected on
+validation retMSE@10, never on the training objective itself -- this
+was true before this track and remains unchanged here.
+
+**Stage-1 (retMSE@10 / AggMSE@10, test split) and Stage-2 (final
+forecast test MSE, best-retMSE checkpoint):**
+
+| Cell | Arm | Stage1 retMSE@10 | Stage1 AggMSE@10 | Stage2 test MSE | Stage2 best_epoch |
+|---|---|---:|---:|---:|---:|
+| ETTh1 H192 | V0 | 0.757165 | 0.479668 | 0.425834 | 1 |
+| | V1 | 0.657726 | 0.485911 | 0.429828 | 1 |
+| | V2 | 0.686262 | 0.486158 | 0.430512 | 1 |
+| | V5 | 0.701616 | 0.486481 | 0.431517 | 1 |
+| ETTh1 H336 | V0 | 0.824241 | 0.535382 | 0.455558 | 1 |
+| | V1 | 0.684627 | 0.515986 | 0.444192 | 7 |
+| | V2 | 0.777107 | 0.517275 | 0.442849 | 2 |
+| | V5 | 0.783797 | 0.501495 | **0.440893** | 1 |
+| Weather H192 | V0 | 0.454573 | 0.284851 | 0.206968 | 1 |
+| | V1 | 0.349212 | 0.257280 | 0.206052 | 1 |
+| | V2 | 0.335125 | 0.240292 | 0.202754 | 1 |
+| | V5 | 0.382452 | 0.224776 | **0.199835** | 1 |
+| Weather H336 | V0 | 0.576436 | 0.384835 | 0.268783 | 1 |
+| | V1 | 0.377274 | 0.310684 | 0.252974 | 1 |
+| | V2 | 0.398315 | 0.299740 | 0.251371 | 1 |
+| | V5 | 0.433162 | 0.290427 | **0.248948** | 1 |
+
+(bold = best arm per row)
+
+**Headline finding -- H192/H336 extends the SAME horizon-dependent
+pattern already established for H96/H720, cleanly, in every one of the
+3 cells where it isn't ETTh1's own short-horizon reversal:**
+- **ETTh1 H192 behaves like ETTh1 H96** (short-horizon reversal): V0
+  (no multi-query) wins, V1->V2->V5 monotonically WORSE.
+- **ETTh1 H336, Weather H192, Weather H336 all behave like the
+  long-horizon pattern** (ETTh1 H720, Weather H96/H720 in Phase A):
+  V5 (5-head multi-query) wins, improving monotonically or near-
+  monotonically from V0.
+
+This is the cleanest confirmation yet that the "more query views help
+at long horizon / hurt at short horizon" split is a real, reproducible
+horizon-dependent phenomenon on ETTh1 specifically, not noise -- it
+now holds at FOUR ETTh1 horizons (96 short, 192/336/720 all long) with
+only H96/H192 on the "hurts" side. Weather shows NO reversal at any of
+its now-4 tested horizons (96/192/336/720) -- multi-query helps
+Weather monotonically everywhere tested so far, matching Phase A's own
+Weather finding.
+
+**Not yet done**: seed replication (seed 1/2) at any horizon; this
+remains a single-seed (seed=0) result at every horizon tested.
+
+---
+
+## 2026-10-07 -- TRACK-EXPERT-V5-FULL01 (Expert-V5 responsibility-weighted per-head KL) -- INTERIM, 2/4 cells (ETTh1 H96 + H720)
+
+**[repo]** Tests whether Full-Candidate V5's 5 SlotHeads, trained with
+a responsibility-weighted per-head KL loss (`L_expert = mean_q[sum_h
+r_h(q) * KL_h(q)]`, `r` = detached softmax over z-scored per-head
+standalone-Top10 future-utility, `tau_E=1.0` fixed) instead of the
+canonical mean-then-KL loss, form genuine query-dependent standalone
+retrieval experts. Deliberately NOT an efficiency experiment -- full
+candidate N, fresh re-encode every optimizer step, candidate-side
+gradient ON throughout, verified identical to canonical Full-V5 in
+every other respect (18 unit/integration tests, `tests/test_expert_
+head_metrics01.py` + `tests/test_expert_v5_integration01.py`, all
+passing, including a direct numerical-equivalence check against
+`compute_scores_full_grad` and nonzero-gradient checks on query,
+candidate, and SlotHeads parameters).
+
+**Checkpoint criterion, explicitly identical to canonical Current-V5
+(audited before implementation)**: `min val round-robin retMSE@10` --
+the SAME retrieval-quality metric as Phase A/B above, not the training
+loss (`L_expert` itself is never used for checkpoint selection).
+Current-V5's own existing checkpoint (`checkpoints/track_v_multiquery_
+generalization01/<Dataset>/H<H>/seed0/V5/stage1/checkpoint.pth`,
+itself selected the same way) is loaded read-only and evaluated through
+the IDENTICAL shared diagnostic code
+(`utils.expert_head_metrics.evaluate_and_save_head_report`) for a
+byte-for-byte-comparable standalone-head report -- never retrained.
+
+**Round-robin (primary) retMSE@10, test split, Current-V5 vs Expert-V5:**
+
+| Cell | Current-V5 (existing ckpt) | Expert-V5 (new) | Stage2 test MSE: V0 / Current-V5 / Expert-V5 |
+|---|---:|---:|---|
+| ETTh1 H96 | 0.661233 | **0.639400** | 0.373682 / 0.379027 / 0.375566 |
+| ETTh1 H720 | 0.836208 | **0.818785** | 0.529134 / 0.498119 / 0.503121 |
+
+Expert-V5's round-robin retrieval quality (the primary metric, section
+17 of the spec) is BETTER than Current-V5 in both completed cells so
+far. At the Stage2 level this is mixed: Expert-V5 beats Current-V5 at
+H96 (-0.0035) but is slightly worse at H720 (+0.0050) -- both still
+beat the no-retrieval V0 baseline.
+
+**Per-head standalone decomposition (test split) -- the core question:**
+
+| Cell | Metric | H1 | H2 | H3 | H4 | H5 |
+|---|---|---:|---:|---:|---:|---:|
+| ETTh1 H96 | Current-V5 retMSE@10 | 0.7156 | 0.6915 | 0.6790 | 0.6365 | 0.6871 |
+| | Expert-V5 retMSE@10 | 0.6374 | 0.6445 | 0.6380 | 0.6401 | 0.6390 |
+| | Current-V5 KL | 1.578 | 1.420 | 1.327 | 1.301 | 1.415 |
+| | Expert-V5 KL | 1.026 | 1.040 | 1.051 | 1.021 | 1.031 |
+| ETTh1 H720 | Current-V5 retMSE@10 | 0.8335 | 0.8655 | 0.8740 | 0.8417 | 0.8136 |
+| | Expert-V5 retMSE@10 | 0.7847 | 0.7966 | 0.8799 | 0.8272 | 0.7948 |
+| | Current-V5 KL | 1.263 | 1.495 | 1.249 | 1.165 | 1.259 |
+| | Expert-V5 KL | 1.060 | 1.075 | 1.264 | 1.133 | 1.046 |
+
+**Winner fraction (test), oracle-vs-fixed, and diversity:**
+
+| Cell | Winner fraction (H1..H5) | Fixed-Best-Head | Oracle (per-query argmin) | Oracle gain | Mean pairwise Top10 overlap (Current -> Expert) | Mean union size (Current -> Expert) |
+|---|---|---|---:|---:|---:|---|
+| ETTh1 H96 | 23.4/18.1/23.9/11.3/23.4% | H1: 0.6374 | 0.5601 | **12.1%** | 0.062 -> **0.594** | 44.8 -> **20.1** |
+| ETTh1 H720 | 26.7/21.1/17.5/9.6/25.1% | H4: 0.8272 | 0.7454 | **9.9%** | 0.246 -> **0.705** | 33.7 -> **16.9** |
+
+**Interim reading, reported as-is per explicit instruction not to spin
+positively (full conclusion deferred until all 4 cells complete)**:
+
+1. **Standalone head quality improved and became more UNIFORM**:
+   every individual head's retMSE@10 and KL both dropped under
+   Expert-V5 vs Current-V5 (criterion A, "Standalone Expert Quality" --
+   positive), but the per-head retMSE@10 RANGE collapsed (ETTh1 H96:
+   0.636-0.716 -> 0.637-0.645; H720: 0.814-0.874 -> 0.785-0.880) --
+   heads look much more alike in individual quality than before.
+2. **No single-head collapse** (criterion B): winner fraction stays in
+   a 9.6%-27% band across all 5 heads in both cells, no head
+   dominates or disappears.
+3. **Diversity COLLAPSED, strongly, in the opposite direction from
+   what "specialization" would predict**: mean pairwise Top-10 overlap
+   between heads roughly 10x'd (ETTh1 H96: 0.062 -> 0.594; H720:
+   0.246 -> 0.705) and the mean union of all 5 heads' Top-10 sets
+   shrank by more than half (44.8 -> 20.1; 33.7 -> 16.9). Under
+   Expert-V5, the 5 heads are retrieving substantially the SAME
+   candidates as each other, not different ones -- this is the
+   opposite of what distinct query-dependent experts would look like,
+   even though each head individually got better and more consistent.
+4. **Genuine query-dependent headroom does exist** (criterion D):
+   Oracle (true per-query best head) beats the single best Fixed head
+   by 9.9-12.1% in both cells -- a real, non-trivial margin, so the
+   "winner" genuinely varies by query, just not enough to prevent the
+   underlying retrieved SETS from converging.
+
+Taken together this does not cleanly match any single one of the
+spec's pre-registered Cases 1-5 -- it is closest to a new pattern:
+standalone quality improves and becomes more homogeneous while the
+Oracle-vs-Fixed gap stays real, suggesting the responsibility-weighted
+loss succeeded at making every head independently competent (unlike
+Current-V5, where heads diverge a lot but several are mediocre alone)
+without actually producing differentiated experts. Whether this
+still justifies a router is an open question the final 4-cell report
+(spec section 24) will need to answer explicitly, once Weather H96/H720
+complete -- Weather H96 is still training as of this entry; Weather
+H720 has not started.

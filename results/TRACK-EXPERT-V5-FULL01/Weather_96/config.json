@@ -1,0 +1,19 @@
+{
+  "cell": "Weather_96",
+  "arm": "Expert-V5-Full",
+  "num_slots": 5,
+  "slot_std": 0.001,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "tau_e": 1.0,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "n_candidates": 36696,
+  "loss": "L_expert = mean_q[ sum_h r_h(q) * KL_h(q) ], r detached, tau_E=1.0 fixed",
+  "checkpoint_criterion": "min val round-robin retmse10 (IDENTICAL to canonical Current-V5)"
+}
