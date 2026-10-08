@@ -4593,12 +4593,49 @@ under `TRACK-R-FINAL-METHOD-GENERALIZATION01`). Output under
 `results/TRACK-V-MULTIQUERY-GENERALIZATION01/<DS>/H<H>/seed0/raw_cosine/`.
 No new mechanism; this is pure baseline backfill.
 
-**Headline finding**: Weather's Base Forecaster beats every retrieval
-arm (Raw Cosine, V0, V1, V2, V5) at every one of its 4 horizons --
-retrieval adds nothing on Weather in this project's current form. ETTh1
-continues to show the horizon-dependent reversal already documented
-elsewhere in this log (V0/no-multi-query best at H96/H192, V5 best at
-H336/H720).
+**Result -- test MSE/MAE, all 8 settings (this table was omitted when
+this entry was first written; added 2026-10-08 after the user asked
+for Weather H96's base MAE specifically and it turned out no table had
+ever been committed, only the prose summary above):**
+
+| Dataset | H | Base Forecaster (B0) MSE | Base MAE | Raw Cosine (R0) MSE | Raw Cosine MAE |
+|---|---:|---:|---:|---:|---:|
+| ETTh1 | 96 | 0.39242 | 0.39797 | 0.38044 | 0.39661 |
+| ETTh1 | 192 | 0.44722 | 0.43443 | 0.43105 | 0.42949 |
+| ETTh1 | 336 | 0.45778 | 0.45003 | 0.44543 | 0.44626 |
+| ETTh1 | 720 | 0.56035 | 0.52698 | 0.55074 | 0.53133 |
+| Weather | 96 | 0.16936 | **0.21181** | 0.19527 | 0.22632 |
+| Weather | 192 | 0.19908 | 0.24306 | 0.29387 | 0.27015 |
+| Weather | 336 | 0.24567 | 0.28376 | 0.39795 | 0.33248 |
+| Weather | 720 | 0.31943 | 0.34382 | 0.61366 | 0.41397 |
+
+**Correction (2026-10-08, after the user asked to re-verify)**: the
+original version of this entry claimed "Weather's Base Forecaster
+beats every retrieval arm at every horizon" -- this was WRONG for the
+trained V0-V5 arms specifically (it was only checked against Raw
+Cosine, which IS worse than Base at every Weather horizon, both MSE
+and MAE, with the gap widening at longer horizons: +15% MSE at H96
+growing to +92% MSE at H720). Re-verified against the full-trained
+Stage2 retrieval arms directly:
+
+| Weather H | Base alone MSE | Best retrieval arm (Stage2) MSE | Winner |
+|---:|---:|---:|---|
+| 96 | 0.16936 | V5: 0.16780 | **V5 beats Base by 0.9%** |
+| 192 | 0.19908 | V5: 0.19983 | Base beats V5 by 0.4% |
+| 336 | 0.24567 | V5: 0.24895 | Base beats V5 by 1.3% |
+| 720 | 0.31943 | V5: 0.33039 | Base beats V5 by 3.4% |
+
+Corrected finding: Base Forecaster beats every trained retrieval arm
+at H192/H336/H720, with the margin WIDENING as horizon grows (0.4% ->
+1.3% -> 3.4%), but at H96 specifically V5 (and V1, 0.16892) edge out
+Base alone by a small margin. The headline is "retrieval's advantage
+over Base shrinks and reverses as horizon grows," not a universal
+Base-wins-everywhere claim. ETTh1 continues to show the
+horizon-dependent reversal already documented elsewhere in this log
+(V0/no-multi-query best at H96/H192, V5 best at H336/H720); on ETTh1,
+Raw Cosine is consistently slightly BETTER than the Base Forecaster at
+every horizon (unlike Weather), though still worse than the best
+retrieval arm at the horizons where retrieval helps at all.
 
 ---
 

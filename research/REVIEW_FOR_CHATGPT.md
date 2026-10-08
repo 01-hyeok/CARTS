@@ -48,9 +48,12 @@ better AND more similar to the other heads (Top-10 overlap roughly
 10x'd), while real per-query Oracle-vs-Fixed-Head headroom (9.9-12.1%)
 still exists — not a pattern the spec's own taxonomy anticipated.
 Later the same day, Phase A+B's Base Forecaster/Raw Cosine baseline
-backfill completed for all 8 settings (Weather's Base Forecaster beats
-every retrieval arm at every horizon; ETTh1 keeps its horizon
-reversal); an inference-only Round-Robin-vs-Mean-Mixture re-evaluation
+backfill completed for all 8 settings (corrected 2026-10-08: Weather's
+Base Forecaster beats the best trained retrieval arm at H192/H336/H720
+with a widening margin [0.4%->1.3%->3.4%], but V5/V1 edge out Base by
+~0.9% at H96 specifically -- not a universal Base-wins-everywhere
+result; ETTh1 keeps its horizon reversal); an inference-only
+Round-Robin-vs-Mean-Mixture re-evaluation
 (**TRACK-V-MEANMIX-INFERENCE01**) was built, smoke-tested, run partway
 (20/32 cells), and then ABORTED by explicit user decision once it was
 noticed the reused Stage1 checkpoints were themselves Round-Robin
@@ -5402,9 +5405,19 @@ report.
 **[repo]** Phase A+B Base Forecaster (B0) + Raw Cosine (R0) baseline
 backfill, all 8 settings (ETTh1/Weather x H96/H192/H336/H720), computed
 via the existing unmodified `build_r_retrieval_cache01.py --retriever
-cosine` + `train_r_stage2_lambda01.py`. Weather's Base Forecaster beats
-every retrieval arm at every horizon; ETTh1 keeps its horizon reversal
-(V0 best at H96/H192, V5 best at H336/H720).
+cosine` + `train_r_stage2_lambda01.py`.
+
+**Correction (2026-10-08)**: this entry originally said "Weather's
+Base Forecaster beats every retrieval arm at every horizon" -- true
+only against Raw Cosine. Checked directly against the trained Stage2
+retrieval arms: Base beats the best arm (V5) at H192/H336/H720, with
+the margin widening as horizon grows (0.4% -> 1.3% -> 3.4%), but V5
+(and V1) edge out Base by ~0.9% at H96 specifically. Base/MSE: H96
+0.16936 vs V5 0.16780 (V5 wins); H192 0.19908 vs 0.19983; H336 0.24567
+vs 0.24895; H720 0.31943 vs 0.33039 (Base wins the latter three). Raw
+Cosine remains worse than Base at every Weather horizon (unchanged).
+ETTh1 keeps its horizon reversal (V0 best at H96/H192, V5 best at
+H336/H720).
 
 **[repo] TRACK-V-MEANMIX-INFERENCE01 -- ABORTED, superseded.** Built a
 32-cell inference-only re-evaluation: kept every existing V0/V1/V2/V5
