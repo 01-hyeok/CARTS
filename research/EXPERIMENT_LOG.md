@@ -4911,3 +4911,62 @@ positively:**
 **Not done in this track** (explicitly out of scope per spec): Weather
 cells, P100/R100, Router, any load-balancing/diversity/entropy
 regularizer, Top-2/sparse routing, tau_E sweep.
+
+---
+
+## 2026-10-08 -- TRACK-V-PROFESSOR-FUSION01 (Professor-paper-style Validation-Only Scalar Trust Fusion), COMPLETE
+
+**[repo]** Stage-2 Mode: Professor-paper-style Validation-Only Scalar
+Trust Fusion (frozen Base + frozen retrieval cache + a validation-only
+grid-searched scalar beta, `Y_final = B + beta*(R-B)`, NEVER
+optimizer-trained), replacing the existing CARTS trainable-lambda
+Stage-2 (`train_r_stage2_lambda01.py`, left untouched) specifically to
+remove the confound between "retriever found better history" and
+"Stage-2 gate compensated for a weak retriever." New file
+`scripts/eval_professor_style_fusion01.py` (no train loop, no
+optimizer, no backward -- verified by 11 unit tests). V0/V1 reuse
+existing canonical caches (Mean-Mixture==Round-Robin for S=1, already
+proven); V2/V5 use the TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01
+corrected caches. 32 Full-memory cells + 16 Shared-Top-100 (P100)
+cells (H192/H336 P100 audited as never-trained, correctly excluded,
+no new Stage1 training added). Full detail, all tables, and the 9
+closing-question answers are in `results/TRACK-V-PROFESSOR-FUSION01/REPORT.md`
+(too large to duplicate here in full) -- headline results below.
+
+**Headline -- V5 vs Original-KL (V0), Full-memory, simple fusion:**
+V5 beats V0 in **8/8** cells; V2 in 7/8; V1 in 6/8 (monotonic
+reliability by head count). V5 wins outright (lowest final MSE) in
+6/8 cells.
+
+**Headline -- existing trainable-lambda Stage2 vs this track's simple
+fusion, V5, all 8 Full-memory cells:** clean dataset split. On ETTh1,
+the existing adaptive gate is better at every horizon. On Weather, the
+simple validation-grid fusion is better at every horizon, dramatically
+so at H720 (0.31678 vs the existing gate's 0.34229, a 7.5% reduction)
+-- directly consistent with this same session's earlier interactive
+diagnostic finding that Weather's trainable lambda gate settles near
+its lambda=0.5 initialization because retrieval looks artificially
+strong specifically on the TRAIN split (sliding-window near-duplicate
+candidates), a signal that never reflected validation or test.
+
+**Caveat, stated plainly**: 77% of all 48 cells selected beta at the
+grid ceiling (0.2), so for most cells we cannot tell whether
+validation wanted exactly 0.2 or more than 0.2 that the fixed grid
+couldn't reach (grid was NOT changed post-hoc, per the spec's own
+prohibition). Retrieval-only MSE ranks the 4 arms correctly against
+final fusion MSE only 66.7% of the time (32/48 pairs) -- retrieval
+-only quality is suggestive of final benefit, not a reliable
+predictor. P100 (Top-100 pool) restriction erases most of
+multi-query's advantage specifically at ETTh1 H720 (14-15% MSE
+degradation for V1/V2/V5 vs V0's 2.6%), while elsewhere the Full-vs-P100
+gap is small (1-4%) and similar across arms.
+
+**Conclusion, not spun positively**: the evidence that Multi-Query
+(V5) retrieves genuinely more forecasting-useful history is real but
+not airtight. The single strongest point is 8/8 full-memory cells
+where V5 beats V0 under a deliberately dumb, confound-free fusion. Against
+that: on ETTh1, part of the previously-reported V5 gain traces to
+Stage-2 adaptation rather than the retriever itself (the gain shrinks
+under simple fusion); retrieval-only ranking is only a moderate
+predictor of final benefit; and P100 restriction disproportionately
+hurts multi-query specifically at ETTh1's longest horizon.

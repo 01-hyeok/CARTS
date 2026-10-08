@@ -1,0 +1,25 @@
+{
+  "stage2_mode": "Professor-paper-style Validation-Only Scalar Trust Fusion",
+  "previous_carts_stage2": "trainable global lambda (train_r_stage2_lambda01.py) -- NOT used here",
+  "arm": "V2",
+  "candidate_support": "full",
+  "pred_len": 720,
+  "seq_len": 720,
+  "seed": 0,
+  "beta_grid": [
+    0.0,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.15,
+    0.2
+  ],
+  "fixed_beta_control": 0.1,
+  "reference_ckpt": "checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_RelationStage1_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl720_pl720_0/checkpoint.pth",
+  "base_checkpoint": "checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/base/checkpoint.pth",
+  "base_checkpoint_sha256": "43f36a584d812001eb81e4c855041394d90c5cd76cfa69c5f6c03855c6a7782d",
+  "cache_dir": "results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/Weather/H720/seed0/V2/cache",
+  "channel_first_optimization_applicable": false,
+  "channel_first_optimization_reason": "no transform_relation_features/candidate re-encode in this evaluator -- BaseForecastHead per-channel loop is a tiny linear layer, cache reads are plain index lookups; A1 is a no-op here"
+}

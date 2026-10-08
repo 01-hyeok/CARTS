@@ -1,0 +1,23 @@
+{
+  "base_val_mse": 0.46192607283592224,
+  "base_val_mae": 0.32205840945243835,
+  "base_test_mse": 0.19908399879932404,
+  "base_test_mae": 0.24306190013885498,
+  "retrieval_only_val_mse": 0.5877075791358948,
+  "retrieval_only_val_mae": 0.36771059036254883,
+  "retrieval_only_test_mse": 0.2618427276611328,
+  "retrieval_only_test_mae": 0.2973998785018921,
+  "fixed_beta": 0.1,
+  "fixed_beta_val_mse": 0.4561736583709717,
+  "fixed_beta_val_mae": 0.3175174593925476,
+  "fixed_beta_test_mse": 0.1967982053756714,
+  "fixed_beta_test_mae": 0.24119612574577332,
+  "selected_beta": 0.2,
+  "selected_beta_val_mse": 0.45449477434158325,
+  "selected_beta_val_mae": 0.31542766094207764,
+  "selected_beta_test_mse": 0.196414977312088,
+  "selected_beta_test_mae": 0.24146942794322968,
+  "improvement_vs_base_pct": 1.3406509329393104,
+  "n_val": 5079,
+  "n_test": 10348
+}

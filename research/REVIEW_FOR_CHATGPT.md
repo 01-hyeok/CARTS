@@ -5582,3 +5582,30 @@ positive Router signal, but the mixed horizon result means this is
 closer to the spec's own Case A at H720 and Case B at H96 -- not a
 clean single verdict. No Router/joint-training experiment implemented
 or run; explicitly deferred to the user's decision.
+
+---
+
+# Addendum (2026-10-08) -- TRACK-V-PROFESSOR-FUSION01: confound-controlled simple-fusion re-evaluation
+
+**[repo]** Stage-2 Mode: Professor-paper-style Validation-Only Scalar
+Trust Fusion (`Y_final = B + beta*(R-B)`, beta grid-searched on
+validation only, never optimizer-trained), replacing the existing
+trainable-lambda Stage-2 specifically to isolate the retriever's own
+contribution from Stage-2 gate adaptation. 32 Full-memory + 16 P100
+cells. Full tables and per-question answers in
+`results/TRACK-V-PROFESSOR-FUSION01/REPORT.md`.
+
+**Headline**: V5 beats Original-KL (V0) in 8/8 Full-memory cells under
+this deliberately simple fusion -- the single strongest
+confound-controlled evidence so far for a real retriever-side
+contribution. But: existing trainable-lambda Stage2 beats this
+simple fusion on ETTh1 at every horizon (adaptation helps there), while
+simple fusion beats the trainable gate on Weather at every horizon,
+by 7.5% at H720 -- traced to the trainable gate overfitting a
+train-only retrieval artifact on Weather (diagnosed interactively
+earlier the same session). Retrieval-only MSE predicts final-fusion
+ranking only 66.7% of the time; P100 restriction disproportionately
+hurts multi-query at ETTh1 H720 specifically (14-15% degradation vs
+V0's 2.6%). Conclusion is NOT a clean win: Multi-Query's forecasting
+benefit is real but partly dataset- and Stage-2-dependent, not purely
+attributable to the retriever in every setting.
