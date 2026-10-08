@@ -5513,3 +5513,59 @@ magnitude. Direction is consistent: ETTh1 improves/flat, Weather
 worsens at most changed cells. Strengthens rather than overturns the
 V5 conclusion -- the correction's effect scales with head count and is
 dataset-dependent, not a universal win.
+
+---
+
+# Addendum (2026-10-08) -- TRACK-HARD-EXPERT-V5-FULL01: Soft -> Hard assignment ablation, COMPLETE
+
+**[repo]** Controlled follow-up to TRACK-EXPERT-V5-FULL01 (Soft
+Expert). Changes exactly one thing: per-head loss assignment. Soft
+gives every head a responsibility-weighted gradient every query; Hard
+gives ONLY the query-wise future-best head (detached `argmin_h U_h(q)`
+winner) a gradient. No Router/load-balancing/diversity regularizer
+anywhere. Scope: ETTh1 H96/H720 only, Full-Candidate only, 10 fixed
+epochs (no early stopping, every epoch checkpoint saved). Checkpoint
+selection corrected relative to the original plan: PRIMARY criterion
+is validation Mean-Mixture RetMSE@10 (matching the inference rule this
+track ships), not the raw Hard loss and not Round-Robin -- avoiding
+the exact mismatch TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 identified.
+12/12 required unit tests passed, including a real-checkpoint
+init-hash equality check (Hard and Soft start from byte-identical
+weights) and a real backward-pass check that non-winner SlotHeads get
+EXACTLY zero gradient.
+
+**Forecasting (Mean-Mixture basis; Soft's row is its existing
+single checkpoint, explicitly NOT re-selected under Mean-Mixture since
+that trainer never saved per-epoch checkpoints):**
+
+| Method | H96 MSE | H96 MAE | H720 MSE | H720 MAE |
+|---|---:|---:|---:|---:|
+| V5 Original | 0.37472 | 0.39946 | 0.50368 | 0.50583 |
+| Soft Expert | 0.37624 | 0.39959 | 0.50284 | 0.50422 |
+| Hard Expert | 0.37684 | 0.40001 | **0.49947** | **0.50100** |
+
+**Diversity / specialization:**
+
+| Method | H | Overlap | Union size | Winner entropy (norm) | Max head usage |
+|---|---:|---:|---:|---:|---:|
+| V5 | 96 | 0.062 | 44.80 | N/A | N/A |
+| Soft | 96 | 0.594 | 20.09 | 0.980 | 0.239 |
+| Hard | 96 | 0.360 | 28.38 | 0.995 | 0.245 |
+| V5 | 720 | 0.246 | 33.71 | N/A | N/A |
+| Soft | 720 | 0.705 | 16.93 | 0.968 | 0.267 |
+| Hard | 720 | 0.170 | **37.61** | 0.961 | 0.283 |
+
+Oracle-vs-Fixed-Head gap: Soft 12.13%(H96)/9.88%(H720) -> Hard
+**17.03%(H96)/13.46%(H720)**.
+
+**Reading, not spun positively, horizon-split**: Hard clearly relieves
+Soft's diversity collapse at both horizons, even overshooting V5
+Original's own diversity at H720 (union 37.6 vs 33.7). Forecasting
+follows the same split: H720 improves (Hard is best of the three,
+~0.7-0.8% better), H96 does not (Hard is worst of the three, by a
+small margin). The Oracle-vs-Fixed gap grew under Hard at both
+horizons (more query-dependent headroom than Soft had), which is a
+positive Router signal, but the mixed horizon result means this is
+closer to the spec's own Case A at H720 and Case B at H96 -- not a
+clean single verdict. No Router/joint-training experiment implemented
+or run; explicitly deferred to the user's decision.

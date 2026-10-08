@@ -1,0 +1,15 @@
+{
+  "cell": "ETTh1_96",
+  "selected_epoch": 8,
+  "selected_checkpoint_path": "checkpoints/track_hard_expert_v5_full01/ETTh1_96/checkpoint_epoch8.pth",
+  "mean_mixture_best_val_retmse10": 0.9713984231852237,
+  "hard_loss_best_epoch": 10,
+  "legacy_rr_best_epoch": 9,
+  "mean_vs_rr_epochs_agree": false,
+  "mean_vs_hard_epochs_agree": false,
+  "mean_mixture_test_retmse10": 0.6457895636558533,
+  "mean_mixture_test_top10_overlap_vs_roundrobin": 0.6566504240036011,
+  "stage2_test_mse": 0.3768397569656372,
+  "stage2_test_mae": 0.40000829100608826,
+  "stage2_lambda": 0.46712473034858704
+}

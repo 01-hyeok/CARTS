@@ -1,0 +1,22 @@
+{
+  "cell": "ETTh1_96",
+  "arm": "Hard-Expert-V5-Full",
+  "num_slots": 5,
+  "slot_std": 0.001,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "early_stopping": false,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "n_candidates": 8449,
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+  "slot_heads_init_hash": "6c5b57dce545ee3563848fe1b95d80d88aff7c331aefc1dd8d5bb59121f7eac8",
+  "candidate_scoring": "A1 channel-first (compute_scores_full_grad_channel_first), bit-exact equivalent to legacy -- new-experiment standing policy",
+  "loss": "L_hard = mean_q[ KL(p_T(q) || p_{argmin_h U_h(q)}(q)) ], winner detached, no Router",
+  "inference_rule": "Mean-Mixture Top-K (mean_h softmax(scores_h/tau_s), NOT Round-Robin)",
+  "checkpoint_criterion": "PRIMARY: min validation Mean-Mixture RetMSE@10 (val_mean_retmse10), epochs 1-10 only (epoch0 is diagnostic-only) -- matches the inference rule actually used downstream. The raw Hard training loss (val_hard_loss) and legacy Round-Robin val retmse10 are recorded as DIAGNOSTICS ONLY, never used for selection."
+}

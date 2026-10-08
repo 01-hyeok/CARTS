@@ -4763,3 +4763,114 @@ strengthens, rather than overturns, the V5 reading: the train/inference
 mismatch's correction is real but dataset-dependent, not a universal
 improvement, and scales down (in both selection-changed frequency and
 effect size) as head count drops.
+
+---
+
+## 2026-10-08 -- TRACK-HARD-EXPERT-V5-FULL01 (Soft -> Hard assignment ablation), COMPLETE (ETTh1 H96/H720)
+
+**[repo]** Controlled follow-up to TRACK-EXPERT-V5-FULL01 (Soft Expert):
+changes EXACTLY ONE thing relative to the canonical Full-Candidate V5
+architecture -- the per-head loss assignment. Soft gives every head a
+responsibility-weighted gradient every query
+(`L_soft = sum_h r_h(q) KL_h(q)`, `r_h` a softmax over z-scored
+standalone utility); Hard gives ONLY the query-wise future-best head a
+gradient, via a detached `argmin_h U_h(q)` winner
+(`L_hard = KL_{h*(q)}(q)`). No Router, load-balancing/diversity/
+entropy regularizer, Top-2 routing, or tau_E sweep anywhere in this
+track (`scripts/train_hard_expert_v5_full01.py`, new file; Soft's own
+`train_expert_v5_full01.py` and its `expert_weighted_loss`/
+`responsibility_from_utility` primitives untouched). Scope: ETTh1
+H96/H720 only (Weather excluded per explicit spec), Full-Candidate
+only (no P100/R100), fixed 10 epochs with NO early stopping (every
+epoch checkpoint saved, including epoch 0 as a pre-training
+diagnostic baseline) -- the same fixed-epoch policy as D-0015. A1
+channel-first scoring applied (standing new-experiment default).
+
+**Checkpoint-selection correction (the key methodological fix relative
+to the originally-planned design)**: PRIMARY criterion is validation
+**Mean-Mixture** RetMSE@10 (`mean_mixture_topk_selection`, matching the
+inference rule this track actually ships), NOT the raw Hard training
+loss and NOT Round-Robin -- avoiding the exact
+train/inference-selection-rule mismatch TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01
+identified for the canonical V5/V2 checkpoints. All three criteria
+(Mean-Mixture/Hard-loss/Round-Robin) were tracked every epoch purely
+as diagnostics; they agreed on ETTh1_96's smoke-scale validation run
+but DIVERGED on the real full runs: ETTh1_96 picked epoch 8 (Mean) vs
+10 (Hard-loss) vs 9 (RR); ETTh1_720 picked epoch 1 for both
+Mean-Mixture and Hard-loss but epoch 8 for RR.
+
+**12 required unit tests all PASS** (winner correctness vs a known
+utility vector, winner-only loss equals the gathered KL mean,
+non-winner SlotHead gradient exactly zero on a real backward pass,
+assignment-path detachment, shared-encoder gradient ON via a real
+checkpoint, Full-Candidate assertion, standalone-not-Round-Robin
+winner utility, sign correctness of `d_raw = -individual_utility_memsafe`,
+teacher-function reuse, Hard/Soft init-hash equality on a real
+checkpoint -- `0f044e3ce726fc5c` identical on both for ETTh1_96 --, no
+early-stopping branch, no Router parameters). A 2-epoch functional
+smoke test on ETTh1_96 additionally surfaced and self-resolved a real
+initialization bias (one head held 71% of winner assignments at
+epoch 0, purely from SlotHeads' per-slot-seeded init noise; rebalanced
+to near-uniform usage within 1 training epoch) before the real run.
+
+**Result -- Forecasting (Mean-Mixture basis for all three rows; Soft's
+row reuses its EXISTING single checkpoint un-retrained, explicitly
+NOT checkpoint-matched under the Mean-Mixture criterion, since that
+trainer never saved per-epoch checkpoints):**
+
+| Method | H96 MSE | H96 MAE | H720 MSE | H720 MAE |
+|---|---:|---:|---:|---:|
+| V5 Original | 0.37472 | 0.39946 | 0.50368 | 0.50583 |
+| Soft Expert | 0.37624 | 0.39959 | 0.50284 | 0.50422 |
+| Hard Expert | 0.37684 | 0.40001 | **0.49947** | **0.50100** |
+
+**Result -- Diversity / specialization:**
+
+| Method | H | Mean pairwise Top10 overlap | Union size (5 heads) | Winner entropy (normalized) | Max head usage |
+|---|---:|---:|---:|---:|---:|
+| V5 Original | 96 | 0.062 | 44.80 | N/A | N/A |
+| Soft Expert | 96 | 0.594 | 20.09 | 0.980 | 0.239 |
+| Hard Expert | 96 | 0.360 | 28.38 | 0.995 | 0.245 |
+| V5 Original | 720 | 0.246 | 33.71 | N/A | N/A |
+| Soft Expert | 720 | 0.705 | 16.93 | 0.968 | 0.267 |
+| Hard Expert | 720 | 0.170 | **37.61** | 0.961 | 0.283 |
+
+Oracle-vs-Fixed-Head gap (per-query future-aware upper bound minus the
+single best fixed head, test split): Soft 12.13% (H96) / 9.88% (H720)
+-> Hard **17.03% (H96) / 13.46% (H720)**.
+
+**Answers to the spec's 5 closing questions, numbers-first, not spun
+positively:**
+
+1. *Did Hard produce real specialization?* Partially, and
+   horizon-dependent. Overlap drops and union rises at both horizons
+   relative to Soft, but H96 still lands far short of V5 Original's
+   diversity (0.360/28.4 vs 0.062/44.8) while H720 actually
+   OVERSHOOTS V5 Original's diversity (union 37.6 > 33.7) -- Hard
+   over-corrected Soft's collapse at the long horizon specifically.
+2. *Did it relieve Soft's overlap increase?* Yes, clearly, at both
+   horizons (H96 0.594->0.360; H720 0.705->0.170).
+3. *Did H720 forecasting recover?* Yes -- Hard's H720 Stage2 MSE
+   (0.49947) is the best of the three, ~0.8% better than V5 Original
+   and ~0.7% better than Soft. H96 moved the opposite direction
+   (Hard is the WORST of the three there, by a small margin).
+4. *Individual quality or diversity?* The H720 result (diversity
+   recovered strongly AND MSE improved together) is consistent with a
+   diversity-mediated mechanism; H96 (diversity partially recovered,
+   MSE did NOT improve) is not -- suggesting whatever benefit Hard
+   provides is specific to how much complementary candidate coverage
+   matters at that horizon, not a uniform "better retrieval quality"
+   story.
+5. *Does this justify a Router?* The Oracle-vs-Fixed gap grew under
+   Hard relative to Soft at both horizons (17.0%/13.5% vs 12.1%/9.9%)
+   -- more query-dependent headroom exists now, which is a positive
+   signal for a future Router. But the horizon-split forecasting
+   result (H720 improves, H96 doesn't) means this is NOT a clean
+   Case A per the spec's own taxonomy -- it is closer to Case A at
+   H720 and closer to Case B at H96. No Router/joint-training
+   experiment has been implemented or run; that decision is explicitly
+   deferred to the user per the spec's own instruction.
+
+**Not done in this track** (explicitly out of scope per spec): Weather
+cells, P100/R100, Router, any load-balancing/diversity/entropy
+regularizer, Top-2/sparse routing, tau_E sweep.

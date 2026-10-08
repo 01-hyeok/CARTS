@@ -1,0 +1,12 @@
+{
+  "primary_criterion": "min validation Mean-Mixture RetMSE@10 (matches the inference rule used downstream)",
+  "mean_mixture_best_epoch": 1,
+  "mean_mixture_best_val_retmse10": 1.9405148162824144,
+  "hard_loss_best_epoch": 1,
+  "hard_loss_best_val_hard_loss": 1.6853150654400209,
+  "legacy_rr_best_epoch": 8,
+  "legacy_rr_best_val_rr_retmse10": 1.9711333038613525,
+  "mean_vs_rr_epochs_agree": false,
+  "mean_vs_hard_epochs_agree": true,
+  "note": "Round-Robin and the raw Hard training loss are NOT the checkpoint-selection criterion here -- diagnostics only. Selection uses Mean-Mixture val retMSE@10 to avoid the exact inference/selection-rule mismatch TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01 identified."
+}
