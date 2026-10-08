@@ -97,6 +97,9 @@ def main():
     ap.add_argument('--learning_rate', type=float, default=1e-3)
     ap.add_argument('--train_epochs', type=int, default=10)
     ap.add_argument('--patience', type=int, default=5)
+    ap.add_argument('--disable_early_stopping', action='store_true',
+                    help='Run all --train_epochs epochs regardless of val_retmse10 plateau; '
+                         'every epoch checkpoint is still saved either way (standing fixed-epoch policy).')
     ap.add_argument('--chunk_size', type=int, default=4096)
     ap.add_argument('--init_seed', type=int, default=0)
     ap.add_argument('--loader_seed', type=int, default=0)
@@ -199,12 +202,12 @@ def main():
         ndcg10 = ndcg_at_k(model_idx_local, d_pool, valid_mask, cli.top_k)
 
         teacher_ent, teacher_eff = _entropy_and_effective(
-            normalized_teacher_prob(-d_pool, valid_mask, cli.tau_t), valid_mask)
+            normalized_teacher_prob(d_pool, valid_mask, cli.tau_t), valid_mask)
         s_masked = scores.masked_fill(~valid_mask.unsqueeze(1), float('-inf'))
         p_m = torch.softmax(s_masked / cli.tau_s, dim=-1)
         p_bar = p_m.mean(dim=1)
         student_ent, student_eff = _entropy_and_effective(p_bar, valid_mask)
-        p_t = normalized_teacher_prob(-d_pool, valid_mask, cli.tau_t)
+        p_t = normalized_teacher_prob(d_pool, valid_mask, cli.tau_t)
         kl = kl_loss_from_prob(p_t, p_bar, valid_mask)
 
         res = dict(model_idx_global=local_to_global(pool_idx_global, model_idx_local),
@@ -323,7 +326,7 @@ def main():
              f'coverage@pool={val_metrics["coverage_at_pool"]:.4f} '
              f'(best_retmse={best_retmse["epoch"]}:{best_retmse["val"]:.6f} '
              f'best_kl={best_kl["epoch"]}:{best_kl["val"]:.6f})')
-        if epoch - best_retmse['epoch'] >= cli.patience:
+        if not cli.disable_early_stopping and epoch - best_retmse['epoch'] >= cli.patience:
             print(f'[v_p100] {arm} early stop at epoch {epoch} (best_retmse={best_retmse["epoch"]})')
             break
 

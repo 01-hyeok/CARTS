@@ -4970,3 +4970,114 @@ Stage-2 adaptation rather than the retriever itself (the gain shrinks
 under simple fusion); retrieval-only ranking is only a moderate
 predictor of final benefit; and P100 restriction disproportionately
 hurts multi-query specifically at ETTh1's longest horizon.
+
+---
+
+## 2026-10-08 -- TRACK-V-SHARED-TOP100-SIGNFIX01 (IN PROGRESS: ETTh1 done, Weather in progress)
+
+### Bug found and fixed
+
+`scripts/train_v_sharedtop100_01.py` called
+`normalized_teacher_prob(-d_pool, valid_mask, cli.tau_t)` at two sites (the
+diagnostic teacher-entropy call, and the actual KL training-loss teacher
+`p_t`). `d_pool` (from `utils/candidate_pool.py::pooled_future_mse`) is
+already a correctly-signed, non-negative, lower-is-better MSE distance.
+`normalized_teacher_prob(d, ...)` already internally negates its input
+(z-score then `softmax(-z/tau)`). Passing `-d_pool` double-negated: the
+teacher distribution assigned HIGH probability to HIGH-MSE (bad)
+candidates and LOW probability to LOW-MSE (good) candidates -- the exact
+opposite of the intended teacher. This is the Stage-1 trainer behind
+every Shared-Top-100 (P100) checkpoint ever produced in this project
+(TRACK-V-MULTIQUERY-GENERALIZATION01's P100 cells, and everything
+downstream that reused those checkpoints this session:
+TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01's P100 V2/V5 cells,
+TRACK-V-PROFESSOR-FUSION01's P100 cells).
+
+Confirmed by direct code reading, algebraic derivation
+(`zscore(-x) = -zscore(x)`), and a numeric synthetic reproduction
+(`d=[0.1, 1.0, 10.0]`: correct call puts argmax probability on index 0;
+buggy call puts it on index 2, the worst candidate). Repo-wide audit
+found the identical pattern in `scripts/train_retriever_pool01.py`
+(`normalized_teacher_prob(-teacher_d, ...)`, both its 'full' and
+'coarse_topk' modes) -- checked against every `results/` config this
+session actually depended on and found it affects only
+`results/CANDIDATE-POOL01/` (a track not used this session; flagged,
+not fixed, out of scope unless the user asks). All Full-memory trainers
+(`train_t_pure_multislot01.py`, `train_j_shared_encoder_drift01.py`,
+`train_expert_v5_full01.py`, `train_hard_expert_v5_full01.py`, etc.)
+correctly use the `d_raw = -u` (utility-to-distance) pattern and are
+unaffected. `scripts/precompute_candidate_pool01.py` (pool-generation
+itself, i.e. which 100 candidates are in the pool) never calls
+`normalized_teacher_prob` at all -- the pool's candidate identity is
+unaffected; only the Stage-1 KL training loss and its diagnostics,
+built on top of that pool, were corrupted.
+
+Fix: both call sites in `scripts/train_v_sharedtop100_01.py` changed
+from `normalized_teacher_prob(-d_pool, ...)` to
+`normalized_teacher_prob(d_pool, ...)`. Regression tests in
+`tests/test_v_sharedtop100_signfix01.py` (5 required tests A-E plus 2
+supporting tests, all passing); full `pytest tests/` re-run after the
+fix: `1519 passed, 2 failed` (same 2 pre-existing baseline failures as
+before, no new regressions). Added `--disable_early_stopping` to
+`scripts/train_v_sharedtop100_01.py` (default off, preserves old
+behavior) to satisfy the standing fixed-epoch policy (D-0015) for this
+retrain: all 10 epochs run, every epoch checkpoint saved, best epoch
+chosen post-hoc.
+
+### Non-destructive invalidation
+
+All 40 previously-affected result directories were marked with an
+`INVALIDATED_BY_TEACHER_SIGN_BUG.md` file (not deleted, not modified):
+16 under `results/TRACK-V-MULTIQUERY-GENERALIZATION01/*/pool_top100/*/{V0,V1,V2,V5}/`,
+8 under `results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/*/pool_top100/{,V2/}`,
+16 under `results/TRACK-V-PROFESSOR-FUSION01/*/pool_top100/{V0,V1,V2,V5}/`.
+
+### Retrain: new track `TRACK-V-SHARED-TOP100-SIGNFIX01`
+
+16 cells planned (ETTh1/Weather x H96/H720 x V0/V1/V2/V5). Reuses the
+existing Shared-Top-100 candidate pool cache unmodified (bug-independent,
+per above). V0/V1: single-distribution selection (proven == Mean-Mixture
+for S<=1); use the trainer's own `checkpoint_best_retmse.pth` directly.
+V2/V5: post-hoc Mean-Mixture validation RetMSE@10 checkpoint re-selection
+across all 10 epoch checkpoints (`eval_v5_meanmix_checkpoint_selection_pool01.py`,
+reused generically via `--num_query_views`), never Round-Robin, never the
+test split. Stage-2 for all arms: Professor-paper-style Validation-Only
+Scalar Trust Fusion (`scripts/eval_professor_style_fusion01.py`), not
+`train_r_stage2_lambda01.py`. Sequential execution, GPU1 only (confirmed
+via `/proc/<pid>/environ`).
+
+**ETTh1 complete (8/16 cells). Sanity check requested by the user --
+does the "KL down while RetMSE explodes" catastrophic pattern disappear
+after the fix -- CONFIRMED YES**, e.g.:
+
+| cell | arm | retMSE@10 (old, buggy) | retMSE@10 (new, fixed) | recall@10 (old) | recall@10 (new) | ndcg@10 (old) | ndcg@10 (new) |
+|---|---|---|---|---|---|---|---|
+| ETTh1_96 | V5 | 1.622 | 0.664 | 0.055 | 0.258 | 0.581 | 0.874 |
+| ETTh1_720 | V5 | 2.460 | 0.943 | 0.040 | 0.321 | 0.486 | 0.890 |
+
+Full fixed-pipeline numbers, all 8 ETTh1 cells (test split; Stage-2 =
+Professor-style fusion, beta grid-searched on validation only):
+
+| cell | arm | retMSE@10 | D | C | recall@10 | ndcg@10 | base_mse | beta | final_mse | improvement vs base |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ETTh1_96 | V0 | 0.6828 | 0.0683 | 0.3405 | 0.2390 | 0.8643 | 0.39242 | 0.20 | 0.37593 | +4.20% |
+| ETTh1_96 | V1 | 0.6626 | 0.0663 | 0.3465 | 0.2586 | 0.8745 | 0.39242 | 0.20 | 0.37616 | +4.14% |
+| ETTh1_96 | V2 | 0.6693 | 0.0669 | 0.3469 | 0.2546 | 0.8713 | 0.39242 | 0.20 | 0.37631 | +4.11% |
+| ETTh1_96 | V5 | 0.6639 | 0.0664 | 0.3434 | 0.2575 | 0.8741 | 0.39242 | 0.20 | 0.37597 | +4.19% |
+| ETTh1_720 | V0 | 1.0206 | 0.1021 | 0.5385 | 0.2227 | 0.8477 | 0.56035 | 0.20 | 0.52809 | +5.76% |
+| ETTh1_720 | V1 | 0.9584 | 0.0958 | 0.5374 | 0.3061 | 0.8820 | 0.56035 | 0.20 | 0.52555 | +6.21% |
+| ETTh1_720 | V2 | 0.9406 | 0.0941 | 0.5246 | 0.3116 | 0.8881 | 0.56035 | 0.20 | 0.52411 | +6.47% |
+| ETTh1_720 | V5 | 0.9426 | 0.0943 | 0.5263 | 0.3213 | 0.8895 | 0.56035 | 0.20 | 0.52476 | +6.35% |
+
+Note on ETTh1 ranking under the fix: V2/V5 (multi-query) now rank ahead
+of V0/V1 by retMSE@10/recall@10/ndcg@10 at BOTH horizons (not just
+H720), and the Professor-fusion final-MSE ranking at H720 now also
+tracks that (V2 best, then V5, then V1, then V0) -- this is a materially
+different picture from the pre-fix P100 story and will be addressed
+directly in the final closing-questions section once Weather also
+completes. **Interpretation/closing-questions answers intentionally
+deferred to the full REPORT.md once all 16 cells finish** -- do not cite
+these 8 cells alone as the final conclusion.
+
+Weather H96/H720 (8 more cells) in progress on GPU1 as of this entry;
+will be appended once complete.

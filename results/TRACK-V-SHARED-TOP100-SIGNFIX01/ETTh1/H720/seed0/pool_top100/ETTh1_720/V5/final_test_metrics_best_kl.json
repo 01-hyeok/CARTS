@@ -1,0 +1,21 @@
+{
+  "kl": 0.0598419842846436,
+  "model_ind_mse": 0.979973713908924,
+  "agg_mse": 0.6002033773555769,
+  "recall10_p100": 0.2853903640259862,
+  "recall10_full": 0.03272955691344741,
+  "ndcg10": 0.8690188986583515,
+  "coverage_at_pool": 0.10639254552102684,
+  "D": 0.09799737287874286,
+  "C": 0.5022060106551962,
+  "oracle_ind_mse": 0.690529874306232,
+  "n_queries_seen": 2161,
+  "best_epoch": 1,
+  "effective_rank": 8.873528480529785,
+  "embedding_norm_mean": 1.0,
+  "embedding_norm_std": 2.87917796271131e-08,
+  "per_dim_variance_mean": 0.0049600135535001755,
+  "mean_pairwise_cosine": 0.3651183247566223,
+  "pairwise_cosine_std": 0.2907624840736389,
+  "largest_singular_value_fraction": 0.33022576570510864
+}
