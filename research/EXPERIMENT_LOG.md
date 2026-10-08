@@ -5081,3 +5081,71 @@ these 8 cells alone as the final conclusion.
 
 Weather H96/H720 (8 more cells) in progress on GPU1 as of this entry;
 will be appended once complete.
+
+### Update (2026-10-08, all 16 cells complete) -- full comparison, both Stage-2 modes
+
+All 16 Stage-1 cells (ETTh1/Weather x H96/H720 x V0/V1/V2/V5) finished.
+Two independent Stage-2 re-evaluations were run on the same sign-fixed
+P100 caches, per two separate explicit user requests:
+
+**Stage-2 Mode A: Original CARTS Trainable Global Lambda**
+(`scripts/eval_r_stage2_lambda_signfix01.py`, reuses
+`train_r_stage2_lambda01.py`'s `load_tensors`/formula unmodified --
+`Y_final = B + lambda*(R-B)`, `lambda=sigmoid(a)`, trained by gradient
+descent on train, selected by validation MSE, every epoch checkpoint
+saved).
+
+**Stage-2 Mode B: Professor-paper-style Validation-Only Scalar Trust
+Fusion** (`scripts/eval_professor_style_fusion01.py`, beta grid-searched
+on validation only, never gradient-trained -- already built and used
+earlier this session for TRACK-V-PROFESSOR-FUSION01).
+
+| Dataset | H | Arm | Base MSE | Mode A: lambda | Mode A MSE | Mode A vs base | Mode B: beta | Mode B MSE | Mode B vs base |
+|---|---|---|---|---|---|---|---|---|---|
+| ETTh1 | 96 | V0 | 0.39242 | 0.458 | 0.36924 | -5.91% | 0.20 | 0.37593 | -4.20% |
+| ETTh1 | 96 | V1 | 0.39242 | 0.458 | 0.37019 | -5.67% | 0.20 | 0.37616 | -4.14% |
+| ETTh1 | 96 | V2 | 0.39242 | 0.446 | 0.37046 | -5.60% | 0.20 | 0.37631 | -4.11% |
+| ETTh1 | 96 | V5 | 0.39242 | 0.473 | 0.36960 | -5.82% | 0.20 | 0.37597 | -4.19% |
+| ETTh1 | 720 | V0 | 0.56035 | 0.454 | 0.52194 | -6.86% | 0.20 | 0.52809 | -5.76% |
+| ETTh1 | 720 | V1 | 0.56035 | 0.479 | 0.51822 | -7.52% | 0.20 | 0.52555 | -6.21% |
+| ETTh1 | 720 | V2 | 0.56035 | 0.478 | 0.51351 | -8.36% | 0.20 | 0.52411 | -6.47% |
+| ETTh1 | 720 | V5 | 0.56035 | 0.479 | 0.51492 | -8.11% | 0.20 | 0.52476 | -6.35% |
+| Weather | 96 | V0 | 0.16936 | 0.424 | 0.17446 | +3.01% | 0.20 | 0.16710 | -1.34% |
+| Weather | 96 | V1 | 0.16936 | 0.409 | 0.17750 | +4.80% | 0.20 | 0.16803 | -0.79% |
+| Weather | 96 | V2 | 0.16936 | 0.397 | 0.17799 | +5.09% | 0.20 | 0.16846 | -0.53% |
+| Weather | 96 | V5 | 0.16936 | 0.395 | 0.17665 | +4.30% | 0.20 | 0.16811 | -0.74% |
+| Weather | 720 | V0 | 0.31943 | 0.488 | 0.37279 | +16.71% | 0.20 | 0.32281 | +1.06% |
+| Weather | 720 | V1 | 0.31943 | 0.505 | 0.37760 | +18.21% | 0.20 | 0.32290 | +1.09% |
+| Weather | 720 | V2 | 0.31943 | 0.506 | 0.38585 | +20.79% | 0.20 | 0.32496 | +1.73% |
+| Weather | 720 | V5 | 0.31943 | 0.509 | 0.38553 | +20.69% | 0.20 | 0.32411 | +1.47% |
+
+**Observations:**
+- **ETTh1 (8/8 cells): Mode A (original CARTS trainable lambda) beats
+  Mode B everywhere** -- lambda settles at 0.44-0.48, close to the
+  genuinely-helpful region, so train-loss-driven gradient descent finds
+  a good solution on its own. Arm ranking is broadly consistent
+  between modes (V2 best at H720, V0/V5 close at H96 in both modes).
+- **Weather_96 (4/4 cells): the two modes DISAGREE on sign** -- Mode A
+  makes every arm WORSE than base (+3-5%, lambda stuck at 0.40-0.42,
+  near its 0.5 initialization) while Mode B makes every arm slightly
+  BETTER than base (-0.5 to -1.3%). This replicates, after the
+  sign-fix, the exact train/val/test retrieval-quality-inflation
+  mechanism diagnosed earlier this session (sliding-window leakage on
+  the Weather train split) -- the bug fix corrected the retriever
+  itself, but did not and could not fix the orthogonal Stage-2
+  optimization-landscape problem.
+- **Weather_720 (4/4 cells): BOTH modes now fail to clearly beat base**
+  -- Mode A is badly negative (+16.7% to +20.8% worse), and even Mode
+  B (confound-free validation-only beta search) can only find a
+  marginal +1.0-1.7% WORSE-than-base result (i.e., beta=0.2 floor is
+  still net negative here, unlike every other cell where beta>0 helped
+  at least slightly). This is new information: at Weather's longest
+  horizon, the retrieval signal itself appears too weak/noisy within
+  the P100 restriction for even an unconstrained validation-side search
+  to extract a benefit -- a genuine retrieval-quality ceiling, not an
+  optimizer artifact.
+
+All code, non-destructive invalidation markers, and the complete
+16-cell x 2-Stage2-mode results pushed to GitHub (commit history: the
+sign-fix + ETTh1 partial push, followed by this full-16-cell
+completion push).

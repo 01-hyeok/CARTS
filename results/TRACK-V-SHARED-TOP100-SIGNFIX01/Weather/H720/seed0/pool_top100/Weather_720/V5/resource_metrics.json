@@ -1,0 +1,9 @@
+{
+  "stage1_train_seconds": 3342,
+  "checkpoint_selection_seconds": 124,
+  "cache_build_seconds": 198,
+  "stage2_professor_seconds": 10,
+  "selected_epoch": 6,
+  "disable_early_stopping": true,
+  "train_epochs": 10
+}

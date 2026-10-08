@@ -25,6 +25,7 @@ import torch
 import torch.nn.functional as F
 
 from models.RelationStage1 import transform_relation_features
+from utils.candidate_pool import encode_pooled_candidates, gather_candidate_histories
 
 
 def encode_raw_channel_first(model, x, c):
@@ -50,6 +51,30 @@ def compute_scores_full_grad_channel_first(model, slot_heads, batch_x, memory_x,
     q = slot_heads(z_q)
     k_full = F.normalize(encode_raw_channel_first(model, memory_x, c), dim=-1)
     return torch.einsum('bsd,nd->bsn', q, k_full)
+
+
+def compute_scores_pool_channel_first_grad(model, slot_heads, batch_x, exp, channel, pool_cache, batch_start_idx,
+                                           device):
+    """TRACK-HARD-EXPERT-V5-P100-ALLH01 -- A1 (channel-first) Shared-Top-100
+    (P100) scorer, GRADIENT-ENABLED (no `torch.no_grad()` anywhere in
+    this function body -- callers that want an eval-only pass wrap the
+    call site themselves, exactly as `scripts/train_v_sharedtop100_01.py`
+    already does for its own `compute_scores`). Bit-identical math to
+    the `@torch.no_grad()`-wrapped `compute_scores_pool_channel_first`
+    helper duplicated in `scripts/eval_v5_meanmix_checkpoint_selection_pool01.py`
+    and `scripts/build_v_meanmix_cache_pool01.py` -- this is the single
+    shared, differentiable definition those eval-only call sites could
+    have imported from instead of inlining their own no-grad copy.
+    Returns (scores [B,S,M], pool_valid_mask [B,M] all-True, pool_idx_global [B,M])."""
+    z_q = encode_raw_channel_first(model, batch_x, channel)
+    pool_idx_global = pool_cache.lookup(batch_start_idx, channel, device)
+    pooled_x = gather_candidate_histories(exp.memory_x, pool_idx_global)
+    z_k = encode_pooled_candidates(lambda x, c: encode_raw_channel_first(model, x, c), pooled_x, channel)
+    z_k = F.normalize(z_k, dim=-1)
+    q = slot_heads(z_q)
+    scores = torch.einsum('bsd,bmd->bsm', q, z_k)
+    pool_valid_mask = torch.ones(pool_idx_global.shape, dtype=torch.bool, device=device)
+    return scores, pool_valid_mask, pool_idx_global
 
 
 class FullCandidateBank:

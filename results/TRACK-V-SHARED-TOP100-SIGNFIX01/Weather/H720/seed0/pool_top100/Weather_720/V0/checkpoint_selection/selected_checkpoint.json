@@ -1,0 +1,5 @@
+{
+  "selection_criterion": "min validation single-distribution RetMSE@10 (== Mean-Mixture for S<=1, proven elsewhere); test split NEVER used",
+  "selected_epoch": 2,
+  "selected_checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V0/checkpoint_best_retmse.pth"
+}

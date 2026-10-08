@@ -1,0 +1,99 @@
+{
+  "rows": [
+    {
+      "epoch": 1,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch1.pth",
+      "old_rr_val_retmse10": 1.1385709047317505,
+      "new_mean_val_retmse10": 1.0982975959777832,
+      "new_mean_val_agg_mse10": 0.9042709469795227,
+      "new_mean_val_recall10": 0.22842703759670258,
+      "new_mean_val_ndcg10": 0.7780110836029053
+    },
+    {
+      "epoch": 2,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch2.pth",
+      "old_rr_val_retmse10": 1.109096646308899,
+      "new_mean_val_retmse10": 1.0882463455200195,
+      "new_mean_val_agg_mse10": 0.9015384912490845,
+      "new_mean_val_recall10": 0.22535809874534607,
+      "new_mean_val_ndcg10": 0.7837477326393127
+    },
+    {
+      "epoch": 3,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch3.pth",
+      "old_rr_val_retmse10": 1.0836821794509888,
+      "new_mean_val_retmse10": 1.0494303703308105,
+      "new_mean_val_agg_mse10": 0.8609254956245422,
+      "new_mean_val_recall10": 0.24160465598106384,
+      "new_mean_val_ndcg10": 0.797077476978302
+    },
+    {
+      "epoch": 4,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch4.pth",
+      "old_rr_val_retmse10": 1.0980420112609863,
+      "new_mean_val_retmse10": 1.040732979774475,
+      "new_mean_val_agg_mse10": 0.8500402569770813,
+      "new_mean_val_recall10": 0.23572631180286407,
+      "new_mean_val_ndcg10": 0.7932888269424438
+    },
+    {
+      "epoch": 5,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch5.pth",
+      "old_rr_val_retmse10": 1.08432936668396,
+      "new_mean_val_retmse10": 1.073750615119934,
+      "new_mean_val_agg_mse10": 0.8736615180969238,
+      "new_mean_val_recall10": 0.23672138154506683,
+      "new_mean_val_ndcg10": 0.7984828352928162
+    },
+    {
+      "epoch": 6,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch6.pth",
+      "old_rr_val_retmse10": 1.0850812196731567,
+      "new_mean_val_retmse10": 1.0392745733261108,
+      "new_mean_val_agg_mse10": 0.8645269870758057,
+      "new_mean_val_recall10": 0.23858284950256348,
+      "new_mean_val_ndcg10": 0.8032441139221191
+    },
+    {
+      "epoch": 7,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch7.pth",
+      "old_rr_val_retmse10": 1.0986948013305664,
+      "new_mean_val_retmse10": 1.0469862222671509,
+      "new_mean_val_agg_mse10": 0.8632206320762634,
+      "new_mean_val_recall10": 0.24094337224960327,
+      "new_mean_val_ndcg10": 0.7983940243721008
+    },
+    {
+      "epoch": 8,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch8.pth",
+      "old_rr_val_retmse10": 1.075890302658081,
+      "new_mean_val_retmse10": 1.0473004579544067,
+      "new_mean_val_agg_mse10": 0.8771278262138367,
+      "new_mean_val_recall10": 0.24094337224960327,
+      "new_mean_val_ndcg10": 0.8008676171302795
+    },
+    {
+      "epoch": 9,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch9.pth",
+      "old_rr_val_retmse10": 1.0828136205673218,
+      "new_mean_val_retmse10": 1.0484849214553833,
+      "new_mean_val_agg_mse10": 0.8795680999755859,
+      "new_mean_val_recall10": 0.2320254147052765,
+      "new_mean_val_ndcg10": 0.795677900314331
+    },
+    {
+      "epoch": 10,
+      "checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch10.pth",
+      "old_rr_val_retmse10": 1.088152289390564,
+      "new_mean_val_retmse10": 1.0528994798660278,
+      "new_mean_val_agg_mse10": 0.8772374391555786,
+      "new_mean_val_recall10": 0.23145203292369843,
+      "new_mean_val_ndcg10": 0.7953930497169495
+    }
+  ],
+  "old_rr_best_epoch": 8,
+  "old_rr_best_val_retmse10": 1.075890302658081,
+  "new_mean_best_epoch": 6,
+  "new_mean_best_val_retmse10": 1.0392745733261108,
+  "epoch_changed": true
+}
