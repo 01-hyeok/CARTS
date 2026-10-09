@@ -5192,3 +5192,71 @@ code (ETTh1_96: 0.639 vs 0.661; ETTh1_720: 0.819 vs 0.836; Weather_96:
 0.323 vs 0.363; Weather_720: 0.475 vs 0.534) -- the responsibility-weighted
 loss itself improves raw retrieval quality in every cell, even where
 it does not translate into a Stage2 forecasting win (Weather).
+
+---
+
+## 2026-10-09 -- TRACK-HARD-EXPERT-V5-P100-ALLH01 (IN PROGRESS: ETTh1 4/8 cells done)
+
+Follow-up to TRACK-HARD-EXPERT-V5-FULL01, asking whether Hard
+assignment's head-specialization effect (observed on Full-candidate
+support) survives restriction to the Shared-Top-100 (P100) pool. 8
+cells (ETTh1/Weather x H96/H192/H336/H720) x 3 arms (V5 Original,
+Soft Expert, Hard Expert), all under P100. New P100 pools generated
+for H192/H336 (both datasets; H96/H720 pools already existed and are
+bug-independent per the SIGNFIX01 audit). V5 for H96/H720 REUSES the
+TRACK-V-SHARED-TOP100-SIGNFIX01 checkpoints/caches directly (identical
+sign-fixed trainer, identical pool, identical Mean-Mixture selection --
+no retrain); every other cell/arm is freshly trained (fixed 10 epochs,
+no early stopping, every epoch checkpoint saved, selection = validation
+Mean-Mixture RetMSE@10, never Round-Robin). **Stage-2 Mode: Original
+CARTS Trainable Global Lambda** (`eval_r_stage2_lambda_signfix01.py`,
+reusing `train_r_stage2_lambda01.py`'s formula unmodified) -- the
+Professor-style beta fusion is explicitly NOT used anywhere in this
+track, per the user's explicit instruction.
+
+**Forecasting (Table 1), ETTh1 (4/4 horizons complete):**
+
+| H | Base MSE | V5 MSE (vs base) | Soft MSE (vs base) | Hard MSE (vs base) |
+|---|---|---|---|---|
+| 96 | 0.39242 | 0.36960 (-5.82%) | 0.37002 (-5.71%) | 0.36987 (-5.75%) |
+| 192 | 0.44722 | 0.42284 (-5.45%) | 0.42399 (-5.19%) | 0.42336 (-5.34%) |
+| 336 | 0.45778 | 0.43913 (-4.07%) | 0.44020 (-3.84%) | 0.44163 (-3.53%) |
+| 720 | 0.56035 | 0.51492 (-8.11%) | 0.51234 (-8.57%) | 0.51352 (-8.36%) |
+
+**Specialization (Table 2), ETTh1:**
+
+| H | Arm | pairwise Top-10 overlap | union size (/100) | max head usage | min head usage |
+|---|---|---|---|---|---|
+| 96 | V5 | 0.375 | 27.13 | 0.243 | 0.156 |
+| 96 | Soft | 0.740 | 16.02 | 0.241 | 0.173 |
+| 96 | Hard | 0.492 | 23.12 | 0.220 | 0.172 |
+| 192 | V5 | 0.428 | 25.06 | 0.258 | 0.158 |
+| 192 | Soft | 0.669 | 17.80 | 0.238 | 0.170 |
+| 192 | Hard | 0.470 | 23.67 | 0.213 | 0.184 |
+| 336 | V5 | 0.535 | 21.60 | 0.244 | 0.147 |
+| 336 | Soft | 0.730 | 16.26 | 0.306 | 0.093 |
+| 336 | Hard | 0.485 | 23.16 | 0.266 | 0.165 |
+| 720 | V5 | 0.732 | 16.28 | 0.288 | 0.109 |
+| 720 | Soft | 0.835 | 13.63 | 0.245 | 0.150 |
+| 720 | Hard | 0.615 | 19.15 | 0.285 | 0.139 |
+
+**Preliminary reading (ETTh1 only -- Weather still running, DO NOT cite
+as final):**
+- **Soft overlap >> Hard overlap at all 4 ETTh1 horizons**, confirming
+  that Hard assignment induces specialization independent of candidate
+  support (research question A from the spec) -- this replicates the
+  Full-candidate finding under P100 too.
+- **Hard union size > Soft union size at all 4 horizons** (e.g. H96:
+  23.12 vs 16.02) -- Hard explores a wider slice of the restricted
+  100-candidate pool than Soft does.
+- **Diversity gain does NOT monotonically track forecasting benefit**:
+  Hard beats Soft on Stage-2 MSE at H96/H192 but Soft beats Hard at
+  H336/H720 -- i.e. within ETTh1 alone the relationship between
+  specialization and forecasting improvement already reverses sign
+  across horizons, a preliminary data point toward research question C
+  (diversity does not guarantee forecasting benefit) rather than D
+  (stronger long-horizon benefit), though this must be checked against
+  Weather before drawing any conclusion.
+
+Weather (4 more cells x 3 arms) in progress on GPU1; will be appended
+once complete.

@@ -1,0 +1,21 @@
+{
+  "exp": "TRACK-V-SHARED-TOP100-01",
+  "cell": "ETTh1_192",
+  "arm": "V5",
+  "num_query_views": 5,
+  "candidate_pool_mode": "coarse_topk",
+  "candidate_pool_size": 100,
+  "candidate_pool_metric": "delta_last_cosine",
+  "full_candidate_count": 8257,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "patience": 5,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "61157046f8dd34ca0889294278c626c3069556d6da658f9952ec551e91b5e70a",
+  "checkpoint_policy": "DUAL -- primary=min_val_retmse10 (Stage-2 uses ONLY this one, for direct comparability with existing Full-memory TRACK-V results), secondary=min_val_kl (diagnostic only, never fed to Stage-2)"
+}

@@ -1,0 +1,8 @@
+{
+  "stage1_train_seconds": 210,
+  "checkpoint_selection_seconds": 30,
+  "cache_build_seconds": 24,
+  "stage2_seconds": 9,
+  "specialization_report_seconds": 238,
+  "total_wall_clock_seconds": 511
+}

@@ -1,0 +1,14 @@
+{
+  "mean_pairwise_top10_overlap_test": 0.6153262469200651,
+  "union_size_mean_test": 19.146493025715607,
+  "winner_fraction_test": [
+    0.14444370567798615,
+    0.28518542647361755,
+    0.28505322337150574,
+    0.13902294635772705,
+    0.1462946981191635
+  ],
+  "max_head_usage_test": 0.28518542647361755,
+  "min_head_usage_test": 0.13902294635772705,
+  "active_head_count_test": 5
+}

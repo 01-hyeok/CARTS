@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Mean-Mixture RetMSE@10 within Top-100 pool (test split NEVER used)",
+  "selected_epoch": 9,
+  "selected_checkpoint_path": "checkpoints/track_hard_expert_v5_p100_allh01/ETTh1/H96/ETTh1_96/Hard/ETTh1_96/Hard/checkpoint_epoch9.pth",
+  "tau_s": 0.1
+}

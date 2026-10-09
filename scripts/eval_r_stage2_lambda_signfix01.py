@@ -78,7 +78,7 @@ def gpu_snapshot(gpu_index):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--reference_ckpt', required=True)
-    ap.add_argument('--arm', required=True, choices=('V0', 'V1', 'V2', 'V5'))
+    ap.add_argument('--arm', required=True, choices=('V0', 'V1', 'V2', 'V5', 'Soft', 'Hard'))
     ap.add_argument('--pred_len', type=int, required=True)
     ap.add_argument('--seq_len', type=int, required=True)
     ap.add_argument('--seed', type=int, required=True)

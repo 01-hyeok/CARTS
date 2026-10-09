@@ -1,0 +1,14 @@
+{
+  "dataset": "Weather",
+  "seq_len": 336,
+  "pred_len": 336,
+  "candidate_mask": "raft",
+  "candidate_pool_mode": "coarse_topk",
+  "candidate_pool_size": 100,
+  "candidate_pool_metric": "delta_last_cosine",
+  "split": "test",
+  "channel_count": 21,
+  "n_memory_candidates": 36216,
+  "memory_starts_fingerprint": "a1d7c4094205187a57b6fd79ad87fc5011813231410f9a86458e85931e990b03",
+  "query_start_idx_fingerprint": "c2730bc87743cbb6687378b2fc8c43dfd0e8910e4a24f11969e37f83e0caa092"
+}
