@@ -1,0 +1,7 @@
+{
+  "fixed_head": "H3",
+  "fixed_retmse10_test": 0.47505098581314087,
+  "oracle_retmse10_test_per_query_mean": 0.3267376714882248,
+  "oracle_gain_pct": 31.220504483544936,
+  "note": "oracle is argmin_h U_h(q) applied per query, not the column-wise min of the mean table."
+}

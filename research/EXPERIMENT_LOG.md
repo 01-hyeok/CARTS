@@ -5149,3 +5149,46 @@ All code, non-destructive invalidation markers, and the complete
 16-cell x 2-Stage2-mode results pushed to GitHub (commit history: the
 sign-fix + ETTh1 partial push, followed by this full-16-cell
 completion push).
+
+---
+
+## 2026-10-09 -- TRACK-EXPERT-V5-FULL01 complete (Soft Expert-V5, Full-memory, 4 cells)
+
+Responsibility-weighted per-head KL loss (`train_expert_v5_full01.py`),
+Full-candidate support, num_slots=5, all 4 cells now complete
+(ETTh1_96/720, Weather_96/720). Checkpoint selection = min validation
+Round-Robin RetMSE@10 (this track's own, pre-dating the later
+Mean-Mixture-selection correction used by TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01).
+Stage-2 = original CARTS trainable global lambda
+(`train_r_stage2_lambda01.py`, unmodified).
+
+| cell | retMSE@10 | agg_mse10 | stage2 test_mse | lambda | winner_fraction (test) | current-V5 checkpoint retMSE@10 (reference) |
+|---|---|---|---|---|---|---|
+| ETTh1_96 | 0.6394 | 0.4226 | 0.37557 | 0.506 | [0.234, 0.181, 0.239, 0.113, 0.234] | 0.6612 |
+| ETTh1_720 | 0.8188 | 0.5823 | 0.50312 | 0.551 | [0.267, 0.211, 0.175, 0.096, 0.251] | 0.8362 |
+| Weather_96 | 0.3225 | 0.1989 | 0.16958 | 0.522 | [0.133, 0.182, 0.179, 0.283, 0.223] | 0.3633 |
+| Weather_720 | 0.4750 | 0.4141 | 0.34052 | 0.562 | [0.179, 0.218, 0.184, 0.196, 0.224] | 0.5341 |
+
+Base Forecaster test MSE for reference (same checkpoints as
+TRACK-V-PROFESSOR-FUSION01): ETTh1_96=0.39242, ETTh1_720=0.56036,
+Weather_96=0.16936, Weather_720=0.31943.
+
+**Soft Expert's own Stage2 (trainable lambda) vs base:** ETTh1_96
+-4.3%, ETTh1_720 -10.2%, Weather_96 +0.1% (essentially a wash,
+lambda=0.522 near its 0.5 initialization -- the same Weather lambda-stuck
+pattern seen throughout this session), Weather_720 +6.6% (WORSE than
+base -- lambda=0.562, also stuck near initialization, and unlike
+ETTh1 this direction actively hurts). Winner-fraction stays
+non-degenerate in all 4 cells (min/max ratio never worse than ~1:2.5,
+Weather_96 shows the most imbalance with head 4 at 28.3% vs head 1 at
+13.3%) -- Soft responsibility weighting does NOT collapse to a single
+head on its own, consistent with why TRACK-HARD-EXPERT-V5-FULL01 was
+run as a follow-up specifically to test whether forcing a hard
+assignment would induce (rather than relieve) collapse.
+
+Every Soft-Expert retMSE@10 beats its own "current-V5 standalone"
+reference checkpoint re-evaluated under the identical measurement
+code (ETTh1_96: 0.639 vs 0.661; ETTh1_720: 0.819 vs 0.836; Weather_96:
+0.323 vs 0.363; Weather_720: 0.475 vs 0.534) -- the responsibility-weighted
+loss itself improves raw retrieval quality in every cell, even where
+it does not translate into a Stage2 forecasting win (Weather).
