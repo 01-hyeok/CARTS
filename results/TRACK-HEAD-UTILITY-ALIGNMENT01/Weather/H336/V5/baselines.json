@@ -1,0 +1,9 @@
+{
+  "base_mse": 0.2456745207309723,
+  "mean_mixture_mse": 0.43672579526901245,
+  "fixed_head_mse": 0.4425746500492096,
+  "aggregate_oracle_mse": 0.3189603090286255,
+  "final_fusion_oracle_mse": 0.24207672476768494,
+  "note_uniform_ensemble_mse_is_approximate": "mean_h(U_agg) upper-bounds true Uniform-Ensemble MSE by Jensen; not the exact R_uniform forecast MSE",
+  "uniform_ensemble_mse_upper_bound_proxy": 0.4804614782333374
+}

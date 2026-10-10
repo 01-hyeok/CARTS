@@ -1,0 +1,8 @@
+{
+  "alpha_star_train": 0.39578965306282043,
+  "alpha_star_val": 0.3349163234233856,
+  "alpha_star_test_DIAGNOSTIC_ONLY_NEVER_USED_AS_PREDICTION": 0.40489161014556885,
+  "retrieval_mse_train": 0.42086902260780334,
+  "retrieval_mse_val": 1.042303204536438,
+  "retrieval_mse_test": 0.47418779134750366
+}

@@ -1,0 +1,14 @@
+{
+  "exp": "TRACK-HEAD-UTILITY-ALIGNMENT01",
+  "dataset": "ETTh1",
+  "horizon": 336,
+  "arm": "Hard",
+  "retriever_checkpoint": "checkpoints/track_hard_expert_v5_p100_allh01/ETTh1/H336/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch4.pth",
+  "base_checkpoint": "checkpoints/track_v_multiquery_generalization01/ETTh1/H336/seed0/base/checkpoint.pth",
+  "lambda_arm_frozen": 0.265701025724411,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "num_slots": 5,
+  "note_u_ind_u_agg_are_channel_averaged_per_query": true,
+  "note_u_final_uses_a_single_fixed_head_index_across_all_channels_per_query": true
+}

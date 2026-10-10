@@ -5317,3 +5317,33 @@ on Weather; (6) yes, a Past-only Router is justified by the headroom,
 but should be evaluated explicitly against the same Weather
 train/val/test retrieval-quality-inflation risk already diagnosed this
 session, rather than assumed immune to it.
+
+---
+
+## 2026-10-10 -- TRACK-HEAD-UTILITY-ALIGNMENT01 complete (read-only diagnostic, 24/24 settings)
+
+Follow-up to TRACK-HARD-EXPERT-V5-P100-ALLH01, directly motivated by
+that track's unanswered question Q6 ("should the next Router target be
+Individual/Aggregate/Final-Fusion utility?"). No retraining -- loads
+the 24 existing Mean-Mixture-selected checkpoints read-only and
+computes, per query: Individual Utility (the current Hard winner
+criterion), Aggregate Utility (actual Top-K-mean retrieval-output
+quality), and Final-Fusion Utility (Base+frozen-lambda-fused quality,
+a future-aware oracle diagnostic only). Full report with 5 tables:
+`results/TRACK-HEAD-UTILITY-ALIGNMENT01/REPORT.md`.
+
+**Headline numbers (averaged across all 12 cell-arms per dataset):**
+
+| | Ind-Agg winner agreement | Agg Oracle gain | Final Oracle gain | val-selected beta | alpha*_train vs alpha*_val |
+|---|---|---|---|---|---|
+| ETTh1 | 0.672 (0.605-0.754) | 7.99% (2.5-13.7%) | 3.51% (1.4-6.3%) | always 0.20 (grid ceiling) | 0.405 vs 0.370 (small mismatch) |
+| Weather | 0.670 (0.601-0.751) | 26.88% (17.5-36.1%) | 12.38% (7.5-19.1%) | 0.15-0.20 (near ceiling, NOT near 0) | 0.644 vs 0.197 (large mismatch, up to 0.95 vs 0.16 at H720) |
+
+**Key findings:**
+1. **The current Hard winner criterion (Individual Utility) is a biased proxy**: it agrees with the Aggregate criterion that actually determines deployed retrieval quality only ~67% of the time on both datasets -- roughly a third of Hard's supervision signal points at the wrong head by the metric that matters.
+2. **Real, substantial router headroom exists on both datasets, 3-4x larger on Weather** (Aggregate Oracle gain 8% ETTh1 vs 27% Weather; Final-Fusion gain 3.5% vs 12.4%).
+3. **Weather's beta-grid control explicitly rules out "retrieval is useless, trust it near 0"**: validation-selected beta sits at 0.15-0.20 (same near-ceiling range as ETTh1), not near 0 -- the problem is specifically that the gradient-trained lambda gate does not find this value.
+4. **Weather's failure is primarily a retrieval-quality ceiling, secondarily a calibration failure**: even the perfectly validation-calibrated beta-control only beats Base in 4/12 Weather cells (all at H96, margin <=1%) -- so properly-calibrated fusion gets you to roughly break-even, not a real win, beyond H96. But the UNCALIBRATED original lambda loses to this same beta-control in 12/12 Weather cells (vs winning 12/12 on ETTh1) -- calibration failure is what turns "no benefit" into "active harm."
+5. **alpha* domain-shift analysis gives the cleanest quantitative confirmation yet of the Weather train-split retrieval-leakage mechanism**: train-optimal alpha reaches 0.94-0.95 at H720 (near-total trust) while validation-optimal alpha is only 0.16-0.18 at the same horizon.
+
+**Recommendation for the next Router experiment** (full numeric reasoning in REPORT.md): train the router against **Aggregate Winner Classification**, not Individual Utility (current Hard target) and not Final-Fusion Utility (contaminated by the already-known-miscalibrated Stage-2 lambda). Use **Hard**-family checkpoints as the backbone, with the explicit caveat that this is a modest-margin recommendation, not a settled comparison -- no router has actually been trained on either backbone yet. Explicitly do NOT treat the router as a fix for Weather's retrieval-quality ceiling beyond H96; it can only be expected to help where a genuine Aggregate/Final Oracle gap exists AND the underlying candidates carry real information, which Table 3/4 suggest is a narrower window on Weather than the raw Oracle-gain numbers alone would suggest.

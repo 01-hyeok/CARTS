@@ -1,0 +1,20 @@
+{
+  "ind": {
+    "fixed_head": 0,
+    "fixed_test_mse": 0.7412665486335754,
+    "oracle_test_mse": 0.7031332850456238,
+    "oracle_gain_pct": 5.144338923460821
+  },
+  "agg": {
+    "fixed_head": 0,
+    "fixed_test_mse": 0.4774472713470459,
+    "oracle_test_mse": 0.43980589509010315,
+    "oracle_gain_pct": 7.883881323846138
+  },
+  "final": {
+    "fixed_head": 0,
+    "fixed_test_mse": 0.424768328666687,
+    "oracle_test_mse": 0.40951916575431824,
+    "oracle_gain_pct": 3.5899952711245326
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "exp": "TRACK-HEAD-UTILITY-ALIGNMENT01",
+  "dataset": "Weather",
+  "horizon": 720,
+  "arm": "V5",
+  "retriever_checkpoint": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch6.pth",
+  "base_checkpoint": "checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/base/checkpoint.pth",
+  "lambda_arm_frozen": 0.5093885660171509,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "num_slots": 5,
+  "note_u_ind_u_agg_are_channel_averaged_per_query": true,
+  "note_u_final_uses_a_single_fixed_head_index_across_all_channels_per_query": true
+}
