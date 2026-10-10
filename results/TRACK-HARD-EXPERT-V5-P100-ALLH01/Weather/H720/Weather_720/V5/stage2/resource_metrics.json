@@ -1,0 +1,19 @@
+{
+  "gpu_index": 1,
+  "gpu_before": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 826,
+    "utilization_pct": 0
+  },
+  "gpu_after": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 19228,
+    "utilization_pct": 5
+  },
+  "max_vram_mb": 12373.06982421875,
+  "load_tensors_seconds": 14.0466947555542,
+  "train_seconds": 6.042335033416748,
+  "total_wall_clock_seconds": 21.829026699066162,
+  "n_epochs_run": 6,
+  "every_epoch_checkpoint_dir": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/Weather/H720/Weather_720/V5/stage2/epoch_checkpoints"
+}

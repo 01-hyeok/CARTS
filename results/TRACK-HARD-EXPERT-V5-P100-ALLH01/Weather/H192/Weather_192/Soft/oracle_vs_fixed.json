@@ -1,0 +1,7 @@
+{
+  "fixed_head": "H4",
+  "fixed_retmse10_test": 0.5038583874702454,
+  "oracle_retmse10_test_per_query_mean": 0.34247425366256956,
+  "oracle_gain_pct": 32.0296610755946,
+  "note": "RESTRICTED-POOL oracle (best of the same 100 candidates every arm sees), oracle is argmin_h U_h(q) applied per query, not the column-wise min of the mean table."
+}

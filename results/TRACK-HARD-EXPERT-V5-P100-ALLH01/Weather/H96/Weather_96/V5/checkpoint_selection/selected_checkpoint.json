@@ -1,0 +1,7 @@
+{
+  "selection_criterion": "min validation Mean-Mixture RetMSE@10 within Top-100 pool (test split NEVER used)",
+  "selected_epoch": 4,
+  "selected_checkpoint_path": "checkpoints/track_v_sharedtop100_signfix01/Weather/H96/seed0/pool_top100/Weather_96/V5/checkpoint_epoch4.pth",
+  "tau_s": 0.1,
+  "provenance": "REUSED from TRACK-V-SHARED-TOP100-SIGNFIX01 (identical sign-fixed trainer, identical pool, identical Mean-Mixture selection) -- no retrain for H96/H720"
+}

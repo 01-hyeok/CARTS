@@ -1,0 +1,11 @@
+epoch,checkpoint_path,old_rr_val_retmse10,new_mean_val_retmse10,new_mean_val_agg_mse10,new_mean_val_recall10,new_mean_val_ndcg10
+1,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch1.pth,0.7726311087608337,0.7657352089881897,0.5699704885482788,0.2388782799243927,0.8038576245307922
+2,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch2.pth,0.7683875560760498,0.7550780773162842,0.5638123750686646,0.2460455447435379,0.8099648356437683
+3,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch3.pth,0.7599667310714722,0.7384293079376221,0.5307079553604126,0.24579524993896484,0.8086274862289429
+4,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch4.pth,0.7593111395835876,0.7328997850418091,0.5414775013923645,0.24929562211036682,0.815443754196167
+5,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch5.pth,0.7502346634864807,0.7399963140487671,0.5377921462059021,0.24919623136520386,0.8130566477775574
+6,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch6.pth,0.7455388903617859,0.7188634276390076,0.5305829048156738,0.249348983168602,0.8123876452445984
+7,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch7.pth,0.7615355253219604,0.7184046506881714,0.516009509563446,0.2495790272951126,0.8127779960632324
+8,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch8.pth,0.7767944931983948,0.7398712038993835,0.5176748037338257,0.25040900707244873,0.8138753771781921
+9,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch9.pth,0.7463523745536804,0.7187796235084534,0.5139812231063843,0.25011271238327026,0.811886191368103
+10,checkpoints/track_hard_expert_v5_p100_allh01/Weather/H96/Weather_96/Soft/Weather_96/Soft/checkpoint_epoch10.pth,0.757025957107544,0.7267438769340515,0.5184920430183411,0.24689210951328278,0.8110893964767456

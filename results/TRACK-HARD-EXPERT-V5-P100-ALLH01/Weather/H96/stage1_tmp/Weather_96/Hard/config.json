@@ -1,0 +1,20 @@
+{
+  "exp": "TRACK-HARD-EXPERT-V5-P100-ALLH01",
+  "cell": "Weather_96",
+  "arm": "Hard",
+  "num_slots": 5,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "candidate_pool_size": 100,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "early_stopping": false,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+  "loss": "L_hard = mean_q[ KL(p_T(q) || p_{argmin_h U_h(q)}(q)) ], winner detached, pool-restricted (P100)",
+  "inference_rule": "Mean-Mixture Top-K (NOT Round-Robin)",
+  "checkpoint_criterion": "PRIMARY selected post-hoc via eval_v5_meanmix_checkpoint_selection_pool01.py (validation Mean-Mixture RetMSE@10); val_hard_loss/val_rr_retmse10 diagnostic only."
+}

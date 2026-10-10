@@ -1,0 +1,12 @@
+{
+  "stage2_mode": "Original CARTS Trainable Global Lambda",
+  "arm": "Hard",
+  "best_epoch": 1,
+  "val_mse": 0.46360617876052856,
+  "val_mae": 0.32295405864715576,
+  "lambda": 0.4005945324897766,
+  "test_mse": 0.2202969193458557,
+  "test_mae": 0.2512618899345398,
+  "seed": 0,
+  "wall_clock_seconds": 19.02627658843994
+}

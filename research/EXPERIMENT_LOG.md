@@ -5260,3 +5260,60 @@ as final):**
 
 Weather (4 more cells x 3 arms) in progress on GPU1; will be appended
 once complete.
+
+### Update (2026-10-10, all 8 cells x 3 arms complete) -- Weather results and final verdict
+
+Full report with all 5 tables: `results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md`.
+
+**Weather (test MSE vs base, Original-CARTS-lambda Stage-2):**
+
+| H | Base | V5 | Soft | Hard |
+|---|---|---|---|---|
+| 96 | 0.16936 | +4.30% | +3.96% | **+5.72%** |
+| 192 | 0.19908 | +9.29% | +9.90% | **+10.66%** |
+| 336 | 0.24567 | +15.15% | +14.46% | **+17.99%** |
+| 720 | 0.31943 | +20.69% | +19.10% | **+23.87%** |
+
+Unlike ETTh1 (where all 3 arms beat base, -3.5% to -8.6%), every arm
+is WORSE than base on Weather at every horizon -- consistent with the
+trainable-lambda-stuck-near-initialization pattern established earlier
+this session. **Hard is the worst of the three arms in all 4/4 Weather
+cells**, and the gap from base grows monotonically with horizon.
+
+**Specialization still replicates under P100 on both datasets**: Hard
+overlap < Soft overlap and Hard union > Soft union in all 8/8 cells
+(ETTh1 Hard 0.37-0.62 vs Soft 0.67-0.84; Weather Hard 0.27-0.35 vs Soft
+0.51-0.66) -- Hard assignment induces specialization regardless of
+candidate-pool size or dataset. But this does not translate into a
+forecasting win on Weather -- the opposite, in fact (see closing
+questions in REPORT.md for the full reasoning).
+
+**Anomaly flagged (not smoothed over)**: on Weather, plain V5 (no
+specialization loss at all) already shows unusually low overlap and
+large union size on its own -- lower overlap than Hard in 3/4 Weather
+horizons. Investigated via the standard data->metric->implementation->
+evaluation-protocol->model-structure order; no measurement or
+implementation asymmetry found between arms (same primitives, same
+init, same eval code); most likely explanation is that Weather's weak
+retrieval signal lets V5's 5 heads drift apart through instability
+alone, with no specialization pressure needed -- this is a hypothesis,
+not a proven mechanism, and is reported as such.
+
+**Oracle-vs-fixed-head gap is large everywhere** (ETTh1: 3.8-16.9%;
+Weather: 24.3-60.5%, 3-6x larger) -- real headroom for a per-query
+router exists, especially on Weather, even though neither hand-designed
+heuristic tested here (Soft or Hard) currently captures it profitably
+there.
+
+**Verdict on the 6 closing questions (full reasoning in REPORT.md)**:
+(1) yes, Hard relieves collapse under P100 too; (2) the Hard-vs-Soft
+forecasting ranking flips with horizon on ETTh1 but Hard is uniformly
+worst on Weather, growing worse with horizon; (3) no, the two datasets
+do not share a pattern -- Weather is qualitatively worse for this
+entire method family under this Stage-2 mode; (4) specialization does
+not reliably predict forecasting benefit, and on Weather it predicts
+the opposite; (5) yes, oracle headroom is large and real, especially
+on Weather; (6) yes, a Past-only Router is justified by the headroom,
+but should be evaluated explicitly against the same Weather
+train/val/test retrieval-quality-inflation risk already diagnosed this
+session, rather than assumed immune to it.
