@@ -1,0 +1,9 @@
+{
+  "ds": "Weather",
+  "h": 336,
+  "backbone": "V5",
+  "d_model": 128,
+  "num_channels": 21,
+  "retriever_checkpoint": "checkpoints/track_hard_expert_v5_p100_allh01/Weather/H336/Weather_336/V5/Weather_336/V5/checkpoint_epoch5.pth",
+  "wall_seconds": 107.7995297908783
+}

@@ -1,0 +1,12 @@
+{
+  "exp": "TRACK-AGGREGATE-ROUTER-FROZEN01",
+  "target": "R2",
+  "tau_r": 1.0,
+  "d_model": 128,
+  "train_epochs": 10,
+  "batch_size": 256,
+  "lr": 0.001,
+  "n_train_query_channel": 744408,
+  "n_val_query_channel": 95571,
+  "checkpoint_criterion": "min validation Hard-routed Aggregate MSE (cached U_agg lookup)"
+}

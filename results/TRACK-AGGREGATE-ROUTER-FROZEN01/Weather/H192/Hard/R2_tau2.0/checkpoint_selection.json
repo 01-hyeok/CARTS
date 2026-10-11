@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Hard-routed Aggregate MSE (never test)",
+  "selected_epoch": 3,
+  "selected_val_agg_mse": 0.6073288321495056,
+  "selected_checkpoint_path": "checkpoints/track_aggregate_router_frozen01/Weather/H192/Hard/R2_tau2.0/checkpoint_epoch3.pth"
+}

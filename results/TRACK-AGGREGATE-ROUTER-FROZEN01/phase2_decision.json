@@ -1,0 +1,22 @@
+{
+  "track": "TRACK-AGGREGATE-ROUTER-FROZEN01",
+  "PHASE2_GO": true,
+  "BEST_BACKBONE": "Hard",
+  "BEST_ROUTER_TARGET": "R1",
+  "BEST_ROUTING_MODE": "Soft",
+  "router_architecture": "Linear(d_model, d_model//2) -> GELU -> Linear(d_model//2, 5)",
+  "router_input_granularity": "CHANNEL_AWARE",
+  "evidence": {
+    "go_criteria_by_backbone_variant": {
+      "V5": {"R1-Hard": false, "R1-Soft": false, "R2-Hard": false, "R2-Soft": false},
+      "Hard": {"R1-Hard": false, "R1-Soft": true, "R2-Hard": false, "R2-Soft": true}
+    },
+    "primary_test_agg_mse_8cell_avg": {"Hard_R1_Soft": 0.46823, "Hard_R2_Soft": 0.47418},
+    "secondary_oracle_gap_recovered_pct_avg": {"Hard_R1_Soft": 9.65, "Hard_R2_Soft": 6.16},
+    "tertiary_stage2_mse_wins_vs_mean_mixture": "6/8 cells (Weather_192 and Weather_720 lose by small margins: +0.00007 and +0.00045)",
+    "wins_vs_mean_mixture_count": {"Hard_R1_Soft": "7/8", "Hard_R2_Soft": "8/8"},
+    "weather_720_anomaly": "every router variant on both backbones is near or worse than Mean-Mixture at Weather_720 -- consistent with alpha* domain-shift and Hard-specialization findings from two prior tracks",
+    "soft_vs_hard_routing_win_rate": {"R1_soft_beats_r1_hard": "10/16 cell-backbone combos", "R2_soft_beats_r2_hard": "7/16 cell-backbone combos (minority)"}
+  },
+  "note": "This file is read programmatically by the Phase 3 orchestrator to resolve BEST_BACKBONE/BEST_ROUTER_TARGET/BEST_ROUTING_MODE. Do not hand-edit without updating results/TRACK-AGGREGATE-ROUTER-FROZEN01/REPORT.md to match."
+}

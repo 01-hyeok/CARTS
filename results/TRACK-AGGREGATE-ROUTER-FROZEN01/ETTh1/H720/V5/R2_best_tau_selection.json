@@ -1,0 +1,5 @@
+{
+  "best_tau_r": 2.0,
+  "best_val_agg_mse": 1.6879372596740723,
+  "best_checkpoint_path": "checkpoints/track_aggregate_router_frozen01/ETTh1/H720/V5/R2_tau2.0/checkpoint_epoch7.pth"
+}

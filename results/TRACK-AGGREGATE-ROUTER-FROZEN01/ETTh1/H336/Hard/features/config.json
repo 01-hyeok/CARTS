@@ -1,0 +1,9 @@
+{
+  "ds": "ETTh1",
+  "h": 336,
+  "backbone": "Hard",
+  "d_model": 128,
+  "num_channels": 7,
+  "retriever_checkpoint": "checkpoints/track_hard_expert_v5_p100_allh01/ETTh1/H336/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch4.pth",
+  "wall_seconds": 11.914894580841064
+}

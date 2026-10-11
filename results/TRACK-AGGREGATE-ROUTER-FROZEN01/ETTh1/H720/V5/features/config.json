@@ -1,0 +1,9 @@
+{
+  "ds": "ETTh1",
+  "h": 720,
+  "backbone": "V5",
+  "d_model": 128,
+  "num_channels": 7,
+  "retriever_checkpoint": "checkpoints/track_v_sharedtop100_signfix01/ETTh1/H720/seed0/pool_top100/ETTh1_720/V5/checkpoint_epoch9.pth",
+  "wall_seconds": 11.122633934020996
+}

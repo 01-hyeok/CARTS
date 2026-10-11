@@ -1,0 +1,5 @@
+{
+  "best_tau_r": 2.0,
+  "best_val_agg_mse": 0.8824849724769592,
+  "best_checkpoint_path": "checkpoints/track_aggregate_router_frozen01/Weather/H720/Hard/R2_tau2.0/checkpoint_epoch4.pth"
+}

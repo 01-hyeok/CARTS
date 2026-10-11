@@ -1,0 +1,19 @@
+{
+  "gpu_index": 1,
+  "gpu_before": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 8,
+    "utilization_pct": 0
+  },
+  "gpu_after": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 18410,
+    "utilization_pct": 5
+  },
+  "max_vram_mb": 12373.06982421875,
+  "load_tensors_seconds": 13.519091606140137,
+  "train_seconds": 6.070038557052612,
+  "total_wall_clock_seconds": 21.52672553062439,
+  "n_epochs_run": 6,
+  "every_epoch_checkpoint_dir": "results/TRACK-AGGREGATE-ROUTER-FROZEN01/Weather/H720/Hard/best_variant_stage2/epoch_checkpoints"
+}
