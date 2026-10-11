@@ -1,0 +1,18 @@
+{
+  "global_agree_ind_agg": 0.6567497253417969,
+  "per_channel_agree_ind_agg": 0.6172767281532288,
+  "global_rho_ind_agg": {
+    "mean": 0.7595760226249695,
+    "median": 0.8999999761581421,
+    "p25": 0.699999988079071,
+    "p75": 1.0,
+    "negative_fraction": 0.02863517962396145
+  },
+  "per_channel_rho_ind_agg": {
+    "mean": 0.6566115617752075,
+    "median": 0.8999999761581421,
+    "p25": 0.5,
+    "p75": 1.0,
+    "negative_fraction": 0.09132444113492966
+  }
+}

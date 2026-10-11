@@ -1,0 +1,18 @@
+{
+  "preprocessing_seconds": 0.5855283737182617,
+  "inference_seconds": 9.934491157531738,
+  "calibration_seconds": 1.8383989334106445,
+  "total_wall_clock_seconds": 12.588455438613892,
+  "gpu_index": 1,
+  "gpu_before": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 1480,
+    "utilization_pct": 0
+  },
+  "gpu_after": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 4058,
+    "utilization_pct": 10
+  },
+  "max_vram_mb": 1414.7763671875
+}

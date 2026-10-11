@@ -5347,3 +5347,28 @@ a future-aware oracle diagnostic only). Full report with 5 tables:
 5. **alpha* domain-shift analysis gives the cleanest quantitative confirmation yet of the Weather train-split retrieval-leakage mechanism**: train-optimal alpha reaches 0.94-0.95 at H720 (near-total trust) while validation-optimal alpha is only 0.16-0.18 at the same horizon.
 
 **Recommendation for the next Router experiment** (full numeric reasoning in REPORT.md): train the router against **Aggregate Winner Classification**, not Individual Utility (current Hard target) and not Final-Fusion Utility (contaminated by the already-known-miscalibrated Stage-2 lambda). Use **Hard**-family checkpoints as the backbone, with the explicit caveat that this is a modest-margin recommendation, not a settled comparison -- no router has actually been trained on either backbone yet. Explicitly do NOT treat the router as a fix for Weather's retrieval-quality ceiling beyond H96; it can only be expected to help where a genuine Aggregate/Final Oracle gap exists AND the underlying candidates carry real information, which Table 3/4 suggest is a narrower window on Weather than the raw Oracle-gain numbers alone would suggest.
+
+---
+
+## 2026-10-11 -- PHASE 1 (TRACK-HEAD-UTILITY-ALIGNMENT-CORRECTION01) complete, GO decision -- multi-phase Router research program begins
+
+**Purpose**: correct two issues identified in TRACK-HEAD-UTILITY-ALIGNMENT01 before committing to a multi-phase Router research program (Phase 1 Head-Utility-Alignment-Correction -> Phase 2 Frozen Aggregate Router -> Phase 3 Joint Routed Multi-Query -> Phase 4 Full-candidate multi-seed generalization), with mechanical GO/STOP gating between phases. (A) winners must be computed per (query, channel) -- the EXACT granularity the real Hard trainer supervises on -- not channel-averaged first. (B) the Stage-2 calibration control's beta grid was missing 0.30/0.40/0.50.
+
+**Implementation**: new read-only module `utils/head_utility_alignment_correction01.py` (per-channel Individual/Aggregate utilities, global-vs-per-channel winner/oracle comparison), new driver `scripts/run_head_utility_alignment_correction01.py`. Critical validation: `tests/test_head_utility_alignment_correction01.py::test_critical_diagnostic_winner_matches_real_hard_trainer_exactly` loads a REAL ETTh1_96/Hard checkpoint and runs the ACTUAL `hard_epoch_val_diagnostics` from `train_hard_expert_v5_p100_allh01.py` side-by-side with this track's own per-channel computation on the same real batch. Found 4/224 mismatches on first run, ALL at margin exactly 0.0 (multiple heads bit-identically tied) -- traced to `argmin` vs `U.sort()[1][...,0]` tie-break disagreement under GPU floating-point non-determinism between two independent forward passes, not a real implementation bug; fixed by switching to the exact same `sort`-based winner extraction the real trainer uses, confirmed by re-running (0 margin-nonzero mismatches, mismatch rate bounded under 5%).
+
+**Validation**: `pytest tests/test_head_utility_alignment_correction01.py` -- 8/8 passed, including the critical real-trainer-match integration test.
+
+**Results (24/24 settings, read-only, no retraining)**: full tables in `results/TRACK-HEAD-UTILITY-ALIGNMENT-CORRECTION01/REPORT.md`.
+
+| | Global Ind-Agg agree | Per-channel Ind-Agg agree | Global Agg-Oracle gain | Per-channel Agg-Oracle gain | Near-tie fraction |
+|---|---|---|---|---|---|
+| ETTh1 | 0.672 | 0.625 | 7.99% | 14.79% | 9.4% |
+| Weather | 0.670 | 0.650 | 26.88% | 38.49% | 16.3% |
+
+Per-channel oracle gain exceeds global oracle gain in **24/24 cells** (overall average 26.64% vs 17.44%, a 9.2pp gap) -- channels clearly benefit from independently-chosen heads, not just the same head applied more cleverly. Per-channel Ind-Agg agreement is, if anything, slightly LOWER than global (0.625 vs 0.672 ETTh1; 0.650 vs 0.670 Weather) -- the Individual-vs-Aggregate misalignment identified in the original diagnostic is not an artifact of channel-averaging; it is real and slightly worse at the granularity that actually matters. Near-tie fraction is non-trivial, especially on Weather (16.3% of (query,channel) decisions have no real margin between best and second-best head) -- favoring a soft/margin-aware router target over a one-hot Hard CE target. 3/24 cells (all ETTh1_720) hit the extended beta grid's new ceiling (0.50) -- flagged as a lower bound, not resettled, since ETTh1_720 has the smallest oracle gains in the table and does not affect the GO decision.
+
+**Decisions** (`results/TRACK-HEAD-UTILITY-ALIGNMENT-CORRECTION01/phase1_decision.json`):
+- **NEXT_ROUTER_MODE = CHANNEL_AWARE** (per-channel oracle gain exceeds global by 9.2pp, far above the 1pp tie-break threshold, consistently across both datasets and all three arms).
+- **PHASE1_GO = TRUE** (Aggregate Oracle gain clears the 3% threshold on both datasets by a wide margin under either granularity: ETTh1 7.99-14.79%, Weather 26.88-38.49%).
+
+**Proceeding to Phase 2 (TRACK-AGGREGATE-ROUTER-FROZEN01)** per the mechanical GO/STOP gate.

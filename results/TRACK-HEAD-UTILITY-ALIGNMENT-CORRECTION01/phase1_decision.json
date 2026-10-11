@@ -1,0 +1,24 @@
+{
+  "track": "TRACK-HEAD-UTILITY-ALIGNMENT-CORRECTION01",
+  "PHASE1_GO": true,
+  "NEXT_ROUTER_MODE": "CHANNEL_AWARE",
+  "evidence": {
+    "aggregate_oracle_gain_avg_pct": {
+      "ETTh1_global": 7.99,
+      "ETTh1_per_channel": 14.79,
+      "Weather_global": 26.88,
+      "Weather_per_channel": 38.49,
+      "go_threshold_pct": 3.0
+    },
+    "per_channel_vs_global_oracle_gap_pp": 9.20,
+    "channel_aware_tiebreak_threshold_pp": 1.0,
+    "ind_agg_winner_agreement_avg": {
+      "global": {"ETTh1": 0.672, "Weather": 0.670},
+      "per_channel": {"ETTh1": 0.625, "Weather": 0.650}
+    },
+    "near_tie_fraction_avg": {"ETTh1": 0.094, "Weather": 0.163},
+    "beta_grid_ceiling_hits": ["ETTh1_720/V5", "ETTh1_720/Soft", "ETTh1_720/Hard"],
+    "recommended_router_target_basis": "Soft Aggregate Teacher favored over Hard CE due to large near-tie fraction and large Ind-vs-Agg mismatch at per-channel granularity -- both R1 and R2 will still be run and compared empirically in Phase 2 per the original spec, not pre-decided here."
+  },
+  "note": "This file is read programmatically by the Phase 2 orchestrator to resolve NEXT_ROUTER_MODE. Do not hand-edit without updating results/TRACK-HEAD-UTILITY-ALIGNMENT-CORRECTION01/REPORT.md to match."
+}

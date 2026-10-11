@@ -1,0 +1,22 @@
+{
+  "global": {
+    "fixed_head": 1,
+    "fixed_mse": 0.5183678865432739,
+    "oracle_mse": 0.47223684191703796,
+    "oracle_gain_pct": 8.899286746688713
+  },
+  "per_channel": {
+    "fixed_mse": 0.5194135904312134,
+    "oracle_mse": 0.43950849771499634,
+    "oracle_gain_pct": 15.383712361064795,
+    "fixed_heads_per_channel": [
+      0,
+      4,
+      2,
+      3,
+      4,
+      1,
+      3
+    ]
+  }
+}
