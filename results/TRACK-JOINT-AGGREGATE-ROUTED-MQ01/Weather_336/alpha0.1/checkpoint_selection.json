@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Soft-routed Aggregate MSE (never test)",
+  "selected_epoch": 5,
+  "selected_val_agg_mse": 0.7086224656637135,
+  "selected_checkpoint_path": "checkpoints/track_joint_aggregate_routed_mq01/Weather_336/alpha0.1/checkpoint_epoch5.pth"
+}

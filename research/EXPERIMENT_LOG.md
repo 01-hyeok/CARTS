@@ -5396,3 +5396,25 @@ Per-channel oracle gain exceeds global oracle gain in **24/24 cells** (overall a
 **Also checked and corrected during report-writing**: an initial unverified claim that "Soft routing beats Hard routing in 15/16 combinations" was checked numerically before being left in the report -- the real number is 10/16 for R1 and only 7/16 (a minority) for R2, materially weaker and more nuanced than the unchecked guess, and the report was corrected to state the verified numbers plus the caveat that this is NOT a universal property of Soft routing.
 
 **Proceeding to Phase 3 (TRACK-JOINT-AGGREGATE-ROUTED-MQ01)** per the mechanical GO/STOP gate, using BEST_BACKBONE=Hard as the initialization per spec section 1 (V5 will also be run per spec's 0.5%-margin exception once Phase 3 confirms whether V5/Hard are within that margin on the comparable joint-training metric).
+
+---
+
+## 2026-10-11 -- PHASE 3 (TRACK-JOINT-AGGREGATE-ROUTED-MQ01) complete, GO decision -- joint training wins on average, but with a sharp dataset-conditional anomaly
+
+**Purpose**: test whether jointly training Encoder + SlotHeads + Router end-to-end (removing the Individual Hard-argmin loss entirely, per Phase 1's misalignment finding, in favor of `L_route = KL(p_T || p_R)` where `p_R` is the Router-mixed Soft-routing distribution) beats Phase 2's frozen-backbone router. V5 was NOT run (Phase 2's V5-vs-Hard gap was 1.77%, exceeding the 0.5% both-run exception). Optional auxiliary `L_router = KL(r_agg || pi)` swept over alpha in {0, 0.1, 0.5} only (no further sweep), using Phase 2's own validation-selected `tau_R` per cell (not re-swept).
+
+**Implementation**: `scripts/train_joint_aggregate_routed_mq01.py` (full module test suite 7/7 passing, including a gradient-flow check confirming the auxiliary teacher is detached and alpha=0 contributes exactly zero gradient, verified arithmetically not assumed), `scripts/eval_joint_router_full01.py` (test-split full evaluation). Unlike Phase 2 (frozen backbone, features cached once), this phase required a REAL forward pass every validation epoch since the backbone itself updates -- 24 training runs (8 cells x 3 alpha), 10 fixed epochs each, every checkpoint saved, ran for roughly half a day of continuous GPU1 time (ETTh1 cells: 3-4 minutes/epoch; Weather cells: 3-6 minutes/epoch, with the largest horizons taking 30-45 minutes per alpha just for training).
+
+**Results**: full tables in `results/TRACK-JOINT-AGGREGATE-ROUTED-MQ01/REPORT.md`.
+
+**GO criteria (spec section 12), checked programmatically**: (1) Joint's 8-cell-average Aggregate MSE (0.46350) beats Frozen Router's (0.46823) -- YES. (2) Joint beats Mean-Mixture in 7/8 cells (only loses at ETTh1_720) -- YES (>=5/8 required). (3) Joint's Stage-2 MSE improves on average for Weather (0.26879 vs 0.26960) though NOT for ETTh1 (0.43826 vs 0.43623) -- YES (only one dataset required). **PHASE3_GO = TRUE.**
+
+**Per-cell breakdown (not smoothed into the aggregate verdict)**: Joint beats BOTH Frozen Router and Mean-Mixture in 4/8 cells (ETTh1_96, ETTh1_192, Weather_336, Weather_720); beats Mean-Mixture but loses to the cheaper Frozen Router in 3/8 (ETTh1_336, Weather_96, Weather_192); loses to BOTH in exactly 1/8 (ETTh1_720).
+
+**Anomaly flagged and traced (not smoothed over)**: both H720 cells independently selected alpha=0 (no auxiliary) as best, and BOTH show the router's validation entropy collapsing from ~0.90 (near-uniform) to ~0.36 over training -- a real, directly-measured collapse confined to H720 and to the no-auxiliary variant (H96/H192/H336 all stay above 0.95 entropy at their own best epoch). The SAME collapse pattern produces OPPOSITE outcomes: it is the single WORST result in the whole track at ETTh1_720 (0.63197, worse than both Mean-Mixture and Frozen Router), but the single BEST result anywhere in this entire multi-phase research program at Weather_720 (0.61365). Traced data->metric->implementation->protocol->model-structure: no measurement or code asymmetry was found between the two H720 runs (identical trainer/loss/protocol); the most likely explanation is that Weather_720's much larger pre-existing Aggregate-Oracle gap (established in Phase 1, 0.30516 vs ETTh1_720's 0.08733) gives a hard-committing router more real headroom to exploit there, while the same hard-committing behavior over-commits to noise on ETTh1_720 where the frozen router had already closed most of the gap.
+
+**Honest framing**: Phase 3's GO is real but driven disproportionately by two Weather cells, where Joint produces the best results seen anywhere in this research program; on ETTh1 the (much higher) cost of joint training buys a worse result at half the horizons and a near-tie at the others. This asymmetry is reported explicitly in `results/TRACK-JOINT-AGGREGATE-ROUTED-MQ01/REPORT.md` rather than folded into a single positive-sounding verdict.
+
+**Decision** (`results/TRACK-JOINT-AGGREGATE-ROUTED-MQ01/phase3_decision.json`): **PHASE3_GO = TRUE.**
+
+**Proceeding to Phase 4 (TRACK-JOINT-ROUTER-GENERALIZATION01)** per the mechanical GO/STOP gate.

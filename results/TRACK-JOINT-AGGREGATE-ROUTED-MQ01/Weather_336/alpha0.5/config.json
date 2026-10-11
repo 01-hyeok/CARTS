@@ -1,0 +1,15 @@
+{
+  "exp": "TRACK-JOINT-AGGREGATE-ROUTED-MQ01",
+  "cell": "Weather_336",
+  "alpha": 0.5,
+  "tau_r": 2.0,
+  "tau_s": 0.1,
+  "tau_t": 0.1,
+  "init_checkpoint": "checkpoints/track_hard_expert_v5_p100_allh01/Weather/H336/Weather_336/Hard/Weather_336/Hard/checkpoint_epoch9.pth",
+  "init_hash": "61306712456f8c6470baa0508723533cec6c6e61d8e8c931d4f6a3bfc90514e9",
+  "train_epochs": 10,
+  "early_stopping": false,
+  "loss": "L_total = KL(p_T || p_R) + alpha * KL(r_agg || pi); r_agg detached; NO individual Hard-argmin loss",
+  "routing_mode": "Soft (train AND inference)",
+  "checkpoint_criterion": "min validation Soft-routed Aggregate MSE"
+}

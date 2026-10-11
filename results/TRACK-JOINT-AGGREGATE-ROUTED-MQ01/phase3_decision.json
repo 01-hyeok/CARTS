@@ -1,0 +1,24 @@
+{
+  "track": "TRACK-JOINT-AGGREGATE-ROUTED-MQ01",
+  "PHASE3_GO": true,
+  "BACKBONE_USED": "Hard",
+  "V5_RUN": false,
+  "V5_RUN_REASON": "V5 vs Hard differed by 1.77% avg Agg MSE in Phase 2, exceeding the 0.5% both-run threshold",
+  "evidence": {
+    "criterion_1_joint_vs_frozen_router_avg_agg_mse": {"joint": 0.46350, "frozen": 0.46823, "improved": true},
+    "criterion_2_wins_vs_mean_mixture": "7/8 cells",
+    "criterion_3_stage2_mse_improved_by_dataset": {"ETTh1": false, "Weather": true},
+    "per_cell_best_alpha": {
+      "ETTh1_96": 0.5, "ETTh1_192": 0.5, "ETTh1_336": 0.1, "ETTh1_720": 0.0,
+      "Weather_96": 0.5, "Weather_192": 0.5, "Weather_336": 0.5, "Weather_720": 0.0
+    },
+    "per_cell_outcome": {
+      "ETTh1_96": "beats both frozen and MM", "ETTh1_192": "beats both frozen and MM",
+      "ETTh1_336": "beats MM, loses to frozen", "ETTh1_720": "loses to both (collapse anomaly)",
+      "Weather_96": "beats MM, loses to frozen", "Weather_192": "beats MM, loses to frozen",
+      "Weather_336": "beats both frozen and MM", "Weather_720": "beats both frozen and MM (best result in program)"
+    },
+    "h720_entropy_collapse_anomaly": "both H720 cells select alpha=0 and show router entropy collapsing from ~0.90 to ~0.36 -- same pattern, opposite forecasting outcome (hurts ETTh1_720, helps Weather_720)"
+  },
+  "note": "This file is read programmatically by the Phase 4 orchestrator. Do not hand-edit without updating results/TRACK-JOINT-AGGREGATE-ROUTED-MQ01/REPORT.md to match."
+}

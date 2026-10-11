@@ -1,0 +1,19 @@
+{
+  "gpu_index": 1,
+  "gpu_before": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 8,
+    "utilization_pct": 0
+  },
+  "gpu_after": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 9342,
+    "utilization_pct": 2
+  },
+  "max_vram_mb": 5878.65771484375,
+  "load_tensors_seconds": 13.530999422073364,
+  "train_seconds": 5.924335956573486,
+  "total_wall_clock_seconds": 21.364896535873413,
+  "n_epochs_run": 6,
+  "every_epoch_checkpoint_dir": "results/TRACK-JOINT-AGGREGATE-ROUTED-MQ01/Weather_336/best_alpha_stage2/epoch_checkpoints"
+}
