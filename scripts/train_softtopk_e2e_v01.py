@@ -232,7 +232,7 @@ def main():
                     feats_c = compute_qa_features(base_c, r_c, y_sel, weights, p_mix, picks, valid_mask)
                     feat_rows.append(feats_c.cpu())
         all_feats = torch.cat(feat_rows, dim=0)
-        normalizer.fit(all_feats)
+        normalizer.fit(all_feats).to(device)
 
     config = {
         'exp': 'TRACK-P100-SOFTTOPK-QUALITY-AWARE01', 'cell': cli.cell, 'arm_v': arm_name, 'arm_qa': cli.arm,

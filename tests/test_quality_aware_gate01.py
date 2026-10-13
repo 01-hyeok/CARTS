@@ -73,6 +73,27 @@ def test_train_feature_normalizer_frozen_after_fit():
     assert not torch.allclose(out.mean(dim=0), torch.zeros(QA_FEATURE_DIM), atol=0.3)
 
 
+def test_normalizer_to_device_moves_mean_and_std():
+    """Regression test: fitting on CPU-collected features then
+    transforming GPU tensors during training raised
+    'Expected all tensors to be on the same device' until `.to(device)`
+    was added -- caught by a real GPU smoke test of
+    train_softtopk_e2e_v01.py's QA arm, not by the original test suite
+    (which only ever ran on CPU tensors on both sides)."""
+    train_feats = torch.randn(20, QA_FEATURE_DIM)
+    norm = TrainFeatureNormalizer().fit(train_feats)
+    norm.to('cpu')  # exercises the method on every machine, CUDA or not
+    assert norm.mean.device.type == 'cpu'
+    assert norm.std.device.type == 'cpu'
+    if torch.cuda.is_available():
+        norm.to('cuda')
+        assert norm.mean.device.type == 'cuda'
+        assert norm.std.device.type == 'cuda'
+        gpu_feats = torch.randn(5, QA_FEATURE_DIM, device='cuda')
+        out = norm.transform(gpu_feats)  # must not raise a device-mismatch error
+        assert out.device.type == 'cuda'
+
+
 def test_normalizer_refuses_transform_before_fit():
     norm = TrainFeatureNormalizer()
     import pytest

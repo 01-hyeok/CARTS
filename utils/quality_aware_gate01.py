@@ -86,6 +86,16 @@ class TrainFeatureNormalizer:
         self._fitted = True
         return self
 
+    def to(self, device):
+        """Move the fitted mean/std to `device` -- needed when `fit` was
+        called on CPU-collected features (e.g. accumulated via `.cpu()`
+        during a diagnostic pass) but `transform` is later called on
+        GPU tensors during training."""
+        if self._fitted:
+            self.mean = self.mean.to(device)
+            self.std = self.std.to(device)
+        return self
+
     def transform(self, features):
         if not self._fitted:
             raise RuntimeError('TrainFeatureNormalizer.transform called before fit() -- '

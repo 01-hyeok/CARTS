@@ -204,7 +204,7 @@ def main():
                     base_c = base_forecast_full[:, :, c]
                     feats_c = compute_qa_features(base_c, r_c, y_sel, weights, p_mix, picks, pool_valid_mask)
                     feat_rows.append(feats_c.cpu())
-        normalizer.fit(torch.cat(feat_rows, dim=0))
+        normalizer.fit(torch.cat(feat_rows, dim=0)).to(device)
 
     config = {
         'exp': 'TRACK-P100-SOFTTOPK-QUALITY-AWARE01', 'cell': cli.cell, 'arm': 'Hard', 'qa_arm': cli.arm,
