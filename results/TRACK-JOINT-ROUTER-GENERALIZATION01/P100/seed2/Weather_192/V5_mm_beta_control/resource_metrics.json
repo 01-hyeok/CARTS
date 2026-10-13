@@ -1,0 +1,23 @@
+{
+  "gpu_index": 1,
+  "gpu_before": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 2228,
+    "utilization_pct": 20
+  },
+  "gpu_after": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 4688,
+    "utilization_pct": 15
+  },
+  "peak_allocated_mib": 1209.87744140625,
+  "peak_reserved_mib": 1954.0,
+  "timing_sec": {
+    "setup_time": 0.2456831932067871,
+    "val_tensor_load_time_incl_base_inference": 2.044234275817871,
+    "test_tensor_load_time_incl_base_inference": 2.5273683071136475,
+    "beta_sweep_time": 0.007138967514038086,
+    "final_test_eval_time": 0.0019600391387939453,
+    "total_wall_clock": 6.092076778411865
+  }
+}

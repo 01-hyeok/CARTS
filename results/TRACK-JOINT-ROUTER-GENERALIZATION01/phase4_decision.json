@@ -1,0 +1,34 @@
+{
+  "track": "TRACK-JOINT-ROUTER-GENERALIZATION01",
+  "scope_executed": {
+    "candidate_support": "P100 only (Full-Candidate explicitly descoped, see full_candidate_feasibility below)",
+    "seeds": [0, 1, 2],
+    "cells": 8,
+    "base_forecaster_retrained_per_seed": false
+  },
+  "full_candidate_feasibility": {
+    "decision": "DESCOPED",
+    "reason": "TRACK-EXPERT-V5-FULL01 measured ~98954s (~27.5h) for a single Full-Candidate Stage-1 cell; 3 seeds x 8 cells = 24 cells would require ~660 GPU-hours (~27.5 continuous days) on the single mandated GPU1, before downstream Mean-Mixture/Router/Stage-2 steps. Not a blocking error (experiment is possible), but empirically infeasible within this program's resource budget.",
+    "evidence_source": "TRACK-EXPERT-V5-FULL01 measured wall-clock timing"
+  },
+  "seed0_v5mm_stage2_gap_filled": {
+    "issue": "Phase 2/3 reports never computed V5-backbone Mean-Mixture Stage-2 MSE at seed0",
+    "resolution": "Located correct V5 checkpoint/pool provenance (TRACK-HARD-EXPERT-V5-P100-ALLH01 checkpoint_selection, per run_aggregate_router_frozen01.sh line 56), ran build_v_meanmix_cache_pool01.py + eval_r_stage2_lambda_signfix01.py fresh at seed0",
+    "verification": "Resulting Aggregate MSE matches Phase2/3's reported V5 MM values to 5 decimal places at all 8 cells (e.g. ETTh1_96: 0.40980765 vs reported 0.40981)"
+  },
+  "go_criteria_robustness_across_seeds": {
+    "criterion_1_joint_improves_avg_agg_mse_over_frozen": {"seed0": true, "seed1": true, "seed2": false, "robust": false},
+    "criterion_2_joint_wins_5of8_vs_hard_mm": {"seed0": true, "seed1": true, "seed2": true, "robust": true},
+    "criterion_3_joint_stage2_improves_vs_frozen_in_1plus_dataset": {"seed0": true, "seed1": false, "seed2": false, "robust": false}
+  },
+  "stage2_8cell_avg_best_method_per_seed": {
+    "seed0": "V5_mm (0.35114)",
+    "seed1": "V5_mm (0.35207)",
+    "seed2": "V5_mm (0.35198)"
+  },
+  "PHASE4_CONTRIBUTION_REPRODUCES": false,
+  "PHASE4_CONTRIBUTION_REPRODUCES_REASONING": "Only the internal-comparison criterion (Joint beats Hard backbone's own naive mixture, 7/8 cells at all 3 seeds) is robust. The deployment-relevant criterion (beats cheap V5 Mean-Mixture baseline on actual Stage-2 forecast MSE) is NOT robust: V5 MM has the best 8-cell-average Stage-2 MSE at every one of the 3 seeds tested, ahead of Hard MM, Frozen Router, and Joint Router alike.",
+  "final_case_determination": "V5 (no Hard specialization, no Router at all) is best -> Hard-specialization-plus-Router contribution is NOT supported as a deployable method. Stronger negative result than 'Frozen approx Joint, prefer simpler' -- the simplest baseline in the whole comparison group wins.",
+  "q9_p100_full_candidate_consistency": "UNKNOWN -- Full-Candidate not run, explicitly out of scope, not claimed either way",
+  "note": "This file is read programmatically and summarizes results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md. Do not hand-edit without updating REPORT.md to match."
+}

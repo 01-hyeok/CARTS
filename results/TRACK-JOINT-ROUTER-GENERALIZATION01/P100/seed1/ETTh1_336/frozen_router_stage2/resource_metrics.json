@@ -1,0 +1,19 @@
+{
+  "gpu_index": 1,
+  "gpu_before": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 8,
+    "utilization_pct": 0
+  },
+  "gpu_after": {
+    "gpu_name": "NVIDIA A100-SXM4-80GB",
+    "memory_used_mib": 1228,
+    "utilization_pct": 19
+  },
+  "max_vram_mb": 447.5712890625,
+  "load_tensors_seconds": 2.1490936279296875,
+  "train_seconds": 1.6910085678100586,
+  "total_wall_clock_seconds": 4.712133884429932,
+  "n_epochs_run": 9,
+  "every_epoch_checkpoint_dir": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/P100/seed1/ETTh1_336/frozen_router_stage2/epoch_checkpoints"
+}

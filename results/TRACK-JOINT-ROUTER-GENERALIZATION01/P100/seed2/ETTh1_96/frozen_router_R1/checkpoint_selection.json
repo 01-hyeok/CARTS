@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Hard-routed Aggregate MSE (never test)",
+  "selected_epoch": 10,
+  "selected_val_agg_mse": 0.7503914833068848,
+  "selected_checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed2/ETTh1_96/frozen_router_R1/checkpoint_epoch10.pth"
+}

@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation Soft-routed Aggregate MSE (never test)",
+  "selected_epoch": 8,
+  "selected_val_agg_mse": 0.7084864840373898,
+  "selected_checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_96/joint_alpha0.1/ETTh1_96/alpha0.1/checkpoint_epoch8.pth"
+}

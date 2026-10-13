@@ -1,0 +1,99 @@
+{
+  "rows": [
+    {
+      "epoch": 1,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch1.pth",
+      "old_rr_val_retmse10": 3.836041212081909,
+      "new_mean_val_retmse10": 0.8270161747932434,
+      "new_mean_val_agg_mse10": 0.6326124668121338,
+      "new_mean_val_recall10": 0.22600717842578888,
+      "new_mean_val_ndcg10": 0.8232640027999878
+    },
+    {
+      "epoch": 2,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch2.pth",
+      "old_rr_val_retmse10": 0.8689516186714172,
+      "new_mean_val_retmse10": 0.8218975067138672,
+      "new_mean_val_agg_mse10": 0.6274916529655457,
+      "new_mean_val_recall10": 0.23044095933437347,
+      "new_mean_val_ndcg10": 0.8229737877845764
+    },
+    {
+      "epoch": 3,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch3.pth",
+      "old_rr_val_retmse10": 0.8535631895065308,
+      "new_mean_val_retmse10": 0.8170640468597412,
+      "new_mean_val_agg_mse10": 0.6229281425476074,
+      "new_mean_val_recall10": 0.23158946633338928,
+      "new_mean_val_ndcg10": 0.8247382044792175
+    },
+    {
+      "epoch": 4,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch4.pth",
+      "old_rr_val_retmse10": 0.8580811023712158,
+      "new_mean_val_retmse10": 0.8136661052703857,
+      "new_mean_val_agg_mse10": 0.6239418387413025,
+      "new_mean_val_recall10": 0.2358863204717636,
+      "new_mean_val_ndcg10": 0.8292377591133118
+    },
+    {
+      "epoch": 5,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch5.pth",
+      "old_rr_val_retmse10": 0.8490127325057983,
+      "new_mean_val_retmse10": 0.8009204864501953,
+      "new_mean_val_agg_mse10": 0.6111581921577454,
+      "new_mean_val_recall10": 0.23532754182815552,
+      "new_mean_val_ndcg10": 0.8310827612876892
+    },
+    {
+      "epoch": 6,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch6.pth",
+      "old_rr_val_retmse10": 0.8304080963134766,
+      "new_mean_val_retmse10": 0.7794438600540161,
+      "new_mean_val_agg_mse10": 0.5958418250083923,
+      "new_mean_val_recall10": 0.23492062091827393,
+      "new_mean_val_ndcg10": 0.8305970430374146
+    },
+    {
+      "epoch": 7,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch7.pth",
+      "old_rr_val_retmse10": 0.8391985297203064,
+      "new_mean_val_retmse10": 0.8060844540596008,
+      "new_mean_val_agg_mse10": 0.6214402914047241,
+      "new_mean_val_recall10": 0.23667950928211212,
+      "new_mean_val_ndcg10": 0.8349124193191528
+    },
+    {
+      "epoch": 8,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch8.pth",
+      "old_rr_val_retmse10": 0.8358458876609802,
+      "new_mean_val_retmse10": 0.7955373525619507,
+      "new_mean_val_agg_mse10": 0.6145237684249878,
+      "new_mean_val_recall10": 0.2369907796382904,
+      "new_mean_val_ndcg10": 0.833794355392456
+    },
+    {
+      "epoch": 9,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch9.pth",
+      "old_rr_val_retmse10": 0.8390282988548279,
+      "new_mean_val_retmse10": 0.7913860082626343,
+      "new_mean_val_agg_mse10": 0.6012794375419617,
+      "new_mean_val_recall10": 0.23721954226493835,
+      "new_mean_val_ndcg10": 0.8374013304710388
+    },
+    {
+      "epoch": 10,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/V5/Weather_192/V5/checkpoint_epoch10.pth",
+      "old_rr_val_retmse10": 0.8323972225189209,
+      "new_mean_val_retmse10": 0.7856090068817139,
+      "new_mean_val_agg_mse10": 0.6070054769515991,
+      "new_mean_val_recall10": 0.23665139079093933,
+      "new_mean_val_ndcg10": 0.8368304371833801
+    }
+  ],
+  "old_rr_best_epoch": 6,
+  "old_rr_best_val_retmse10": 0.8304080963134766,
+  "new_mean_best_epoch": 6,
+  "new_mean_best_val_retmse10": 0.7794438600540161,
+  "epoch_changed": false
+}

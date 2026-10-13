@@ -1,0 +1,12 @@
+epoch,checkpoint_path,old_rr_val_retmse10,new_mean_val_retmse10,new_mean_val_agg_mse10,new_mean_val_recall10,new_mean_val_ndcg10
+0,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch0.pth,0.8626392483711243,0.8619743585586548,0.6059706211090088,0.20486877858638763,0.8096268177032471
+1,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch1.pth,0.9047064781188965,0.8492913246154785,0.6217216849327087,0.22069399058818817,0.8132254481315613
+2,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch2.pth,0.8890379667282104,0.8239221572875977,0.6204202771186829,0.22488677501678467,0.8157873749732971
+3,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch3.pth,0.8754270076751709,0.8396108150482178,0.6323443651199341,0.2252308577299118,0.8178344368934631
+4,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch4.pth,0.8792480826377869,0.8515890836715698,0.6418752074241638,0.22813358902931213,0.8197118043899536
+5,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch5.pth,0.8864660263061523,0.8465178608894348,0.6412373781204224,0.23247547447681427,0.8200039267539978
+6,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch6.pth,0.8640078902244568,0.8151456713676453,0.6076894402503967,0.23087692260742188,0.8200170397758484
+7,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch7.pth,0.8739023208618164,0.8129965662956238,0.6157803535461426,0.23138505220413208,0.8195821642875671
+8,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch8.pth,0.8567018508911133,0.812273383140564,0.6136682629585266,0.23299582302570343,0.8215233087539673
+9,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch9.pth,0.9124874472618103,0.8381308317184448,0.6082044243812561,0.23385554552078247,0.8228809237480164
+10,checkpoints/track_joint_router_generalization01/P100/seed1/Weather_192/Hard/Weather_192/Hard/checkpoint_epoch10.pth,0.8702713847160339,0.8049428462982178,0.5872600078582764,0.23289455473423004,0.8202482461929321

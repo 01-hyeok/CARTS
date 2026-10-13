@@ -1,0 +1,47 @@
+{
+  "init_hash": "2e9d010a5f3517b1033f9d251054eb807cbdc4478358a9c512d3ddb840a67f01",
+  "best_retmse_epoch": 8,
+  "best_kl_epoch": 3,
+  "batch_order_hashes": [
+    {
+      "epoch": 1,
+      "batch_order_sha256": "b483381d65ac0b57a22cad660c417fb5de7f0b4e9d250e89a5c7338811afc66c"
+    },
+    {
+      "epoch": 2,
+      "batch_order_sha256": "b38aeb58c0e99f9f9edab8be1eb325e2cadff3e69abfe857ecc83479d91bdab2"
+    },
+    {
+      "epoch": 3,
+      "batch_order_sha256": "b9938f5cea4a6c8cf8393dc015c15af99752e696a620f24f8897524d2a418f75"
+    },
+    {
+      "epoch": 4,
+      "batch_order_sha256": "79a3511f034d36ceacd524b168c3b8c5f82a6e47ebec568fa38c88670329b1b9"
+    },
+    {
+      "epoch": 5,
+      "batch_order_sha256": "4c1b05fe0c10b9a5d1b06a83ebec7f77f1d163ee6122fd824bd2ba3f60f9d437"
+    },
+    {
+      "epoch": 6,
+      "batch_order_sha256": "0ce37d3cd634779984ed7b3e4a53dc97893cffe767d606280a838470a4578681"
+    },
+    {
+      "epoch": 7,
+      "batch_order_sha256": "11417cf372a6d74f516e1e117e854532d5884a1f66dbfd85bcd4648c7d456ba5"
+    },
+    {
+      "epoch": 8,
+      "batch_order_sha256": "4ca4c9c897e3d0046297fb43a6d2180940ef1737f997e3f00016ada21cb76587"
+    },
+    {
+      "epoch": 9,
+      "batch_order_sha256": "6d32706f89dadc8c9b3e2b6bd68954eaf88d4dac2e24fbadd640e2e0b047a151"
+    },
+    {
+      "epoch": 10,
+      "batch_order_sha256": "a96936aa8146add290ea7ca90fa5fe8316831b16297bbeab772bfaa4a760101c"
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "rows": [
+    {
+      "epoch": 0,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch0.pth",
+      "old_rr_val_retmse10": 2.0943658351898193,
+      "new_mean_val_retmse10": 2.094351291656494,
+      "new_mean_val_agg_mse10": 1.6067124605178833,
+      "new_mean_val_recall10": 0.12601178884506226,
+      "new_mean_val_ndcg10": 0.7498858571052551
+    },
+    {
+      "epoch": 1,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch1.pth",
+      "old_rr_val_retmse10": 1.8215800523757935,
+      "new_mean_val_retmse10": 1.791785478591919,
+      "new_mean_val_agg_mse10": 1.423681378364563,
+      "new_mean_val_recall10": 0.21223127841949463,
+      "new_mean_val_ndcg10": 0.8050079941749573
+    },
+    {
+      "epoch": 2,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch2.pth",
+      "old_rr_val_retmse10": 1.7582401037216187,
+      "new_mean_val_retmse10": 1.7108874320983887,
+      "new_mean_val_agg_mse10": 1.3678123950958252,
+      "new_mean_val_recall10": 0.22543363273143768,
+      "new_mean_val_ndcg10": 0.8237990736961365
+    },
+    {
+      "epoch": 3,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch3.pth",
+      "old_rr_val_retmse10": 1.7845741510391235,
+      "new_mean_val_retmse10": 1.7570604085922241,
+      "new_mean_val_agg_mse10": 1.4072264432907104,
+      "new_mean_val_recall10": 0.22642718255519867,
+      "new_mean_val_ndcg10": 0.8197124600410461
+    },
+    {
+      "epoch": 4,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch4.pth",
+      "old_rr_val_retmse10": 1.8226217031478882,
+      "new_mean_val_retmse10": 1.8051235675811768,
+      "new_mean_val_agg_mse10": 1.458802580833435,
+      "new_mean_val_recall10": 0.22176817059516907,
+      "new_mean_val_ndcg10": 0.8148322701454163
+    },
+    {
+      "epoch": 5,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch5.pth",
+      "old_rr_val_retmse10": 1.816570520401001,
+      "new_mean_val_retmse10": 1.7968368530273438,
+      "new_mean_val_agg_mse10": 1.4501539468765259,
+      "new_mean_val_recall10": 0.22791467607021332,
+      "new_mean_val_ndcg10": 0.816722571849823
+    },
+    {
+      "epoch": 6,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch6.pth",
+      "old_rr_val_retmse10": 1.822759747505188,
+      "new_mean_val_retmse10": 1.8130946159362793,
+      "new_mean_val_agg_mse10": 1.476872444152832,
+      "new_mean_val_recall10": 0.22701656818389893,
+      "new_mean_val_ndcg10": 0.8153201341629028
+    },
+    {
+      "epoch": 7,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch7.pth",
+      "old_rr_val_retmse10": 1.8134099245071411,
+      "new_mean_val_retmse10": 1.7970585823059082,
+      "new_mean_val_agg_mse10": 1.460503101348877,
+      "new_mean_val_recall10": 0.21829357743263245,
+      "new_mean_val_ndcg10": 0.8176555633544922
+    },
+    {
+      "epoch": 8,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch8.pth",
+      "old_rr_val_retmse10": 1.834532618522644,
+      "new_mean_val_retmse10": 1.8239833116531372,
+      "new_mean_val_agg_mse10": 1.49013090133667,
+      "new_mean_val_recall10": 0.22202637791633606,
+      "new_mean_val_ndcg10": 0.8158360123634338
+    },
+    {
+      "epoch": 9,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch9.pth",
+      "old_rr_val_retmse10": 1.8391872644424438,
+      "new_mean_val_retmse10": 1.8275128602981567,
+      "new_mean_val_agg_mse10": 1.491939902305603,
+      "new_mean_val_recall10": 0.21975302696228027,
+      "new_mean_val_ndcg10": 0.8129122257232666
+    },
+    {
+      "epoch": 10,
+      "checkpoint_path": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_336/Hard/ETTh1_336/Hard/checkpoint_epoch10.pth",
+      "old_rr_val_retmse10": 1.7811468839645386,
+      "new_mean_val_retmse10": 1.771233081817627,
+      "new_mean_val_agg_mse10": 1.4359310865402222,
+      "new_mean_val_recall10": 0.2252371609210968,
+      "new_mean_val_ndcg10": 0.8230241537094116
+    }
+  ],
+  "old_rr_best_epoch": 2,
+  "old_rr_best_val_retmse10": 1.7582401037216187,
+  "new_mean_best_epoch": 2,
+  "new_mean_best_val_retmse10": 1.7108874320983887,
+  "epoch_changed": false
+}

@@ -1,0 +1,9 @@
+{
+  "ds": "ETTh1",
+  "h": 96,
+  "backbone": "Hard",
+  "d_model": 128,
+  "num_channels": 7,
+  "retriever_checkpoint": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_96/Hard/ETTh1_96/Hard/checkpoint_epoch9.pth",
+  "wall_seconds": 11.172214984893799
+}

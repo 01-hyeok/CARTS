@@ -1,0 +1,15 @@
+{
+  "exp": "TRACK-JOINT-AGGREGATE-ROUTED-MQ01",
+  "cell": "ETTh1_720",
+  "alpha": 0.1,
+  "tau_r": 2.0,
+  "tau_s": 0.1,
+  "tau_t": 0.1,
+  "init_checkpoint": "checkpoints/track_joint_router_generalization01/P100/seed1/ETTh1_720/Hard/ETTh1_720/Hard/checkpoint_epoch10.pth",
+  "init_hash": "24289eb06d99a68656113d2c3fd0805b5a6e2bcf1df21b89642fe11949696f26",
+  "train_epochs": 10,
+  "early_stopping": false,
+  "loss": "L_total = KL(p_T || p_R) + alpha * KL(r_agg || pi); r_agg detached; NO individual Hard-argmin loss",
+  "routing_mode": "Soft (train AND inference)",
+  "checkpoint_criterion": "min validation Soft-routed Aggregate MSE"
+}
