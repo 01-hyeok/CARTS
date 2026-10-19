@@ -67,6 +67,36 @@ epoch 1), and the downstream Stage2 effect is dataset-dependent, not a
 uniform win: ETTh1 improves slightly at H96/H192, Weather worsens at
 every cell where the checkpoint changed (up to +3.6% at H720).
 
+**Since then (2026-10-11 to 10-13), a separate 4-phase CARTS
+Multi-Query/Expert/Router research program ran to completion**
+(TRACK-HEAD-UTILITY-ALIGNMENT-CORRECTION01 -> TRACK-AGGREGATE-ROUTER-FROZEN01
+-> TRACK-JOINT-AGGREGATE-ROUTED-MQ01 -> TRACK-JOINT-ROUTER-GENERALIZATION01).
+Phases 1-3 each passed their own mechanical GO gate (Hard backbone + R1
+target + Soft routing won Phase 2; joint training won Phase 3's average,
+with a sharp Weather-driven anomaly flagged at the time), but Phase 4's
+3-seed generalization check **overturned Phase 3's positive framing**:
+across all 3 seeds, the simplest baseline in the whole comparison group
+(V5 Mean-Mixture, no Hard specialization, no routing at all) had the
+single best 8-cell-average Stage-2 MSE at every seed, ahead of Hard MM,
+Frozen Router, and Joint Router alike. Final verdict: Hard-specialization
+-plus-Router is **not supported** as a deployable forecasting method
+over the simpler alternative. Full detail in `EXPERIMENT_LOG.md`
+(2026-10-11 to 10-13 entries) and `FINAL_RESEARCH_REPORT.md` (repo root);
+not expanded into its own addendum here since the user's review requests
+since then have focused on the newest track below.
+
+**Current track (2026-10-13 onward), IN PROGRESS as of 2026-10-19**:
+**TRACK-P100-SOFTTOPK-QUALITY-AWARE01** -- a new, separate research
+question (does per-query/channel-adaptive fusion trust beat a single
+global scalar, given identical Soft Top-K retrieval?), 144 planned
+E2E training runs across 12 cells x 6 methods x 2 arms. 125/144 (86.8%)
+complete at this snapshot; interim VALIDATION-only results (TEST
+untouched) show QA beating NOQA in 55/62 (89%) of completed
+combinations so far, with the largest and most consistent margins on
+Weather and Solar and a mixed/reversed pattern on ETTh1 (specifically
+H192). See the addendum at the end of this document for full detail;
+this is explicitly an interim snapshot, not a final GO/STOP decision.
+
 Provenance: **[repo]** = read/recomputed from artifacts by the implementation
 engineer; **[user]** = supplied by the researcher, not independently
 reproduced.
@@ -5609,3 +5639,113 @@ hurts multi-query at ETTh1 H720 specifically (14-15% degradation vs
 V0's 2.6%). Conclusion is NOT a clean win: Multi-Query's forecasting
 benefit is real but partly dataset- and Stage-2-dependent, not purely
 attributable to the retriever in every setting.
+
+---
+
+# Addendum (2026-10-19) -- TRACK-P100-SOFTTOPK-QUALITY-AWARE01: INTERIM status, 125/144 runs (86.8%), NOT the final report
+
+**[repo]** This track is a new, separate research question from
+everything above -- it does not replace or build on the 4-phase
+Router program's conclusion (V5 alone, no Hard/Router), it asks a
+different question about fusion-trust calibration. This addendum is an
+**interim snapshot made at explicit user request** while the 144-run
+grid is still executing autonomously on GPU1; it is superseded by the
+track's own `results/TRACK-P100-SOFTTOPK-QUALITY-AWARE01/REPORT.md`
+(17-section final report, per spec) once the grid completes and the
+official GO/STOP decision is made. Full interim tables:
+`results/TRACK-P100-SOFTTOPK-QUALITY-AWARE01/REPORT_INTERIM.md`.
+
+**Research question**: given IDENTICAL Soft Top-K (K=10) weighted
+retrieval over the same Shared Top-100 (P100) candidate pool, the same
+frozen Base Forecaster, and the same init/batch order/seed, does a
+per-query/channel Quality-Aware dynamic fusion trust `lambda(q,c)`
+("QA", a small fixed-architecture gate -- `Linear(7,16)->GELU->Linear(16,1)
+->Sigmoid`, zero-initialized so it starts at lambda=0.5) beat a single
+globally-learned scalar trust `lambda_global = sigmoid(a)` ("NOQA")?
+`Y_hat = B + lambda*(R-B)` for both arms -- the only difference is
+whether lambda is one trainable scalar or a function of 7
+inference-only features (never the query's true future).
+
+**Scope**: 6 methods (V0/V1/V2/V5/Hard/Joint) x 2 arms (NOQA/QA) x 12
+cells (ETTh1/Weather/Solar(137ch) x H{96,192,336,720}) = 144 E2E
+training runs, 10 fixed epochs each (no early stopping), every-epoch
+checkpoints. Checkpoint selection = minimum VALIDATION final-forecast
+MSE. **TEST data has not been read by any script in this track** --
+`evaluate_locked_test01.py` is the only script permitted to read TEST
+and refuses to run (`[ISSUE][ABORT]`) without a `LOCKED_CONFIG.json`,
+which does not exist yet; this is enforced at runtime, not just by
+convention, and verified by dedicated subprocess tests.
+
+**Progress at this snapshot**: 125/144 (86.8%). ETTh1 and Weather fully
+complete (48/48 each); Solar_96 and Solar_192 fully complete (24/24);
+Solar_336 5/12 (V0 and V1 both arms, V2/NOQA done, V2/QA in flight);
+Solar_720 0/12 (not yet started). Zero errors in the entire grid log so
+far. One real bug was caught before the full-grid launch (a GPU smoke
+test, not the original CPU-only unit tests, caught it): the QA feature
+normalizer's mean/std were fit on CPU-collected features during a
+one-time fitting pass, then `.transform()` was called on GPU tensors
+during real training, raising a device-mismatch error -- fixed by
+adding a `.to(device)` call and a dedicated regression test.
+
+**Interim VALIDATION-only result -- QA beats NOQA in 55/62 (89%) of
+completed (cell, method) combinations.** (10 of 72 combinations are
+still missing, all in Solar_336/Solar_720; computed by
+`scripts/compute_qa_go_decision01.py`, which reads only
+`checkpoint_selection.json`, never any `test_metrics.json`.)
+
+| Metric | Value |
+|---|---:|
+| Combos compared | 62 / 72 |
+| QA wins / NOQA wins / ties | 55 / 7 / 0 |
+| Overall avg delta (QA MSE - NOQA MSE) | -0.007575 |
+
+Per-dataset average delta (negative = QA better):
+
+| Dataset | Avg delta | All cells with data favor QA? |
+|---|---:|---|
+| ETTh1 | -0.003276 | No -- 3/4 cells (H192 reverses) |
+| Weather | -0.015646 | Yes -- 4/4, largest margins anywhere |
+| Solar (partial, 3 cells) | -0.001175 | Yes -- 3/3 so far |
+
+**The one clear exception: ETTh1_192**, where 5/6 methods favor NOQA
+(deltas +0.0016 to +0.0066) -- the only cell in the whole grid where
+the cell-level average clearly favors NOQA. (Solar_192/V1 is a separate,
+much smaller near-tie NOQA win, +0.00007.) Full per-(cell, method)
+NOQA/QA/delta table is in `REPORT_INTERIM.md`; representative rows:
+
+| Cell | Method | NOQA | QA | Delta |
+|---|---|---:|---:|---:|
+| ETTh1_192 | V5 | 0.955703 | 0.962265 | +0.006562 (NOQA) |
+| ETTh1_336 | Hard | 1.241653 | 1.224178 | -0.017475 (QA, largest ETTh1 margin) |
+| Weather_720 | V5 | 0.647742 | 0.618717 | -0.029026 (QA, largest margin anywhere) |
+| Solar_96 | Joint | 0.183138 | 0.181418 | -0.001720 (QA) |
+
+**Pattern worth flagging, NOT yet investigated**: QA's margin over NOQA
+appears to scale with channel count -- large and 100% consistent on
+Weather (21 channels), nearly as consistent on Solar (137 channels, 28/29
+method-wins so far), but mixed on ETTh1 (7 channels) where H192 reverses.
+This is reported as an observation only; it is NOT claimed to be the
+same mechanism as the "ETTh1 behaves differently from Weather/Solar"
+pattern noted earlier in the TRACK-V program (see `trackv-horizon-
+reversal-is-etth1-specific` memory) -- that was a horizon-reversal
+finding about multi-query views, a different mechanism, and no causal
+link has been investigated here.
+
+**Interim GO/STOP preview (UNOFFICIAL, spec section 21 criteria, computed
+on the 62/72-available subset only -- NOT the final decision)**:
+
+| Criterion | Result | Pass? |
+|---|---|---|
+| 1. QA<NOQA, averaged over all combos | avg delta -0.007575 | True |
+| 2. QA<NOQA in >=7/12 cells | 10/11 cells-with-data | True |
+| 3-5. ETTh1/Weather/Solar dataset avgs all QA<=NOQA | all three negative | True |
+| 6. Positive Dynamic-Oracle headroom | not yet computed | not evaluated |
+
+If this pattern holds through the remaining 10 combinations (including
+all of Solar_720, which has zero data points so far), `QA_GO=TRUE` is
+the likely outcome -- stated as a trend, not a commitment. The grid
+continues to run autonomously per the original standing instruction
+(do not ask between phases, only stop for blocking errors); a
+completion entry with the official decision will follow once all 144
+runs finish, and -- only if `QA_GO=TRUE` -- a single permitted TEST
+evaluation pass and seed=1/2 reruns under the exact locked configuration.

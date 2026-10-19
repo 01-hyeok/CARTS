@@ -5446,3 +5446,77 @@ Per-channel oracle gain exceeds global oracle gain in **24/24 cells** (overall a
 **Decision** (`results/TRACK-JOINT-ROUTER-GENERALIZATION01/phase4_decision.json`): `PHASE4_CONTRIBUTION_REPRODUCES = false`.
 
 **This is the final track of the 4-phase CARTS Multi-Query/Expert/Router research program.** See `FINAL_RESEARCH_REPORT.md` (repository root) for the full Phase 1->4 synthesis and final paper-structure recommendation.
+
+---
+
+## 2026-10-19 -- TRACK-P100-SOFTTOPK-QUALITY-AWARE01 interim status (125/144 runs, 86.8%) -- VALIDATION-only snapshot, GO/STOP NOT yet finalized
+
+New track started after the 4-phase program above closed. Research
+question: given IDENTICAL Soft Top-K (K=10) weighted retrieval over the
+same Shared Top-100 (P100) candidate pool, the same frozen Base
+Forecaster, and the same init/batch order/seed, does estimating
+per-query/channel retrieval quality and using it to set a dynamic fusion
+trust `lambda(q,c)` (Quality-Aware, "QA") beat giving every query the
+same globally-learned scalar trust `lambda_global` (NOQA)? Scope: 6
+methods (V0/V1/V2/V5/Hard/Joint) x 2 arms (NOQA/QA) x 12 cells
+(ETTh1/Weather/Solar x H96/192/336/720) = 144 planned E2E training runs,
+10 fixed epochs each, every-epoch checkpoints, TEST data never read by
+any training/selection script (`evaluate_locked_test01.py` is the only
+permitted TEST reader and refuses to run without a `LOCKED_CONFIG.json`,
+which does not exist yet).
+
+**Progress as of this snapshot**: 125/144 (86.8%). ETTh1 (48/48) and
+Weather (48/48) fully complete; Solar_96 and Solar_192 fully complete
+(24/24); Solar_336 5/12 (V2/QA in flight); Solar_720 0/12 (not started).
+Zero errors across the entire grid log so far (`grep`-confirmed, no
+Traceback/OutOfMemory/`[ISSUE][ABORT]`). One real bug was caught and
+fixed before the grid launch: `TrainFeatureNormalizer.fit()` ran on
+CPU-collected features during the one-time QA-feature-fitting pass, then
+`.transform()` was called on GPU tensors during real training ->
+device-mismatch `RuntimeError`, found by a GPU smoke test (the original
+CPU-only unit tests never exercised this path); fixed by adding a
+`.to(device)` method and calling it right after `fit()` in all three
+E2E trainers, with a dedicated regression test added.
+
+**Interim VALIDATION-only NOQA-vs-QA comparison** (computed by
+`scripts/compute_qa_go_decision01.py`, which reads ONLY
+`checkpoint_selection.json` -- never any `test_metrics.json` -- on the
+62/72 (cell, method) combinations where both arms are done so far; raw
+output `results/TRACK-P100-SOFTTOPK-QUALITY-AWARE01/_interim/qa_go_decision_INTERIM_125of144.json`,
+full table in `results/TRACK-P100-SOFTTOPK-QUALITY-AWARE01/REPORT_INTERIM.md`):
+
+**QA beats NOQA in 55/62 (89%) of completed (cell, method) combinations.**
+Overall average delta (QA MSE - NOQA MSE) = -0.007575 (negative = QA
+better). Per-dataset average delta: ETTh1 -0.003276, Weather -0.015646,
+Solar (partial, 3/4 cells) -0.001175 -- all three negative. Per-cell
+average (11 cells with any data so far): 10/11 favor QA; the lone
+exception is **ETTh1_192**, where 5/6 methods favor NOQA (margins
+0.0016-0.0066) -- the one clearly NOQA-favoring cell in the whole grid
+so far. Solar_192/V1 is a separate, much smaller near-tie NOQA win
+(+0.00007).
+
+**Pattern worth flagging, not yet investigated**: QA's margin appears to
+scale with channel count -- large and 100% consistent on Weather (21
+channels, 24/24 method-wins, 0.008-0.030 MSE reduction, the largest
+margins seen anywhere) and nearly as consistent on Solar (137 channels,
+28/29 method-wins so far), but mixed on ETTh1 (7 channels), where H192
+specifically reverses. Reported as an observation only -- not claimed to
+be the same mechanism as the "ETTh1 behaves differently" pattern noted
+in the earlier TRACK-V program, since no further investigation has been
+done here.
+
+**Interim GO/STOP preview (UNOFFICIAL, computed on the 62/72-available
+subset, NOT the final decision)**: criteria 1 (overall avg QA<NOQA), 2
+(QA wins in >=7/12 cells -- currently 10/11), and 3-5 (all 3 dataset
+averages QA<=NOQA) all currently pass; criterion 6 (Dynamic Oracle
+headroom) has not been computed yet. If this pattern holds through the
+remaining 10 combinations (all in Solar_336/Solar_720, including all of
+Solar_720 which has zero data points so far), `QA_GO=TRUE` is the likely
+outcome -- stated as a trend, not a commitment.
+
+**This entry is a snapshot made at explicit user request while the grid
+is still running, not a track-completion entry.** No TEST data was read
+to produce it. The track continues autonomously per the original
+standing instruction; a final completion entry (with the official
+GO/STOP decision, and -- only if GO=TRUE -- the single permitted TEST
+pass and any seed=1/2 reruns) will be appended once all 144 runs finish.

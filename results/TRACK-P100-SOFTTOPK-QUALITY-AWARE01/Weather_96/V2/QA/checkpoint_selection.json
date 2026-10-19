@@ -1,0 +1,5 @@
+{
+  "val_mse": 0.40390042351070016,
+  "epoch": 2,
+  "checkpoint_path": "checkpoints/track_p100_softtopk_quality_aware01/Weather_96/V2/QA/checkpoint_epoch2.pth"
+}

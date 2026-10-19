@@ -1,0 +1,25 @@
+{
+  "exp": "TRACK-P100-SOFTTOPK-QUALITY-AWARE01",
+  "cell": "Solar_192",
+  "arm_v": "V5",
+  "arm_qa": "QA",
+  "num_query_views": 5,
+  "gamma": 1.0,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "61157046f8dd34ca0889294278c626c3069556d6da658f9952ec551e91b5e70a",
+  "fusion_init_hash": "fc575bc47aaa4db01e39fe33966366ca52866610fe23ead716794f999c26a62d",
+  "checkpoint_criterion": "min VALIDATION final-forecast MSE (Y_hat vs Y), never TEST",
+  "qa_feature_names": [
+    "d_mae",
+    "d_rmse",
+    "d_cand_dispersion",
+    "entropy_norm",
+    "top1_top2_margin",
+    "top10_mass",
+    "ess"
+  ]
+}

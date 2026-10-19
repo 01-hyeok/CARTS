@@ -1,0 +1,17 @@
+{
+  "exp": "TRACK-P100-SOFTTOPK-QUALITY-AWARE01",
+  "cell": "ETTh1_192",
+  "arm_v": "V1",
+  "arm_qa": "NOQA",
+  "num_query_views": 1,
+  "gamma": 1.0,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "61157046f8dd34ca0889294278c626c3069556d6da658f9952ec551e91b5e70a",
+  "fusion_init_hash": "8de8cd75798aab2cec56bcc45f463021a916a8accad171eecdf06718ef09eefb",
+  "checkpoint_criterion": "min VALIDATION final-forecast MSE (Y_hat vs Y), never TEST",
+  "qa_feature_names": null
+}

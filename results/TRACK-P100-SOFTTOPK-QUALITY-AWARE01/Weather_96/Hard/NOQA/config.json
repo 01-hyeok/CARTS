@@ -1,0 +1,19 @@
+{
+  "exp": "TRACK-P100-SOFTTOPK-QUALITY-AWARE01",
+  "cell": "Weather_96",
+  "arm": "Hard",
+  "qa_arm": "NOQA",
+  "num_slots": 5,
+  "gamma": 1.0,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+  "fusion_init_hash": "8de8cd75798aab2cec56bcc45f463021a916a8accad171eecdf06718ef09eefb",
+  "checkpoint_criterion": "min VALIDATION final-forecast MSE (Y_hat vs Y), never TEST",
+  "retrieval_loss": "hard_expert_loss (future-aware winner, UNCHANGED canonical Hard objective)",
+  "forecast_branch_distribution": "p_mix (mean-of-softmaxes, future-blind, deployable, NOT the winner)",
+  "qa_feature_names": null
+}

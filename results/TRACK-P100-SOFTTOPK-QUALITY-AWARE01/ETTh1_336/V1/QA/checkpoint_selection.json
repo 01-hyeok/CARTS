@@ -1,0 +1,5 @@
+{
+  "val_mse": 1.227428624337137,
+  "epoch": 1,
+  "checkpoint_path": "checkpoints/track_p100_softtopk_quality_aware01/ETTh1_336/V1/QA/checkpoint_epoch1.pth"
+}
