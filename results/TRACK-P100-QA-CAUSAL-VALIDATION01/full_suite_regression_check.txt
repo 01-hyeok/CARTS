@@ -1,0 +1,6 @@
+FAILED tests/test_stage1_new_losses.py::test_topk_coverage_reuses_target_indices_across_relations
+FAILED tests/test_stage2_oracle_topk.py::test_identity_retrieval_uses_raw_target_source_relation_without_encoder
+2 failed, 1629 passed, 298 warnings in 149.83s (0:02:29)
+
+[exited with code 0]
+1629 passed, 2 failed -- both pre-existing per CLAUDE.md baseline (396 passed, 2 failed @ HEAD c306def): test_topk_coverage_reuses_target_indices_across_relations, test_identity_retrieval_uses_raw_target_source_relation_without_encoder. No new failures introduced by Phase A files.
