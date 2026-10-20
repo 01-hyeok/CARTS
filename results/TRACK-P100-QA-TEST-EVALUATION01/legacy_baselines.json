@@ -1,0 +1,122 @@
+{
+  "ETTh1_96": {
+    "base_test_mse": 0.39242,
+    "legacy_v5_meanmix_test_mse": 0.3696,
+    "legacy_soft_expert_test_mse": 0.37002,
+    "legacy_hard_expert_test_mse": 0.36987,
+    "legacy_frozen_router_test_mse_seed0": 0.3694,
+    "legacy_joint_router_test_mse_seed0": 0.3704,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "ETTh1_192": {
+    "base_test_mse": 0.44722,
+    "legacy_v5_meanmix_test_mse": 0.42284,
+    "legacy_soft_expert_test_mse": 0.42399,
+    "legacy_hard_expert_test_mse": 0.42336,
+    "legacy_frozen_router_test_mse_seed0": 0.4225,
+    "legacy_joint_router_test_mse_seed0": 0.4222,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "ETTh1_336": {
+    "base_test_mse": 0.45778,
+    "legacy_v5_meanmix_test_mse": 0.43913,
+    "legacy_soft_expert_test_mse": 0.4402,
+    "legacy_hard_expert_test_mse": 0.44163,
+    "legacy_frozen_router_test_mse_seed0": 0.4409,
+    "legacy_joint_router_test_mse_seed0": 0.4423,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "ETTh1_720": {
+    "base_test_mse": 0.56035,
+    "legacy_v5_meanmix_test_mse": 0.51492,
+    "legacy_soft_expert_test_mse": 0.51234,
+    "legacy_hard_expert_test_mse": 0.51352,
+    "legacy_frozen_router_test_mse_seed0": 0.512,
+    "legacy_joint_router_test_mse_seed0": 0.5182,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "Weather_96": {
+    "base_test_mse": 0.16936,
+    "legacy_v5_meanmix_test_mse": 0.17665,
+    "legacy_soft_expert_test_mse": 0.17607,
+    "legacy_hard_expert_test_mse": 0.17905,
+    "legacy_frozen_router_test_mse_seed0": 0.1768,
+    "legacy_joint_router_test_mse_seed0": 0.1811,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "Weather_192": {
+    "base_test_mse": 0.19908,
+    "legacy_v5_meanmix_test_mse": 0.21758,
+    "legacy_soft_expert_test_mse": 0.2188,
+    "legacy_hard_expert_test_mse": 0.2203,
+    "legacy_frozen_router_test_mse_seed0": 0.2204,
+    "legacy_joint_router_test_mse_seed0": 0.2254,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "Weather_336": {
+    "base_test_mse": 0.24567,
+    "legacy_v5_meanmix_test_mse": 0.2829,
+    "legacy_soft_expert_test_mse": 0.2812,
+    "legacy_hard_expert_test_mse": 0.28988,
+    "legacy_frozen_router_test_mse_seed0": 0.2851,
+    "legacy_joint_router_test_mse_seed0": 0.2808,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "Weather_720": {
+    "base_test_mse": 0.31943,
+    "legacy_v5_meanmix_test_mse": 0.38553,
+    "legacy_soft_expert_test_mse": 0.38043,
+    "legacy_hard_expert_test_mse": 0.39567,
+    "legacy_frozen_router_test_mse_seed0": 0.3961,
+    "legacy_joint_router_test_mse_seed0": 0.3878,
+    "source": {
+      "base/v5/soft/hard": "results/TRACK-HARD-EXPERT-V5-P100-ALLH01/REPORT.md Table 1",
+      "frozen/joint": "results/TRACK-JOINT-ROUTER-GENERALIZATION01/REPORT.md Table 2 (seed0)"
+    },
+    "note": "Legacy = Uniform Top-10 Stage1/Stage2 architecture (NOT the new SoftTopK E2E). Stage-2 fusion = Original CARTS Trainable Global Lambda (same family as this track's NOQA)."
+  },
+  "Solar_96": {
+    "status": "N/A",
+    "note": "No legacy P100 baseline track ever covered this cell (Solar was never run in the legacy 4-phase Router program or TRACK-HARD-EXPERT-V5-P100-ALLH01/TRACK-V-SHARED-TOP100-SIGNFIX01)."
+  },
+  "Solar_192": {
+    "status": "N/A",
+    "note": "No legacy P100 baseline track ever covered this cell (Solar was never run in the legacy 4-phase Router program or TRACK-HARD-EXPERT-V5-P100-ALLH01/TRACK-V-SHARED-TOP100-SIGNFIX01)."
+  },
+  "Solar_336": {
+    "status": "N/A",
+    "note": "No legacy P100 baseline track ever covered this cell (Solar was never run in the legacy 4-phase Router program or TRACK-HARD-EXPERT-V5-P100-ALLH01/TRACK-V-SHARED-TOP100-SIGNFIX01)."
+  },
+  "Solar_720": {
+    "status": "N/A",
+    "note": "No legacy P100 baseline track ever covered this cell (Solar was never run in the legacy 4-phase Router program or TRACK-HARD-EXPERT-V5-P100-ALLH01/TRACK-V-SHARED-TOP100-SIGNFIX01)."
+  }
+}

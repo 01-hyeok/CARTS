@@ -1,0 +1,5 @@
+{
+  "val_mse": 0.5375665760869409,
+  "epoch": 4,
+  "checkpoint_path": "checkpoints/track_p100_qa_causal_validation01/rng_corrected/Weather_336/Joint/QA/checkpoint_epoch4.pth"
+}

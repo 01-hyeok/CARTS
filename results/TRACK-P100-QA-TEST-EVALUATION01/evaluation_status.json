@@ -99,6 +99,8 @@
   "original_e2e/Solar_96/V0/QA": "DONE",
   "original_e2e/Solar_96/V1/NOQA": "DONE",
   "original_e2e/Solar_96/V1/QA": "DONE",
-  "original_e2e/Solar_96/V2/NOQA": "RUNNING",
-  "original_e2e/Solar_96/V2/QA": "RUNNING"
+  "original_e2e/Solar_96/V2/NOQA": "DONE",
+  "original_e2e/Solar_96/V2/QA": "DONE",
+  "original_e2e/Solar_96/V5/NOQA": "RUNNING",
+  "original_e2e/Solar_96/V5/QA": "RUNNING"
 }

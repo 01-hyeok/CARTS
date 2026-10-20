@@ -1,0 +1,20 @@
+{
+  "exp": "TRACK-P100-QA-CAUSAL-VALIDATION01",
+  "protocol": "rng_corrected",
+  "cell": "Solar_96",
+  "arm_v": "V5",
+  "arm_qa": "NOQA",
+  "num_query_views": 5,
+  "gamma": 1.0,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+  "slot_heads_init_hash": "6c5b57dce545ee3563848fe1b95d80d88aff7c331aefc1dd8d5bb59121f7eac8",
+  "fusion_init_hash": "8de8cd75798aab2cec56bcc45f463021a916a8accad171eecdf06718ef09eefb",
+  "checkpoint_criterion": "min VALIDATION final-forecast MSE (Y_hat vs Y), never TEST",
+  "qa_feature_names": null,
+  "rng_fix": "QA feature-fitting pass uses a separate loader/generator, never train_gen"
+}
