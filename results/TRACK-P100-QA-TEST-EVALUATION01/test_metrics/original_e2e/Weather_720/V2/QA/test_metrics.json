@@ -1,0 +1,39 @@
+{
+  "test_mse": 0.33765067896348294,
+  "test_mae": 0.3537523809543623,
+  "retmse10": 0.8304111473161961,
+  "recall10": 0.2544636830484115,
+  "ndcg10": 0.8240843446382079,
+  "soft_topk_agg_mse": 0.6414563986265629,
+  "lambda_mean": 0.41767802834510803,
+  "lambda_std": 0.16600283980369568,
+  "lambda_p10": 0.24044156074523926,
+  "lambda_p50": 0.3820885717868805,
+  "lambda_p90": 0.6618990302085876,
+  "base_better_fraction": 0.7004121811657453,
+  "retrieval_better_fraction": 0.29958781883425467,
+  "final_better_than_base_fraction": 0.4599553874502958,
+  "n_query_channel": 206220,
+  "protocol": "original_e2e",
+  "cell": "Weather_720",
+  "method": "V2",
+  "arm": "QA",
+  "checkpoint_path": "checkpoints/track_p100_softtopk_quality_aware01/Weather_720/V2/QA/checkpoint_epoch9.pth",
+  "rng_status": "ORIGINAL_RNG_CONFOUNDED",
+  "val_parity_check": {
+    "recomputed_val_mse": 0.6171783856338957,
+    "recorded_val_mse": 0.617178400215497,
+    "abs_diff": 1.4581601259777699e-08,
+    "rel_diff": 2.3626233929583922e-08,
+    "passed": true,
+    "wall_clock_seconds": 149.1943380832672
+  },
+  "resource_metrics": {
+    "model_load_seconds": 5.507358074188232,
+    "test_eval_seconds": 311.0584089756012,
+    "total_wall_clock_seconds": 466.7809109687805,
+    "gpu_index": "cuda",
+    "peak_gpu_allocated_bytes": 6444969472,
+    "peak_gpu_reserved_bytes": 6467616768
+  }
+}

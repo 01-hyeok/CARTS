@@ -1,0 +1,39 @@
+{
+  "test_mse": 0.43862780346697144,
+  "test_mae": 0.44363568617232896,
+  "retmse10": 0.838326029840427,
+  "recall10": 0.24949761829515404,
+  "ndcg10": 0.8674905218102441,
+  "soft_topk_agg_mse": 0.5215903308262425,
+  "lambda_mean": 0.250277042388916,
+  "lambda_std": 0.07504358142614365,
+  "lambda_p10": 0.15077950060367584,
+  "lambda_p50": 0.25326552987098694,
+  "lambda_p90": 0.34680676460266113,
+  "base_better_fraction": 0.693516699410609,
+  "retrieval_better_fraction": 0.30648330058939094,
+  "final_better_than_base_fraction": 0.632500701655908,
+  "n_query_channel": 17815,
+  "protocol": "original_e2e",
+  "cell": "ETTh1_336",
+  "method": "Joint",
+  "arm": "QA",
+  "checkpoint_path": "checkpoints/track_p100_softtopk_quality_aware01/ETTh1_336/Joint/QA/checkpoint_epoch1.pth",
+  "rng_status": "ORIGINAL_RNG_CONFOUNDED",
+  "val_parity_check": {
+    "recomputed_val_mse": 1.2262793537271073,
+    "recorded_val_mse": 1.2262793747592668,
+    "abs_diff": 2.1032159569500664e-08,
+    "rel_diff": 1.7151197355520658e-08,
+    "passed": true,
+    "wall_clock_seconds": 19.2992422580719
+  },
+  "resource_metrics": {
+    "model_load_seconds": 2.2505831718444824,
+    "test_eval_seconds": 25.511704683303833,
+    "total_wall_clock_seconds": 48.06148386001587,
+    "gpu_index": "cuda",
+    "peak_gpu_allocated_bytes": 237831168,
+    "peak_gpu_reserved_bytes": 249561088
+  }
+}

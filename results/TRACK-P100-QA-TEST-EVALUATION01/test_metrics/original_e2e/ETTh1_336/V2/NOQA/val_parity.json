@@ -1,0 +1,8 @@
+{
+  "recomputed_val_mse": 1.23186498621855,
+  "recorded_val_mse": 1.2318650097612616,
+  "abs_diff": 2.3542711558022233e-08,
+  "rel_diff": 1.9111437837320234e-08,
+  "passed": true,
+  "wall_clock_seconds": 26.19762897491455
+}

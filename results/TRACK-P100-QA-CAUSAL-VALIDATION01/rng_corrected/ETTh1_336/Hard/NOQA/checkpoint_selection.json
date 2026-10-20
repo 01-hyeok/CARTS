@@ -1,0 +1,5 @@
+{
+  "val_mse": 1.2416533148873399,
+  "epoch": 1,
+  "checkpoint_path": "checkpoints/track_p100_qa_causal_validation01/rng_corrected/ETTh1_336/Hard/NOQA/checkpoint_epoch1.pth"
+}

@@ -1,0 +1,23 @@
+{
+  "exp": "TRACK-P100-QA-CAUSAL-VALIDATION01",
+  "protocol": "rng_corrected",
+  "cell": "Weather_336",
+  "arm": "Joint",
+  "qa_arm": "NOQA",
+  "num_slots": 5,
+  "gamma": 1.0,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "61306712456f8c6470baa0508723533cec6c6e61d8e8c931d4f6a3bfc90514e9",
+  "slot_heads_init_hash": "6c5b57dce545ee3563848fe1b95d80d88aff7c331aefc1dd8d5bb59121f7eac8",
+  "router_init_hash": "dfc330fe29bb9847bed376a07a2d77b42a6336dd0d588de4192e8ba21c1d9794",
+  "fusion_init_hash": "8de8cd75798aab2cec56bcc45f463021a916a8accad171eecdf06718ef09eefb",
+  "fresh_init": true,
+  "checkpoint_criterion": "min VALIDATION final-forecast MSE (Y_hat vs Y), never TEST",
+  "retrieval_loss": "L_route = KL(p_T || p_R), p_R = router-mixed distribution (no aux alpha term)",
+  "qa_feature_names": null,
+  "rng_fix": "QA feature-fitting pass uses a separate loader/generator, never train_gen"
+}
