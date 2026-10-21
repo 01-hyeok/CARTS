@@ -1,0 +1,11 @@
+{
+  "j1_checkpoint": "checkpoints/track_r_final_method_generalization01/Weather/H96/seed0/J1/Weather_96/J1_stopgrad_key/checkpoint.pth",
+  "j1_best_epoch": 9,
+  "n_candidates": 36696,
+  "top_k": 10,
+  "channels": 21,
+  "split_used": "train ONLY -- val/test never touched",
+  "n_train_queries": 36696,
+  "n_rows": 770616,
+  "T_J1_mean": 0.8000547855183727
+}

@@ -1,0 +1,9 @@
+{
+  "best_epoch": -1,
+  "no_feasible_checkpoint": true,
+  "diagnostic_min_violation_epoch": {
+    "epoch": 10,
+    "val_retmse10": 0.7972354188457916,
+    "violation": 0.03686607395941721
+  }
+}
