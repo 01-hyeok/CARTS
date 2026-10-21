@@ -5520,3 +5520,37 @@ to produce it. The track continues autonomously per the original
 standing instruction; a final completion entry (with the official
 GO/STOP decision, and -- only if GO=TRUE -- the single permitted TEST
 pass and any seed=1/2 reruns) will be appended once all 144 runs finish.
+
+## TRACK-P100-QA-CAUSAL-VALIDATION01 -- Phase C (fusion ablation) COMPLETE
+
+Phase C (F0-F4 fusion ladder, C1 ablation, C2 retriever-checkpoint
+control, C3 oracle headroom, C4 quality calibration, C5 shuffled-feature
+control) is complete for all 5 Phase B representative pairs. Full
+numbers and reading: `results/TRACK-P100-QA-CAUSAL-VALIDATION01/PHASE_C_SUMMARY.md`.
+VALIDATION-only (never TEST), chronological Val-Select/Val-Holdout split
+via `utils/validation_split01.py`. Extraction validated against recorded
+checkpoint val_mse to ~7 decimals (smoke test).
+
+**C4/C5 unanimous across all 5 pairs**: learned lambda correlates
+positively with true retrieval advantage in every pair (Pearson +0.10 to
++0.21), and C5's shuffled-within-channel-feature control shows original
+features beat shuffled in **10/10 comparisons** (both retriever bases, 5
+pairs) -- the gate is using real per-query signal, not noise or a
+disguised per-channel constant.
+
+**C1/C2 (the real E2E-trained gate's held-out performance) is mixed, not
+clean**: in 3/5 pairs (ETTh1_192/V5, Weather_336/Joint, Solar_96/V5) the
+deployed gate (F4_e2e) is the best or near-best fusion variant on
+Val-Holdout. In **2/5 pairs (ETTh1_336/Hard, Weather_720/V5)**, the
+deployed gate is slightly WORSE than plain Base-only on this
+chronologically-later holdout slice (0.950243 vs F0=0.937664 for
+ETTh1_336/Hard; 0.653799 vs F0=0.650365 for Weather_720/V5) -- even
+though QA clearly beat NOQA on the FULL validation set for these same
+two pairs in Phase B. A freshly Val-Select-refit gate on the same
+features DOES beat Base for both cells on the noqa-retriever basis,
+so this looks specific to the deployed E2E-trained gate's transfer to a
+later-in-time holdout slice, not a property of dynamic fusion per se.
+Not yet root-caused; reported as-is, not smoothed over.
+
+Phase D (seed robustness) and Phase E (final causal determination) have
+not started.

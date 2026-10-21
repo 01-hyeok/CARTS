@@ -5749,3 +5749,69 @@ continues to run autonomously per the original standing instruction
 completion entry with the official decision will follow once all 144
 runs finish, and -- only if `QA_GO=TRUE` -- a single permitted TEST
 evaluation pass and seed=1/2 reruns under the exact locked configuration.
+
+## TRACK-P100-QA-CAUSAL-VALIDATION01 -- Phase C fusion ablation COMPLETE
+
+Full table and reading: `results/TRACK-P100-QA-CAUSAL-VALIDATION01/PHASE_C_SUMMARY.md`.
+VALIDATION-only, chronological Val-Select/Val-Holdout split (purge gap =
+seq_len+pred_len windows). Ran F0 (Base-only) / F1 (Global lambda,
+closed-form) / F2 (Per-channel lambda, closed-form) / F3 (Constant-mean
+QA, a fit gate's frozen mean) / F4 (Dynamic QA, both a Val-Select-refit
+gate and the real E2E-trained checkpoint gate), on BOTH the
+NOQA-trained and QA-trained retriever's own R (C1+C2), plus C3 oracle
+headroom, C4 quality-calibration correlation, C5 shuffled-feature
+control, for all 5 Phase B representative pairs.
+
+**C4 (quality calibration)**: Pearson(learned lambda, true retrieval
+advantage) is positive in all 5 pairs (+0.099 to +0.212; Spearman +0.13
+to +0.31) -- lambda correctly tracks when retrieval actually beats Base.
+
+**C5 (shuffled-feature control)**: original (unshuffled) features beat
+within-channel-shuffled features in **10/10 comparisons** (both retriever
+bases x 5 pairs). If the gate were only fitting a per-channel or global
+constant, shuffling query-level features within a channel should not
+change anything -- it hurts every single time. This is the strongest
+single piece of evidence in Phase C that the gate is using real
+per-query information.
+
+**C3 (oracle headroom)**: Dynamic oracle << Per-channel oracle << Global
+oracle << F0 in every pair -- large real headroom exists in principle
+for a perfect per-query lambda.
+
+**C1/C2 (does the DEPLOYED gate capture that headroom on true held-out
+data) -- mixed, reported honestly, not smoothed over:**
+
+| Pair | F0 (Base) | F4_e2e (deployed gate) | Deployed gate beats Base? |
+|---|---:|---:|---|
+| ETTh1_192/V5 | 0.661815 | 0.639202 | Yes |
+| ETTh1_336/Hard | 0.937664 | 0.950243 | **No** |
+| Weather_720/V5 | 0.650365 | 0.653799 | **No** |
+| Weather_336/Joint | 0.506790 | 0.482744 | Yes |
+| Solar_96/V5 | 0.297977 | 0.207767 | Yes |
+
+3/5 pairs: the deployed E2E-trained gate clearly earns its complexity on
+held-out data. 2/5 pairs (ETTh1_336/Hard, Weather_720/V5): the deployed
+gate is slightly worse than doing nothing at all, on this
+chronologically-later Val-Holdout slice -- even though QA beat NOQA on
+the FULL validation set for these exact same two pairs in Phase B
+(deltas -0.0132 and -0.0233 favoring QA respectively). Notably, a FRESH
+gate re-fit on Val-Select with the SAME features DOES beat Base for both
+cells on the noqa-retriever basis (0.933766 < 0.937664; 0.649182 <
+0.650365) -- so this is not evidence that dynamic fusion can't work for
+these cells, but that the specific deployed checkpoint's gate transfers
+worse to the later-in-time holdout half than a gate refit on that half's
+own earlier-chronology Val-Select partner. Not yet root-caused (e.g.
+whether retrieval advantage itself shifts between Val-Select and
+Val-Holdout for these two cells has not been separately checked).
+
+**Net read for the causal question this track exists to answer**: C4/C5
+argue strongly for genuine per-query signal in the QA gate (unanimous,
+5/5 and 10/10). C1/C2 show that signal reliably pays off on true
+held-out data in only 3/5 representative cells; the other 2/5 show the
+actually-deployed gate is a wash-to-slightly-negative versus doing
+nothing, despite winning on the training-time validation set. This is a
+genuinely mixed result, not resolved toward either "real effect" or
+"artifact" -- Phase D (seed robustness across more seeds) and Phase E
+(final determination) are needed before a track-level verdict, and
+ChatGPT's read on how to weigh C4/C5 against C1/C2's split result would
+be valuable input before deciding Phase D's exact scope.
