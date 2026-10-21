@@ -1,0 +1,5 @@
+{
+  "val_mse": 0.18335809548813825,
+  "epoch": 9,
+  "checkpoint_path": "checkpoints/track_p100_qa_causal_validation01/rng_corrected/Solar_96/V5/NOQA/checkpoint_epoch9.pth"
+}
