@@ -231,6 +231,18 @@ baseline-provenance error, not a finding about TQH.
   change remain explicitly out of scope until the user decides whether
   this result changes the research direction.
 
+## Addendum (2026-10-22): head-redundancy claim re-measured directly
+
+Section 6/Table 4's "TQH-5's heads are MORE redundant" claim above
+used the Round-Robin-vs-Mean-Mixture overlap (0.9785 vs 0.6931) as a
+PROXY for head redundancy. A dedicated follow-up,
+`results/TRACK-V5-TQH-HEAD-OVERLAP-DIAG01/REPORT.md`, computed the
+actual pairwise Top-10 overlap between individual heads directly: V5 =
+0.3761, TQH-5 = 0.9771 -- the same direction, a larger true gap. The
+direction of this report's conclusion is unchanged; cite the direct
+-metric follow-up rather than this report's proxy number for any
+future head-redundancy comparison.
+
 ## Reproducibility
 
 - New code (read-only re-evaluation, nothing retrained):

@@ -1,0 +1,88 @@
+{
+  "v5": {
+    "tag": "canonical_V5",
+    "slot_top1_overlap": 0.13972707219760527,
+    "slot_top10_overlap": 0.37607651323612246,
+    "mean_pairwise_slot_cosine": 0.7745362965317516,
+    "union_size_mean": 27.134906768798828,
+    "union_oracle_recall_by_n_heads": [
+      0.2501927614212036,
+      0.35149654746055603,
+      0.42155036330223083,
+      0.46639108657836914,
+      0.5094967484474182
+    ],
+    "pairwise_top10_overlap_distribution": {
+      "mean": 0.3754126727581024,
+      "std": 0.27294233441352844,
+      "p25": 0.10000000149011612,
+      "median": 0.4000000059604645,
+      "p75": 0.6000000238418579,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "pairwise_top1_overlap_distribution": {
+      "mean": 0.13953320682048798,
+      "std": 0.34650298953056335,
+      "p25": 0.0,
+      "median": 0.0,
+      "p75": 0.0,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "query_level_mean_overlap_distribution": {
+      "mean": 0.3754127025604248,
+      "std": 0.17266492545604706,
+      "p25": 0.24000000953674316,
+      "median": 0.3499999940395355,
+      "p75": 0.48000001907348633,
+      "min": 0.05000000074505806,
+      "max": 0.9600000381469727
+    }
+  },
+  "tqh5": {
+    "tag": "TQH5_corrected",
+    "slot_top1_overlap": 0.9569653098943172,
+    "slot_top10_overlap": 0.9770870757373896,
+    "mean_pairwise_slot_cosine": 0.9997920120110759,
+    "union_size_mean": 10.505514144897461,
+    "union_oracle_recall_by_n_heads": [
+      0.24303975701332092,
+      0.24430297315120697,
+      0.24685470759868622,
+      0.24689020216464996,
+      0.2519480586051941
+    ],
+    "pairwise_top10_overlap_distribution": {
+      "mean": 0.97694331407547,
+      "std": 0.05433055758476257,
+      "p25": 1.0,
+      "median": 1.0,
+      "p75": 1.0,
+      "min": 0.20000000298023224,
+      "max": 1.0
+    },
+    "pairwise_top1_overlap_distribution": {
+      "mean": 0.9574403762817383,
+      "std": 0.2018626183271408,
+      "p25": 1.0,
+      "median": 1.0,
+      "p75": 1.0,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "query_level_mean_overlap_distribution": {
+      "mean": 0.9769434332847595,
+      "std": 0.03902324289083481,
+      "p25": 0.9600000381469727,
+      "median": 1.0,
+      "p75": 1.0,
+      "min": 0.6100000143051147,
+      "max": 1.0
+    }
+  },
+  "sanity": {
+    "s7_diff_vs_original_report": 0.00014375917622710954,
+    "s3_pool_ids_identical": true
+  }
+}

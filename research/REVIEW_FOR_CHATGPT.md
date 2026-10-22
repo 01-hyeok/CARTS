@@ -5908,3 +5908,25 @@ investigation (different cell/seed, or abandoning the direction
 entirely) is worthwhile. This is reported as a straightforward
 negative result -- the earlier positive framing was a baseline-
 provenance error, not a property of TQH.
+
+## FOLLOW-UP (2026-10-22): direct same-metric head-overlap confirms (and sharpens) the collapse finding
+
+The correction above used a PROXY for head redundancy
+(Mean-Mixture-vs-Round-Robin Top-10 overlap). A dedicated follow-up
+(`results/TRACK-V5-TQH-HEAD-OVERLAP-DIAG01/REPORT.md`, evaluation-only,
+no training) computed the actual pairwise Top-K overlap BETWEEN
+individual heads, identically, for both canonical sign-fixed V5 (epoch
+10) and corrected TQH-5 (epoch 7), on the same ETTh1_96/P100/seed0/test
+queries (candidate-pool-id identity and checkpoint provenance both
+verified from artifacts, not assumed).
+
+**Direct pairwise Top-10 overlap: V5 = 0.3761, TQH-5 = 0.9771.** Union
+size (of 50 possible): V5 = 27.13, TQH-5 = 10.51. Union Oracle Recall
+going from 1 to 5 heads: V5 roughly doubles (0.2502 -> 0.5095, +103.6%)
+while TQH-5 barely moves (0.2430 -> 0.2519, +3.7%). The direct metric
+shows a LARGER gap than the original proxy suggested (0.6931 vs
+0.9785) -- the head-collapse conclusion is confirmed and strengthened,
+not weakened, by measuring it correctly. No prior numeric claim is
+reversed by this follow-up; it replaces the proxy as the primary
+evidence for any head-redundancy comparison between these two
+architectures going forward.

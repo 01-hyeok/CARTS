@@ -5660,3 +5660,33 @@ direction STOP for this cell/seed**, pending user/ChatGPT PI review of
 whether any further investigation is warranted. The original
 `REPORT_ETTh1_96.md` is marked SUPERSEDED at its top (not deleted);
 historical artifacts were not deleted anywhere in this correction.
+
+## TRACK-V5-TQH-HEAD-OVERLAP-DIAG01 -- direct same-metric head-redundancy comparison
+
+Follow-up requested because the correction track's head-redundancy
+claim used a PROXY (Mean-Mixture-vs-Round-Robin Top-10 overlap:
+TQH-5=0.9785, V5=0.6931) rather than the direct pairwise Top-K overlap
+between individual heads. Evaluation-only (`scripts/eval_v5_tqh_head_overlap_diag01.py`,
+new, no training), ETTh1_96/P100/seed0/test, reusing
+`slot_mechanism_diagnostics`/`compute_scores`/`compute_scores_tqh`/
+`union_oracle_recall_curve` unmodified. Checkpoint provenance read
+from each track's own `selected_checkpoint.json` (V5 epoch 10 from
+`track_v_sharedtop100_signfix01`, confirmed NOT the historical sign
+-bugged path; TQH-5 epoch 7 from the correction track). S7 sanity
+(TQH-5's `slot_top10_overlap` must reproduce the original report's
+0.9769433165611625): diff=1.44e-4, reproduced within float
+-accumulation tolerance.
+
+**Direct pairwise Top-10 overlap: canonical V5 = 0.3761, TQH-5 =
+0.9771.** Union size (max 50): V5=27.13, TQH-5=10.51. Union Oracle
+Recall gain from 1->5 heads: V5 +103.6% relative (0.2502->0.5095,
+heads doing real complementary work), TQH-5 +3.7% relative
+(0.2430->0.2519, heads contributing almost nothing beyond the first).
+Full tables: `results/TRACK-V5-TQH-HEAD-OVERLAP-DIAG01/REPORT.md`.
+
+**Verdict: CASE A.** The direct metric not only confirms but sharpens
+the correction track's head-collapse finding -- the true gap (0.3761
+vs 0.9771) is larger than the RR-vs-MM proxy suggested (0.6931 vs
+0.9785). No prior numeric claim is reversed; this track is the primary
+evidence for head-redundancy comparisons going forward, superseding
+the RR-vs-MM proxy for that specific claim.
