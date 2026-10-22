@@ -99,7 +99,10 @@ def build_split(arm, exp, args, model, slot_heads, pool_cache, split, device, ta
                     diag['attn_entropy'].append(float(normalized_attention_entropy(attn).mean()))
                     diag['attn_max_prob'].append(float(attn.max(dim=-1).values.mean()))
                     diag['attn_head_cosine'].append(pairwise_head_attention_cosine(attn))
-                    diag['attn_query_div'].append(query_attention_diversity(attn))
+                    qdiv = query_attention_diversity(attn)  # NaN when this batch has bsz<2
+                    # (e.g. a trailing partial batch of size 1) -- skip rather than poison the mean
+                    if qdiv == qdiv:
+                        diag['attn_query_div'].append(qdiv)
 
         all_start.append(batch_start_idx.clone() if torch.is_tensor(batch_start_idx)
                          else torch.as_tensor(batch_start_idx))
