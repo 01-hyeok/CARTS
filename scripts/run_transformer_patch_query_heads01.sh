@@ -26,10 +26,10 @@ run_arm () {
   local ds="$1" h="$2" ref="$3" base="$4" patch_len="$5" arm="$6"
   local cell="${ds}_${h}"
   local pool="results/TRACK-V-MULTIQUERY-GENERALIZATION01/${ds}/H${h}/seed0/pool_top100/shared_candidate_pool"
-  local ckpt_root="checkpoints/track_transformer_patch_query_heads01/${cell}"
-  local result_root="results/TRACK-TRANSFORMER-PATCH-QUERY-HEADS01/${cell}"
-  local arm_ckpt_dir="${ckpt_root}/${arm}"
-  local arm_result_dir="${result_root}/${arm}"
+  local ckpt_root="checkpoints/track_transformer_patch_query_heads01"
+  local result_root="results/TRACK-TRANSFORMER-PATCH-QUERY-HEADS01"
+  local arm_ckpt_dir="${ckpt_root}/${cell}/${arm}"
+  local arm_result_dir="${result_root}/${cell}/${arm}"
   mkdir -p "${arm_result_dir}"
 
   if [ ! -f "${pool}/val.pt" ]; then
