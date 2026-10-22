@@ -5554,3 +5554,58 @@ Not yet root-caused; reported as-is, not smoothed over.
 
 Phase D (seed robustness) and Phase E (final causal determination) have
 not started.
+
+## TRACK-TEMPORAL-QUERY-HEADS01 -- ETTh1_96 diagnostic cell (CASE A)
+
+New track, user-specified: test whether V5's 5 static linear query
+heads could be replaced by query-adaptive "Temporal Query Heads"
+(head-specific attention over a per-query temporal token bank) to get
+complementary multi-head retrieval. AUDIT finding BEFORE implementing:
+V5's actual encoder is `relation_encoder_type='mlp'`
+(`train_j_shared_encoder_drift01.build_model`), which has no patch/
+token structure -- the existing TRACK-F `return_tokens=True` path only
+works for `encoder_type='transformer'`, so it could not be reused as
+originally assumed. Implemented instead (explicit user design, 2026
+-10-21): `TQH-n-Masked` -- re-run the SAME MLP encoder on P
+non-overlapping time-masked copies of the query's own relation input,
+subtract a zero-input baseline, L2-normalize -> temporal token bank
+`t_p`; V5's own `SlotHeads` output `g_m` attends over `t_p` (no new
+trainable parameters). Code: `models/TemporalQueryHeads.py`,
+`scripts/train_temporal_query_heads01.py`, `scripts/build_tqh_retrieval_cache01.py`.
+
+A first smoke test used `e_mp = dot(g_m,t_p)/sqrt(D)` (Transformer
+convention) and produced near-uniform attention (logit std 0.014,
+max-prob 0.170 vs uniform 0.167) -- diagnosed as wrong for this case
+(both vectors already L2-unit-norm, so the variance-correction premise
+behind 1/sqrt(D) doesn't apply) and removed per explicit user decision
+(no temperature parameter, fixed or learnable, introduced instead).
+
+Full training/checkpoint-selection protocol (not a pilot) on ONE cell
+(ETTh1_96, seed0), comparing V1/V5 (existing, reused unmodified) vs
+newly-trained TQH-1 (1 head) vs TQH-5 (5 heads). Full tables in
+`results/TRACK-TEMPORAL-QUERY-HEADS01/REPORT_ETTh1_96.md`. Headline:
+
+- **Stage-2 test MSE**: V1=0.39421, V5=0.39426, TQH-1=0.37176 (-5.70%
+  vs V5), TQH-5=0.37173 (-5.71%). TQH-1 and TQH-5 are statistically
+  indistinguishable from each other (both beat V5 by about the same
+  margin).
+- **Head collapse confirmed, persists through all 10 epochs**:
+  pairwise head attention cosine 0.9988, query-to-query attention
+  diversity 0.9794, Top-10 overlap 0.9769, Union Oracle Recall only
+  moves 0.2430 (1 head) -> 0.2519 (5 heads), +3.7% relative for 4 extra
+  heads.
+- **Verdict: CASE A** (per the user's pre-registered decision rule) --
+  TQH-1 approx= TQH-5 > V5. The improvement comes from the
+  masked-temporal query CONSTRUCTION itself, not from multi-head
+  complementarity. Multi-head contribution is NOT supported by this
+  cell's data.
+
+Caveats stated as-is, not resolved: one cell/one seed only (no
+ETTh1_192/336/720 or Weather replication yet); the mechanism (why
+masked-MLP-token averaging beats a static linear projection) is not
+explained; a random-masking control (to isolate "temporal structure"
+specifically vs "any masked-averaging-of-the-same-encoder
+construction") has not been run. No temperature/diversity-loss tuning
+was used to produce this result, per explicit standing instruction for
+this stage. Next step (expand to full grid vs run the random-masking
+control first) is left to the user / ChatGPT PI review.

@@ -1,0 +1,20 @@
+{
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1",
+  "slot_heads_param_count": 81920,
+  "best_retmse_epoch": 2,
+  "best_kl_epoch": 2,
+  "batch_order_hashes": [
+    {
+      "epoch": 1,
+      "batch_order_sha256": "25cf11ab788f822d677cdc3cdfb9cdc3b1ba3dcfd98f3935bf2ec2c89ce13ca8"
+    },
+    {
+      "epoch": 2,
+      "batch_order_sha256": "0bdfddd594a49af3d5374694d470c2030ee75c560c0cfe43762395e068bad51f"
+    },
+    {
+      "epoch": 3,
+      "batch_order_sha256": "c210de496f9be5b2718904fac989b7f309d5116f343d2c6ec19336cf717bbb04"
+    }
+  ]
+}

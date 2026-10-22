@@ -5815,3 +5815,55 @@ genuinely mixed result, not resolved toward either "real effect" or
 (final determination) are needed before a track-level verdict, and
 ChatGPT's read on how to weigh C4/C5 against C1/C2's split result would
 be valuable input before deciding Phase D's exact scope.
+
+## TRACK-TEMPORAL-QUERY-HEADS01 -- Temporal Query Heads, CASE A verdict (ETTh1_96 only)
+
+New, separate track. Hypothesis under test: does replacing V5's 5
+static linear query-head projections with query-ADAPTIVE heads (each
+attending over a per-query temporal token bank, derived by masking the
+query's own input and re-running the SAME shared MLP encoder) produce
+complementary multi-head retrieval and better forecasts? Full method,
+audit note (V5's actual encoder has no transformer-style patch tokens
+to reuse, so a new masked-MLP-token construction was built instead),
+and all tables: `results/TRACK-TEMPORAL-QUERY-HEADS01/REPORT_ETTh1_96.md`.
+
+One cell (ETTh1_96), one seed, FULL training protocol (not a pilot):
+
+| Arm | Stage-2 test MSE | RetMSE@10 | Pairwise head cosine | Query diversity |
+|---|---:|---:|---:|---:|
+| V1 (existing) | 0.39421 | 1.6154 | -- | -- |
+| V5 (existing) | 0.39426 | 1.6219 | -- | -- |
+| TQH-1 (1 head) | 0.37176 (-5.70%) | 0.6762 (-58.3%) | n/a (1 head) | 0.9801 |
+| TQH-5 (5 heads) | 0.37173 (-5.71%) | 0.6765 (-58.3%) | **0.9988** | 0.9794 |
+
+TQH-1 and TQH-5 are statistically indistinguishable (both beat V5 by
+the same ~5.7% Stage-2 MSE margin, ~58% RetMSE@10 margin); TQH-5's 5
+heads remain almost completely collapsed (pairwise attention cosine
+0.9988, Top-10 overlap 0.9769) through all 10 training epochs, and
+Union Oracle Recall only rises from 0.2430 (1 head) to 0.2519 (5
+heads) -- the 4 extra heads contribute almost nothing.
+
+**Verdict: CASE A** (pre-registered by the user) -- multi-head
+contribution is NOT supported; the retrieval/forecast improvement
+traces to the masked-temporal query CONSTRUCTION itself (present
+already with a single head), not to head complementarity. No
+temperature or diversity-loss tuning was used to reach this result
+(explicitly excluded per the user's standing instruction for this
+stage) -- an earlier version used the standard Transformer `1/sqrt(D)`
+attention scaling, which produced near-uniform attention for the wrong
+reason (both query and token vectors are already L2-unit-norm, so that
+scaling's variance-correction premise doesn't hold here); removing it
+(no other change) is what surfaced the real, large retrieval-quality
+signal reported above.
+
+**Open, unresolved**: only one cell/seed so far (no ETTh1_192/336/720
+or Weather yet); WHY the masked-token construction beats a static
+linear projection is not explained (candidate but untested
+hypotheses: implicit per-query centering from the zero-baseline
+subtraction, or an incidental denoising-ensemble effect from averaging
+masked-encoder outputs); a random-masking control (non-temporally
+-structured maskings, to isolate "temporal" specifically from "any
+masked-averaging-of-the-same-encoder") has not been run. ChatGPT's
+input on whether to prioritize the random-masking control or the
+full-grid replication next would be valuable before committing further
+GPU time to this track.

@@ -1,0 +1,30 @@
+{
+  "kl": 0.06032585516805128,
+  "model_ind_mse": 0.6761638605891206,
+  "agg_mse": 0.41582773840405995,
+  "recall10_p100": 0.24064632411124187,
+  "recall10_full": 0.051341370681396784,
+  "ndcg10": 0.8686599351345315,
+  "coverage_at_pool": 0.1889971828240558,
+  "D": 0.06761638764449651,
+  "C": 0.3482113498943101,
+  "oracle_ind_mse": 0.35209861625980554,
+  "attn_entropy_mean": 1.7769909091899565,
+  "attn_entropy_normalized_mean": 0.991757443171949,
+  "attn_max_prob_mean": 0.20935028609510384,
+  "attn_logit_std": 0.1910573488872887,
+  "attn_query_diversity": 0.9800808832443014,
+  "union_size": 10.0,
+  "n_queries_seen": 2785,
+  "best_epoch": 7,
+  "union_oracle_recall_by_n_heads": [
+    0.2430296242237091
+  ],
+  "effective_rank": 17.354978561401367,
+  "embedding_norm_mean": 1.0,
+  "embedding_norm_std": 2.665600717932648e-08,
+  "per_dim_variance_mean": 0.0012037365231662989,
+  "mean_pairwise_cosine": 0.8459218144416809,
+  "pairwise_cosine_std": 0.08706263452768326,
+  "largest_singular_value_fraction": 0.27412596344947815
+}
