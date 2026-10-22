@@ -5867,3 +5867,44 @@ masked-averaging-of-the-same-encoder") has not been run. ChatGPT's
 input on whether to prioritize the random-masking control or the
 full-grid replication next would be valuable before committing further
 GPU time to this track.
+
+## CORRECTION (2026-10-22): the CASE A verdict above does NOT survive -- baseline was invalid
+
+User-directed audit (not self-caught) found the V1/V5 numbers used
+above came from a subtree
+(`results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H96/seed0/pool_top100/ETTh1_96/{V1,V5}/`)
+that EACH arm's own directory marks `INVALIDATED_BY_TEACHER_SIGN_BUG.md`
+-- a double-negated teacher sign in `train_v_sharedtop100_01.py`
+(`normalized_teacher_prob(-d_pool,...)` when the function already
+internally negates) that trained those specific V1/V5 checkpoints
+against an INVERTED retrieval target. TQH-5 was also evaluated with
+Round-Robin instead of V5's canonical Mean-Mixture inference rule.
+
+Full corrected analysis: `results/TRACK-TEMPORAL-QUERY-HEADS01/REPORT_CORRECTED_ETTh1_96.md`.
+TQH's own training was verified clean (correct teacher-sign call,
+confirmed by grep and a synthetic reproduction); all checkpoints were
+complete, so this was a read-only re-evaluation, not a retrain.
+
+**Against the canonical sign-fixed baseline
+(`TRACK-V-SHARED-TOP100-SIGNFIX01`, Stage2 test MSE V1=0.37019,
+V5=0.36960) and the canonical Mean-Mixture inference rule, TQH-1 and
+TQH-5 both score 0.37176 -- WORSE than both V1 (+0.42%) and V5
+(+0.58%), and worse on every retrieval metric (RetMSE@10, AggMSE@10,
+Recall@10, NDCG@10).** The apparent large gain in the original report
+was an artifact of the invalid baseline (the bugged V5 checkpoint's
+own RetMSE@10 was 1.6219 vs its corrected 0.6639 -- roughly 2.4x worse
+due to the bug alone, which is why TQH looked dramatically better by
+comparison). The Mean-Mixture correction itself barely moved TQH-5's
+own numbers (<0.1%, selected epoch unchanged) -- because TQH-5's heads
+overlap with Round-Robin picks 97.9% of the time, versus 69.3% for
+canonical V5's own (static-linear) heads on the identical cell: **TQH
+produces heads that are MORE redundant with each other than the
+baseline it was meant to improve on.**
+
+**Revised verdict: CASE A (new definition) -- TQH-1 approx= TQH-5 <
+canonical V1/V5. Per the pre-registered decision rule: TQH direction
+STOP** for this cell/seed, pending a decision on whether any further
+investigation (different cell/seed, or abandoning the direction
+entirely) is worthwhile. This is reported as a straightforward
+negative result -- the earlier positive framing was a baseline-
+provenance error, not a property of TQH.

@@ -1,3 +1,23 @@
+> ## SUPERSEDED / INVALID BASELINE COMPARISON (2026-10-22)
+>
+> The V1/V5 numbers below were pulled from
+> `results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H96/seed0/pool_top100/ETTh1_96/{V1,V5}/`,
+> a subtree each arm's own directory marks with
+> `INVALIDATED_BY_TEACHER_SIGN_BUG.md` -- missed when this report was
+> written. That bug (`normalized_teacher_prob(-d_pool,...)` double
+> -negating an already-correctly-signed distance) corrupted those V1/V5
+> checkpoints' own retrieval quality, making TQH look far better than
+> it actually is by comparison. TQH-5 was also evaluated with
+> Round-Robin Top-K instead of V5's canonical Mean-Mixture rule.
+>
+> **The CASE A verdict below ("TQH-1 approx= TQH-5 > V5") does NOT
+> survive correction.** Under the canonical sign-fixed V1/V5 baseline
+> and Mean-Mixture inference rule, TQH-1/TQH-5 are instead slightly
+> WORSE than V1/V5 on every metric, and TQH-5's heads are MORE
+> collapsed relative to Round-Robin than V5's own heads are. See
+> `REPORT_CORRECTED_ETTh1_96.md` for the corrected analysis and the
+> new verdict. This file is kept for audit trail, not deleted.
+
 # TRACK-TEMPORAL-QUERY-HEADS01 -- ETTh1_96 single-cell diagnostic run
 
 Status: ONE cell (ETTh1_96), ONE seed (seed0), FULL training/checkpoint

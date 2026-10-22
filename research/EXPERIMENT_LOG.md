@@ -5609,3 +5609,54 @@ construction") has not been run. No temperature/diversity-loss tuning
 was used to produce this result, per explicit standing instruction for
 this stage. Next step (expand to full grid vs run the random-masking
 control first) is left to the user / ChatGPT PI review.
+
+## TRACK-TEMPORAL-QUERY-HEADS01-CORRECTION -- baseline provenance bug found; CASE A verdict REVERSED
+
+User-directed audit found the V1/V5 baseline used above came from
+`results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H96/seed0/pool_top100/ETTh1_96/{V1,V5}/`,
+which each carry `INVALIDATED_BY_TEACHER_SIGN_BUG.md` -- missed when
+the original report was written. The bug (confirmed by direct code
+reading and a synthetic reproduction, `d=[0.1,1.0,10.0]`):
+`scripts/train_v_sharedtop100_01.py` called
+`normalized_teacher_prob(-d_pool, ...)`; `normalized_teacher_prob`
+already internally negates, so this double-negated the teacher,
+training those V1/V5 retrievers against an INVERTED target (high-MSE
+candidates favored). Separately, TQH-5's own evaluation used
+Round-Robin Top-K, not V5's canonical Mean-Mixture inference rule
+(`utils/mean_mixture_selection.py`).
+
+Verified TQH's own trainer is NOT affected
+(`normalized_teacher_prob(d_pool, ...)`, correct call, confirmed by
+grep and by the same synthetic test). All 10 epoch checkpoints for
+both TQH-1 and TQH-5 existed and were complete -- no retraining was
+done; this was a read-only re-evaluation
+(`scripts/eval_tqh_meanmix_checkpoint_selection01.py`,
+`scripts/build_tqh_meanmix_cache01.py`, both new, Mean-Mixture-based,
+sibling to the existing canonical V5 scripts).
+
+Corrected comparison against the CANONICAL sign-fixed V1/V5
+(`results/TRACK-V-SHARED-TOP100-SIGNFIX01/.../ETTh1_96/{V1,V5}/`,
+Stage2 test MSE 0.37019/0.36960) -- full tables in
+`results/TRACK-TEMPORAL-QUERY-HEADS01/REPORT_CORRECTED_ETTh1_96.md`:
+
+- **TQH-1 and TQH-5 Stage2 test MSE: 0.37176 -- WORSE than both
+  canonical V1 (+0.42%) and canonical V5 (+0.58%)**, and worse on
+  every Stage-1 retrieval metric (RetMSE@10, AggMSE@10, Recall@10,
+  NDCG@10). Mean-Mixture correction changed TQH-5's own numbers by
+  <0.1% (selected epoch unchanged at 7) -- because TQH-5's heads are
+  so collapsed that Round-Robin and Mean-Mixture pick nearly the same
+  Top-10 set (97.9% overlap) regardless, versus 69.3% overlap for
+  canonical V5's own heads on the identical cell -- TQH-5's heads are
+  MORE redundant with each other than the baseline's.
+- The original report's large apparent gain was entirely an artifact
+  of the invalid baseline: the bugged V5's own RetMSE@10 was 1.6219
+  versus its corrected value of 0.6639 (the bug alone cost roughly
+  2.4x in RetMSE@10).
+
+**CASE A verdict (new definition): TQH-1 approx= TQH-5 < canonical
+V1/V5 -- the temporal query construction shows no improvement and
+multi-head contribution is absent. Per the pre-registered rule: TQH
+direction STOP for this cell/seed**, pending user/ChatGPT PI review of
+whether any further investigation is warranted. The original
+`REPORT_ETTh1_96.md` is marked SUPERSEDED at its top (not deleted);
+historical artifacts were not deleted anywhere in this correction.

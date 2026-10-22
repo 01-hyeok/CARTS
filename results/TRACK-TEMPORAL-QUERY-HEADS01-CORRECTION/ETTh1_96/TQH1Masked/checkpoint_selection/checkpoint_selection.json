@@ -1,0 +1,99 @@
+{
+  "rows": [
+    {
+      "epoch": 1,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch1.pth",
+      "old_rr_val_retmse10": 1.0482940673828125,
+      "new_mean_val_retmse10": 1.0482940673828125,
+      "new_mean_val_agg_mse10": 0.7599064111709595,
+      "new_mean_val_recall10": 0.1858527809381485,
+      "new_mean_val_ndcg10": 0.8254671096801758
+    },
+    {
+      "epoch": 2,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch2.pth",
+      "old_rr_val_retmse10": 1.0147744417190552,
+      "new_mean_val_retmse10": 1.0147744417190552,
+      "new_mean_val_agg_mse10": 0.7295750975608826,
+      "new_mean_val_recall10": 0.20113876461982727,
+      "new_mean_val_ndcg10": 0.8385095596313477
+    },
+    {
+      "epoch": 3,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch3.pth",
+      "old_rr_val_retmse10": 1.0254253149032593,
+      "new_mean_val_retmse10": 1.0254253149032593,
+      "new_mean_val_agg_mse10": 0.7440088987350464,
+      "new_mean_val_recall10": 0.20341627299785614,
+      "new_mean_val_ndcg10": 0.8339806199073792
+    },
+    {
+      "epoch": 4,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch4.pth",
+      "old_rr_val_retmse10": 1.0101298093795776,
+      "new_mean_val_retmse10": 1.0101298093795776,
+      "new_mean_val_agg_mse10": 0.7252790331840515,
+      "new_mean_val_recall10": 0.20702743530273438,
+      "new_mean_val_ndcg10": 0.8391969203948975
+    },
+    {
+      "epoch": 5,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch5.pth",
+      "old_rr_val_retmse10": 0.9984890818595886,
+      "new_mean_val_retmse10": 0.9984890818595886,
+      "new_mean_val_agg_mse10": 0.7225662469863892,
+      "new_mean_val_recall10": 0.2119004875421524,
+      "new_mean_val_ndcg10": 0.8431013822555542
+    },
+    {
+      "epoch": 6,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch6.pth",
+      "old_rr_val_retmse10": 1.003770112991333,
+      "new_mean_val_retmse10": 1.003770112991333,
+      "new_mean_val_agg_mse10": 0.7183223366737366,
+      "new_mean_val_recall10": 0.2119312882423401,
+      "new_mean_val_ndcg10": 0.8436121344566345
+    },
+    {
+      "epoch": 7,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch7.pth",
+      "old_rr_val_retmse10": 0.9914284944534302,
+      "new_mean_val_retmse10": 0.9914284944534302,
+      "new_mean_val_agg_mse10": 0.7144602537155151,
+      "new_mean_val_recall10": 0.21504490077495575,
+      "new_mean_val_ndcg10": 0.8464778661727905
+    },
+    {
+      "epoch": 8,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch8.pth",
+      "old_rr_val_retmse10": 0.9944780468940735,
+      "new_mean_val_retmse10": 0.9944750666618347,
+      "new_mean_val_agg_mse10": 0.7180282473564148,
+      "new_mean_val_recall10": 0.2168145775794983,
+      "new_mean_val_ndcg10": 0.8461392521858215
+    },
+    {
+      "epoch": 9,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch9.pth",
+      "old_rr_val_retmse10": 1.000230073928833,
+      "new_mean_val_retmse10": 1.000230073928833,
+      "new_mean_val_agg_mse10": 0.7201501727104187,
+      "new_mean_val_recall10": 0.21543985605239868,
+      "new_mean_val_ndcg10": 0.8457595109939575
+    },
+    {
+      "epoch": 10,
+      "checkpoint_path": "checkpoints/track_temporal_query_heads01/ETTh1_96/ETTh1_96/TQH1Masked/checkpoint_epoch10.pth",
+      "old_rr_val_retmse10": 0.9935773015022278,
+      "new_mean_val_retmse10": 0.9935773015022278,
+      "new_mean_val_agg_mse10": 0.7194718718528748,
+      "new_mean_val_recall10": 0.21889714896678925,
+      "new_mean_val_ndcg10": 0.8482857942581177
+    }
+  ],
+  "old_rr_best_epoch": 7,
+  "old_rr_best_val_retmse10": 0.9914284944534302,
+  "new_mean_best_epoch": 7,
+  "new_mean_best_val_retmse10": 0.9914284944534302,
+  "epoch_changed": false
+}
