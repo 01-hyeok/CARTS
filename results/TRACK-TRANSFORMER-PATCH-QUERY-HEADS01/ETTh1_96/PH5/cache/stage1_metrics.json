@@ -1,0 +1,27 @@
+{
+  "retmse10": 0.6756370067596436,
+  "D": 0.06756369769573212,
+  "C": 0.3586689233779907,
+  "agg_mse10": 0.42623257637023926,
+  "recall10": 0.2457861304283142,
+  "ndcg10": 0.8713550567626953,
+  "head_diag": {
+    "slot_top1_overlap": 1.0,
+    "slot_top10_overlap": 0.9999807225419329,
+    "mean_pairwise_slot_cosine": 0.9999999994194353,
+    "union_size_mean": 10.000355113636363,
+    "union_oracle_recall_by_n_heads": [
+      0.24811281263828278,
+      0.24811789393424988,
+      0.24811789393424988,
+      0.24811789393424988,
+      0.24811792373657227
+    ]
+  },
+  "attn_diag": {
+    "attn_entropy_normalized_mean": 0.9982255793043545,
+    "attn_max_prob_mean": 0.1788011404939673,
+    "attn_pairwise_head_cosine": 1.0,
+    "attn_query_diversity": 0.9945748413137614
+  }
+}

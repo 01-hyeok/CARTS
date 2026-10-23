@@ -1,0 +1,6 @@
+{
+  "selection_criterion": "min validation RetMSE@10 (n_slots=1)",
+  "selected_epoch": 10,
+  "selected_checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/Weather_96/PH1/checkpoint_epoch10.pth",
+  "tau_s": 0.1
+}

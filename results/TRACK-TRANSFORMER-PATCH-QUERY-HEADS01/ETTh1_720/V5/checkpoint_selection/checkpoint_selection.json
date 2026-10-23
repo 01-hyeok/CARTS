@@ -1,0 +1,94 @@
+{
+  "rows": [
+    {
+      "epoch": 1,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch1.pth",
+      "old_rr_val_retmse10": 2.0987839698791504,
+      "selected_rule_val_retmse10": 2.064615488052368,
+      "selected_rule_val_agg_mse10": 1.6671173572540283,
+      "selected_rule_val_recall10": 0.2130957841873169,
+      "selected_rule_val_ndcg10": 0.7810187339782715
+    },
+    {
+      "epoch": 2,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch2.pth",
+      "old_rr_val_retmse10": 2.1038193702697754,
+      "selected_rule_val_retmse10": 2.0661802291870117,
+      "selected_rule_val_agg_mse10": 1.673912525177002,
+      "selected_rule_val_recall10": 0.22238381206989288,
+      "selected_rule_val_ndcg10": 0.7852685451507568
+    },
+    {
+      "epoch": 3,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch3.pth",
+      "old_rr_val_retmse10": 2.081200361251831,
+      "selected_rule_val_retmse10": 2.0516159534454346,
+      "selected_rule_val_agg_mse10": 1.6741604804992676,
+      "selected_rule_val_recall10": 0.22273418307304382,
+      "selected_rule_val_ndcg10": 0.7872311472892761
+    },
+    {
+      "epoch": 4,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch4.pth",
+      "old_rr_val_retmse10": 2.083162784576416,
+      "selected_rule_val_retmse10": 2.0446135997772217,
+      "selected_rule_val_agg_mse10": 1.6599993705749512,
+      "selected_rule_val_recall10": 0.23192965984344482,
+      "selected_rule_val_ndcg10": 0.8013966083526611
+    },
+    {
+      "epoch": 5,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch5.pth",
+      "old_rr_val_retmse10": 2.0374701023101807,
+      "selected_rule_val_retmse10": 2.0152335166931152,
+      "selected_rule_val_agg_mse10": 1.6582030057907104,
+      "selected_rule_val_recall10": 0.23976333439350128,
+      "selected_rule_val_ndcg10": 0.8082640767097473
+    },
+    {
+      "epoch": 6,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch6.pth",
+      "old_rr_val_retmse10": 2.022014856338501,
+      "selected_rule_val_retmse10": 2.001276969909668,
+      "selected_rule_val_agg_mse10": 1.6472876071929932,
+      "selected_rule_val_recall10": 0.24447676539421082,
+      "selected_rule_val_ndcg10": 0.8106655478477478
+    },
+    {
+      "epoch": 7,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch7.pth",
+      "old_rr_val_retmse10": 2.025890350341797,
+      "selected_rule_val_retmse10": 2.007608413696289,
+      "selected_rule_val_agg_mse10": 1.659543514251709,
+      "selected_rule_val_recall10": 0.24320751428604126,
+      "selected_rule_val_ndcg10": 0.8134970664978027
+    },
+    {
+      "epoch": 8,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch8.pth",
+      "old_rr_val_retmse10": 2.026185989379883,
+      "selected_rule_val_retmse10": 2.012526035308838,
+      "selected_rule_val_agg_mse10": 1.6659778356552124,
+      "selected_rule_val_recall10": 0.24718055129051208,
+      "selected_rule_val_ndcg10": 0.8142178058624268
+    },
+    {
+      "epoch": 9,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch9.pth",
+      "old_rr_val_retmse10": 2.036508560180664,
+      "selected_rule_val_retmse10": 2.018315315246582,
+      "selected_rule_val_agg_mse10": 1.6733345985412598,
+      "selected_rule_val_recall10": 0.24617572128772736,
+      "selected_rule_val_ndcg10": 0.811811089515686
+    },
+    {
+      "epoch": 10,
+      "checkpoint_path": "checkpoints/track_transformer_patch_query_heads01/ETTh1_720/V5/checkpoint_epoch10.pth",
+      "old_rr_val_retmse10": 2.0192787647247314,
+      "selected_rule_val_retmse10": 2.0070314407348633,
+      "selected_rule_val_agg_mse10": 1.6654282808303833,
+      "selected_rule_val_recall10": 0.24485357105731964,
+      "selected_rule_val_ndcg10": 0.8140093088150024
+    }
+  ]
+}
