@@ -5930,3 +5930,47 @@ not weakened, by measuring it correctly. No prior numeric claim is
 reversed by this follow-up; it replaces the proxy as the primary
 evidence for any head-redundancy comparison between these two
 architectures going forward.
+
+## TRACK-TRANSFORMER-PATCH-QUERY-HEADS01 -- real Transformer patch tokens, 4 cells, STOP verdict
+
+Tests the predecessor track's actual research question properly: does
+a REAL patch-based Transformer encoder's own contextual patch tokens
+(not the masked-MLP workaround) help when used to construct retrieval
+query heads? Separates three effects across 4 arms (V1/V5 pooled-only,
+PH1/PH5 patch-aware), 4 cells (ETTh1/Weather x H96/H720), seed0,
+Shared-P100: backbone (MLP vs Transformer), patch-token utilization
+(pooled vs patch-aware query), and multi-head complementarity (1 vs 5
+heads). Full tables: `results/TRACK-TRANSFORMER-PATCH-QUERY-HEADS01/REPORT.md`.
+
+**Headline, uniform across all 4 cells**: PH5's 5 heads collapse to
+pairwise Top-10 overlap 0.996-1.000 (union size ~10/50) and contribute
+only 0.0-0.7% additional Union Oracle Recall from 1 to 5 heads --
+versus canonical V5's own static-linear heads' +73% to +121% gain on
+the SAME metric, SAME cells. Attention is also nearly uniform over
+patches (entropy ~0.998 of max) and nearly identical across different
+queries (diversity ~0.995-0.999) in every cell. This is a MORE severe,
+MORE uniform collapse than the masked-MLP-token predecessor track
+found, using real patch tokens with genuine content diversity (not a
+degenerate representation).
+
+**Pre-registered expansion gate** (T-PH5 beats T-V5 on AggMSE in >=3/4
+cells, Stage-2 MSE improves/trends positive in >=3/4 cells, T-PH5 beats
+T-PH1, overlap decreases AND union recall increases) **fails all four
+conditions** -- T-PH5 only beats T-V5 on AggMSE in 1/4 cells
+(Weather_96). Backbone-only (MLP->Transformer) and single-head
+patch-aware (T-V1 vs T-PH1) are each independently positive in 3/4
+cells, but neither is what the gate is conditioned on, and the track
+does not recommend acting on either without a separately-scoped
+follow-up.
+
+**Verdict: STOP on multi-head-over-patch-tokens.** Combined with the
+predecessor masked-MLP track's own STOP, two independently-constructed
+mechanisms for building query-adaptive retrieval heads (one a
+workaround, one using a real patch-token backbone) have now both shown
+complete head collapse with no complementary retrieval benefit, on
+every cell tested. ChatGPT's input on whether this closes the
+"multi-head retrieval diversity via richer query construction"
+direction entirely, or whether the backbone-only / single-head-patch
+-aware observations warrant a separate, narrower follow-up, would be
+valuable before any further GPU time goes into this line of
+investigation.

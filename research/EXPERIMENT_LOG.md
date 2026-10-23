@@ -5690,3 +5690,53 @@ vs 0.9771) is larger than the RR-vs-MM proxy suggested (0.6931 vs
 0.9785). No prior numeric claim is reversed; this track is the primary
 evidence for head-redundancy comparisons going forward, superseding
 the RR-vs-MM proxy for that specific claim.
+
+## TRACK-TRANSFORMER-PATCH-QUERY-HEADS01 -- real patch-Transformer backbone, 4 cells x 4 arms, COMPLETE
+
+Tests whether V5's static linear query heads could instead be built
+from a REAL patch-based Transformer encoder's own contextual patch
+tokens (the predecessor track's masked-MLP tokens were a workaround --
+V5's actual production encoder is `relation_encoder_type='mlp'`, with
+no patch structure). Reuses `models.RelationStage1.RelationEncoder`'s
+existing `encoder_type='transformer'` + `return_tokens=True` branch
+(audited before implementation: pooled `[B,D]` + token bank `[B,6,D]`,
+CLS excluded, already L2-normalized) and
+`TemporalQueryHeads.temporal_attention_heads` unmodified (no 1/sqrt(D),
+per the predecessor track's diagnosis) for the parameter-free
+patch-attention mechanism. 4 arms share one trainer: V1/V5 (pooled
+-only query, 1 or 5 static linear heads), PH1/PH5 (same heads, but
+attending over the Transformer's own patch tokens instead of using
+the pooled embedding directly). Candidate branch pooled-only in all 4
+arms. ETTh1 H96/H720, Weather H96/H720, seed0, Shared-P100, fixed 10
+epochs/no early stopping, GPU1 sequential. MLP-V1/V5 reused read-only
+from `TRACK-V-SHARED-TOP100-SIGNFIX01`.
+
+One orchestrator path-construction bug (double-nested `${cell}` in
+`ckpt_root`/`result_root`, crashing checkpoint selection right after
+V1/ETTh1_96's 10-epoch training completed) and one NaN-aggregation bug
+(`attn_query_diversity` poisoned by ETTh1's trailing size-1 test batch)
+were caught and fixed mid-run; no training was lost or redone, see the
+commits for both. Full tables and the comparison-by-comparison read:
+`results/TRACK-TRANSFORMER-PATCH-QUERY-HEADS01/REPORT.md`.
+
+**Headline**: in all 4 cells, PH5's 5 heads collapse to pairwise
+Top-10 overlap 0.996-1.000, union size ~10/50, and contribute only
+0.0-0.7% additional Union Oracle Recall from 1 to 5 heads -- versus
+canonical V5's own static-linear heads' +73% to +121% gain in the
+identical metric on the identical cells. This is a MORE uniform and
+MORE severe collapse than the masked-MLP-token predecessor track found.
+The pre-registered expansion gate (spec Section 25: T-PH5 must beat
+T-V5 on AggMSE in >=3/4 cells, Stage-2 MSE improve or trend positive in
+>=3/4 cells, T-PH5 beat T-PH1, AND overlap decrease with union recall
+increase) fails on all four conditions (T-PH5 beats T-V5 on AggMSE in
+only 1/4 cells). Backbone-only (MLP->Transformer, Comparison 1) and
+patch-aware-single-head (T-V1 vs T-PH1, Comparison 4) are each
+independently positive in 3/4 cells but neither is what the gate is
+conditioned on, and neither is reported as a finding to act on without
+further scoping.
+
+**Verdict: STOP** on the multi-head-over-patch-tokens direction per
+the pre-registered rule -- no seed1/2, no H192/H336, no full-candidate,
+no temperature/architecture tuning follows from this track. Whether
+the backbone-only or single-head-patch-aware observations merit a
+separately-scoped follow-up is left to the user / ChatGPT PI review.
