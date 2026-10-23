@@ -5740,3 +5740,40 @@ the pre-registered rule -- no seed1/2, no H192/H336, no full-candidate,
 no temperature/architecture tuning follows from this track. Whether
 the backbone-only or single-head-patch-aware observations merit a
 separately-scoped follow-up is left to the user / ChatGPT PI review.
+
+## TRACK-PATCH-REPRESENTATION-RESIDUAL01 -- Phase A/B, evaluation-only, STOP before Phase C
+
+Direct follow-up to isolate PH1's single-head benefit (the one
+positive signal left from the Transformer-patch track). Two gated,
+evaluation-only phases (no training in either), 4 cells (ETTh1/Weather
+x H96/H720), seed0, Shared-P100, GPU1. Code:
+`scripts/diag_patchmean_vs_attention01.py`,
+`scripts/diag_patch_residual_alpha01.py`.
+
+**PHASE A** (PH1's own attention vs plain patch mean, from the SAME
+existing PH1 checkpoint, no retraining): `cosine(q_attn, q_mean) >=
+0.993` and `Top-10 overlap >= 0.983` and retrieval metrics
+indistinguishable, in ALL 4 cells. **Verdict: CASE A1** -- PH1's
+apparent benefit is NOT caused by query-conditioned attention; it is a
+contextual patch-MEAN effect. Attention mechanism discarded. Full
+table: `results/TRACK-PATCH-REPRESENTATION-RESIDUAL01/PHASE_A_REPORT.md`.
+
+**PHASE B** (residual `q_m(alpha) = normalize(g_m + alpha*mean_p(h_p))`
+added to the EXISTING T-V5 checkpoint, read-only, fixed alpha sweep on
+validation; alpha=0 parity vs T-V5's own scores asserted exact,
+0.00e+00 diff in all 4 cells): a real, consistently-signed
+quality-diversity frontier exists in all 4/4 cells (some alpha>0
+improves AggMSE and RetMSE while keeping head-diversity loss within
+the pre-registered band), but the magnitude requirement (>=1% AggMSE
+improvement in >=2/4 cells) fails -- best safe improvement per cell is
+0.09%-0.41%, nowhere near 1%. Full table:
+`results/TRACK-PATCH-REPRESENTATION-RESIDUAL01/PHASE_B_REPORT.md`.
+
+**Verdict: STOP before Phase C.** Per the pre-registered gate, Phase C
+(trainable gamma, full Residual-V5 training) is explicitly NOT
+started -- the signal is real and reproducible but too small to
+justify it, and no hyperparameter sweep was added to try to clear the
+bar. This closes the patch-representation-as-retrieval-signal line of
+investigation (started by TRACK-TEMPORAL-QUERY-HEADS01, continued by
+TRACK-TRANSFORMER-PATCH-QUERY-HEADS01, narrowed here) with a
+consistent, honestly-bounded negative result across all three tracks.

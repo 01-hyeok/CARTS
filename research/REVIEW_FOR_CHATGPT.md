@@ -5974,3 +5974,44 @@ direction entirely, or whether the backbone-only / single-head-patch
 -aware observations warrant a separate, narrower follow-up, would be
 valuable before any further GPU time goes into this line of
 investigation.
+
+## TRACK-PATCH-REPRESENTATION-RESIDUAL01 -- closes the patch-representation line, STOP before training
+
+Gated, two-phase, evaluation-only follow-up (no training in either
+phase) isolating the one remaining positive signal from the
+Transformer-patch track (PH1's single-head benefit over pooled T-V1).
+4 cells, seed0, Shared-P100. Full reports:
+`results/TRACK-PATCH-REPRESENTATION-RESIDUAL01/{PHASE_A,PHASE_B}_REPORT.md`.
+
+**Phase A**: from PH1's own EXISTING checkpoint (no retraining),
+`q_attn` (its real attention-weighted query) vs `q_mean` (plain mean
+over the same patch tokens, no attention) are cosine-similar >=0.993
+and retrieve nearly-identical Top-10 sets (overlap >=0.983) in all 4
+cells, with negligible retrieval-metric differences. **PH1's benefit
+is a patch-mean effect, not an attention effect** -- confirmed
+uniformly, not cell-specific.
+
+**Phase B**: adding `alpha * mean_p(h_p)` as a residual on top of the
+EXISTING T-V5 checkpoint (read-only, alpha=0 parity exactly verified,
+0 diff), scanned on validation only: a real, consistently-signed
+small-alpha quality-diversity frontier exists in all 4/4 cells (AggMSE
+and RetMSE both improve while head-diversity loss stays inside the
+pre-registered band) -- but the improvement tops out at 0.41% (best
+cell), far short of the pre-registered 1%-in->=2-cells bar needed to
+justify training.
+
+**Verdict: STOP before Phase C** (trainable gamma, full Residual-V5
+training was never started) -- per the pre-registered gate, not
+escalated by adding a sweep to clear the bar. Combined with the prior
+two tracks (masked-MLP temporal heads: STOP; real-Transformer
+patch-attention heads: STOP), this is the third and most targeted
+negative result in the same line of investigation: contextual
+patch/temporal representations carry a real but small amount of
+retrieval-useful information that V5's existing static-linear
+multi-head mechanism does not already capture, and at the scale tested
+(4 cells, seed0, P100) it is not large enough to be worth building
+new architecture around. ChatGPT's view on whether this line of
+investigation should be considered closed, or whether a different
+scale/setting (e.g. a dataset/horizon combination with a naturally
+larger patch-mean signal, or full-candidate rather than P100) might
+change this conclusion, would be useful before any further work here.
