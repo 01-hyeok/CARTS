@@ -6015,3 +6015,44 @@ investigation should be considered closed, or whether a different
 scale/setting (e.g. a dataset/horizon combination with a naturally
 larger patch-mean signal, or full-candidate rather than P100) might
 change this conclusion, would be useful before any further work here.
+
+## TRACK-SEMANTIC-SPECIALIZED-HEADS01 -- model-free oracle says STOP before any training
+
+Different question from the three tracks above: not "how to make
+heads different," but "if heads already differ, should their
+difference be semantically assigned (Global/Trend/Seasonal/Local)
+rather than left geometric?" Tested with a model-free oracle
+diagnostic BEFORE any training -- reuses Experiment E's own
+`shared`/`local`/`trend`/`seasonal` component-distance definitions
+unmodified, restricted to Shared-P100, on 4 cells' validation splits.
+Full report: `results/TRACK-SEMANTIC-SPECIALIZED-HEADS01/PHASE_A_ORACLE_REPORT.md`.
+
+**Found and reported, not silently patched**: Weather_96's
+Trend/Seasonal are mathematically undefined at this horizon (period
+142 > H=96, verified by direct computation producing an empty
+tensor) -- excluded from that cell's verdict without changing the
+outcome.
+
+**Result**: plain Global-only beats every semantic fusion in 3/4
+cells; only Weather_720 shows any gain (Global+Trend, +1.40%), short
+of the pre-registered 2% bar in any single cell and 0/4 cells reach
+it (gate needs >=2/4). Components are genuinely distinctive by
+pairwise overlap, so this is not "the components are redundant" --
+semantically-distinct candidates simply do not forecast better than
+Global alone at P100 scale, even under a cheating oracle that picks
+the best arm per query with future information (that oracle only
+gains 0.6-5.7%).
+
+**Verdict: Scenario D, STOP before Phase B** -- no semantic-head
+training was started. Combined with the three patch/temporal-head
+tracks immediately above, this is now the FOURTH consecutive STOP in
+the broader "give V5's heads more information to work with" research
+program, each via a different, independently-reasoned mechanism
+(masked-MLP temporal collapse; real-Transformer patch collapse;
+patch-residual magnitude too small; semantic-oracle headroom too
+small). ChatGPT's read on whether this pattern across four
+independent attempts should be read as closing the entire "smarter
+multi-query heads" direction for this P100/these datasets, versus
+there being a common blind spot in how all four were scoped, would be
+the most valuable next input before this session proposes anything
+further in this family.

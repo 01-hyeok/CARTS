@@ -5777,3 +5777,45 @@ bar. This closes the patch-representation-as-retrieval-signal line of
 investigation (started by TRACK-TEMPORAL-QUERY-HEADS01, continued by
 TRACK-TRANSFORMER-PATCH-QUERY-HEADS01, narrowed here) with a
 consistent, honestly-bounded negative result across all three tracks.
+
+## TRACK-SEMANTIC-SPECIALIZED-HEADS01 -- Phase A oracle diagnostic, Scenario D STOP
+
+Tests whether assigning V5's heads semantic roles (Global/Trend/
+Seasonal/Local, reusing Experiment E's own `shared`/`local`/`trend`/
+`seasonal` component-distance definitions UNMODIFIED, restricted to
+Shared-P100) would give useful complementary retrieval, via a
+model-free oracle diagnostic before any training. 4 cells, validation
+split only. Code: `scripts/diag_semantic_oracle_heads01.py`. Period P
+reused from the EXISTING train-only `period_detection.json` per
+dataset (ETTh1=24, Weather=142) -- confirmed horizon-independent via
+`data_provider/data_loader.py`'s fixed train-split boundary, no new
+computation needed.
+
+**Bug found and reported, not silently patched**: Weather_96's
+Trend/Seasonal components are mathematically UNDEFINED
+(`transform(y,'trend'/'seasonal',period=142)` on `H=96 < period=142`
+produces an empty tensor, verified directly) -- excluded from that
+cell's verdict; only Global/Local are valid there. Does not change
+the overall conclusion (Global already wins Weather_96 on the valid
+components alone).
+
+**Result**: plain Global-only beats every semantic fusion combination
+in 3/4 cells (ETTh1_96, ETTh1_720, Weather_96); only Weather_720 shows
+any fusion (Global+Trend) beating Global, and by just 1.40% -- short
+of the pre-registered 2% bar. 0/4 cells reach the 2% improvement
+threshold (gate requires >=2/4). Components ARE distinctive by
+pairwise overlap (several pairs <0.7), so the failure is not "the
+components pick the same candidates" -- semantically-different
+candidate sets simply do not translate into better raw-future
+forecasting at this scale. Full tables:
+`results/TRACK-SEMANTIC-SPECIALIZED-HEADS01/PHASE_A_ORACLE_REPORT.md`.
+
+**Verdict: Scenario D, STOP before Phase B.** Semantic-head training
+was never started -- no role assignment, no auxiliary loss, no
+architecture. This is a clean, model-free confirmation (no learned
+-model confound at all) of this session's standing Experiment E
+caveat (seasonal specialization weak, component fusion rarely beating
+Shared), now traced to a specific causal mechanism: at P100 scale, the
+oracle-level forecasting benefit of semantic specialization is simply
+too small to matter, independent of whether a model could learn to
+exploit it.
