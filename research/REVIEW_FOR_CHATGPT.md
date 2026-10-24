@@ -6056,3 +6056,50 @@ multi-query heads" direction for this P100/these datasets, versus
 there being a common blind spot in how all four were scoped, would be
 the most valuable next input before this session proposes anything
 further in this family.
+
+## TRACK-HEAD-CONDITIONED-CANDIDATE-SUPPORT01 -- the premise itself was wrong, not just unhelpful
+
+A fifth attempt in the same family, but a different kind of
+question: instead of giving heads better query representations, this
+tested whether the EXISTING candidate shortlist (Shared-P100, a
+cheap, model-independent, cosine-based coarse filter shared across all
+5 heads) is itself the bottleneck -- hypothesis being that truncating
+to the same 100 candidates for every head "suppresses" the diversity
+V5's 5 heads would otherwise show. Tested with the frozen canonical
+sign-fixed V5 checkpoint, NO retraining, across 4 candidate-support
+arms (Shared-P100 / MeanMix-P100 model-aligned shortlist / Head-P100
+per-head-conditioned shortlist / Full unrestricted bank), 4 cells.
+Full report:
+`results/TRACK-HEAD-CONDITIONED-CANDIDATE-SUPPORT01/PHASE_A_SUPPORT_REPORT.md`.
+
+**Result: the opposite of the hypothesis.** Head-P100 beats
+Shared-P100 in only 1/4 cells (ETTh1_96, by 0.38%); Shared-P100 wins
+the other 3/4 by 8-14%. More strikingly, **Full -- giving the model
+the entire candidate bank with no truncation at all -- is the worst
+or second-worst arm in every single cell, with no exception.**
+Per-head coverage confirms the mechanism the hypothesis assumed is
+real (Shared-P100 does exclude 66-71% of what each head would
+otherwise prefer), and the cheating-oracle upper bound (OracleAggMSE)
+does improve monotonically as the pool grows, exactly as expected --
+but the model's actual Mean-Mixture selection mechanism gets *worse*,
+not better, as the candidate pool grows. The true headroom is there;
+the retrieval mechanism cannot realize it, and in fact degrades as
+more (noisier) candidates are made available to it.
+
+**Verdict: STOP before Stage2/Phase B**, with the pre-registered gate
+(Head-P100 < Shared-P100 in >=3/4 cells; actual 1/4) failing cleanly.
+No support budget, per-head K, or temperature was retuned to try to
+reverse this. This closes the fifth and most structurally different
+attempt in the "make V5's heads more useful" program this session,
+and is arguably the most informative of the five: it rules out "not
+enough candidates to choose from" as an explanation for head
+collapse/underuse, and instead points toward the selection mechanism
+itself (how `p_mix`/per-head scores are computed and combined) as
+the more promising place to look, if this direction is continued at
+all. ChatGPT's view on whether the retrieval-scoring mechanism itself
+(as opposed to the candidate pool it operates on, or the query
+representation feeding it) is now the most promising remaining
+variable to investigate -- or whether this is better read as five
+independent lines of evidence that V5's 5-head mechanism has hit a
+ceiling that isn't going to move without a different kind of change
+entirely -- would be the most valuable next input.

@@ -5819,3 +5819,66 @@ Shared), now traced to a specific causal mechanism: at P100 scale, the
 oracle-level forecasting benefit of semantic specialization is simply
 too small to matter, independent of whether a model could learn to
 exploit it.
+
+## TRACK-HEAD-CONDITIONED-CANDIDATE-SUPPORT01 -- Phase A, hypothesis REJECTED in the opposite direction
+
+Tests whether Shared-P100's uniform (model-independent) candidate
+support is "suppressing" V5's inherent multi-head diversity, by
+evaluating the SAME frozen canonical sign-fixed V5 checkpoint
+(no retraining) against 4 candidate-support arms: Shared-P100
+(existing cache), MeanMix-P100 (Top-100 by the model's own
+Mean-Mixture score over the full bank), Head-P100 (union of each of
+the 5 heads' own Top-20 over the full bank, deduped, topped up to 100
+by Mean-Mixture rank), and Full (entire valid candidate bank, no
+truncation). 4 cells (ETTh1_96/720, Weather_96/720). Code:
+`scripts/diag_head_conditioned_support01.py`. Mandatory sanity checks
+S6 (Head-P100 superset of each head's own full-memory Top-10) and S7
+(MeanMix-P100 superset of full-memory Mean-Mixture Top-10) both
+asserted and PASSED in all 4 cells.
+
+**Error self-caught before the real run**: the first launch assumed
+`checkpoint_epoch10.pth` for all 4 cells' V5 checkpoints without
+checking each cell's own `selected_checkpoint.json`; actual selected
+epochs are ETTh1_96=10 (correct), ETTh1_720=9, Weather_96=4,
+Weather_720=6. Caught while the (wrong) job was running, killed it,
+deleted its 2 bad output files, relaunched with the verified epochs.
+All numbers below are from the corrected run.
+
+**Result (AggMSE@10, lower better)**:
+
+| Cell | Shared-P100 | MeanMix-P100 | Head-P100 | Full |
+|---|---:|---:|---:|---:|
+| ETTh1_96 | 0.7124 | 0.7158 | 0.7097 (best) | 0.7183 |
+| ETTh1_720 | 1.6816 (best) | 1.8141 | 1.8268 | 1.8373 |
+| Weather_96 | 0.5190 (best) | 0.6143 | 0.5891 | 0.6471 |
+| Weather_720 | 0.8645 (best) | 0.9294 | 0.9366 | 0.9604 |
+
+Head-P100 beats Shared-P100 in only 1/4 cells (ETTh1_96, +0.38%);
+Shared-P100 wins the other 3/4 cells by 8.0-13.5%. **Full -- completely
+unrestricted candidate access -- is the worst or second-worst arm in
+every single cell**, with no exception. OracleAggMSE@10 (cheating
+upper bound) is lowest for Full in every cell as expected (more
+candidates = more true headroom), but the model's actual Mean-Mixture
+selection mechanism gets *worse*, not better, as the pool grows --
+the realized result is the opposite of the oracle headroom. Per-head
+coverage confirms Shared-P100 does genuinely exclude most of each
+head's own preferred candidates (cov_head 0.29-0.34, far below 1.0),
+so the hypothesized mechanism (truncation hides head-specific
+candidates) is real -- it just doesn't translate into better
+forecasts when removed. Full tables, mechanism metrics, and
+Head-P100 construction statistics (incl. a 2/5-heads-near-redundant
+finding on ETTh1_720, consistent with this session's separate head
+-collapse measurements):
+`results/TRACK-HEAD-CONDITIONED-CANDIDATE-SUPPORT01/PHASE_A_SUPPORT_REPORT.md`.
+
+**PHASE A GO condition (AggMSE_HeadP100 < AggMSE_SharedP100 in >=3/4
+cells): actual 1/4. FAIL.**
+
+**Verdict: STOP before Stage2/Phase B.** No support budget, per-head
+K, or temperature was retuned to try to reverse this result. This is
+the FIFTH consecutive STOP in the "give V5's heads more to work with"
+research program this session, and the first one to actively falsify
+its own premise rather than merely fail to clear a bar -- the
+candidate-support bottleneck this track set out to relieve does not
+exist in this model/data regime; if anything, narrowing further
+(Shared-P100 over Full) helps.
