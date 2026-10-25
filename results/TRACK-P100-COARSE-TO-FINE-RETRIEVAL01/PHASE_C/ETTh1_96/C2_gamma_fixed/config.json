@@ -1,0 +1,16 @@
+{
+  "exp": "TRACK-P100-COARSE-TO-FINE-RETRIEVAL01-PHASE-C",
+  "cell": "ETTh1_96",
+  "arm": "C2_gamma_fixed",
+  "gamma_init": 1.0,
+  "gamma_trainable": false,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "0f044e3ce726fc5c16bb839e0651b1304349eab03896ec1e7b971f49934be7b1"
+}

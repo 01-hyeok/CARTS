@@ -5973,3 +5973,66 @@ tell them apart.
 **Verdict**: no hyperparameter was changed after seeing this result.
 Query-adaptive fusion as implemented provides no reliable contribution
 in 3/4 cells. Per the pre-registered rule, Phase C proceeds regardless.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase C: trainable residual scorer, mixed result not aligned with dataset
+
+First Stage-1-training Phase in this track. Architecture (the ONLY
+change from canonical V5): `s_final_{h,i} = c_i + gamma*r_{h,i}`,
+`c_i` the same coarse score (unscaled -- already comparable cosine
+range), `r_{h,i}` canonical V5's own unchanged per-head score, `gamma`
+exactly ONE new global scalar (init=0) trained jointly with the full
+encoder+SlotHeads under the UNCHANGED canonical Future-MSE teacher KL
+loss. Checkpoint selected by validation Mean-Mixture RetMSE@10 (an
+explicit, documented deviation from `train_v_sharedtop100_01.py`'s
+own historical round-robin convention, matching this track's own
+Phase A/B Mean-Mixture discipline instead). Code:
+`scripts/train_p100_residual_v501.py`. Controls: C0 = existing frozen
+canonical V5 (read from Phase A); C1 = this script's primary 10-epoch
+run; C2 = a minimal, read-only control (fresh random init, gamma
+FIXED at 1.0, zero training epochs).
+
+**Result (test AggMSE@10 vs C0)**: C1 beats canonical V5 in 2/4 cells
+(ETTh1_720 +0.52%, Weather_720 +5.55%) and loses in the other 2/4
+(ETTh1_96 -3.93%, Weather_96 -1.69%) -- unlike Phase A, this split
+does NOT line up with dataset identity at all (one cell per dataset
+wins, the other per dataset loses). Gamma grows monotonically in
+magnitude in every cell across all 10 epochs (never shrinking back
+toward 0), converging to -0.84 (ETTh1_96), +0.88 (ETTh1_720), +1.32
+(Weather_96), +1.34-2.73 (Weather_720, early-stopped at epoch 4).
+
+**One genuinely surprising, explicitly-not-chased-further number**:
+on Weather_96, the C2 minimal control -- a completely UNTRAINED,
+randomly-initialized encoder+SlotHeads with gamma fixed at 1 -- beats
+BOTH trained Residual-V5 and canonical V5 by over 6%. Diagnostics
+show a plausible mechanism without confirming it: C2's head Top10
+overlap is ~0.99 in every cell (random per-head projections of a
+shared additive coarse term collapse to near-identical rankings), so
+C2's Mean-Mixture is really just averaging 5 noise-perturbed copies
+of the SAME coarse ranking -- implicit smoothing, not a different
+ranking mechanism. This only helps on Weather_96 (C2 loses to C0 by
+5.9-20.6% on the other 3 cells), so it looks like an interaction
+specific to that cell's coarse-score quality rather than a general
+"training is unnecessary" finding. No follow-up sweep was run to
+confirm this, per the pre-registered no-retuning rule.
+
+Mechanism diagnostics (consistent across all 4 cells): C1's head
+Top10 overlap (0.24-0.80) is always far below C2's collapsed ~0.99,
+and matches this session's own previously-measured canonical-V5
+overlap on ETTh1_96 (0.375 here vs 0.376 in
+`TRACK-V5-TQH-HEAD-OVERLAP-DIAG01`) almost exactly -- Residual-V5
+training reaches canonical V5's OWN level of head diversity, not
+more. C1's ranking also correlates with the Future-MSE teacher more
+than C2's does in every cell (Spearman 0.385-0.496 vs 0.121-0.391),
+including on Weather_96 where C2 still wins the deployable AggMSE
+metric -- the same ranking-quality-vs-aggregate-accuracy dissociation
+Phase A's Table 5 already found, now recurring in a completely
+different mechanism. Full tables:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_C_RESIDUAL_SCORER_REPORT.md`.
+
+**Verdict**: no hyperparameter was changed after seeing this result,
+and the Weather_96/C2 anomaly was reported as observed, not chased.
+Residual-V5 does not consistently beat canonical V5 -- a mixed,
+non-dataset-aligned 2/4 split, the architecture's only reliable
+property being that it preserves head diversity at canonical V5's own
+level rather than improving AggMSE. Per section 37, Phase D proceeds
+next regardless.

@@ -6196,3 +6196,59 @@ whether a KL-to-soft-target loss with tau_beta this large is known to
 produce exactly this kind of collapse) would materially change
 whether a future track should revisit the feature set or the training
 objective, if this general direction is ever reopened.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase C: training a residual scorer gives a mixed, non-dataset-aligned result
+
+Phase C asked the sharper version of Phase A's question: instead of
+POST-HOC interpolating a frozen coarse score with a frozen V5 score,
+what if V5 is TRAINED to produce a residual correction on top of the
+coarse prior from the start (`s_final=c_i+gamma*r_{h,i}`, gamma one
+new scalar, init 0, everything else -- encoder, SlotHeads, loss --
+identical to canonical V5's own training)? Full report:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_C_RESIDUAL_SCORER_REPORT.md`.
+
+**Result: a mixed 2/4 split that, notably, does NOT reproduce Phase
+A's clean ETTh1-vs-Weather pattern** -- Residual-V5 beats canonical V5
+on ETTh1_720 (+0.52%) and Weather_720 (+5.55%), loses on ETTh1_96
+(-3.93%) and Weather_96 (-1.69%). Gamma grows monotonically in
+magnitude across all 10 epochs in every cell (never shrinking back
+toward 0), settling at -0.84 to +2.73 depending on cell -- the
+residual correction is always being pushed toward full strength or
+beyond, never staying small the way Phase A's fixed-fusion beta
+sometimes did.
+
+**A genuinely open anomaly, reported but not chased**: on Weather_96,
+a completely UNTRAINED control (random init, gamma fixed at 1, zero
+training) beats both the trained model AND canonical V5 by over 6%.
+The mechanism diagnostics offer a plausible (not confirmed) story:
+this untrained control's 5 heads collapse to ~0.99 Top10 overlap
+(random per-head projections of the same additive coarse term), so
+its Mean-Mixture is really averaging 5 noise-perturbed copies of the
+SAME coarse ranking -- a kind of implicit smoothing ensemble over the
+coarse score rather than a different ranking mechanism -- and this
+only pays off on Weather_96 specifically (the same cell where Phase A
+found the LOWEST optimal beta, 0.25, i.e. where coarse was already
+most trustworthy relative to V5). This track's scope deliberately
+does not run a follow-up sweep to confirm or refute this story.
+
+A clean, consistent finding alongside the mixed AggMSE result: trained
+Residual-V5's head Top10 overlap (0.24-0.80 across cells) sits at
+roughly the SAME level as canonical V5's own previously-measured
+head-collapse number on ETTh1_96 (0.375 vs 0.376,
+`TRACK-V5-TQH-HEAD-OVERLAP-DIAG01`) -- the residual architecture
+doesn't make heads MORE diverse than canonical V5 already is, it just
+doesn't make them worse either. And exactly like Phase A's Table 5,
+the trained scorer's ranking correlates with the true Future-MSE
+teacher strictly better than the untrained control's does in every
+cell (Spearman 0.39-0.50 vs 0.12-0.39) -- including on Weather_96,
+where the untrained control still wins on the metric that actually
+matters (AggMSE). Pointwise ranking quality and realized aggregate
+-forecast accuracy keep dissociating from each other across
+completely different mechanisms in this track (static fusion in
+Phase A, trained-vs-untrained scorer here) -- ChatGPT's view on
+whether this dissociation itself (not any single Phase's result) is
+the more important finding of this track so far, and what it implies
+about optimizing AggMSE directly vs optimizing a ranking-correlation
+proxy in future retrieval work here, would be valuable before Phase D
+(which switches from pointwise scoring to set-aware selection,
+directly targeting the aggregate objective) reports back.

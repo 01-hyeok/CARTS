@@ -1,0 +1,29 @@
+{
+  "kl": 0.0654065911355507,
+  "retmse10": 0.9352218457772553,
+  "agg_mse10": 0.6173565778286575,
+  "recall10": 0.31287764021432934,
+  "ndcg10": 0.8947133908877332,
+  "diagnostics": {
+    "overlap_final_vs_coarse": 0.20582017954341097,
+    "overlap_final_vs_residual": 0.8242743776625946,
+    "overlap_coarse_vs_residual": 0.10207728488799263,
+    "spearman_final_vs_teacher": 0.49638172395003005,
+    "spearman_coarse_vs_teacher": 0.06064212272440655,
+    "s_final_mean": 0.9143125379786772,
+    "s_final_std": 0.27708363717719287,
+    "r_mean": 0.2757655138143988,
+    "r_std": 0.2795037248117082,
+    "head_top10_overlap_mean": 0.8033505102165607,
+    "union_size_mean": 14.492762918231868,
+    "union_oracle_recall_by_n_heads": [
+      0.30493311741156504,
+      0.3711343046704291,
+      0.3928397696077855,
+      0.401560187365218,
+      0.40646279288041054
+    ]
+  },
+  "best_epoch": 10,
+  "gamma_at_best_epoch": 0.8837757110595703
+}

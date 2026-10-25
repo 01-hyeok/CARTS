@@ -1,0 +1,16 @@
+{
+  "exp": "TRACK-P100-COARSE-TO-FINE-RETRIEVAL01-PHASE-C",
+  "cell": "Weather_720",
+  "arm": "C2_gamma_fixed",
+  "gamma_init": 1.0,
+  "gamma_trainable": false,
+  "tau_t": 0.1,
+  "tau_s": 0.1,
+  "top_k": 10,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "train_epochs": 10,
+  "init_seed": 0,
+  "loader_seed": 0,
+  "init_hash": "b37fa4031f538e4b5f5c522ae22e7d03613e4ee66283d2637656c7c4f872372e"
+}
