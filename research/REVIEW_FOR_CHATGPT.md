@@ -6155,3 +6155,44 @@ dataset itself (e.g. its channel count, its known ACF period=142, or
 general redundancy among its 21 channels) rather than being
 coincidental per-track noise would be useful context before Phase B's
 results come in.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase B: the oracle headroom is real, the model can't reach it
+
+Phase B asked whether a per-query, past-only confidence model could
+pick a BETTER beta than any single fixed value -- specifically
+targeting ETTh1, where Phase A found zero fixed-beta benefit. Full
+report: `results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_B_ADAPTIVE_FUSION_REPORT.md`.
+
+The cheating-oracle diagnostic (reads the future, never deployable)
+is unambiguous: real per-query headroom exists in EVERY cell
+(11.8-37.8%), including both ETTh1 cells, and the oracle's preferred
+beta is close to uniformly spread across all 5 grid values (entropy
+1.57-1.59 of a max 1.61) -- so the "there's nothing to adapt to" null
+is rejected before any model is even trained.
+
+But the deployable model (tiny 2-layer MLP, 18 past-only features,
+KL-trained against a soft oracle-beta target) could not reach that
+headroom: in 3 of 4 cells it converges to a near-constant beta
+(std<=0.023) literally indistinguishable from a zero-feature control
+(B2) or a shuffled-feature control (B3) -- meaning whatever variation
+its output has per query carries essentially no exploitable signal.
+Only Weather_96 beats every control, and even there 10x more of the
+gain (+2.20%) comes from the soft-KL training objective happening to
+land near a better GLOBAL scalar than from genuine per-query
+adaptation (+0.22% is the adaptive-specific component).
+
+This is a clean, well-isolated negative result but with a genuinely
+open "why": either the 18 engineered features (entropy/margin/
+overlap/Spearman/JS-divergence/rank-displacement/z_q-norm/channel-id)
+don't carry what's needed to predict the oracle's choice, or the
+combination of a tiny-capacity MLP and a KL-against-a-soft-target
+objective is itself prone to collapsing toward a constant regardless
+of feature informativeness -- the data here cannot distinguish these,
+and this track's scope (no new architecture, no hyperparameter sweep)
+deliberately does not try to. ChatGPT's read on which of these two
+explanations is more likely a priori (e.g. whether the specific
+feature SET chosen looks like it should carry per-query signal, or
+whether a KL-to-soft-target loss with tau_beta this large is known to
+produce exactly this kind of collapse) would materially change
+whether a future track should revisit the feature set or the training
+objective, if this general direction is ever reopened.

@@ -1,0 +1,51 @@
+{
+  "cell": "ETTh1_96",
+  "tau_beta": 0.5364566445350647,
+  "feature_names": [
+    "v5_entropy",
+    "v5_top1_prob",
+    "v5_top1_top2_margin",
+    "v5_top1_top10_margin",
+    "v5_head_entropy_mean",
+    "v5_pairwise_head_top10_overlap",
+    "v5_head_disagreement",
+    "coarse_entropy",
+    "coarse_top1_top2_margin",
+    "coarse_top1_top10_margin",
+    "disagree_top10_overlap",
+    "disagree_spearman",
+    "disagree_top1_match",
+    "disagree_js_divergence",
+    "disagree_rank_disp_mean",
+    "disagree_rank_disp_p90",
+    "zq_norm",
+    "channel_id_norm"
+  ],
+  "controls": {
+    "B0_best_global_fixed": {
+      "beta": 1.0,
+      "val_agg_mse10": 0.7124035358428955,
+      "agg_mse10": 0.4098076495968491,
+      "beta_mean": 1.0,
+      "beta_std": 0.0
+    },
+    "B1_adaptive": {
+      "val_kl_loss": 0.03261718899011612,
+      "agg_mse10": 0.4155028786631571,
+      "beta_mean": 0.5169814229011536,
+      "beta_std": 0.018776623532176018
+    },
+    "B2_static_scalar": {
+      "val_kl_loss": 0.036660775542259216,
+      "agg_mse10": 0.41537902853842207,
+      "beta_mean": 0.518798291683197,
+      "beta_std": 1.1921234488454502e-07
+    },
+    "B3_shuffled_control": {
+      "val_kl_loss": 0.036556798964738846,
+      "agg_mse10": 0.41536905596744067,
+      "beta_mean": 0.5182213187217712,
+      "beta_std": 0.0017278880113735795
+    }
+  }
+}

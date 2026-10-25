@@ -1,0 +1,51 @@
+{
+  "cell": "Weather_720",
+  "tau_beta": 44.0006217956543,
+  "feature_names": [
+    "v5_entropy",
+    "v5_top1_prob",
+    "v5_top1_top2_margin",
+    "v5_top1_top10_margin",
+    "v5_head_entropy_mean",
+    "v5_pairwise_head_top10_overlap",
+    "v5_head_disagreement",
+    "coarse_entropy",
+    "coarse_top1_top2_margin",
+    "coarse_top1_top10_margin",
+    "disagree_top10_overlap",
+    "disagree_spearman",
+    "disagree_top1_match",
+    "disagree_js_divergence",
+    "disagree_rank_disp_mean",
+    "disagree_rank_disp_p90",
+    "zq_norm",
+    "channel_id_norm"
+  ],
+  "controls": {
+    "B0_best_global_fixed": {
+      "beta": 0.75,
+      "val_agg_mse10": 0.8571253418922424,
+      "agg_mse10": 0.6001547296553346,
+      "beta_mean": 0.75,
+      "beta_std": 0.0
+    },
+    "B1_adaptive": {
+      "val_kl_loss": 0.00025901675689965487,
+      "agg_mse10": 0.6011315291020948,
+      "beta_mean": 0.500860333442688,
+      "beta_std": 0.0038874249439686537
+    },
+    "B2_static_scalar": {
+      "val_kl_loss": 0.000263105146586895,
+      "agg_mse10": 0.6011289552053838,
+      "beta_mean": 0.5006570816040039,
+      "beta_std": 1.7881437486266805e-07
+    },
+    "B3_shuffled_control": {
+      "val_kl_loss": 0.000263105146586895,
+      "agg_mse10": 0.6011289552053838,
+      "beta_mean": 0.5006570816040039,
+      "beta_std": 3.8136892044349224e-07
+    }
+  }
+}

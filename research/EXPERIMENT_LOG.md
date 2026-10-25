@@ -5930,3 +5930,46 @@ honestly as what it actually is, not a flat null: a real,
 dataset-specific effect (matching this session's standing
 ETTh1-vs-Weather asymmetry caveat from `TRACK-V`), not noise. Per
 the pre-registered rule, Phase B proceeds regardless of this result.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase B: real oracle headroom, but not deployably learnable
+
+Step 1 (evaluation-only cheating-oracle diagnostic,
+`scripts/diag_p100_oracle_beta01.py`): for each query/channel, picks
+whichever beta in {0,.25,.5,.75,1} gives the lowest ACTUAL future
+AggMSE. Result: real oracle headroom exists in EVERY cell (11.8-37.8%
+gain over the best single fixed beta), including BOTH ETTh1 cells
+(11.8-14.5%) where Phase A's fixed sweep found zero benefit --
+winner-share entropy is close to its theoretical max (ln5=1.609) in
+all 8 cell/split combinations (1.569-1.592), meaning the oracle-best
+beta is close to uniformly spread across all 5 candidates per query,
+not dominated by one value.
+
+Step 2 (deployable model, `scripts/train_p100_adaptive_fusion01.py`):
+a tiny 2-layer MLP (18 past-only confidence/disagreement features,
+KL-trained against a TRAIN-only soft oracle-beta target) vs 3
+mandatory controls (B0 best fixed beta from Phase A, B2 a trainable
+global scalar with zero input features, B3 the same adaptive
+architecture with features shuffled across queries). **Result: in 3
+of 4 cells, the "adaptive" model collapses to a near-constant beta
+(std 0.0000-0.0230) and is literally indistinguishable from B2/B3
+-- it fails even the weakest bar (beating a feature-free control),
+let alone B0.** Only Weather_96 beats all three controls, but the
+margin over B2/B3 (+0.22%) is an order of magnitude smaller than its
+margin over B0 (+2.20%) -- most of that cell's gain is just landing
+near a better global scalar via the soft-KL objective, not genuine
+per-query adaptation. Full tables:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_B_ADAPTIVE_FUSION_REPORT.md`.
+
+**Why 12-38% oracle headroom doesn't translate to deployable gain is
+left genuinely open** (not investigated further, per the
+pre-registered no-retuning-after-negative-result rule) -- two
+competing explanations are equally consistent with the data (the 18
+features may not carry the needed signal at all; or the tiny-MLP
+-plus-soft-KL training procedure itself washes out whatever signal
+exists into a near-degenerate constant) and this track's scope rules
+out the new architecture/hyperparameter work that would be needed to
+tell them apart.
+
+**Verdict**: no hyperparameter was changed after seeing this result.
+Query-adaptive fusion as implemented provides no reliable contribution
+in 3/4 cells. Per the pre-registered rule, Phase C proceeds regardless.

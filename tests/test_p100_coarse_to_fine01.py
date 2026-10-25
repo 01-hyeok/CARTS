@@ -21,6 +21,7 @@ from scripts.train_p100_adaptive_fusion01 import (
     FEATURE_NAMES, N_FEATURES, AdaptiveBetaMLP, StaticScalarBeta, _entropy, _js_divergence, _margin,
     extract_features,
 )
+from scripts.train_p100_residual_v501 import mechanism_diagnostics
 
 
 def _random_prob(bsz, n, seed):
@@ -124,3 +125,45 @@ def test_static_scalar_beta_ignores_features_shares_across_batch():
     p_b = model(feats_b)
     assert torch.allclose(p_a, p_b)  # B2 control must be feature-independent by construction
     assert torch.allclose(p_a[0], p_a[1])  # identical across the batch (one global scalar)
+
+
+def _synthetic_residual_res(bsz=4, n=50, n_slots=5, top_k=5, seed=0):
+    g = torch.Generator().manual_seed(seed)
+    s_final = torch.randn(bsz, n_slots, n, generator=g)
+    c_i = torch.randn(bsz, n, generator=g)
+    r = torch.randn(bsz, n_slots, n, generator=g)
+    d = torch.rand(bsz, n, generator=g)
+    oracle_idx = d.topk(top_k, dim=-1, largest=False).indices
+    p_t = F.softmax(-d, dim=-1)
+    return dict(s_final=s_final, c_i=c_i, r=r, oracle_idx_local=oracle_idx, p_t=p_t)
+
+
+def test_mechanism_diagnostics_shape_and_bounds():
+    res = _synthetic_residual_res()
+    out = mechanism_diagnostics(res, tau_s=0.1, top_k=5)
+    for key in ('overlap_final_vs_coarse', 'overlap_final_vs_residual', 'overlap_coarse_vs_residual',
+               'head_top10_overlap_mean'):
+        assert 0.0 - 1e-6 <= out[key] <= 1.0 + 1e-6
+    assert len(out['union_oracle_recall_by_n_heads']) == 5
+    # a union over more heads can never see its oracle-recall decrease
+    curve = out['union_oracle_recall_by_n_heads']
+    assert all(curve[i + 1] >= curve[i] - 1e-6 for i in range(len(curve) - 1))
+    assert out['union_size_mean'] >= 5.0 - 1e-6  # at least one head's own top-5
+
+
+def test_mechanism_diagnostics_gamma_zero_collapses_heads():
+    """At gamma=0 (s_final = c_i broadcast to every head, per the Phase C
+    architecture), every head's own Top-10 must be IDENTICAL -- this is
+    the literal "coarse score only, no head distinction" requirement
+    from spec section 19, checked here independent of any real model."""
+    bsz, n, n_slots, top_k = 3, 40, 5, 10
+    g = torch.Generator().manual_seed(1)
+    c_i = torch.randn(bsz, n, generator=g)
+    s_final = c_i.unsqueeze(1).expand(-1, n_slots, -1).clone()  # gamma=0: identical across heads
+    r = torch.randn(bsz, n_slots, n, generator=g)  # irrelevant at gamma=0, only s_final matters
+    d = torch.rand(bsz, n, generator=g)
+    oracle_idx = d.topk(top_k, dim=-1, largest=False).indices
+    p_t = F.softmax(-d, dim=-1)
+    out = mechanism_diagnostics(dict(s_final=s_final, c_i=c_i, r=r, oracle_idx_local=oracle_idx, p_t=p_t),
+                                tau_s=0.1, top_k=top_k)
+    assert out['head_top10_overlap_mean'] > 0.999
