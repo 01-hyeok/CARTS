@@ -6103,3 +6103,55 @@ variable to investigate -- or whether this is better read as five
 independent lines of evidence that V5's 5-head mechanism has hit a
 ceiling that isn't going to move without a different kind of change
 entirely -- would be the most valuable next input.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase A: coarse prior helps, but only on Weather
+
+A new, orthogonal direction picked up right after the "more/better
+heads" program above closed: instead of changing what candidates V5
+sees, this asks whether the coarse `delta_last_cosine` score that
+already BUILT Shared-P100 -- and is currently thrown away once the
+shortlist exists -- is itself a useful relevance signal that V5's own
+learned score should be fused with, rather than fully replacing. 4
+Phases planned (A: frozen static fusion: DONE/this entry; B: query
+-adaptive fusion; C: trainable residual-V5 scorer; D: set-aware
+reranking), all on the SAME frozen Shared-P100 candidate identity in
+every arm -- Full/MeanMix/Head-conditioned support are explicitly
+out of scope for this entire track (that question was just closed
+above). Full report:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_A_STATIC_FUSION_REPORT.md`.
+
+**Result: a clean 2/2 dataset split, not a uniform answer.** Fusing
+`log p_fused=(1-beta)log(p_c)+beta*log(p_v5)` and sweeping beta on
+validation: on ETTh1 (both H96 and H720) AggMSE decreases
+monotonically as beta rises -- pure V5 (beta=1) is literally optimal,
+any coarse weight hurts. On Weather (both H96 and H720) an interior
+beta beats pure V5 on validation AND on a once-only test evaluation
+(+1.06% H96, +2.86% H720). The mechanism is NOT "coarse is secretly a
+good ranker on Weather" -- V5 always correlates with the true future
+ranking far better than coarse does, everywhere, including Weather --
+and Spearman-vs-oracle is monotonically increasing in beta on Weather
+too, exactly like ETTh1. The AggMSE improvement is purely an
+aggregation-level (Top-10-SET composition) effect: the D/C
+decomposition shows individual retrieval quality (D) essentially flat
+across beta on Weather while the aggregation gap (C) is what actually
+improves at the interior beta. So the two rankers' *disagreements*
+(Top10 overlap only 0.115-0.208 everywhere) occasionally produce a
+better-composed uniform-mean SET on Weather even though neither
+individual ranker is "more correct" there.
+
+Against the pre-registered gate (section 10: interior beta must beat
+V5-only in >=3/4 cells for A-PASS/A-WEAK), this is formally **A-FAIL**
+(2/4, not 3/4) -- reported as such, not reframed as a win. But it is
+also not a flat null: it is the same ETTh1-vs-Weather asymmetry this
+session has already seen in `TRACK-V`'s horizon-reversal finding,
+now showing up in a completely different mechanism (static score
+fusion rather than multi-view count). Per the pre-registered rule,
+Phase B (query-adaptive beta, aiming to recover a per-query
+version of this effect that might also help ETTh1) proceeds next
+regardless of this gate result. ChatGPT's view on whether this
+recurring Weather-only-effect pattern across unrelated mechanisms in
+this codebase suggests something structural about the Weather
+dataset itself (e.g. its channel count, its known ACF period=142, or
+general redundancy among its 21 channels) rather than being
+coincidental per-track noise would be useful context before Phase B's
+results come in.

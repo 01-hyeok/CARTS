@@ -5882,3 +5882,51 @@ its own premise rather than merely fail to clear a bar -- the
 candidate-support bottleneck this track set out to relieve does not
 exist in this model/data regime; if anything, narrowing further
 (Shared-P100 over Full) helps.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase A, a clean dataset-specific split (not a uniform result)
+
+New research direction, orthogonal to the "more/different candidate
+heads" program above: Shared-P100's own coarse `delta_last_cosine`
+score is discarded after shortlist generation in the current
+pipeline. Tests whether reusing it as a prior, fused with canonical
+V5's learned Mean-Mixture score, improves P100-internal ranking --
+candidate support is Shared-P100 in every arm, unchanged, for all 4
+Phases of this track. Phase A: frozen, no training. Code:
+`scripts/diag_p100_coarse_v5_fusion01.py`, `scripts/calibrate_p100_coarse_tau01.py`.
+
+Coarse score reused UNMODIFIED from `utils.candidate_pool.compute_coarse_delta_last_cosine_scores`
+(the exact function that built the pool). Fusion: `log p_fused =
+(1-beta)*log(p_c+eps) + beta*log(p_v5+eps)`, beta in {0,.25,.5,.75,1},
+endpoints verified to recover pure coarse/V5 to within 2.4e-7. tau_c
+(no canonical value exists anywhere in the repo) calibrated once on
+TRAIN by matching coarse-distribution entropy to V5's own
+Mean-Mixture entropy (a first, discarded attempt at calibrating by
+coarse-only AggMSE was mathematically degenerate -- rank-invariant to
+tau for any tau>0 -- caught before being used); selected tau_c=0.05,
+fixed thereafter.
+
+**Result: a clean, reproducible 2-cell/2-cell split along dataset
+identity.** ETTh1 (H96 and H720, both): AggMSE is monotonically
+decreasing in beta -- beta=1.0 (pure V5) is the literal validation
+minimum in both cells; any coarse weight only hurts. Weather (H96 and
+H720, both): an interior beta (0.25 for H96, 0.75 for H720) beats
+pure V5 on validation AND on test (test improvements of +1.06% and
++2.86% respectively, evaluated once at the pre-registered
+val-selected beta). Mechanism: coarse and V5 rankings disagree
+substantially everywhere (Top10 overlap 0.115-0.208, Top1 agreement
+<7.1%), and V5 alone always correlates with the true oracle ranking
+far more than coarse alone does -- yet on Weather, Spearman-vs-oracle
+is still monotonically increasing in beta even as AggMSE bottoms out
+at an interior beta, meaning the benefit is an aggregation-level
+(Top-10-SET) effect, not a pointwise-ranking effect: D (individual
+retrieval quality) stays flat across beta while C (the aggregation
+gap) is what actually improves. Full tables:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_A_STATIC_FUSION_REPORT.md`.
+
+**Formal gate check (section 10)**: direction-of-improvement met in
+2/4 cells, short of the required >=3/4 for A-PASS or A-WEAK -- by the
+strict pre-registered binary gate this is **A-FAIL**. Reported
+honestly as what it actually is, not a flat null: a real,
+dataset-specific effect (matching this session's standing
+ETTh1-vs-Weather asymmetry caveat from `TRACK-V`), not noise. Per
+the pre-registered rule, Phase B proceeds regardless of this result.
