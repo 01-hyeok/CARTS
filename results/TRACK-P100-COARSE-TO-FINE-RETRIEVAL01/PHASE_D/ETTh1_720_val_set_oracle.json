@@ -1,0 +1,7 @@
+{
+  "cell": "ETTh1_720",
+  "split": "val",
+  "individual_agg_mse10": 1.6869593858718872,
+  "set_oracle_agg_mse10": 1.4541754722595215,
+  "oracle_gain_pct": 13.799022997347016
+}

@@ -1,0 +1,7 @@
+{
+  "cell": "Weather_96",
+  "split": "val",
+  "individual_agg_mse10": 0.5099244713783264,
+  "set_oracle_agg_mse10": 0.34564095735549927,
+  "oracle_gain_pct": 32.21722495073999
+}

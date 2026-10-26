@@ -1,0 +1,19 @@
+{
+  "cell": "ETTh1_720",
+  "controls": {
+    "D0_primary_top10": {
+      "test_agg_mse10": 0.6173565983772278
+    },
+    "D1_learned_set_aware": {
+      "val_agg_mse10": 1.6704251766204834,
+      "test_agg_mse10": 0.6083099842071533
+    },
+    "D2_individual_target_control": {
+      "val_agg_mse10": 1.6906309127807617,
+      "test_agg_mse10": 0.6079581379890442
+    },
+    "D3_shuffled_set_state_control": {
+      "test_agg_mse10": 0.6030454039573669
+    }
+  }
+}

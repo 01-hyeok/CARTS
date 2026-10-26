@@ -1,0 +1,19 @@
+{
+  "cell": "Weather_720",
+  "controls": {
+    "D0_primary_top10": {
+      "test_agg_mse10": 0.5834841728210449
+    },
+    "D1_learned_set_aware": {
+      "val_agg_mse10": 0.8089653849601746,
+      "test_agg_mse10": 0.5607484579086304
+    },
+    "D2_individual_target_control": {
+      "val_agg_mse10": 0.8258816003799438,
+      "test_agg_mse10": 0.5835837721824646
+    },
+    "D3_shuffled_set_state_control": {
+      "test_agg_mse10": 0.5598219633102417
+    }
+  }
+}

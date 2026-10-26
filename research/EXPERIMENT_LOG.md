@@ -6036,3 +6036,46 @@ non-dataset-aligned 2/4 split, the architecture's only reliable
 property being that it preserves head diversity at canonical V5's own
 level rather than improving AggMSE. Per section 37, Phase D proceeds
 next regardless.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase D: set-state tracking contributes nothing, in every cell
+
+Primary scorer selected on VALIDATION-only average AggMSE@10 across
+Phases A-C: canonical V5=0.9444, Phase A fixed fusion=0.9418, Phase C
+Residual-V5=0.9384 (selected). Phase B's adaptive model was excluded
+-- its own verdict already found no reliable contribution, and its
+per-epoch weights were never checkpointed, so retraining it just for
+this comparison was judged not worth the GPU time (a recorded,
+deliberate exclusion).
+
+D0 (evaluation-only Set Oracle headroom within the primary scorer's
+own fixed Top-20, K=10 greedy construction,
+`scripts/diag_p100_set_oracle01.py`): real headroom in every cell,
+13.8-54.5% (far larger than Phase A/B's beta-level headroom) --
+clears the >=5% "meaningful opportunity" bar everywhere.
+
+D1-D3 (`scripts/train_p100_set_reranker01.py`, on-policy training --
+the model's own no-grad greedy pick at step t becomes the real prefix
+for step t+1, explicitly avoiding the teacher-forced/free-running
+mismatch that sank `EXP-SEQFULL01`/`EXP-MARGUTIL01`; soft listwise KL
+against a dense marginal-aggregate-utility target): D1 beats D0 (no
+selector) in 3/4 cells (ETTh1_720 +1.5%, Weather_96 +18.8%,
+Weather_720 +3.9%) and is the WORST of all 4 arms on the fourth
+(ETTh1_96, -3.1%). **But in every single cell, with no exception, D3
+-- the exact same trained D1 model with its current-set-summary
+features shuffled across the batch -- is as good as or slightly
+better than D1 itself.** Scrambling which query's "what's already
+been picked" state the model sees never hurts. This means the
+specific mechanism this Phase set out to test (sequential
+conditioning on an accurate running set-state) contributes nothing
+measurable in any cell -- whatever D1 gains over D0 comes from
+pointwise features and/or the aggregate-vs-individual training
+target (D1 vs D2 shows a real if modest edge on Weather_96, +2.8%,
+but <1% or negative elsewhere), not from genuine set-awareness. Full
+tables: `results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_D_SET_RERANK_REPORT.md`.
+
+**Verdict**: CASE 4 ("set-aware > all pointwise scorers") is NOT
+supported -- D1 never robustly beats D3, the control built
+specifically to isolate whether set-state tracking matters. No
+hyperparameter was changed after seeing this. Per section 37, Stage2
+unification proceeds next using D1's own trained reranker as the
+pre-registered "Phase D arm" (not D3, a diagnostic control).

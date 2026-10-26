@@ -6252,3 +6252,51 @@ about optimizing AggMSE directly vs optimizing a ranking-correlation
 proxy in future retrieval work here, would be valuable before Phase D
 (which switches from pointwise scoring to set-aware selection,
 directly targeting the aggregate objective) reports back.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- Phase D: a textbook ablation-control result -- the mechanism does nothing
+
+Phase D asked the sharpest version of this track's four questions:
+given huge Set-Oracle headroom (D0's own diagnostic found 13.8-54.5%
+across cells, far bigger than anything Phase A/B found), can a small
+model LEARN to pick a better-composed Top-10 by tracking what it has
+already picked, using Phase C's Residual-V5 as the frozen primary
+scorer reduced to its own Top-20? Full report:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/PHASE_D_SET_RERANK_REPORT.md`.
+
+The headline result is unusually clean for this kind of ablation: D1
+(the properly-trained set-aware reranker, on-policy, avoiding the
+exact teacher-forced/free-running mismatch that sank two earlier
+tracks this session) beats the no-selector baseline in 3 of 4 cells
+by real margins (up to +18.8% on Weather_96) and is the worst of all
+four arms on the fourth (ETTh1_96). But **D3 -- the identical trained
+model, evaluated with its "what have I already picked" set-summary
+input shuffled across the batch -- matches or slightly beats D1 in
+EVERY cell, with zero exceptions.** This is about as direct a
+falsification as this kind of control can give: the architecture's
+entire reason for existing (sequential conditioning on an accurate
+running set-state, as opposed to scoring each candidate independently)
+demonstrably contributes nothing. Whatever D1 captures over the
+no-selector baseline must be coming from somewhere else -- the
+pointwise candidate features, or specifically the
+aggregate-vs-individual training target (D1 beats D2, the
+individual-target control, by a real +2.8% on Weather_96, but by
+<1% or a loss on the other 3 cells).
+
+This closes the track's fourth and final research question (pointwise
+ranking vs set-level aggregate selection) with the most decisive
+single piece of evidence in the whole track -- not just "no
+improvement" but a clean mechanistic demonstration of exactly WHY:
+the model that is supposed to need to know the set state does just as
+well not knowing it. Combined with Phase C's trained-vs-untrained
+ranking/AggMSE dissociation and Phase A's pointwise-correlation/
+aggregate-accuracy dissociation, this track has now produced three
+independent instances of "the mechanism we added doesn't do the job
+we built it for, even when SOMETHING about the new arm beats the
+baseline." ChatGPT's view on whether that recurring pattern -- gains
+appearing for reasons other than the one each Phase was designed to
+test -- suggests this entire P100-fixed-support, Residual-V5-based
+pipeline has a confound common to all four Phases (e.g. the
+Residual-V5 primary scorer itself, or something about how P100's
+100 candidates are pre-filtered) rather than four independent
+mechanism failures, would be the single most useful thing to resolve
+before the Stage2 unified comparison (next) is interpreted.
