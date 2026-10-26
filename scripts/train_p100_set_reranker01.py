@@ -271,6 +271,9 @@ def main():
     ap.add_argument('--train_epochs', type=int, default=10)
     ap.add_argument('--learning_rate', type=float, default=1e-3)
     ap.add_argument('--out_dir', required=True)
+    ap.add_argument('--reranker_checkpoint_out', default=None,
+                    help='optional path to save D1\'s trained state_dict -- needed by '
+                         'scripts/build_p100_coarse_to_fine_cache01.py for the Stage2 PhaseD_setaware arm')
     cli = ap.parse_args()
     cli.init_seed = 0
     cli.patch_len = 16
@@ -332,6 +335,10 @@ def main():
 
     # D1: learned set-aware selector (aggregate target, on-policy)
     model_d1, val_d1 = train_arm('aggregate', seed=0)
+    if cli.reranker_checkpoint_out is not None:
+        Path(cli.reranker_checkpoint_out).parent.mkdir(parents=True, exist_ok=True)
+        torch.save(model_d1.state_dict(), cli.reranker_checkpoint_out)
+        print(f'[set_reranker] saved D1 checkpoint to {cli.reranker_checkpoint_out}')
 
     def _d1_fn(b):
         _, picks = on_policy_rollout(model_d1, b['z_q'], b['z_cand'], b['primary_score'], b['coarse_score'],

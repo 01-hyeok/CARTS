@@ -6079,3 +6079,47 @@ specifically to isolate whether set-state tracking matters. No
 hyperparameter was changed after seeing this. Per section 37, Stage2
 unification proceeds next using D1's own trained reranker as the
 pre-registered "Phase D arm" (not D3, a diagnostic control).
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- FINAL REPORT: no new mechanism reliably beats V5, and on Weather nothing beats no-retrieval
+
+Stage2 unification (Original CARTS Trainable Global Lambda, reused
+byte-for-byte unmodified from `scripts/train_r_stage2_lambda01.py`)
+across all 5 arms (canonical V5, Phase A fixed fusion, Phase B
+adaptive -- retrained here since its weights were never checkpointed
+in Phase B itself, Phase C Residual-V5, Phase D set-aware) x 4 cells.
+New infra: `scripts/build_p100_coarse_to_fine_cache01.py`,
+`scripts/eval_p100_coarse_to_fine_stage2_01.py`. One correctness note:
+Phase D's own D1 reranker weights were likewise never checkpointed
+during Phase D training -- a lightweight, purely additive rerun
+(identical seed/config, only adding a `torch.save`) recovered them
+before Stage2, reproducing byte-identical Phase D numbers.
+
+**Stage1 retrieval (Table 1)**: no single new arm beats V5 on every
+cell; each of A/B/C/D wins on a different subset, mirroring every
+individual Phase's own mixed verdict.
+
+**Stage2 forecast (Table 2) -- the track's most consequential
+finding, only visible once Stage2 was run**: on ETTh1, every
+retrieval arm beats Base (no retrieval), with the best arm per cell
+giving a real 5.8-9.1% improvement. **On BOTH Weather cells, Base
+alone beats every one of the 5 retrieval arms, including the
+best-performing one (Phase D: 0.1714 vs Base 0.1694 on H96; 0.3715 vs
+Base 0.3194 on H720).** This is a cleaner, Stage2-level version of
+the dataset-split pattern every individual Phase already found inside
+its own retrieval-only metric -- on Weather, retrieval augmentation
+within this fixed-Shared-P100 scorer family is not merely unhelpful,
+it is actively harmful relative to not retrieving at all, independent
+of which of the four new mechanisms is used.
+
+**Case interpretation**: CASE 5 (all new arms ~ or < canonical V5;
+stop this research line) fits best, with the Weather/no-retrieval
+finding as the single most important addition beyond what CASE 5 as
+originally specified anticipated. Full tables (candidate quality,
+head diversity, complexity) and the final answers to all four of the
+track's original research questions:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/FINAL_REPORT.md`.
+
+**Verdict**: per the track's own scope rules, no extension to
+seed1/2 or H192/H336 is warranted -- no method here clearly beats V5
+on the 4 cells tested. This closes
+TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 (Phases A-D + Stage2) in full.

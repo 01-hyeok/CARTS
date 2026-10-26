@@ -6300,3 +6300,46 @@ Residual-V5 primary scorer itself, or something about how P100's
 100 candidates are pre-filtered) rather than four independent
 mechanism failures, would be the single most useful thing to resolve
 before the Stage2 unified comparison (next) is interpreted.
+
+## TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 -- FINAL: the confound ChatGPT was asked to weigh in on may be simpler than any of the four mechanisms
+
+The Stage2 unification (same Base Forecaster, same Original-CARTS
+trainable-global-lambda gate, all 5 arms) answers the question posed
+at the end of the Phase D entry above, but with a twist none of the
+four individual Phases could have surfaced on their own. Full report:
+`results/TRACK-P100-COARSE-TO-FINE-RETRIEVAL01/FINAL_REPORT.md`.
+
+Table 1 (Stage1 retrieval) reproduces the by-now-familiar pattern:
+every arm wins on some cells and loses on others, no consistent
+winner. Table 2 (Stage2 forecast) adds the decisive new fact: **on
+both Weather cells, plain Base (no retrieval at all) beats every
+single retrieval arm, including canonical V5 itself and the
+best-performing new mechanism (Phase D).** On ETTh1, retrieval
+clearly earns its keep (5.8-9.1% over Base with the best arm per
+cell) -- so this isn't "retrieval never helps," it's specifically
+"retrieval, in this fixed-Shared-P100 scorer family, does not help on
+Weather, at all, regardless of which of the four new mechanisms is
+used, and canonical V5 already had this same problem before any of
+this track's new mechanisms were tried."
+
+This reframes the question from the end of the Phase D entry: the
+recurring "gains come from somewhere other than the intended
+mechanism" pattern across Phases A-D may not need a shared confound
+specific to Residual-V5 or P100's filtering to explain it -- a
+simpler candidate is that Weather's retrieval signal (via THIS
+encoder/candidate-pool combination) was never strong enough to beat
+Base in the first place, so every subsequent "improvement" any Phase
+measured was always bounded by a ceiling below Base, and the
+apparent cell-by-cell inconsistency across Phases is just noise
+around that sub-Base ceiling rather than four separate failed
+mechanisms. CASE 5 (stop this research line, no seed1/2 or H192/H336
+extension) is the formal verdict, per the track's own pre-registered
+rule that no method here clearly beats V5. ChatGPT's view on which
+framing is right -- a shared architectural confound worth
+investigating in a future track, vs. Weather simply not being a good
+fit for retrieval augmentation via this candidate-pool/encoder
+combination at all -- would be the most useful next input, since it
+determines whether any future retrieval work on Weather should start
+from a different encoder/candidate-pool design or should be
+redirected to datasets (like ETTh1) where retrieval has already been
+shown to help.
