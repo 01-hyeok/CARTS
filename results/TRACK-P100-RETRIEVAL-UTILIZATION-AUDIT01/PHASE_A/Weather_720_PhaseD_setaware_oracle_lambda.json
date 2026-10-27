@@ -1,0 +1,70 @@
+{
+  "cell": "Weather_720",
+  "arm": "PhaseD_setaware",
+  "current_lambda": 0.5092576742172241,
+  "n_val": 4551,
+  "n_test": 9820,
+  "channels": 21,
+  "mse_base_test": 0.3194299042224884,
+  "mse_retrieval_only_test": 0.5607484579086304,
+  "mse_current_global_lambda_test": 0.3715168237686157,
+  "lambda_val_optimal_global": 0.19839727878570557,
+  "mse_val_optimal_global_lambda_test": 0.3222483694553375,
+  "lambda_test_dataset_global_oracle": 0.07412778586149216,
+  "mse_test_dataset_global_oracle": 0.3178730309009552,
+  "granularity": {
+    "query_channel": {
+      "mse_oracle_continuous": 0.27646610140800476,
+      "mse_oracle_binary": 0.28388771414756775,
+      "oracle_lambda_dist": {
+        "mean": 0.3121771514415741,
+        "std": 0.36475494503974915,
+        "median": 0.13906796276569366,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p75": 0.5989149808883667,
+        "p90": 0.982751727104187
+      },
+      "frac_lambda_eq_0": 0.3686015009880066,
+      "frac_lambda_eq_1": 0.07855688035488129,
+      "frac_lambda_interior": 0.5528416037559509,
+      "frac_R_better_than_B": 0.2918727695941925,
+      "frac_current_fusion_better_than_B": 0.4216419458389282,
+      "frac_current_fusion_worse_than_B": 0.5783580541610718
+    },
+    "query": {
+      "mse_oracle_continuous": 0.3085344433784485,
+      "mse_oracle_binary": 0.31583428382873535,
+      "oracle_lambda_dist": {
+        "mean": 0.13331130146980286,
+        "std": 0.17666228115558624,
+        "median": 0.06920696049928665,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p75": 0.2006198763847351,
+        "p90": 0.36789464950561523
+      },
+      "frac_lambda_eq_0": 0.3132382929325104,
+      "frac_lambda_eq_1": 0.006619144696742296,
+      "frac_lambda_interior": 0.6801425814628601,
+      "frac_R_better_than_B": 0.045315682888031006,
+      "frac_current_fusion_better_than_B": 0.18380855023860931,
+      "frac_current_fusion_worse_than_B": 0.8161914348602295
+    }
+  },
+  "headroom": {
+    "global_lambda_headroom_pct": 13.261432904573676,
+    "oracle_utilization_headroom_pct_query_channel": 25.58450015706677,
+    "base_relative_oracle_gain_pct_query_channel": 13.450150485772497
+  },
+  "retrieval_gain_distribution": {
+    "mean": -0.24131855368614197,
+    "std": 1.2068651914596558,
+    "median": -0.055295679718256,
+    "p10": -0.6029276847839355,
+    "p25": -0.23864123225212097,
+    "p75": 0.003730109892785549,
+    "p90": 0.08796026557683945,
+    "positive_fraction": 0.2918727695941925
+  }
+}

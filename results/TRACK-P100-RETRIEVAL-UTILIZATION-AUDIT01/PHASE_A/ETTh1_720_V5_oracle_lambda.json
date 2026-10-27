@@ -1,0 +1,70 @@
+{
+  "cell": "ETTh1_720",
+  "arm": "V5",
+  "current_lambda": 0.47933247685432434,
+  "n_val": 2161,
+  "n_test": 2161,
+  "channels": 7,
+  "mse_base_test": 0.5603537559509277,
+  "mse_retrieval_only_test": 0.6205701231956482,
+  "mse_current_global_lambda_test": 0.5149174928665161,
+  "lambda_val_optimal_global": 0.48674771189689636,
+  "mse_val_optimal_global_lambda_test": 0.5152890682220459,
+  "lambda_test_dataset_global_oracle": 0.3988669216632843,
+  "mse_test_dataset_global_oracle": 0.5129899382591248,
+  "granularity": {
+    "query_channel": {
+      "mse_oracle_continuous": 0.4676877558231354,
+      "mse_oracle_binary": 0.4883109927177429,
+      "oracle_lambda_dist": {
+        "mean": 0.4100284278392792,
+        "std": 0.3259343206882477,
+        "median": 0.3980591595172882,
+        "p10": 0.0,
+        "p25": 0.0827280804514885,
+        "p75": 0.6749328374862671,
+        "p90": 0.8834201097488403
+      },
+      "frac_lambda_eq_0": 0.1884709596633911,
+      "frac_lambda_eq_1": 0.050109077244997025,
+      "frac_lambda_interior": 0.7614200115203857,
+      "frac_R_better_than_B": 0.41277188062667847,
+      "frac_current_fusion_better_than_B": 0.6268262267112732,
+      "frac_current_fusion_worse_than_B": 0.3731738030910492
+    },
+    "query": {
+      "mse_oracle_continuous": 0.4988569915294647,
+      "mse_oracle_binary": 0.5303613543510437,
+      "oracle_lambda_dist": {
+        "mean": 0.3983432650566101,
+        "std": 0.21084275841712952,
+        "median": 0.37653011083602905,
+        "p10": 0.13669468462467194,
+        "p25": 0.2414485365152359,
+        "p75": 0.5458638072013855,
+        "p90": 0.690925657749176
+      },
+      "frac_lambda_eq_0": 0.016196204349398613,
+      "frac_lambda_eq_1": 0.0018509948858991265,
+      "frac_lambda_interior": 0.9819527864456177,
+      "frac_R_better_than_B": 0.30957889556884766,
+      "frac_current_fusion_better_than_B": 0.7538176774978638,
+      "frac_current_fusion_worse_than_B": 0.24618232250213623
+    }
+  },
+  "headroom": {
+    "global_lambda_headroom_pct": -0.07216211542187982,
+    "oracle_utilization_headroom_pct_query_channel": 9.172292201699248,
+    "base_relative_oracle_gain_pct_query_channel": 16.53705344948334
+  },
+  "retrieval_gain_distribution": {
+    "mean": -0.06021637097001076,
+    "std": 0.3292912244796753,
+    "median": -0.032166898250579834,
+    "p10": -0.38416463136672974,
+    "p25": -0.1577957570552826,
+    "p75": 0.07058906555175781,
+    "p90": 0.21419145166873932,
+    "positive_fraction": 0.41277188062667847
+  }
+}
