@@ -93,3 +93,9 @@ results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_96/full_pass_val.parq
 results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_96/full_pass_test.parquet
 results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_720/full_pass_val.parquet
 results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_720/full_pass_test.parquet
+
+# TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01: same raw parquet size issue, kept locally only
+results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_96/full_pass_val.parquet
+results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_96/full_pass_test.parquet
+results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_720/full_pass_val.parquet
+results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_720/full_pass_test.parquet

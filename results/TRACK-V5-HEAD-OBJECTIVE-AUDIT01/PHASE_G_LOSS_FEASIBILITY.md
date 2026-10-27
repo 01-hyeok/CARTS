@@ -1,5 +1,11 @@
 # PHASE G -- Soft/Hard Top-10 Alignment and Loss-Design Feasibility
 
+> **PARTIALLY SUPERSEDED (2026-10-27)**: G1/G2 (soft/hard gap) are
+> confirmed unchanged by `TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01`. G3's "C"
+> (Complementarity Loss) verdict relied on a buggy near-zero cross-head
+> cosine and is revised from NOT SUPPORTED to PARTIALLY SUPPORTED -- see
+> `results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/PHASE_E_REVISED_RESEARCH_VERDICT.md`.
+
 ## G1. Prediction gap: Mean-Mixture hard Top-10 vs full-pool soft expectation
 
 `R_soft = sum_{i in pool} p_mix(i) * V_i` (expectation over ALL 100 pool candidates, weighted by the full Mean-Mixture probability -- the most natural fully-differentiable relaxation of `R_mix`, since `p_mix` already exists and is already a valid probability distribution) vs `R_hard = mean(Top10(p_mix))` (what V5 actually outputs at inference).

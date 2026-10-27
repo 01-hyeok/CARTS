@@ -6289,3 +6289,68 @@ per-query-channel parquet, `phase_f/`, `phase_analysis/`). Scripts:
 `scripts/diag_v5_head_objective01.py`,
 `scripts/diag_v5_head_gradient01.py`,
 `scripts/analyze_v5_head_objective01.py`.
+
+## TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01 -- Head Error Cosine Bug Fix & Research Revalidation
+
+Bug-fix-and-revalidation track for `TRACK-V5-HEAD-OBJECTIVE-AUDIT01`'s
+PHASE D. No new training, no Stage2 retrain. Reused the exact same
+canonical V5 checkpoints and Shared-P100 pool.
+
+**Bug**: `scripts/diag_v5_head_objective01.py` computed Error Cosine as
+`(raw_dot/H) / (norm_m*norm_m)` -- it reused the already-`/H`-scaled
+Error Dot tensor as the cosine numerator instead of the raw dot product.
+Confirmed by direct row-level comparison: the reported cosine was
+exactly `true_cosine / H` in every row, every cell (ratio = 96.0 for
+H96 cells, 720.0 for H720 cells, to 6 significant figures). Fixed by
+computing Error Dot and Error Cosine from two separately-normalized
+tensors; zero-norm rows now resolve to a neutral cosine of 0 (via
+`clamp_min(EPS)` on the norm product), never hardcoded to +-1.
+
+**Corrected numbers (test split, all 4 cells)**: ETTh1_96 0.0088 ->
+**0.844**; ETTh1_720 0.00132 -> **0.952**; Weather_96 0.0068 ->
+**0.650**; Weather_720 0.00112 -> **0.809**. **Reversed interpretation**:
+the 5 Mean-Mixture heads' independent aggregate predictions are
+strongly REDUNDANT in error space (not near-orthogonal as originally
+reported), though genuine cancellation (negative cosine) remains rare
+(0-15% of rows, UNCHANGED by the fix -- sign is scale-invariant).
+
+**Verified unaffected by byte-level row comparison of a fresh forward
+pass** (not just re-argued): Error Dot, Negative-Cosine Fraction,
+Overlap-vs-Cosine Pearson/Spearman correlation (both invariant to a
+positive-constant rescale / monotonic transform), Within-Mean-Mixture
+-Set D/C/AggMSE, the full 31-Subset Head Oracle, the Soft/Hard Gap, and
+the Gradient Analysis (PHASE F, separate unmodified script) -- every one
+of these reproduces EXACTLY against the original artifacts.
+
+**Revised Loss verdict**: L1 (Head KL) and L3 (Aggregate-aligned)
+verdicts are UNCHANGED (Partially Supported) since neither depended on
+the buggy metric. L2 (+ Complementarity) is upgraded from NOT SUPPORTED
+to PARTIALLY SUPPORTED -- its original dismissal's stated justification
+(near-zero cross-head cosine, no redundancy to reduce) was factually
+wrong, but the corrected data still does not establish L2 is needed:
+negative-cosine fraction stays small, Within-Set `C` (what actually
+drives AggMSE) is a separate, unaffected quantity TRACK-M already showed
+an aggregate-aligned loss alone can address, and the spec's own
+degenerate-solution risk (inflating error magnitude to cheaply shrink a
+dot product) is more salient given genuinely high baseline redundancy.
+
+**Overall conclusion: MODIFY (unchanged from the original report)** --
+test L3 alone first, ETTh1 cells first, with an explicit Stage2 gate,
+before Weather or L1/L2. L2 is now a live second-priority ablation
+question (test whether it adds anything beyond L3 alone) rather than a
+closed one.
+
+Original `TRACK-V5-HEAD-OBJECTIVE-AUDIT01` artifacts are preserved
+unmodified; SUPERSEDED banners were added to the top of its
+`PHASE_D_HEAD_COMPLEMENTARITY.md`, `PHASE_G_LOSS_FEASIBILITY.md`, and
+`FINAL_REPORT.md` pointing to this track's corrected files, per the
+never-delete/mark-SUPERSEDED policy.
+
+10/10 new unit tests pass (`tests/test_v5_head_objective_cosine_fix01.py`);
+full repo suite re-run after the fix, see commit message for the exact
+pass count.
+
+Artifacts: `results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/` (`PHASE_A`
+through `PHASE_E` + `FINAL_REPORT.md`, `phase_cdeg/` per-query-channel
+parquet, `phase_analysis/`). Script modified:
+`scripts/diag_v5_head_objective01.py` (PHASE D block only).

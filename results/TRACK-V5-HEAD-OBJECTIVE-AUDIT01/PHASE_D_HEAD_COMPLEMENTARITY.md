@@ -1,5 +1,15 @@
 # PHASE D -- Head-Level Error Complementarity
 
+> **SUPERSEDED (2026-10-27): the Error Cosine numbers and "near-orthogonal"
+> interpretation in this file were computed with a normalization bug
+> (reported cosine = true cosine / H). Corrected values and revised
+> interpretation (heads are actually strongly REDUNDANT, cosine 0.65-0.95,
+> not near-zero) are in
+> `results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/PHASE_C_CORRECTED_COMPLEMENTARITY.md`
+> and `PHASE_E_REVISED_RESEARCH_VERDICT.md`. This file is kept unmodified
+> below for historical record, per standing policy -- do not cite its
+> Error Cosine conclusions as current.
+
 **This is new analysis, not present anywhere in the repo before this track** (see PHASE A). TRACK-J3 measured complementarity between individually-retrieved CANDIDATES inside one shared Top-10 set; this Phase measures complementarity between the 5 heads' own independently-produced AGGREGATE predictions `R_m = mean(Top10(p_m))`. Correlation (RQ3/D4) is computed at Query/Channel granularity throughout -- never pooling raw candidates as independent samples.
 
 ## Table B -- Head-pair error complementarity (test split)

@@ -1,5 +1,14 @@
 # TRACK-V5-HEAD-OBJECTIVE-AUDIT01 -- Final Report
 
+> **PARTIALLY SUPERSEDED (2026-10-27)**: Table B / Table F's cross-head
+> error-cosine numbers (PHASE D) were computed with a normalization bug
+> (reported cosine = true cosine / H) and are WRONG -- heads are actually
+> strongly redundant (cosine 0.65-0.95), not near-orthogonal. L2's verdict
+> is revised from NOT SUPPORTED to PARTIALLY SUPPORTED. Every other number
+> in this report (Tables A/C/D/E, L1/L3 verdicts, the overall MODIFY
+> conclusion) is confirmed UNCHANGED by byte-level re-verification. See
+> `results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/FINAL_REPORT.md`.
+
 **Diagnostic-only track. No new model, no new Loss, no Encoder/Scorer change, no Stage2 retrain.** Canonical sign-fixed V5 checkpoints, Shared-P100, seed0, GPU1 only (strictly sequential), all 4 cells (ETTh1 H96/H720, Weather H96/H720). Git commit at close: `f769be3e7b2598d03b439f876ccd7a824cf09311` (code authored this track; see `git status`/`git log` at commit time for the exact state this report describes).
 
 ## Provenance (every table below)

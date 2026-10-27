@@ -230,13 +230,28 @@ def run_full_pass(cli, device):
                     f'[ISSUE][ABORT] D+C identity failed: max diff {(C_mix - c_direct).abs().max()}'
 
                 # ---- PHASE D: head-level error complementarity ----
+                # BUGFIX (TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01): Error Dot and Error
+                # Cosine are two DIFFERENT normalizations of the same raw dot product
+                # and must be computed from separate tensors. The raw (un-normalized)
+                # dot product feeds Error Cosine's numerator; Error Dot divides it by
+                # H; Error Cosine divides it by the (un-H-scaled) norm product. Using
+                # the already-/H `dot_mn` as the cosine numerator (the original bug)
+                # silently scaled every reported cosine by 1/H. `clamp_min(EPS)` (not
+                # `+EPS`) avoids NaN/Inf for zero-norm rows without hardcoding +-1 for
+                # that degenerate case (a zero-vs-zero error vector pair yields
+                # raw_dot=0 and norm_product=EPS, so cosine=0 -- a neutral "no signal"
+                # default, never an arbitrary +-1).
                 e_m = R_m - query_future.unsqueeze(1)  # [B,5,H]
-                dot_mn = torch.einsum('bmh,bnh->bmn', e_m, e_m) / e_m.size(-1)  # [B,5,5]
+                horizon = e_m.size(-1)
+                raw_dot_mn = torch.einsum('bmh,bnh->bmn', e_m, e_m)  # [B,5,5], NOT /H
+                dot_mn = raw_dot_mn / horizon  # Error Dot: D_mn = (1/H)<e_m,e_n> -- UNCHANGED definition
                 norm_m = e_m.norm(dim=-1)  # [B,5]
+                norm_prod_mn = norm_m.unsqueeze(2) * norm_m.unsqueeze(1)  # [B,5,5]
+                cos_mn = raw_dot_mn / norm_prod_mn.clamp_min(EPS)  # Error Cosine: C_mn = <e_m,e_n>/(||e_m|| ||e_n||)
                 pair_vals_dot, pair_vals_cos = {}, {}
                 for (m, n), name in zip(itertools.combinations(ALL_HEADS, 2), pair_names):
                     d_ = dot_mn[:, m, n]
-                    cos_ = d_ / (norm_m[:, m] * norm_m[:, n] + EPS)
+                    cos_ = cos_mn[:, m, n]
                     pair_vals_dot[f'dot_{name}'] = d_.cpu().numpy()
                     pair_vals_cos[f'cos_{name}'] = cos_.cpu().numpy()
                 overlaps, union_size = head_pairwise_overlap(head_topk_idx)

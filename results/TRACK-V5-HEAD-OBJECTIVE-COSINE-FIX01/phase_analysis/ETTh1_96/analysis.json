@@ -1,0 +1,264 @@
+{
+  "cell": "ETTh1_96",
+  "n_val_rows": 19495,
+  "n_test_rows": 19495,
+  "phase_c_test": {
+    "table": [
+      {
+        "method": "Head 1",
+        "retmse10": "0.67475986",
+        "aggmse10": "0.42085347",
+        "D": "0.06747599",
+        "C": "0.3533775",
+        "recall10": "0.24725315",
+        "ndcg10": "0.87029594"
+      },
+      {
+        "method": "Head 2",
+        "retmse10": "0.6749828",
+        "aggmse10": "0.4296073",
+        "D": "0.067498274",
+        "C": "0.36210904",
+        "recall10": "0.2500949",
+        "ndcg10": "0.86955386"
+      },
+      {
+        "method": "Head 3",
+        "retmse10": "0.72487307",
+        "aggmse10": "0.43102843",
+        "D": "0.07248731",
+        "C": "0.35854116",
+        "recall10": "0.18637599",
+        "ndcg10": "0.8546811"
+      },
+      {
+        "method": "Head 4",
+        "retmse10": "0.696394",
+        "aggmse10": "0.43236157",
+        "D": "0.0696394",
+        "C": "0.3627222",
+        "recall10": "0.21365479",
+        "ndcg10": "0.85957366"
+      },
+      {
+        "method": "Head 5",
+        "retmse10": "0.70080656",
+        "aggmse10": "0.43179125",
+        "D": "0.07008065",
+        "C": "0.36171058",
+        "recall10": "0.21423955",
+        "ndcg10": "0.8562076"
+      },
+      {
+        "method": "Mean-Mixture",
+        "retmse10": "0.66385514",
+        "aggmse10": "0.40980762",
+        "D": "0.066385515",
+        "C": "0.34342214",
+        "recall10": "0.25752243",
+        "ndcg10": "0.87411475"
+      }
+    ],
+    "best_individual_head": "Head 1",
+    "best_aggregate_head": "Head 1",
+    "same_head_wins_both": true,
+    "DC_identity_max_abs_diff_direct_vs_subtraction": 0.0
+  },
+  "phase_c_val": {
+    "table": [
+      {
+        "method": "Head 1",
+        "retmse10": "0.9931073",
+        "aggmse10": "0.7214612",
+        "D": "0.09931071",
+        "C": "0.6221505",
+        "recall10": "0.22082585",
+        "ndcg10": "0.8471969"
+      },
+      {
+        "method": "Head 2",
+        "retmse10": "0.98218954",
+        "aggmse10": "0.7262842",
+        "D": "0.09821895",
+        "C": "0.6280653",
+        "recall10": "0.22140548",
+        "ndcg10": "0.8483815"
+      },
+      {
+        "method": "Head 3",
+        "retmse10": "1.0797133",
+        "aggmse10": "0.75631636",
+        "D": "0.10797135",
+        "C": "0.64834505",
+        "recall10": "0.17411645",
+        "ndcg10": "0.8315945"
+      },
+      {
+        "method": "Head 4",
+        "retmse10": "1.0183687",
+        "aggmse10": "0.73793817",
+        "D": "0.101836875",
+        "C": "0.6361013",
+        "recall10": "0.20067197",
+        "ndcg10": "0.8361929"
+      },
+      {
+        "method": "Head 5",
+        "retmse10": "1.0239143",
+        "aggmse10": "0.73859656",
+        "D": "0.10239143",
+        "C": "0.6362051",
+        "recall10": "0.19281867",
+        "ndcg10": "0.8373422"
+      },
+      {
+        "method": "Mean-Mixture",
+        "retmse10": "0.98745954",
+        "aggmse10": "0.71240354",
+        "D": "0.09874596",
+        "C": "0.61365753",
+        "recall10": "0.22741218",
+        "ndcg10": "0.8500966"
+      }
+    ],
+    "best_individual_head": "Head 2",
+    "best_aggregate_head": "Head 1",
+    "same_head_wins_both": false,
+    "DC_identity_max_abs_diff_direct_vs_subtraction": 0.0
+  },
+  "phase_d_test": {
+    "pairwise": [
+      {
+        "pair": "H1-H2",
+        "mean_overlap": 0.4966094195842743,
+        "mean_cos": 0.9062435030937195,
+        "mean_dot": 0.3920394480228424,
+        "negative_cos_fraction": 0.001846627340343678,
+        "overlap_vs_cos_pearson": 0.48342534348819394,
+        "overlap_vs_cos_spearman": 0.6833201241320032
+      },
+      {
+        "pair": "H1-H3",
+        "mean_overlap": 0.3408566415309906,
+        "mean_cos": 0.8420252203941345,
+        "mean_dot": 0.38791748881340027,
+        "negative_cos_fraction": 0.013849705052577583,
+        "overlap_vs_cos_pearson": 0.49859002149664833,
+        "overlap_vs_cos_spearman": 0.7040841055570263
+      },
+      {
+        "pair": "H1-H4",
+        "mean_overlap": 0.34899717569351196,
+        "mean_cos": 0.8492388725280762,
+        "mean_dot": 0.3883286714553833,
+        "negative_cos_fraction": 0.01400359066427289,
+        "overlap_vs_cos_pearson": 0.44996355161464513,
+        "overlap_vs_cos_spearman": 0.652575050874799
+      },
+      {
+        "pair": "H1-H5",
+        "mean_overlap": 0.46474480628967285,
+        "mean_cos": 0.8550817370414734,
+        "mean_dot": 0.39226916432380676,
+        "negative_cos_fraction": 0.018055911772249293,
+        "overlap_vs_cos_pearson": 0.5733776926563171,
+        "overlap_vs_cos_spearman": 0.7568172822824771
+      },
+      {
+        "pair": "H2-H3",
+        "mean_overlap": 0.309530645608902,
+        "mean_cos": 0.8346430659294128,
+        "mean_dot": 0.38632428646087646,
+        "negative_cos_fraction": 0.01492690433444473,
+        "overlap_vs_cos_pearson": 0.46897189417381696,
+        "overlap_vs_cos_spearman": 0.6584761990019532
+      },
+      {
+        "pair": "H2-H4",
+        "mean_overlap": 0.509289562702179,
+        "mean_cos": 0.8923425078392029,
+        "mean_dot": 0.4064232409000397,
+        "negative_cos_fraction": 0.010259040779687098,
+        "overlap_vs_cos_pearson": 0.5160437532475891,
+        "overlap_vs_cos_spearman": 0.7055100442951753
+      },
+      {
+        "pair": "H2-H5",
+        "mean_overlap": 0.33891767263412476,
+        "mean_cos": 0.8203972578048706,
+        "mean_dot": 0.3861790597438812,
+        "negative_cos_fraction": 0.020466786355475764,
+        "overlap_vs_cos_pearson": 0.5010750087839579,
+        "overlap_vs_cos_spearman": 0.6706008358981288
+      },
+      {
+        "pair": "H3-H4",
+        "mean_overlap": 0.3245498538017273,
+        "mean_cos": 0.833958089351654,
+        "mean_dot": 0.38915953040122986,
+        "negative_cos_fraction": 0.016773531674788407,
+        "overlap_vs_cos_pearson": 0.4474675226636275,
+        "overlap_vs_cos_spearman": 0.607386909858651
+      },
+      {
+        "pair": "H3-H5",
+        "mean_overlap": 0.38412413001060486,
+        "mean_cos": 0.8314401507377625,
+        "mean_dot": 0.39136356115341187,
+        "negative_cos_fraction": 0.022005642472428828,
+        "overlap_vs_cos_pearson": 0.5208980396224162,
+        "overlap_vs_cos_spearman": 0.7257649374887076
+      },
+      {
+        "pair": "H4-H5",
+        "mean_overlap": 0.23650677502155304,
+        "mean_cos": 0.7697563171386719,
+        "mean_dot": 0.3776935338973999,
+        "negative_cos_fraction": 0.03339317773788151,
+        "overlap_vs_cos_pearson": 0.4827737378144042,
+        "overlap_vs_cos_spearman": 0.6744174863124027
+      }
+    ],
+    "pooled_overlap_vs_cos_pearson_WARNING_not_independent_samples": 0.5016456601449372,
+    "cross_head_mean_cosine_all_pairs": 0.8435126543045044,
+    "within_mean_mixture_set_C_mean": 0.34342214465141296,
+    "note": "pooled_overlap_vs_cos_pearson treats every (query,channel,pair) row as independent; per-pair correlations above are the query/channel-level analysis the spec requires. Cross-Head mean cosine (between independent per-head aggregate predictions R_m) is NOT the same quantity as Within-Mean-Mixture-Set C (interaction among the 10 candidates actually inside S_mix) -- reported side by side deliberately, per spec section 7.3/D3."
+  },
+  "phase_e": {
+    "val_selected_best_fixed_subset": "1245",
+    "val_selected_best_single_head": "1",
+    "test_all5_meanmixture_aggmse": 0.40980762243270874,
+    "test_best_single_head_aggmse": 0.42085346579551697,
+    "test_best_fixed_subset_aggmse_valselected": 0.410792738199234,
+    "test_per_query_oracle_subset_aggmse_UPPERBOUND_NOT_DEPLOYABLE": 0.3244124948978424,
+    "gap_head_all5_minus_oracle": 0.08539512753486633,
+    "gap_head_pct_of_all5": 20.837856829166412,
+    "leave_one_head_out_contribution_delta": {
+      "H1": 0.0018616914749145508,
+      "H2": -0.00022840499877929688,
+      "H3": 0.0009851157665252686,
+      "H4": 0.00047016143798828125,
+      "H5": 0.0025374293327331543
+    },
+    "oracle_winner_subset_frequency_top10": {
+      "subset_aggmse_3": 0.08376506796614516,
+      "subset_aggmse_5": 0.08345729674275455,
+      "subset_aggmse_4": 0.08130289817902026,
+      "subset_aggmse_1": 0.07042831495255193,
+      "subset_aggmse_2": 0.06252885355219287,
+      "subset_aggmse_24": 0.04601179789689664,
+      "subset_aggmse_35": 0.04529366504231854,
+      "subset_aggmse_34": 0.044062580148756095,
+      "subset_aggmse_15": 0.04272890484739677,
+      "subset_aggmse_45": 0.03672736599127981
+    },
+    "note_loo": "Delta_h = AggMSE(all heads except h) - AggMSE(all 5). Positive => head h HELPS (removing it makes things worse); negative => head h HURTS (removing it helps). Conditional on the other 4 heads, not an absolute independent utility."
+  },
+  "phase_g_test": {
+    "hard_mean_mixture_aggmse": 0.40980762243270874,
+    "soft_full_pool_expectation_aggmse": 0.39912062883377075,
+    "mean_abs_prediction_gap": 0.06958761811256409,
+    "soft_minus_hard_pct": -2.607807330787182,
+    "query_channel_level_correlation_soft_vs_hard_aggmse": 0.968976952064964
+  }
+}
