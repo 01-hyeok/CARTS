@@ -1,0 +1,18 @@
+{
+  "cell": "Weather_720",
+  "checkpoint": "checkpoints/track_v_sharedtop100_signfix01/Weather/H720/seed0/pool_top100/Weather_720/V5/checkpoint_epoch6.pth",
+  "best_epoch": 6,
+  "init_hash_check_model_state_hash": "cc9297c980c979d0",
+  "b3_future_scale_ratio_samples": [
+    2.4922637939453125,
+    1.0719611644744873,
+    1.1464015245437622,
+    2.709420919418335,
+    1.5554258823394775,
+    1.3811631202697754
+  ],
+  "n_query_channel_pairs_checked": 6,
+  "max_abs_diff_p_mix_vs_manual": 0.0,
+  "mean_mixture_vs_round_robin_top10_overlap_fraction": 0.7203125059604645,
+  "verdict": "PASS -- all B2/B3 asserts held"
+}

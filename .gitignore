@@ -87,3 +87,9 @@ temp/
 .cache/
 results/TRACK-A-HORIZON-RETRIEVAL-HEADROOM01/Weather_720/channel_level_*.csv
 results/TRACK-A-HORIZON-RETRIEVAL-EXPERT01-STAGE2/cache/
+
+# TRACK-V5-HEAD-OBJECTIVE-AUDIT01: raw per-query-channel parquet >50MB, kept locally only
+results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_96/full_pass_val.parquet
+results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_96/full_pass_test.parquet
+results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_720/full_pass_val.parquet
+results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/phase_cdeg/Weather_720/full_pass_test.parquet

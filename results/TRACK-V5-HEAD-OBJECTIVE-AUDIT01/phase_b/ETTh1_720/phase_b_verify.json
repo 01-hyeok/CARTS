@@ -1,0 +1,18 @@
+{
+  "cell": "ETTh1_720",
+  "checkpoint": "checkpoints/track_v_sharedtop100_signfix01/ETTh1/H720/seed0/pool_top100/ETTh1_720/V5/checkpoint_epoch9.pth",
+  "best_epoch": 9,
+  "init_hash_check_model_state_hash": "cf862f4bc3c04b70",
+  "b3_future_scale_ratio_samples": [
+    0.8999618887901306,
+    1.010733723640442,
+    0.9242528080940247,
+    0.9158679246902466,
+    1.0529018640518188,
+    0.9398902058601379
+  ],
+  "n_query_channel_pairs_checked": 6,
+  "max_abs_diff_p_mix_vs_manual": 0.0,
+  "mean_mixture_vs_round_robin_top10_overlap_fraction": 0.9088541865348816,
+  "verdict": "PASS -- all B2/B3 asserts held"
+}

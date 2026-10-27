@@ -6187,3 +6187,105 @@ usefulness predictor, selective fusion) given the deployable-gate
 instability Phase B found, except possibly as a narrow ETTh1_720
 -specific follow-up (out of this track's own scope). This closes
 TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01 (Phases A-C) in full.
+
+## TRACK-V5-HEAD-OBJECTIVE-AUDIT01 -- Multi-Head Retrieval Learning Objective Audit (diagnostic only)
+
+Diagnostic-only track (no new training, no Stage2 retrain, no
+Encoder/Scorer change) auditing what CARTS V5's 5 Mean-Mixture heads
+actually learn, as pre-work for a possible future Head-KL /
+Aggregate-aligned / Complementarity loss experiment. Canonical
+sign-fixed V5 checkpoints, Shared-P100, seed0, GPU1 only, all 4 cells
+(ETTh1 H96/H720, Weather H96/H720).
+
+**Phase A (existing research audit)**: found that
+`results/TRACK-HARD-EXPERT-V5-P100-ALLH01/<ds>/H<h>/<cell>/V5/` already
+contains per-head RetMSE/AggMSE/D/C/Recall/NDCG/overlap/union/KL/
+Spearman/winner-fraction/oracle-vs-fixed on the EXACT canonical
+checkpoint this track uses for all 4 cells -- reused rather than
+recomputed. TRACK-J3 (candidate-level complementarity), TRACK-K/M
+(multi-slot + aggregate/relevance-protection losses, Stage1
+STRONG_GO/Stage2 NO-GO precedent), and `EXP-SET-LOSS01`/
+`TRACK-A-SET-LOSS-CONTROL02` (SoftTopK/SRM soft-hard gaps) read in
+full as directly relevant prior art.
+
+**Phase B (correctness verification,
+`scripts/diag_v5_head_objective01.py --mode verify`)**: all B1-B4
+checks PASS, all 4 cells. Reproduced the reference Stage2 test MSE
+table exactly via TWO independently-built pipelines. **Key correction
+caught before propagating**: the spec's "Mean-Mixture" (`S_mix =
+Top10(p_mix)`) is NOT the same selection rule as the pre-existing `rr`
+(round-robin) diagnostic already saved in
+`TRACK-HARD-EXPERT-V5-P100-ALLH01`'s JSONs -- measured overlap between
+the two rules' own Top-10 sets ranges 0.43-0.91 across cells, confirmed
+genuinely different. Every "Mean-Mixture" number in this track is
+freshly computed via the canonical `mean_mixture_topk_selection`.
+
+**Phase C (head quality, `PHASE_C_HEAD_QUALITY.md`)**: `D+C=AggMSE`
+identity holds exactly (max abs diff 0.0, direct pairwise-sum vs
+subtraction, all 4 cells). Best-individual-head and best-aggregate
+-head coincide on ETTh1 (both H), disagree on Weather (both H).
+Mean-Mixture beats every single head's AggMSE on ETTh1_96 only; a
+single head beats Mean-Mixture on the other 3 cells (by 0.8-20.1%).
+Mean-Mixture wins Recall@10/NDCG@10 in every cell regardless.
+
+**Phase D (head-level error complementarity, new analysis,
+`PHASE_D_HEAD_COMPLEMENTARITY.md`)**: cross-head error cosine is small
+everywhere (0.001-0.009), far below TRACK-J3's candidate-level
+0.50-0.62 -- the 5 heads' aggregate predictions are close to
+orthogonal, not strongly redundant or strongly complementary.
+True cancellation (cosine<0) is more frequent on Weather (5.7-14.9%)
+than ETTh1 (0.0-3.3%). Overlap and error-cosine correlate positively
+within every head pair (query/channel-level, never pooled).
+
+**Phase E (full 31-subset head oracle, new analysis,
+`PHASE_E_HEAD_CONTRIBUTION.md`)**: per-query oracle gap over all 5 and
+31 subsets is large everywhere (9-54%), largest on Weather. Honest
+negative finding: the val-selected Best Fixed Subset is WORSE than
+plain Mean-Mixture on 2 of 4 cells (Weather_96, Weather_720) -- a real
+multiple-comparisons overfitting risk from choosing among 31 correlated
+subsets with a finite validation set. Leave-one-head-out contributions
+are small and cell-specific except Weather_720's H1 (-0.063, ~10% of
+All-5 AggMSE, the single largest effect found).
+
+**Phase F (frozen-checkpoint gradient diagnostic, new analysis,
+`PHASE_F_HEAD_GRADIENT.md`)**: no head is gradient-starved under V5's
+actual loss (max/min per-head `W_m` grad-norm ratio never exceeds ~1.9x
+within a cell). An unweighted per-head-KL alternative gives uniformly
+LARGER per-head gradients (1.04-1.55x) and a full-gradient cosine with
+V5's actual loss ranging 0.71 (Weather_96) to 0.99 (ETTh1_720) --
+measurably diluted, not absent, per-head pressure under Mean-Mixture.
+
+**Phase G (soft/hard alignment, `PHASE_G_LOSS_FEASIBILITY.md`)**: a
+real, substantial soft/hard AggMSE gap exists everywhere (soft always
+better: 2.6-6.6% on ETTh1, 15.2-26.5% on Weather), and the
+soft-vs-hard per-query correlation collapses on Weather (0.49-0.59 vs
+0.97 on ETTh1) -- exactly where an aggregate-aligned loss is most
+needed, its natural relaxation is least faithful.
+
+**Final verdict (`FINAL_REPORT.md`): MODIFY, not GO.** Recommends
+testing L3 (Aggregate-aligned loss, using the readily-available
+`R_soft` relaxation) ALONE first, on ETTh1 cells first (where the
+relaxation is faithful), with an explicit Stage2 gate before any
+Weather cell or L1/L2 addition -- per TRACK-M's own cautionary
+precedent that a Stage1-winning aggregate-aligned loss can still fail
+Stage2. L1 (Head-KL) is only PARTIALLY supported, as a secondary
+ablation once L3 is validated, never a standalone priority (TRACK-K1's
+precedent: structure + implicit per-head pressure alone, no aggregate
+loss, did not beat baseline). L2's explicit Complementarity term is
+NOT SUPPORTED as a separate addition -- mathematically substantially
+redundant with an aggregate-aligned loss's own `C`-term gradient
+(cross-head cosine is already near-zero without any such pressure,
+Phase D), and TRACK-M's own precedent (aggregate-aligned loss alone
+exceeded a complementarity-motivated baseline's own gain) argues
+against adding it.
+
+12/12 new unit tests pass (`tests/test_v5_head_objective_audit01.py`);
+full repo suite: 1679 passed, the same 2 pre-existing unrelated
+failures, no regression.
+
+Artifacts: `results/TRACK-V5-HEAD-OBJECTIVE-AUDIT01/` (`PHASE_A`
+through `PHASE_G` + `FINAL_REPORT.md`, `phase_b/`, `phase_cdeg/`
+per-query-channel parquet, `phase_f/`, `phase_analysis/`). Scripts:
+`scripts/diag_v5_head_objective01.py`,
+`scripts/diag_v5_head_gradient01.py`,
+`scripts/analyze_v5_head_objective01.py`.
