@@ -6123,3 +6123,67 @@ track's original research questions:
 seed1/2 or H192/H336 is warranted -- no method here clearly beats V5
 on the 4 cells tested. This closes
 TRACK-P100-COARSE-TO-FINE-RETRIEVAL01 (Phases A-D + Stage2) in full.
+
+## TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01 -- diagnostic only: Selection vs Utilization bottleneck is cell-specific, not uniform
+
+No new Stage1/Stage2 training anywhere in this track -- a pure
+diagnostic audit of the EXISTING `TRACK-P100-COARSE-TO-FINE-RETRIEVAL01`
+artifacts (B/R/Y tensors, checkpoints), asking whether Weather's
+Stage2 failure (Base beats every retrieval arm) is a Retrieval
+Selection bottleneck (H1: the retrieved candidates carry no useful
+signal) or a Retrieval Utilization bottleneck (H2: useful signal
+exists but the current global-lambda fusion fails to use it).
+
+**Phase A (Oracle Lambda diagnostic,
+`scripts/diag_p100_oracle_lambda01.py`)**: reproduced the published
+Stage2 MSE table exactly (read from original artifacts, not re-run).
+Global-lambda headroom (re-solving the SAME global scalar in closed
+form, no new model) is ~0% on both ETTh1 cells (the deployed
+gradient-trained lambda is already near-optimal) but a real 2.5-16.4%
+on both Weather cells -- a genuine, cell-specific H2. Per-query-channel
+oracle headroom is large everywhere (9-29%), with the oracle lambda
+distribution never dominated by 0/1 (35-76% interior) -- a
+continuous, not binary, per-row signal would be needed. Retrieval
+alone is less accurate than Base on average in EVERY cell (H1 is
+always present to some degree), but severity differs: on Weather_96,
+the validation-optimal global lambda alone already beats Base; on
+Weather_720, it still falls slightly short (a real H1 ceiling there).
+Full tables: `results/TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01/PHASE_A_ORACLE_LAMBDA_REPORT.md`.
+
+**Phase B (past-only observability,
+`scripts/diag_p100_observability01.py`, 30 features = 18 reused from
+`train_p100_adaptive_fusion01.extract_features` + 12 new, 3 probes
+B0/B1/B2 per spec)**: AUROC is clearly above chance everywhere
+(0.51-0.71) and actually HIGHEST on Weather (0.68-0.71), not ETTh1 --
+observability is not absent. But the deployable binary gate (val
+-selected threshold, test-evaluated once) flips sign val-to-test on 2
+of 4 cells (ETTh1_96, Weather_720) and shrinks ~10x on Weather_96;
+only ETTh1_720 shows a robust, same-signed, non-trivial deployable
+gain (+0.0632 val, +0.0119 test). The strongest features differ by
+cell: V5's own confidence (entropy/head-agreement) on ETTh1_720;
+NEWLY-ADDED retrieved-candidate dispersion features on both Weather
+cells. Full tables:
+`results/TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01/PHASE_B_OBSERVABILITY_REPORT.md`.
+
+**Phase C (decision gate synthesis,
+`results/TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01/PHASE_C_DECISION_GATE.md`)**:
+no clean fit to the pre-registered Case A-D framework -- the honest
+result is a cell-specific MIX of H1 and H2 that the binary framework
+doesn't label well. ETTh1 (both cells): global lambda already
+near-optimal, so any further gain is strictly a per-query-adaptation
+question (RQ2/RQ3's territory), where ETTh1_720 is the one cell this
+track found a robust deployable signal for. Weather (both cells): the
+global lambda itself is measurably suboptimal (H2, fixable with zero
+new modeling just by re-solving it correctly) AND there remains a
+real per-query oracle ceiling above that (on Weather_96, reachable in
+principle; on Weather_720, even the oracle global lambda falls
+slightly short of Base, a genuine H1 component) -- but Phase B shows
+the past-only signal needed to reach that ceiling is not reliably
+extractable with the probes tested.
+
+**Verdict**: per spec section 21, this track does NOT recommend
+building a new Stage2 architecture (query-conditional lambda,
+usefulness predictor, selective fusion) given the deployable-gate
+instability Phase B found, except possibly as a narrow ETTh1_720
+-specific follow-up (out of this track's own scope). This closes
+TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01 (Phases A-C) in full.

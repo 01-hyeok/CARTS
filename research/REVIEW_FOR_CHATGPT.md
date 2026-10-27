@@ -6343,3 +6343,53 @@ determines whether any future retrieval work on Weather should start
 from a different encoder/candidate-pool design or should be
 redirected to datasets (like ETTh1) where retrieval has already been
 shown to help.
+
+## TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01 -- an answer to the question just asked, and a new, sharper split
+
+This diagnostic-only follow-up (no new training anywhere) directly
+answers the question the FINAL_REPORT entry above posed: is Weather's
+Stage2 failure a Selection problem (H1: the retrieved candidates
+genuinely carry no useful signal) or a Utilization problem (H2: the
+signal is there, the current global-lambda fusion just fails to use
+it)? Full reports:
+`results/TRACK-P100-RETRIEVAL-UTILIZATION-AUDIT01/PHASE_{A_ORACLE_LAMBDA,B_OBSERVABILITY,C_DECISION_GATE}.md`.
+
+**The answer is neither pure H1 nor pure H2, and the split is sharper
+than the dataset-level ETTh1-vs-Weather pattern this whole research
+program kept finding**: re-solving the SAME global lambda in closed
+form (zero new modeling) recovers 2.5-16.4% on Weather but
+essentially 0% on ETTh1 -- the Stage2 TRAINING PROCEDURE ITSELF is
+measurably worse at finding the right lambda on Weather than on
+ETTh1, independent of whether the underlying retrieval signal is any
+good. Separately, per-query oracle headroom is large everywhere
+(9-29%), and on Weather_96 the closed-form global lambda alone
+already beats Base -- but on Weather_720, even the oracle global
+lambda falls slightly short of Base, a genuine H1 ceiling specific to
+that one cell.
+
+The past-only observability probe (Phase B) adds a third, independent
+axis: AUROC for "is retrieval useful on this query" is actually
+HIGHEST on Weather (0.68-0.71), not ETTh1 (0.51-0.64) -- so
+Weather's problem is not "retrieval usefulness is unpredictable."
+Yet the deployable binary gate built from that same signal flips
+sign between validation and test on 2 of 4 cells and shrinks ~10x on
+a third; only ETTh1_720 -- precisely the cell where the global lambda
+was already near-optimal -- shows a robust, same-signed deployable
+gain. This cleanly separates three things that are easy to conflate:
+statistical observability (AUROC), oracle headroom (a diagnostic
+ceiling), and deployable generalization (val-to-test stability of an
+actual decision rule) -- a cell can score well on the first two and
+still fail the third.
+
+Per the track's own pre-registered rule (section 21), no new Stage2
+architecture is recommended given this instability -- the one
+narrow exception is ETTh1_720, which passed all three bars
+(meaningful headroom at the per-query level, decent AUROC, and a
+gate that generalizes val-to-test with the same sign and comparable
+magnitude). ChatGPT's view on whether (a) the Stage2 training
+procedure itself (not any retrieval mechanism) deserves direct
+attention on Weather -- e.g. a better optimizer/init for the global
+-lambda gate, independent of any Stage1 change -- and (b) whether
+ETTh1_720's narrow positive signal is worth a focused follow-up on
+its own, would be the most useful next input before any further work
+in this research program.
