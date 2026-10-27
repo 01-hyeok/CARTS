@@ -6427,3 +6427,26 @@ factorial Tables A-F across all 4 cells; Phase 5 (L1/L2 follow-up,
 gated on the primary comparison finishing); the 12 final research
 questions; no seed1/seed2/H192/H336 extension (correctly not started,
 per spec's own explicit prohibition this round).
+
+### TRACK-V5-HEAD-LOSS-DUAL-ENCODER01 update -- ETTh1_720 complete, ranking REVERSES from ETTh1_96
+
+Phase 1-4 now complete for ETTh1_96 AND ETTh1_720 (2 of 4 primary
+cells). S0 continues to reproduce canonical V5 exactly on the new
+horizon too (Stage1 0.942633/0.620570, Stage2 0.514917 vs spec
+reference 0.51492).
+
+| Cell | Base | S0 | S1 | S2 | D0 | D1 | D2 | Best |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| ETTh1_96 | 0.39242 | 0.369597 | 0.370652 | 0.371837 | 0.376534 | 0.373972 | 0.375010 | S0 |
+| ETTh1_720 | 0.56035 | 0.514917 | 0.517572 | 0.514618 | 0.505956 | 0.512241 | 0.506632 | D0 |
+
+**The best arm fully reverses between the two horizons**: H96 favors
+Shared+L0 and ranks every Separate arm worst; H720 favors Separate+L0
+(D0 is the single best arm of all 6) and L3b (S2) beats L0 within
+Shared there too. The ETTh1_96-specific finding ("aggregate loss helps
+within Separate via C-reduction, D1<D0") does NOT replicate on
+ETTh1_720 (D1>D0 there) -- falsified by the second cell, confirming the
+spec's own requirement to complete all 4 cells before any RQ1/RQ4/RQ5
+conclusion. No stable Loss or Encoder main effect across just these two
+cells; Weather_96/Weather_720 still required before any defensible
+claim. Full numbers in the updated Phase 1-4 reports.

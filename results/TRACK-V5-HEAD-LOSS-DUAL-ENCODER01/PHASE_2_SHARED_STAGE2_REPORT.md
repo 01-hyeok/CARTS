@@ -22,4 +22,12 @@ All 3 Shared arms beat Base. **S0 (plain KL) is the best of the three** -- L3a a
 
 **The (small, negative) Stage1 change DID transfer directionally to Stage2** -- S1/S2's slightly worse Stage1 Hard AggMSE corresponds to slightly worse Stage2 MSE, in the same rank order. This is a case where Stage1 and Stage2 AGREE (both say L0 > L3a > L3b on this cell), which is itself notable given this project's repeated prior finding (TRACK-M) that Stage1 and Stage2 can disagree -- here they do not, but the direction is "the aggregate loss does not help," not "the aggregate loss helps and it transfers."
 
-**(Remaining 3 cells pending -- see FINAL_RESEARCH_REPORT.md.)**
+## ETTh1_720 Stage2 Test MSE
+
+| Cell | Base | S0 (L0) | S1 (L3a) | S2 (L3b) |
+|---|---:|---:|---:|---:|
+| ETTh1_720 | 0.56035 | 0.514917 | 0.517572 | **0.514618** |
+
+S0 reproduces canonical V5 Stage2 (0.51492) essentially exactly (0.514917). **S2's small Stage1 win over S0 (Phase 1) DOES transfer to Stage2** -- S2's test MSE (0.514618) is marginally better than S0's (0.514917), the first case in this track where an aggregate-aligned loss beats plain L0 end-to-end. S1 remains the worst of the three, same as Stage1.
+
+**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**

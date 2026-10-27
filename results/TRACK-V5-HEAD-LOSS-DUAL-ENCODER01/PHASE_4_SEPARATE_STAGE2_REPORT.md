@@ -25,4 +25,21 @@ Phase 3's Stage1 finding (D1 beats D0 on Hard AggMSE via a C-reduction mechanism
 
 **No cell shows Base beating any retrieval arm yet** (unlike this project's repeated Weather pattern in prior tracks) -- but Weather cells have not been run yet in this track; this ETTh1-only result should NOT be extrapolated to Weather, consistent with every prior P100 track's finding that ETTh1 and Weather diverge.
 
-**(Remaining 3 cells pending -- see FINAL_RESEARCH_REPORT.md's status section for the concrete remaining-work list.)**
+## ETTh1_720 full 6-arm comparison (test split, Stage2 MSE)
+
+| Cell | Base | S0 | S1 | S2 | D0 | D1 | D2 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ETTh1_720 | 0.56035 | 0.514917 | 0.517572 | 0.514618 | **0.505956** | 0.512241 | 0.506632 |
+
+| Arm | Lambda | Best epoch |
+|---|---:|---:|
+| S0 | 0.4793 | 1 |
+| S1 | 0.4846 | 8 |
+| S2 | 0.4692 | 1 |
+| D0 | 0.4486 | 8 |
+| D1 | 0.4725 | 3 |
+| D2 | 0.4652 | 1 |
+
+**D0 (Separate, plain L0) is the single best arm of all 6 on ETTh1_720, both at Stage1 and Stage2** -- a result that fully reverses ETTh1_96's ranking (there, D0 was the single WORST arm). Full ranking (best to worst) on this cell: **D0 < D2 < S2 < S0 < D1 < S1.** Note this ranking is NOT a clean "Separate > Shared" or "L0 > L3b > L3a" statement either -- it is a genuinely mixed ordering that differs from both of ETTh1_96's own clean within-group orderings, underscoring that neither the Encoder-structure main effect nor the Loss main effect is stable across horizons on this dataset alone; the cross-cell Table D/E in the (pending) final report will need Weather's two cells before any dataset-general claim is defensible.
+
+**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md's status section for the concrete remaining-work list.)**

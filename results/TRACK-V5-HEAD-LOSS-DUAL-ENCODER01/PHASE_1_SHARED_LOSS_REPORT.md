@@ -28,4 +28,16 @@ Canonical `S0`-baseline parity (vs `TRACK-V5-HEAD-OBJECTIVE-AUDIT01`'s own Mean-
 
 Training against L3a (S1) very slightly improved its OWN soft AggMSE (0.398719 vs S0's 0.399121) but made the actual deployed Hard AggMSE worse -- the soft/hard gap did not close by training against an aggregate-aligned signal, on this cell. L3b (S2) shows the opposite pattern on this cell (worse soft AggMSE, but the smallest soft/hard percentage gap of the three) -- not a clean win for either relaxation.
 
-**(Remaining 3 cells and the full Phase 1 statistical picture are pending -- see FINAL_RESEARCH_REPORT.md's status section.)**
+## ETTh1_720 (test split, primary checkpoint = min val RetMSE@10)
+
+| Arm | Loss | RetMSE@10 | Hard AggMSE@10 | D | C | Soft AggMSE | Best epoch |
+|---|---|---:|---:|---:|---:|---:|---:|
+| S0 | L0 | 0.942633 | 0.620570 | 0.094263 | 0.526307 | 0.579579 | 9 |
+| S1 | L3a | 0.951641 | 0.626839 | 0.095164 | 0.531675 | 0.581932 | 9 |
+| S2 | L3b | 0.948144 | **0.614959** | 0.094814 | 0.520145 | 0.562827 | 6 |
+
+S0 reproduces canonical V5 ETTh1_720 (retMSE@10=0.94263, aggMSE@10=0.62057) essentially exactly (0.942633/0.620570).
+
+**Reversal from ETTh1_96**: on this horizon, **S2 (L3b) actually BEATS S0** on Hard AggMSE (0.614959 vs 0.620570, a genuine ~1% improvement) -- the first case in this track where an aggregate-aligned loss helps within the Shared structure. S1 (L3a) is still worse than S0, as on ETTh1_96. So within Shared, the two aggregate losses no longer move together across horizons: L3a is consistently non-helpful (both cells), but L3b flips from slightly-harmful (H96) to genuinely-helpful (H720).
+
+**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md's status section.)**

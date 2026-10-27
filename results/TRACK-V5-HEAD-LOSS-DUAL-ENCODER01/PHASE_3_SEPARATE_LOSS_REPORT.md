@@ -36,4 +36,16 @@ D2 is slightly worse than D1 on every metric (RetMSE 0.693619 vs 0.686945; Hard 
 
 Separate (`D0/D1/D2`) has exactly 2x the `model.encoder` submodule parameter count of Shared (`S0/S1/S2`) -- both built from the identical base config (`d_model=128, d_ff=256`, confirmed via checkpoint read), since `model_k` is a full `deepcopy` of `model_q`'s architecture. No capacity-matched control was run this round (explicitly out of scope per spec section 8's own instruction).
 
-**(Remaining 3 cells pending -- see FINAL_RESEARCH_REPORT.md.)**
+## ETTh1_720 (test split, primary checkpoint = min val RetMSE@10)
+
+| Arm | Loss | RetMSE@10 | Hard AggMSE@10 | D | C | Soft AggMSE | Best epoch |
+|---|---|---:|---:|---:|---:|---:|---:|
+| D0 | L0 | **0.918465** | **0.602755** | 0.091846 | 0.510909 | 0.568756 | 9 |
+| D1 | L3a | 0.944324 | 0.619305 | 0.094432 | 0.524873 | 0.585800 | 10 |
+| D2 | L3b | 0.944241 | 0.606237 | 0.094424 | 0.511813 | 0.568487 | 9 |
+
+**Major reversal from ETTh1_96: on ETTh1_720, D0 (Separate, plain L0) is the BEST of all 6 arms in this entire track (lower RetMSE@10 AND lower Hard AggMSE@10 than every Shared arm, including S0, S1, and S2).** This is the opposite of the ETTh1_96 finding, where every Separate arm was worse than every Shared arm. Horizon, not just dataset, changes whether encoder separation helps -- consistent with this project's long-standing, repeated H96-vs-H720 divergence pattern (seen previously for multi-query heads, Hard/Soft Expert routing, and multiple retrieval-loss families), now also confirmed for Shared-vs-Separate encoder structure specifically.
+
+Within Separate, L0 (D0) still beats both aggregate losses (D1, D2) on this cell, same direction as ETTh1_96's within-Separate finding, i.e. the "aggregate loss helps within Separate" pattern found on ETTh1_96 (D1<D0 there) does NOT replicate on ETTh1_720 (D1>D0, D2>D0 here) -- the Separate-encoder aggregate-loss benefit from ETTh1_96 was itself cell-specific, not a general property of the Separate structure.
+
+**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**
