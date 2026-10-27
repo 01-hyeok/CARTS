@@ -1,0 +1,9 @@
+{
+  "cell": "ETTh1_96",
+  "arm": "S1",
+  "loss": "L3a",
+  "mean_kl_grad_norm": 3.5456934571266174,
+  "mean_agg_grad_norm": 0.8423644825816154,
+  "mean_grad_cosine_kl_vs_agg": 0.32881956920027733,
+  "mean_agg_over_kl_ratio": 0.231791652739048
+}

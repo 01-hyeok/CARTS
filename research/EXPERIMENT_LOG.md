@@ -6354,3 +6354,76 @@ Artifacts: `results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/` (`PHASE_A`
 through `PHASE_E` + `FINAL_REPORT.md`, `phase_cdeg/` per-query-channel
 parquet, `phase_analysis/`). Script modified:
 `scripts/diag_v5_head_objective01.py` (PHASE D block only).
+
+## TRACK-V5-HEAD-LOSS-DUAL-ENCODER01 -- Head Objective Learning & Dual-Encoder (IN PROGRESS)
+
+New track testing whether an Aggregate-aligned Loss (L3a full-P100 soft,
+L3b Top-K-aligned) improves over V5's plain Mean-Mixture KL (L0), and
+whether Shared vs Separate Query/Key Encoder interacts with that choice.
+2x3 factorial: {S0,S1,S2} shared encoder x {L0,L3a,L3b}; {D0,D1,D2}
+separate encoder (full gradient both sides, no frozen/stop-grad key,
+deepcopy-at-init) x same 3 losses. **Status: Phase 0 CLOSED; Phase 1-4
+COMPLETE for ETTh1_96 only (1 of 4 primary cells); ETTh1_720/Weather_96/
+Weather_720 still pending.**
+
+**Phase 0**: implemented a genuinely boundary-aware Differentiable
+Top-K operator (`utils/differentiable_topk01.py::soft_topk_mask`,
+sigmoid-relaxed order-statistic threshold, `tau->0` recovers exact hard
+Top-K) -- explicitly distinct from the repo's existing
+`utils/soft_topk_retrieval01.py::soft_topk_weights`, which only
+renormalizes an already-hard-selected Top-K set and gives exactly zero
+gradient to any candidate outside it. 24/24 new unit tests pass. L0
+canonical parity confirmed exact (`.eval()` mode, byte-identical scores
+vs `train_retriever_pool01.compute_scores`) after first catching and
+diagnosing a spurious 0.35 diff caused by leaving the model in
+`.train()` mode (dropout) during the verification script itself -- not
+a bug in the actual training code. Gradient probe (`lambda_A=1.0`):
+Agg/KL grad-norm ratios 0.23-0.97 across S1/S2/D1/D2, no pathological
+mismatch -- `lambda_A=1.0` retained as the single fixed primary
+coefficient, no sweep run. A genuine smoke-test-ordering bug (comparing
+Separate-encoder weights for divergence BEFORE the optimizer step that
+causes them to diverge) found and fixed in the reused
+`train_p100_dual_encoder01.py` E1 pattern and in this track's own
+script.
+
+**ETTh1_96 (seed0) result, all 6 arms, Stage1+Stage2**:
+
+| Arm | Encoder | Loss | Stage1 Hard AggMSE | Stage2 Test MSE |
+|---|---|---|---:|---:|
+| Base | -- | -- | -- | 0.39242 |
+| S0 | Shared | L0 | 0.409808 | **0.369597** (reproduces canonical V5 exactly) |
+| S1 | Shared | L3a | 0.411558 | 0.370652 |
+| S2 | Shared | L3b | 0.412088 | 0.371837 |
+| D0 | Separate | L0 | 0.436703 | 0.376534 |
+| D1 | Separate | L3a | 0.431208 | 0.373972 |
+| D2 | Separate | L3b | 0.431813 | 0.375010 |
+
+Plain L0+Shared (= canonical V5) is still the best arm on this cell. The
+one real positive finding: WITHIN the Separate structure specifically,
+the aggregate loss measurably reduces the within-set cross term `C`
+(D0's C=0.368108 -> D1's C=0.362513) and this DOES transfer to Stage2
+(D1 < D0) -- an encoder x loss interaction absent in the Shared
+structure (where the aggregate loss only increases `D`, with `C` nearly
+flat, and both Stage1 and Stage2 get monotonically worse as the
+aggregate term is added). Single cell, single seed -- not yet a
+cross-cell claim.
+
+24/24 new unit tests pass; full suite 1704 passed, same 2 pre-existing
+unrelated failures, no regression.
+
+Artifacts: `results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/` (`PHASE_0`
+through `PHASE_4` + interim `FINAL_RESEARCH_REPORT.md` tracking
+progress honestly as IN PROGRESS, not complete). Scripts (new):
+`utils/differentiable_topk01.py`,
+`scripts/train_v5_head_loss_dual_encoder01.py`,
+`scripts/build_v5_head_loss_stage2_cache01.py`. Also fixed a
+pre-existing smoke-test bug in `scripts/train_p100_dual_encoder01.py`
+(from the still-separate, not-yet-trained
+`TRACK-P100-ASYMMETRIC-DUAL-ENCODER-PRR01`).
+
+**Remaining work (explicit, not auto-continued without resuming this
+track)**: ETTh1_720/Weather_96/Weather_720 Phase 1-4; the full 2x3
+factorial Tables A-F across all 4 cells; Phase 5 (L1/L2 follow-up,
+gated on the primary comparison finishing); the 12 final research
+questions; no seed1/seed2/H192/H336 extension (correctly not started,
+per spec's own explicit prohibition this round).
