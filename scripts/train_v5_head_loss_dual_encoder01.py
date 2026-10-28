@@ -53,6 +53,7 @@ from scripts.train_retriever_pool01 import CandidatePoolCache
 from utils.candidate_pool import gather_candidate_histories, gather_candidate_values, \
     encode_pooled_candidates, local_to_global, pooled_future_mse
 from utils.differentiable_topk01 import soft_topk_forecast, soft_topk_mask
+from utils.differentiable_topk02 import soft_topk_mask_v2
 from utils.mean_mixture_selection import mean_mixture_topk_selection
 
 EPS = 1e-8
@@ -88,7 +89,13 @@ def aggregate_loss(loss_name, p_mix, pooled_memory_c, offset_c, query_future, va
         return ((r_soft - query_future) ** 2).mean(), r_soft
     if loss_name == 'L3b':
         log_p_mix = torch.log(p_mix.clamp_min(EPS))
-        a = soft_topk_mask(log_p_mix, valid_mask, k=cli.top_k, tau=cli.tau_topk)
+        topk_version = getattr(cli, 'topk_version', 'v1')
+        if topk_version == 'v1':
+            a = soft_topk_mask(log_p_mix, valid_mask, k=cli.top_k, tau=cli.tau_topk)
+        elif topk_version == 'v2':
+            a = soft_topk_mask_v2(log_p_mix, valid_mask, k=cli.top_k, tau=cli.tau_topk)
+        else:
+            raise ValueError(f'[ISSUE][ABORT] unknown topk_version {topk_version}')
         r_soft = soft_topk_forecast(a, y_pool)
         return ((r_soft - query_future) ** 2).mean(), r_soft
     raise ValueError(f'[ISSUE][ABORT] unknown loss {loss_name}')
@@ -106,6 +113,10 @@ def main():
     ap.add_argument('--tau_t', type=float, default=0.1)
     ap.add_argument('--tau_s', type=float, default=0.1)
     ap.add_argument('--tau_topk', type=float, default=0.05, help='L3b relaxation temperature')
+    ap.add_argument('--topk_version', choices=('v1', 'v2'), default='v1',
+                    help='Differentiable Top-K operator used by L3b (TRACK-V5-TOPK-CORRECTION-MECHANISM01 '
+                         'Phase D); default v1 preserves every existing TRACK-V5-HEAD-LOSS-DUAL-ENCODER01 '
+                         'run unchanged. No effect on L0/L3a.')
     ap.add_argument('--lambda_A', type=float, default=1.0)
     ap.add_argument('--slot_std', type=float, default=1e-3)
     ap.add_argument('--batch_size', type=int, default=32)
@@ -178,6 +189,7 @@ def main():
     config = {
         'exp': 'TRACK-V5-HEAD-LOSS-DUAL-ENCODER01', 'cell': cli.cell, 'arm': cli.arm, 'loss': loss_name,
         'shared_encoder': shared, 'lambda_A': cli.lambda_A, 'tau_topk': cli.tau_topk,
+        'topk_version': cli.topk_version,
         'candidate_pool_mode': 'coarse_topk', 'candidate_pool_size': cli.candidate_pool_size,
         'candidate_pool_metric': 'delta_last_cosine', 'full_candidate_count': int(exp.memory_x.size(0)),
         'tau_t': cli.tau_t, 'tau_s': cli.tau_s, 'top_k': cli.top_k, 'batch_size': cli.batch_size,
