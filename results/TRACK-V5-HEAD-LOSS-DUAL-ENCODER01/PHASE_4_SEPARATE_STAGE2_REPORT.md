@@ -42,4 +42,14 @@ Phase 3's Stage1 finding (D1 beats D0 on Hard AggMSE via a C-reduction mechanism
 
 **D0 (Separate, plain L0) is the single best arm of all 6 on ETTh1_720, both at Stage1 and Stage2** -- a result that fully reverses ETTh1_96's ranking (there, D0 was the single WORST arm). Full ranking (best to worst) on this cell: **D0 < D2 < S2 < S0 < D1 < S1.** Note this ranking is NOT a clean "Separate > Shared" or "L0 > L3b > L3a" statement either -- it is a genuinely mixed ordering that differs from both of ETTh1_96's own clean within-group orderings, underscoring that neither the Encoder-structure main effect nor the Loss main effect is stable across horizons on this dataset alone; the cross-cell Table D/E in the (pending) final report will need Weather's two cells before any dataset-general claim is defensible.
 
-**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md's status section for the concrete remaining-work list.)**
+## Weather_96 full 6-arm comparison (test split, Stage2 MSE)
+
+| Cell | Base | S0 | S1 | S2 | D0 | D1 | D2 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Weather_96 | 0.19527 | 0.176649 | 0.179473 | 0.168375 | 0.181700 | 0.178282 | **0.168030** |
+
+**D2 is the single best arm of all 6 on Weather_96** (barely edging S2, 0.168030 vs 0.168375 -- within noise). Full ranking (best to worst): **D2 < S2 < S0 < D1 < S1 < D0.** This is the first cell where the L3b win is this consistent AND this large in BOTH encoder structures at Stage2: D2 beats D0 by 7.5%, mirroring S2's 4.7% win over S0. All 6 arms beat Base (0.19527) on this cell -- notable since this project's Weather tracks have repeatedly found Base hard to beat; the aggregate-aligned loss (specifically L3b, not L3a) appears to be what makes the difference here, not retrieval itself (plain L0 arms S0/D0 already beat Base too, by a smaller margin).
+
+**RQ3 Stage2-transfer answer, Weather_96**: Yes, cleanly -- the dramatic Stage1 Hard-AggMSE gap for L3b (22-32%) attenuates but clearly survives into Stage2 (4.7-7.5%), the strongest and most consistent positive transfer result in the track so far, present in BOTH encoder structures (unlike ETTh1_96's D1-transfer finding, which was Separate-only and was itself not replicated on ETTh1_720).
+
+**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md's status section for the concrete remaining-work list.)**

@@ -99,3 +99,14 @@ results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_96/full_pass_val
 results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_96/full_pass_test.parquet
 results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_720/full_pass_val.parquet
 results/TRACK-V5-HEAD-OBJECTIVE-COSINE-FIX01/phase_cdeg/Weather_720/full_pass_test.parquet
+
+# TRACK-V5-HEAD-LOSS-DUAL-ENCODER01: Weather Stage2 retrieval caches exceed
+# GitHub's 100MB file limit (train.pt ~283MB per arm); kept locally only.
+# Scalar metrics (stage1_metrics.json) and all Stage2 training outputs are
+# still committed.
+results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_96/*/train.pt
+results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_96/*/test.pt
+results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_96/*/val.pt
+results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_720/*/train.pt
+results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_720/*/test.pt
+results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_720/*/val.pt

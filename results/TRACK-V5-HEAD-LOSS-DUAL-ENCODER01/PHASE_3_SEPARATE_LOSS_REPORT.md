@@ -48,4 +48,16 @@ Separate (`D0/D1/D2`) has exactly 2x the `model.encoder` submodule parameter cou
 
 Within Separate, L0 (D0) still beats both aggregate losses (D1, D2) on this cell, same direction as ETTh1_96's within-Separate finding, i.e. the "aggregate loss helps within Separate" pattern found on ETTh1_96 (D1<D0 there) does NOT replicate on ETTh1_720 (D1>D0, D2>D0 here) -- the Separate-encoder aggregate-loss benefit from ETTh1_96 was itself cell-specific, not a general property of the Separate structure.
 
-**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**
+## Weather_96 (test split, primary checkpoint = min val RetMSE@10)
+
+| Arm | Loss | RetMSE@10 | Hard AggMSE@10 | Best epoch |
+|---|---|---:|---:|---:|
+| D0 | L0 | 0.552212 | 0.305465 | 7 |
+| D1 | L3a | 0.580569 | 0.306692 | 9 |
+| D2 | L3b | **0.334220** | **0.206892** | 4 |
+
+**Same decisive L3b win reproduces WITHIN Separate.** D2 beats D0 by 39.5% on RetMSE@10 and 32.3% on Hard AggMSE@10 -- an even larger effect than S2 vs S0 within Shared (27.5%/22.6%). D1 (L3a) is again the worst arm, same direction as Shared. This is the first case in the track where the Loss effect (L3b >> L0) is this large AND consistent across both encoder structures -- no Loss x Encoder interaction of the kind seen on ETTh1_96 (where the aggregate loss only helped within Separate) is visible here; L3b helps both structures by a similar, large margin.
+
+D0 vs S0: Separation still hurts on this cell too (D0's RetMSE 0.552212 vs S0's 0.455618, +21.2%), consistent with every other cell checked so far -- Separate has not yet beaten Shared at matched loss on any cell.
+
+**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**

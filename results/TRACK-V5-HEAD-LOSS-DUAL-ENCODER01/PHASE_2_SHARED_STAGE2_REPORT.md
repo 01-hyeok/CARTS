@@ -30,4 +30,12 @@ All 3 Shared arms beat Base. **S0 (plain KL) is the best of the three** -- L3a a
 
 S0 reproduces canonical V5 Stage2 (0.51492) essentially exactly (0.514917). **S2's small Stage1 win over S0 (Phase 1) DOES transfer to Stage2** -- S2's test MSE (0.514618) is marginally better than S0's (0.514917), the first case in this track where an aggregate-aligned loss beats plain L0 end-to-end. S1 remains the worst of the three, same as Stage1.
 
-**(Weather_96/Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**
+## Weather_96 Stage2 Test MSE
+
+| Cell | Base | S0 (L0) | S1 (L3a) | S2 (L3b) |
+|---|---:|---:|---:|---:|
+| Weather_96 | 0.19527 | 0.176649 | 0.179473 | **0.168375** |
+
+**L3b's Stage1 win transfers to Stage2, and all 3 arms now beat Base** -- a genuine departure from this project's long-standing repeated Weather pattern (Base usually wins or ties on Weather; see PHASE 4's earlier note). S2 beats S0 by 4.7% at Stage2 (smaller than Stage1's 22.6% Hard-AggMSE gap, but still the clearest Stage2 win for an aggregate-aligned loss in this track). S1 is worst of the three at Stage2 too, same order as Stage1. Lambda values: S0=0.3953, S1=0.3837, S2=0.4309 -- all meaningfully below 0.5 on this cell (unlike ETTh1's ~0.47-0.49), consistent with Base being more competitive here.
+
+**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**
