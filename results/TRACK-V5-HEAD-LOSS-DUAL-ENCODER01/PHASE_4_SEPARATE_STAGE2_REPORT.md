@@ -1,3 +1,10 @@
+> **CORRECTION (TRACK-V5-TOPK-CORRECTION-MECHANISM01, Phase A1)**: this file's Weather_96 "Base" value
+> below, `0.19527`, is WRONG -- misread from `research/EXPERIMENT_LOG.md:4607`'s "Raw Cosine (R0) MSE"
+> column instead of "Base Forecaster (B0) MSE". Correct value: **0.169364**. All 6 arms' Stage2 MSE numbers
+> are UNCHANGED and independently re-verified correct. With the corrected Base, **only D2 (and S2) beat
+> Base** on Weather_96 (by <1%); S0/S1/D0/D1 are all WORSE than Base, reversing the "all 6 arms beat Base"
+> claim below. See `results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/PHASE_A_STAGE2_CORRECTNESS_AUDIT.md`.
+
 # PHASE 4 -- Separate Encoder Stage2 Forecasting (D0/D1/D2)
 
 **Status: ETTh1_96 complete; other 3 cells pending.** Same Base Forecaster checkpoint as the Shared arms (Phase 2), same Stage2 script, independent cache per arm.

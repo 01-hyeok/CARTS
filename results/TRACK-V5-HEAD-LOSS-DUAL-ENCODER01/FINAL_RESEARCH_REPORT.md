@@ -1,3 +1,12 @@
+> **CORRECTION (TRACK-V5-TOPK-CORRECTION-MECHANISM01, Phase A1)**: the Weather_96 "Base = 0.19527" value
+> used throughout this file is WRONG -- misread from `research/EXPERIMENT_LOG.md:4607`'s Raw-Cosine-baseline
+> column instead of the Base-Forecaster column. Correct value: **0.169364**. All arm MSE numbers themselves
+> are independently re-verified EXACT and unchanged. With the correct Base, **4 of 6 arms (S0/S1/D0/D1) are
+> actually WORSE than Base on Weather_96** -- only S2/D2 (the L3b arms) edge it out, by <1%. This REVERSES
+> the "all 6 arms beat Base" headline claim below (and strengthens, not weakens, the L3b finding: L3b is
+> the only loss variant that even reaches parity with Base on this cell). Full trace:
+> `results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/PHASE_A_STAGE2_CORRECTNESS_AUDIT.md`.
+
 # TRACK-V5-HEAD-LOSS-DUAL-ENCODER01 -- Status / Interim Report
 
 **This track is IN PROGRESS, not complete.** Per the user's explicit continuation instruction, work resumed Phase 0 through Phase 1-4 for the first of 4 primary cells. This file will be rewritten as a true final report once all 4 cells (ETTh1 H96/H720, Weather H96/H720) complete Phase 1-4; until then it records exactly what is done, what is pending, and the real numbers obtained so far -- not a projection.

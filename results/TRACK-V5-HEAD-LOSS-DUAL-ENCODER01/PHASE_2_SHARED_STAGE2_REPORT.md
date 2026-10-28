@@ -1,3 +1,14 @@
+> **CORRECTION (TRACK-V5-TOPK-CORRECTION-MECHANISM01, Phase A1)**: this file's Weather_96 "Base" value
+> below, `0.19527`, is WRONG -- it was misread from `research/EXPERIMENT_LOG.md:4607`'s "Raw Cosine (R0)
+> MSE" column instead of the "Base Forecaster (B0) MSE" column two columns to its left. The correct
+> Weather_96 Base test MSE is **0.169364** (`results/TRACK-R-FINAL-METHOD-GENERALIZATION01/Weather/H96/seed0/base/metrics.json`,
+> independently re-verified exactly). All Stage2 MSE numbers themselves (S0/S1/S2 = 0.176649/0.179473/0.168375)
+> are UNCHANGED and independently re-verified correct -- only the Base comparison point was wrong. With the
+> corrected Base, S0 and S1 are actually WORSE than Base on this cell (not better); only S2 (L3b) edges it
+> out, by <1%. See `results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/PHASE_A_STAGE2_CORRECTNESS_AUDIT.md` for
+> the full trace. This note is a correction, not a retraction -- the original numbers below are left as
+> originally written.
+
 # PHASE 2 -- Shared Encoder Stage2 Forecasting (S0/S1/S2)
 
 **Status: ETTh1_96 complete; other 3 cells pending.** Original CARTS Trainable Global Lambda (`scripts/train_r_stage2_lambda01.py`, reused UNMODIFIED), same Base Forecaster checkpoint (`checkpoints/track_r_final_method_generalization01/ETTh1/H96/seed0/base/checkpoint.pth`) for every arm, independent retrieval cache per arm (`scripts/build_v5_head_loss_stage2_cache01.py`, new, cache-schema-identical to `build_v_meanmix_cache_pool01.py`).
