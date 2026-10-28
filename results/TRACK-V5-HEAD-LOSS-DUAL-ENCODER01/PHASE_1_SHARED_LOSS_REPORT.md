@@ -50,4 +50,18 @@ S0 reproduces canonical V5 ETTh1_720 (retMSE@10=0.94263, aggMSE@10=0.62057) esse
 
 **A third, distinct pattern -- L3b wins decisively.** Unlike either ETTh1 cell (where L3a/L3b were close to L0, sometimes slightly worse, sometimes slightly better by ~1%), on Weather_96 **S2 (L3b) beats S0 by 27.5% on RetMSE@10 and 22.6% on Hard AggMSE@10** -- the largest effect size of any Loss comparison in this track so far, in either direction. S1 (L3a) is clearly the worst arm (RetMSE +18.2% vs S0), the opposite of S2's direction -- so the two aggregate losses no longer move together at all on this cell: L3a actively hurts, L3b strongly helps.
 
-**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md's status section.)**
+## Weather_720 (test split, primary checkpoint = min val RetMSE@10)
+
+| Arm | Loss | RetMSE@10 | Hard AggMSE@10 | Best epoch |
+|---|---|---:|---:|---:|
+| S0 | L0 | 0.787918 | 0.617802 | 6 |
+| S1 | L3a | 0.679790 | 0.526663 | 8 |
+| S2 | L3b | **0.673475** | **0.507839** | 10 |
+
+**Same large, decisive L3b win as Weather_96, now reproduced on the fourth cell.** S2 beats S0 by 14.5% on
+RetMSE@10 and 17.8% on Hard AggMSE@10. Unlike Weather_96 (where S1/L3a was the worst arm), here S1 also
+clearly beats S0 (12.3% RetMSE improvement) -- on Weather_720 BOTH aggregate-aligned losses help within
+Shared, with L3b still the larger win. This is the first cell where L3a and L3b move in the SAME direction
+within Shared (every prior cell showed them diverge or both fail).
+
+**(All 4 primary cells now complete -- see FINAL_RESEARCH_REPORT.md for the full cross-cell factorial.)**

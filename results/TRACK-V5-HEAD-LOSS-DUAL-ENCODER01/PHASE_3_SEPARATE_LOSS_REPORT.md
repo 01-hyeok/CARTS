@@ -60,4 +60,21 @@ Within Separate, L0 (D0) still beats both aggregate losses (D1, D2) on this cell
 
 D0 vs S0: Separation still hurts on this cell too (D0's RetMSE 0.552212 vs S0's 0.455618, +21.2%), consistent with every other cell checked so far -- Separate has not yet beaten Shared at matched loss on any cell.
 
-**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**
+## Weather_720 (test split, primary checkpoint = min val RetMSE@10)
+
+| Arm | Loss | RetMSE@10 | Hard AggMSE@10 | Best epoch |
+|---|---|---:|---:|---:|
+| D0 | L0 | 0.833014 | 0.648524 | 8 |
+| D1 | L3a | 0.729210 | 0.556950 | 10 |
+| D2 | L3b | **0.734432** | **0.535815** | 10 |
+
+**L3b wins within Separate too, matching Weather_96.** D2 beats D0 by 11.9% RetMSE / 17.4% Hard AggMSE.
+Unlike Weather_96 (where D2 clearly beat D1 on RetMSE), here D1 actually has a slightly BETTER RetMSE than
+D2 (0.729210 vs 0.734432) while D2 still wins on Hard AggMSE (0.535815 vs 0.556950) -- a case where the two
+metrics disagree on ranking, resolved by Hard AggMSE being the metric this track treats as primary for the
+Loss-effect question.
+
+D0 vs S0: Separation hurts on this cell too (D0 RetMSE 0.833014 vs S0's 0.787918, +5.7%), consistent with
+every other cell -- Separate has never beaten Shared at matched loss in this entire track.
+
+**(All 4 primary cells now complete -- see FINAL_RESEARCH_REPORT.md for the full cross-cell factorial.)**

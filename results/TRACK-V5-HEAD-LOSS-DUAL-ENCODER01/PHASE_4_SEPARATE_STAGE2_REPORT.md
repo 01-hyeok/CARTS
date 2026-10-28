@@ -59,4 +59,24 @@ Phase 3's Stage1 finding (D1 beats D0 on Hard AggMSE via a C-reduction mechanism
 
 **RQ3 Stage2-transfer answer, Weather_96**: Yes, cleanly -- the dramatic Stage1 Hard-AggMSE gap for L3b (22-32%) attenuates but clearly survives into Stage2 (4.7-7.5%), the strongest and most consistent positive transfer result in the track so far, present in BOTH encoder structures (unlike ETTh1_96's D1-transfer finding, which was Separate-only and was itself not replicated on ETTh1_720).
 
-**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md's status section for the concrete remaining-work list.)**
+## Weather_720 full 6-arm comparison (test split, Stage2 MSE)
+
+| Cell | Base | S0 | S1 | S2 | D0 | D1 | D2 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Weather_720 | 0.319430 | 0.385526 | 0.363349 | 0.359719 | 0.392910 | 0.374244 | **0.354681** |
+
+**D2 is the single best retrieval arm, but ALL 6 arms lose to Base on this cell** -- the only one of the 4
+primary cells where this happens. Full ranking (best to worst): **D2 < S2 < S1 < D1 < S0 < D0.** D2 beats
+D0 by 9.7%; S2 beats S0 by 6.7% -- L3b's advantage over L0 survives at Stage2 in both encoder structures,
+same direction as every other cell, but the absolute gap to Base (11.1% for D2, the best arm) is larger
+than any other cell's gap, confirming this project's repeated finding that Weather_720 is the single
+hardest cell for any retrieval-augmented method to beat Base.
+
+**RQ3 Stage2-transfer answer, Weather_720**: Yes, directionally, for both encoder structures -- the Stage1
+L3b advantage (D2<D0, S2<S0 on Hard AggMSE) transfers to Stage2 in the same direction, though the
+percentage gap shrinks substantially (17-18% at Stage1 down to 7-10% at Stage2), the same attenuation
+pattern seen on every other cell in this track.
+
+**All 4 primary cells (ETTh1_96, ETTh1_720, Weather_96, Weather_720) are now complete. See
+FINAL_RESEARCH_REPORT.md for the full cross-cell Loss x Encoder factorial analysis, the 12 final research
+questions, and the GO/MODIFY/STOP verdict.**

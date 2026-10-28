@@ -49,4 +49,21 @@ S0 reproduces canonical V5 Stage2 (0.51492) essentially exactly (0.514917). **S2
 
 **L3b's Stage1 win transfers to Stage2, and all 3 arms now beat Base** -- a genuine departure from this project's long-standing repeated Weather pattern (Base usually wins or ties on Weather; see PHASE 4's earlier note). S2 beats S0 by 4.7% at Stage2 (smaller than Stage1's 22.6% Hard-AggMSE gap, but still the clearest Stage2 win for an aggregate-aligned loss in this track). S1 is worst of the three at Stage2 too, same order as Stage1. Lambda values: S0=0.3953, S1=0.3837, S2=0.4309 -- all meaningfully below 0.5 on this cell (unlike ETTh1's ~0.47-0.49), consistent with Base being more competitive here.
 
-**(Weather_720 pending -- see FINAL_RESEARCH_REPORT.md.)**
+## Weather_720 Stage2 Test MSE
+
+**Independently re-verified Base (`scripts/verify_v5_head_loss_stage2_correctness01.py --cell Weather_720`,
+not taken from any EXPERIMENT_LOG.md table at face value, per the Weather_96 column-misread precedent):
+`base_mse(test) = 0.319430`**, which matches the EXPERIMENT_LOG.md citation (0.31943) exactly this time --
+unlike Weather_96, there was no error in this particular citation, but it was still independently confirmed
+rather than assumed.
+
+| Cell | Base | S0 (L0) | S1 (L3a) | S2 (L3b) |
+|---|---:|---:|---:|---:|
+| Weather_720 | 0.319430 | 0.385526 | 0.363349 | **0.359719** |
+
+**All 3 Shared arms are WORSE than Base on this cell** -- a departure from Weather_96 (where S2/D2 narrowly
+beat Base) and consistent with this project's long-standing repeated finding that Base is hardest to beat
+at the longest horizon. L3b's large Stage1 win (17.8% Hard AggMSE) attenuates sharply at Stage2 but is still
+the best of the three retrieval arms (S2 beats S0 by 6.7%), the same ordering as every other cell.
+
+**(All 4 primary cells now complete -- see FINAL_RESEARCH_REPORT.md for the full cross-cell factorial.)**
