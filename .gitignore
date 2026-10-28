@@ -110,3 +110,12 @@ results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_96/*/val.pt
 results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_720/*/train.pt
 results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_720/*/test.pt
 results/TRACK-V5-HEAD-LOSS-DUAL-ENCODER01/stage2_cache/Weather_720/*/val.pt
+
+# TRACK-V5-TOPK-CORRECTION-MECHANISM01 Phase F: same Weather Stage2 cache
+# size issue (train.pt up to 2.0GB for Weather_720); kept locally only.
+results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/phaseF_cache/Weather_96/*/train.pt
+results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/phaseF_cache/Weather_96/*/test.pt
+results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/phaseF_cache/Weather_96/*/val.pt
+results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/phaseF_cache/Weather_720/*/train.pt
+results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/phaseF_cache/Weather_720/*/test.pt
+results/TRACK-V5-TOPK-CORRECTION-MECHANISM01/phaseF_cache/Weather_720/*/val.pt
