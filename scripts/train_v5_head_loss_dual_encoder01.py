@@ -342,6 +342,14 @@ def main():
                     for key_ in ('kl', 'model_ind_mse', 'agg_mse', 'soft_aggmse', 'recall10', 'recall10_full',
                                'ndcg10'):
                         v = res[key_]
+                        if key_ == 'kl':
+                            # kl_loss_from_prob() returns a 0-dim scalar already averaged over
+                            # this batch's `bsz` queries (unlike the other keys here, which are
+                            # [bsz]-shaped per-query tensors). Re-scale by bsz before accumulating
+                            # so the cross-batch sum-then-divide-by-n_eff below is a query-weighted
+                            # average, not an accidental division by bsz again
+                            # (TRACK-V5-TOPK-CORRECTION-MECHANISM01 Phase B1).
+                            v = v * bsz
                         per_ch.setdefault(key_, []).append(v.reshape(-1).cpu())
                 for k_, vals in per_ch.items():
                     val_sums[k_] = val_sums.get(k_, 0.0) + torch.cat(vals).sum().item()
@@ -397,6 +405,10 @@ def main():
                     for key_ in ('kl', 'model_ind_mse', 'agg_mse', 'soft_aggmse', 'recall10', 'recall10_full',
                                'ndcg10', 'D', 'C'):
                         v = res[key_]
+                        if key_ == 'kl':
+                            # see matching comment in the val loop above
+                            # (TRACK-V5-TOPK-CORRECTION-MECHANISM01 Phase B1).
+                            v = v * bsz
                         per_ch.setdefault(key_, []).append(v.reshape(-1).cpu())
                 for k_, vals in per_ch.items():
                     test_sums[k_] = test_sums.get(k_, 0.0) + torch.cat(vals).sum().item()
