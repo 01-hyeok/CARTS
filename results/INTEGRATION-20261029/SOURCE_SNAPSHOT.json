@@ -1,0 +1,1280 @@
+{
+  "snapshot_utc": "2026-10-29T02:02:56.748078+00:00",
+  "upstream_commit": "5c59b1a33cb080698269ced3499fb2e935e13083",
+  "full_verified": 44,
+  "p100_verified": 20,
+  "current": {
+    "cell": "Weather_720",
+    "method": "paa16_cosine",
+    "model": "V0",
+    "phase": "training",
+    "pid": 3587985,
+    "seed": 0
+  },
+  "files": [
+    {
+      "path": "experiments/full_head_analysis01/full_analysis.py",
+      "bytes": 23424,
+      "source_sha256": "fbe943daf43bc0fce548ed0ba96fd1a1f6729a5a3ce6054bc11636784e2c3053",
+      "published_sha256": "fbe943daf43bc0fce548ed0ba96fd1a1f6729a5a3ce6054bc11636784e2c3053"
+    },
+    {
+      "path": "experiments/full_head_analysis01/run_pipeline.py",
+      "bytes": 8935,
+      "source_sha256": "503f8ce62306f77382686ad761502ceb270c6f7e3ff7cb8adb6dd20cda8f2c4b",
+      "published_sha256": "503f8ce62306f77382686ad761502ceb270c6f7e3ff7cb8adb6dd20cda8f2c4b"
+    },
+    {
+      "path": "experiments/full_head_analysis01/test_full_analysis.py",
+      "bytes": 2610,
+      "source_sha256": "5a29034fc5e8804b22897eef73e6c21adb7ff87c63f0d38863d64b7def5a8acc",
+      "published_sha256": "5a29034fc5e8804b22897eef73e6c21adb7ff87c63f0d38863d64b7def5a8acc"
+    },
+    {
+      "path": "experiments/full_head_analysis01/verify_completed.py",
+      "bytes": 2398,
+      "source_sha256": "8337e7662717c6edceeff0bd710783171402d7696291cb550ea5e5373973117d",
+      "published_sha256": "2bb0a0f59f15dbd3bdb636e2f18a3c528f5eac5f98cc7fe68a3aa58892064dca"
+    },
+    {
+      "path": "experiments/full_head_analysis01/report_completed.py",
+      "bytes": 5131,
+      "source_sha256": "8395760b271f9a5175c6f7adeed1907652f83073dfb94e5a4ffa63196507391b",
+      "published_sha256": "01f31708579e28e0dd53895e7c886ac5de7e88d94729f03fafea7a6b795bda43"
+    },
+    {
+      "path": "experiments/full_head_analysis01/join_stage1_stage2.py",
+      "bytes": 1999,
+      "source_sha256": "bfcad4181197c3356b85252b2c50fbbd71ab63a08d7284204296f781775d951a",
+      "published_sha256": "73ff1f524869767a997d24b87b5a6be51f22388ccfc4ee8181f08f0f7f66329e"
+    },
+    {
+      "path": "experiments/full_head_analysis01/export_canonical_raw.py",
+      "bytes": 926,
+      "source_sha256": "dc8973b2761f24b0a4e45ff1814c259e6473c0c5b91d81fd9b64da6cc60c8e36",
+      "published_sha256": "f4ddd917acbde323014012b49653d1d99d5833bead0cb2d3503f7c3b812ff6e6"
+    },
+    {
+      "path": "experiments/full_head_analysis01/finalize_reports.py",
+      "bytes": 7464,
+      "source_sha256": "0b599b489e7249a709b9d74d4633f2ac6ee4b821d3860f90e1c1cf50d93ccd51",
+      "published_sha256": "de181346299154c0ffa95e57c9458aa6235acbbfd256389ee19dbb62b20405d9"
+    },
+    {
+      "path": "experiments/full_head_analysis01/verify_weather720_legacy_comparators.py",
+      "bytes": 2237,
+      "source_sha256": "24198dc31ca9f9771d39cc295dd85a73b9f503c1970c1ab81933df5b8f6c200d",
+      "published_sha256": "17624fc6d81a556b13151458658c619e958c7cdf182b8c922893f650f8e42645"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/pipeline.py",
+      "bytes": 32411,
+      "source_sha256": "c85260a198ddac4fffb85b093259414951144d1df082f69fc0f1a7a59df1051d",
+      "published_sha256": "c85260a198ddac4fffb85b093259414951144d1df082f69fc0f1a7a59df1051d"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/test_preselection.py",
+      "bytes": 4615,
+      "source_sha256": "6a4926e7fbcbfad00924fc4ba2e58b5355ea66c5375ff045b9c65289e8926cba",
+      "published_sha256": "6a4926e7fbcbfad00924fc4ba2e58b5355ea66c5375ff045b9c65289e8926cba"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/scripts/report_progress.py",
+      "bytes": 9485,
+      "source_sha256": "ed48064d6d373800e88be35d6dcec87941959208c61f935088ea8f760719c06b",
+      "published_sha256": "ed48064d6d373800e88be35d6dcec87941959208c61f935088ea8f760719c06b"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/scripts/precompute_legacy_baseline.py",
+      "bytes": 559,
+      "source_sha256": "c3981630fd1aea7ffd671eb80ba68bc2810a1f968fe2ddd57f441acd568a63bc",
+      "published_sha256": "c3981630fd1aea7ffd671eb80ba68bc2810a1f968fe2ddd57f441acd568a63bc"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/reports/IMPLEMENTATION_AUDIT.md",
+      "bytes": 14873,
+      "source_sha256": "6e473e914c16a53710e4adeed06c511bcb86a9736c9593b1f59f7b4ba9775a59",
+      "published_sha256": "6e473e914c16a53710e4adeed06c511bcb86a9736c9593b1f59f7b4ba9775a59"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/reports/Weather_timestamp_source_audit.json",
+      "bytes": 805,
+      "source_sha256": "43b913b06c6638a9f851a611ec215a7176c906caa664c0e38edb0534d187cf14",
+      "published_sha256": "b640f446f9327e890f59634e4f03199b6af7cf87a91851e35eea889c11ee8903"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/IMPLEMENTATION_AUDIT.md",
+      "bytes": 6525,
+      "source_sha256": "09cc5ea8f1c68548c944779256adbc1bd146dfdd4b7514806086cc2dd17747ea",
+      "published_sha256": "09cc5ea8f1c68548c944779256adbc1bd146dfdd4b7514806086cc2dd17747ea"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/BASELINE_REPRODUCTION.md",
+      "bytes": 481,
+      "source_sha256": "1cc3336d457f4ab4df293f9da65ed47ca8be7a4b5f48635223a96c5d78a6ed7e",
+      "published_sha256": "1cc3336d457f4ab4df293f9da65ed47ca8be7a4b5f48635223a96c5d78a6ed7e"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/CHECKPOINT_PROVENANCE.json",
+      "bytes": 8016,
+      "source_sha256": "432d3bdc07a4258e1a9eb8c887ff44ef96343e6bbc79e625292d5413b50d07cd",
+      "published_sha256": "5b22b399ec9e25f5ef2d5cd1d8085b01d57e9fc117e0179c7cda24288831a6c2"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/FINAL_REPORT.md",
+      "bytes": 28814,
+      "source_sha256": "da55b2311e67841fd32b80285bf044b0e80fa283625ac720990467c89bbd49e5",
+      "published_sha256": "da55b2311e67841fd32b80285bf044b0e80fa283625ac720990467c89bbd49e5"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/DELIVERABLE_AUDIT.json",
+      "bytes": 1142,
+      "source_sha256": "5d74570fe840172992d651219d2b92d4cfde838ffcfdc4ea42d8439bc3ac58bc",
+      "published_sha256": "513570e53b58f0b9f799cdb1ed8465dd3768c6771e74a58c6c38f566093936c1"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/METRIC_UNIT_NOTE.md",
+      "bytes": 720,
+      "source_sha256": "1708dadc977545946ab0fef94f24d6084bc1663e55acaa90c22ef8cb3c0dadfb",
+      "published_sha256": "1708dadc977545946ab0fef94f24d6084bc1663e55acaa90c22ef8cb3c0dadfb"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_QUALITY.csv",
+      "bytes": 7976,
+      "source_sha256": "997671c8deb9ad5612c22e418e6e4c9c3d64bd272f99ab076213277895df99ac",
+      "published_sha256": "39628327a06cab6debbf637b7dca9d1a7b8958e5127e17abb62fb1ec3b33499d"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_OVERLAP.csv",
+      "bytes": 10595,
+      "source_sha256": "6912da28d0b218b11b21cae55849bebe5e30a2fc0d1db9cc611e157eb4cce015",
+      "published_sha256": "602d313d7e5ebd18e0b655c65cb42b19bd5e4a329552f43c0e8b5ee5fbab12b0"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_UNION_COVERAGE.csv",
+      "bytes": 2989,
+      "source_sha256": "5b51d1316f5d130eee0423f9593747b0ce37f4a3374fa739efb26adcf34f92a5",
+      "published_sha256": "29b1f96bf0fc76d65a3302b1c85355f7e55a65fce85e571fbf5b9c11c894359d"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_ERROR_COMPLEMENTARITY.csv",
+      "bytes": 10595,
+      "source_sha256": "6912da28d0b218b11b21cae55849bebe5e30a2fc0d1db9cc611e157eb4cce015",
+      "published_sha256": "602d313d7e5ebd18e0b655c65cb42b19bd5e4a329552f43c0e8b5ee5fbab12b0"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_LEAVE_ONE_OUT.csv",
+      "bytes": 8597,
+      "source_sha256": "6abc34b6cc5c296d0211709d0cc042e2c1c44d7b63f9ca3e3dd017d4932874c7",
+      "published_sha256": "d33a3d03c9a16d57065d8aabb77187f49a0819dab87cbbd0e8e123a2862c74ab"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_SUBSET_ANALYSIS.csv",
+      "bytes": 41022,
+      "source_sha256": "2cb0c84fc127a6ed4115591bea43462daa6f1fb5edbf3399bbb1093f49170a3d",
+      "published_sha256": "24d9da0e85b7c52a381ab365a3af9e9ac634d28a8b862daf070686ee2b055987"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_STAGE2_MSE_MAE.csv",
+      "bytes": 10601,
+      "source_sha256": "c630e43e8802f69ec8370cab2aa6f75b57627e1452c3a104996b4e4ed6887018",
+      "published_sha256": "c225de699ce0336ae8031ab89445192b3cd1e8287b8dd1559a723be4d59d63d5"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_COUNT.csv",
+      "bytes": 1634,
+      "source_sha256": "97717c99d5ecb033ed9a551d5b7943893738cb7a57225b96dcad5c980db4532e",
+      "published_sha256": "f2a8e5f808b6be7910df9108fb5a5e123022662ce35c6aebf32e4110e6fa098e"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/CANONICAL_COMPARATORS_RAW.csv",
+      "bytes": 10177,
+      "source_sha256": "774c3356a643ea4e04b1159ed6b74125c8bfc07a6c4e0d442dcfc8bde07f2d41",
+      "published_sha256": "6f8af4da49dfc2a8a80404b6f8bff8f6cdceed43b931aaf9a890b90736ba4782"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_STAGE1_STAGE2_JOINED.csv",
+      "bytes": 10618,
+      "source_sha256": "621c94cfb075ac10c040bcfcdeadd0a49b0cfecedd2bdc0775f7a3a81e95b992",
+      "published_sha256": "6e6cfe9d07cb50bfead87279b6889c94b2b1a89a1b3178535ebf9ab56a35ce4d"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/RESOURCE_MEASUREMENT_SCOPE.json",
+      "bytes": 678,
+      "source_sha256": "729e059d17d6376ad05619554be7204fa368d73f60359a3c501c8761f0f6f0be",
+      "published_sha256": "cec06a9dc7dd828cebb9a806feb49093c008dd867875b46fc56952c377529268"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/RESOURCE_SUMMARY.csv",
+      "bytes": 277,
+      "source_sha256": "c521a9e43d182b3938f41e9e444445ff85cce2c57c7fef70f2b099f92b6223b4",
+      "published_sha256": "e98fcff78256e71b5e966251dde1c0e74533f96a9d5ca59ec7fc492055d747cc"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/COMPLETION_VERIFICATION.json",
+      "bytes": 5494,
+      "source_sha256": "a62ff0f11fffeb5b5ccecb23bcb10c996ded09a597f01ee945fdafa04a8fa2e3",
+      "published_sha256": "d9b9f392ca14740ce5695a83dd9c4ddd6295bb1b177d55b52961cdd0c8f330f7"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/CHECKPOINT_PROVENANCE.json",
+      "bytes": 1919,
+      "source_sha256": "bedd5e7fd560fd95f6a9ab0595087fd5fdf0e11952bd8904f37f4a28d72adf60",
+      "published_sha256": "0e1a97361e9fb6cc8b68e608f645154a3a5d7081c030d01ed41a27401c4c687d"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/baseline_reproduction.json",
+      "bytes": 1253,
+      "source_sha256": "3348d8c9448cf1a103d9e7ea723f2212f0d76451cc8dffe372f453b6e2353c3c",
+      "published_sha256": "f7671cf6046b18be38f0b438812a71044efb2ab70e460d33acc6527df4899721"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/EVIDENCE_INTERPRETATION.md",
+      "bytes": 3806,
+      "source_sha256": "9c6f662dca0f80c9a2cbd96df67a41d5c70ddfd6f687d7976d784dc9e52e5717",
+      "published_sha256": "9c6f662dca0f80c9a2cbd96df67a41d5c70ddfd6f687d7976d784dc9e52e5717"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/newcache_stored_lambda_verification.json",
+      "bytes": 465,
+      "source_sha256": "8c88d60bba06bed5f0051f4afda83ef75d30e7d552b0e82172fc015665851dde",
+      "published_sha256": "f0d050ea78fe58151bd5182cc4d14a98dcd21d47cddf88121c3d7832d963cae6"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1/metrics.json",
+      "bytes": 246,
+      "source_sha256": "86041cb1e9601def62314763a12a5c0ffd4fd0c855ed24cc11fbcbbf4715c91b",
+      "published_sha256": "4256fbc00d2cbf13ce2231154fd95b4432bf342c9ff0c5d8c7063959d62dce00"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/2/metrics.json",
+      "bytes": 242,
+      "source_sha256": "54843189c9a5a58bb283712f2cb6b6b19f2ce655a09937a4874cd328278bb08a",
+      "published_sha256": "72cb78e07e320b0635805d6236a38b013c278a22231ee60b3a6f8e3bc8279389"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/3/metrics.json",
+      "bytes": 245,
+      "source_sha256": "88d1b95fde4f81e086b69e07772c90b612ecc1ad55f6a8217f0eb8f4697df3e3",
+      "published_sha256": "bc9c437c0bf33853a24c3c4f64e16894b507d7d2e85acfe2e4c901a189ece046"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/4/metrics.json",
+      "bytes": 242,
+      "source_sha256": "5edec3884d79cbcc487e9b9091178b54f6bfc130c3d10b516b294a087bff1785",
+      "published_sha256": "7a0b057c3de68dd4034934ea95ec4c0c08c3f545491d161e0158943cb9c7bbe2"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/5/metrics.json",
+      "bytes": 246,
+      "source_sha256": "4b84153d882a3613d2e3b3eb72b42107860ed813fff37122877103423a876fe5",
+      "published_sha256": "aafcf87d72f06990481a15746b91702671d57aed19156a072c6d59a03f10395c"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/12345/metrics.json",
+      "bytes": 243,
+      "source_sha256": "668a7ccf16c239ab84cba3530ec911874e38d48fda9d3d177ecf248cf71ff921",
+      "published_sha256": "4dcfd34c0c699d3f7b55acec243036427bb6f13a3dcdf3bd5de6b5bb392c56c6"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/2345/metrics.json",
+      "bytes": 243,
+      "source_sha256": "0ac35300a77b8edf2145b9816232f203a2fcf32c7948aa369c36a2ac4e152ce8",
+      "published_sha256": "ce5e47c50a4f01312d3cdc7242d9d1d43e8e4d74162d2804bd2d344d90208fa9"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1345/metrics.json",
+      "bytes": 244,
+      "source_sha256": "dfb829fa3dec3c175cf15ca120cea2536f2ff846952031439642ab9840e4cbcb",
+      "published_sha256": "94acab486b3146d9dfb8daa81c98aa3e0103e81286febcb8c9147d779088314e"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1245/metrics.json",
+      "bytes": 246,
+      "source_sha256": "48b0e8d24c90a86571faa1689dab2a94d7f80dc7be5ee06ebd3c5ee8d169c512",
+      "published_sha256": "cca0aefbb1b110514241ad2f3620d73e7cd030c361c13d67c9a31fc2eef030a7"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1235/metrics.json",
+      "bytes": 246,
+      "source_sha256": "d8a4d41ce896b625f0b4512a6f6e11335012b1a6936d94bce203a9efa0171c31",
+      "published_sha256": "3b5937067ec370eec34ec21ae3f860014be3e3b0c421a8e37349340c6434457b"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1234/metrics.json",
+      "bytes": 245,
+      "source_sha256": "9ce3f0a127733741d116beb278ac1c0ba493553b8e607ffce2280b33cadd6e22",
+      "published_sha256": "aafd6e57f3118df49e116fb6a46131b15e2286351fa04152387dd0548e9b2b48"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/COMPLETION_VERIFICATION.json",
+      "bytes": 5467,
+      "source_sha256": "a24d474a828b2e25d5a9b63315b9f807abf3f38ee9bdadcefd126a4d89354078",
+      "published_sha256": "68951c800f0029176ca7b60128c32090763cee68293cbe8367158db649a5c6f0"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/CHECKPOINT_PROVENANCE.json",
+      "bytes": 1915,
+      "source_sha256": "cf9dc9f635b88d2bbaefb6d82f36e337a90f9dbaa246cca284603ce5aaeac1ff",
+      "published_sha256": "5abbb554033d70f1eda97480a3f903b224b83ab5c12104709d332bb9dea236ce"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/baseline_reproduction.json",
+      "bytes": 1249,
+      "source_sha256": "4b31cca09319c1b7a747811bd0da6840f7a9b39b14168d32367ee510f33c7e66",
+      "published_sha256": "8d12fde12930ee8f8078c4c1d46a94e795a2d898a520684b5900e31dbb66aaf1"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/EVIDENCE_INTERPRETATION.md",
+      "bytes": 3871,
+      "source_sha256": "7204cdaf4c86e4f2375de9330ab0188f4237e3608cecf3a1694bb62a8722c300",
+      "published_sha256": "7204cdaf4c86e4f2375de9330ab0188f4237e3608cecf3a1694bb62a8722c300"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/newcache_stored_lambda_verification.json",
+      "bytes": 465,
+      "source_sha256": "05fc253c5776b0c5840025e0e774732e42ee6f52a20a60f97a5a7e368b501916",
+      "published_sha256": "9f627f173cd2c74fb4d161d212013e34eb0cf321f0119fd181c9f98a79965579"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1/metrics.json",
+      "bytes": 243,
+      "source_sha256": "20c81c23a883fcd6ced39dbded08fa6ae88fb7810c477488d9f230d5b2803502",
+      "published_sha256": "1a276d98bb127c9fe7159aa61f4e7f481993f6e44650e284f828e68ffa41cb74"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/2/metrics.json",
+      "bytes": 243,
+      "source_sha256": "cff604e94439e3eb1aabf27bef9430ab06c456e56d97c17e87627769b16301c5",
+      "published_sha256": "101d61b55a6d5493e124de796a7214536f2e81834cea8e5e528b7e1056d6a705"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/3/metrics.json",
+      "bytes": 243,
+      "source_sha256": "7c0106ccdda35d95756ba63e2df2a2dbd2351da03a05fb5ea35d8fc7bcef3d0c",
+      "published_sha256": "dd9409c1b5c527aff67672aff20a8a7c2584a55ff6e5192b7142395046c2f248"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/4/metrics.json",
+      "bytes": 243,
+      "source_sha256": "87627c610b37ac707305e941a01ca04dd35558065e5c477a55a36dd175f8c3ce",
+      "published_sha256": "5599f2f31042d149cb799fc0cb249030424fc3fec9ec837819d4c176416d5de6"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/5/metrics.json",
+      "bytes": 240,
+      "source_sha256": "c84f16d497e4a66d8cc83e15adc6aa2d270b386c91c717d1f0fa41b38025cc89",
+      "published_sha256": "9b62734bb30da5e1e9bdcc0849d850d15cd2c86eec3f0b29eaa1319991b02b77"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/12345/metrics.json",
+      "bytes": 243,
+      "source_sha256": "29d5aea4529a96cfe753c34be45d4273189d63d149b7f8d6e3c625c14be250e6",
+      "published_sha256": "f0d558e5047e39319515461fdb166fbd263426633e24c6a3594166c63c105d36"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/2345/metrics.json",
+      "bytes": 244,
+      "source_sha256": "616e884904ed5e4e57755174300f1da873f7be9f1bc0dc74abe6e6a0df72b90d",
+      "published_sha256": "50f54b4410144eb026bdc98395a54e7a7d9df9acdde83ba575df413357cea24c"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1345/metrics.json",
+      "bytes": 243,
+      "source_sha256": "620635f2854fa5e51e45e82ba2389584b1c805d78b4a30c4cd958be64e392acf",
+      "published_sha256": "e71da475dc71652956a0c6c9383eabafa24c819f36862ff9f4f8ecbda3fe57ed"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1245/metrics.json",
+      "bytes": 242,
+      "source_sha256": "9cfa87fe519fc7145c1fc07cf44d899178edd17a7bea39e91726940a0a734a5f",
+      "published_sha256": "16449cb53e298bed5eb6c71b02ef3a6a416e47803568aab0e2e56b4c14140d7c"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1235/metrics.json",
+      "bytes": 242,
+      "source_sha256": "efd105321effc0480709a8f03e3bcda00e92992da26cd75bd72011e75b004be1",
+      "published_sha256": "c68c342521210bc25e7aea3e3c8fc80a714605e6a60925564119279a3ea687a0"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1234/metrics.json",
+      "bytes": 243,
+      "source_sha256": "cee5d1b1a22710ecdf28be203886ec082af6d0682dbf955b58409a0baa17161b",
+      "published_sha256": "c61161535417b0df2c5ee2514538e39dc13aaa7bc44244ac15611c595cd68798"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/COMPLETION_VERIFICATION.json",
+      "bytes": 5531,
+      "source_sha256": "e378f9cde50b4d5b48dd2ef45ad7b5442dd3688ab74d3e4f720f093ef0f3adb0",
+      "published_sha256": "cecd3c8c51041eef94b0b0e5783bb1fbade97590523bf8fad4e935add29b1a21"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/CHECKPOINT_PROVENANCE.json",
+      "bytes": 1922,
+      "source_sha256": "91ccecc96c9d804a79fea2663505d732f75e401158c187b3031a67d5af7c0d9a",
+      "published_sha256": "87d18578b43c1cdb875ad07761ecfefd7cb84e9818b3248044f6c60e87118a85"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/baseline_reproduction.json",
+      "bytes": 1268,
+      "source_sha256": "b5983a460b8d152b01c44fe79cbf1e5cd8ef31790ead1a2188bc9daf3b2a98c0",
+      "published_sha256": "dbd8b22ff16496ec36a808c5a9bb71eb3d9607a9214240bc4d4ba8fce780257a"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/EVIDENCE_INTERPRETATION.md",
+      "bytes": 3836,
+      "source_sha256": "f6335c77bcecfbb522634196fa9925f00ee11d88345f534e54b69a7096e0fd73",
+      "published_sha256": "f6335c77bcecfbb522634196fa9925f00ee11d88345f534e54b69a7096e0fd73"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/newcache_stored_lambda_verification.json",
+      "bytes": 467,
+      "source_sha256": "8dc5f30bd647fd5a43fb3e9d3316782faf0d73357032626a8f0722fd427a958c",
+      "published_sha256": "76a31542528e0b4240ae42d04c8a450908d47866465f6af7bbf5ca0082d00abb"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1/metrics.json",
+      "bytes": 246,
+      "source_sha256": "286d97ff3878c897bf7395f398a36c932a37fd9ecd6f549ebedc8a27bf29e933",
+      "published_sha256": "fca0ac563bcf3b179d4c0e9006c39ce505505cdea7999612c76a097cbafc3f74"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/2/metrics.json",
+      "bytes": 246,
+      "source_sha256": "b7777d764ca805e0912c88086278f1560157506c9ad8e7f2c93c793b925adeb7",
+      "published_sha256": "5cbbb86e68cfe254b36e95fdf031fb77f9e66d5782d315fcae567c3afe33aaa1"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/3/metrics.json",
+      "bytes": 246,
+      "source_sha256": "a96a27503a715ec75c4f6757a909bb59d3b6a191ff74200f1d8ec6c0dcdea4ee",
+      "published_sha256": "950f58ec6832a7f69157ca473cc60b815874980aa6c6507792ee7f13278feeb7"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/4/metrics.json",
+      "bytes": 246,
+      "source_sha256": "6ae2a4214e3d32c76fc5d9c4c0c3b7d38b5a65a9700784deffcfbc3ac7c0452f",
+      "published_sha256": "80821ec7d57bf115548323df619100ca4fba2377f85452a162b8a6e231b77d2d"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/5/metrics.json",
+      "bytes": 249,
+      "source_sha256": "54a42d4ecb5a62ea8e3956496db12d0bcc6506800af73b8a11e3fc8811ffe00c",
+      "published_sha256": "e34f4f89caf51d651ccc26bbe860a8e1ed8483a7bec1dcbf25dff73c020619e8"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/12345/metrics.json",
+      "bytes": 245,
+      "source_sha256": "c678dfe591dca641988f974de10518f9af4fea32608f1439d24d2eb8a2356f9f",
+      "published_sha256": "5ec00142e1247133692ac41be1b7409b2a8a62a90c609d928422b7e0ee3a121c"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/2345/metrics.json",
+      "bytes": 247,
+      "source_sha256": "93f1e5aed49ceed953e0e8427b8ac1926eb31ba1a8ecddf282b6142a6b4fa37a",
+      "published_sha256": "5da4abd448821c2415cb592a21dace4a8a8df4785d7ef3aac688feb20a2328ef"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1345/metrics.json",
+      "bytes": 247,
+      "source_sha256": "696eaf2279fb532ff400c5a8406c1d176caa8a18324a85c1d130ceff2a404525",
+      "published_sha256": "026ff451544e1921e145f4fd24da93aaf7b289c17156a9789d36e5a586bd745c"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1245/metrics.json",
+      "bytes": 248,
+      "source_sha256": "9e2da5f8fbcaa1c44c1011157bad4b8dfd51053f412e1b1e821fd9eaf66a4e11",
+      "published_sha256": "9dd1d249a9933687c7d6c60c791c8f82bc3b0cae4e4d4d69bafc8bc8e6951699"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1235/metrics.json",
+      "bytes": 244,
+      "source_sha256": "fd2adab6cdd4f151285a03c6207f0d33acbbe80e4c8e77e14f57e1bb2f46babd",
+      "published_sha256": "b52827aff36d8e0c742ef133d8d41c349bca29772337c8ae53a982308cbf74d7"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1234/metrics.json",
+      "bytes": 246,
+      "source_sha256": "cd6a0ff7fce1498124797779df2c505e3aa8048af734fc6938b8ce4f4e550da6",
+      "published_sha256": "88b770c720a65037291506713c682716029b869fc37e079f85cef55fee97c0a4"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/COMPLETION_VERIFICATION.json",
+      "bytes": 5510,
+      "source_sha256": "26d51ebb9902dd158a9ca8d9cdb60c1ca7fb535c0dbf0a915031bde2380ccec5",
+      "published_sha256": "8965a240bf79563fd40c69eed92a375abf6fab55b9656a161e9397e861393b73"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/CHECKPOINT_PROVENANCE.json",
+      "bytes": 1930,
+      "source_sha256": "eb7e978adca9ead6a495fda0a39ac1bfad482d63d36688934933a7c3ea4f6cbe",
+      "published_sha256": "0226e382f4181eb3b1568f741a9fa4ed27cdb8adce367435ea0bf099849cd3a6"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/baseline_reproduction.json",
+      "bytes": 1266,
+      "source_sha256": "0af6f8b91183bfcd99d00aebdffc72e52b3ce795c2d90ff0bfe69705c9e1b8f8",
+      "published_sha256": "52b179fecd67a66b782f75b7d50d8ab6e62ed62e4606019af4c12a68bb5b885b"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/EVIDENCE_INTERPRETATION.md",
+      "bytes": 3853,
+      "source_sha256": "a9bb7713b9b86a77f2852163b3c36b7917ba65254b48e554cf5cc70b3988840e",
+      "published_sha256": "a9bb7713b9b86a77f2852163b3c36b7917ba65254b48e554cf5cc70b3988840e"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/newcache_stored_lambda_verification.json",
+      "bytes": 466,
+      "source_sha256": "4fa22fa96d0db46439b775ab1068ab30d36473198017c8640b2d21e4ace93985",
+      "published_sha256": "c139380ccae6c48d1c208a671ef0a92f60485051bf5e8986d0667a7a59aa2b82"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1/metrics.json",
+      "bytes": 246,
+      "source_sha256": "efc9d3b6e1f721585bc02195d1dfedf598dfb6069f9a792d207c4dc088bc604b",
+      "published_sha256": "c337ba38f9e6d0cab7e1d937f78246021da6c6b6d317092bd8752437ea18378c"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/2/metrics.json",
+      "bytes": 246,
+      "source_sha256": "041c90242b9f5648aaa8ee61a73acf74ef1257af09170886ae31320cad07bcdd",
+      "published_sha256": "039ae6f8bf9660b1676bdbb7b2be0092cea90c8f746c261441ec72bd0fca4fbb"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/3/metrics.json",
+      "bytes": 244,
+      "source_sha256": "8bb43098aed86556afc309ff27f21befbe3bd7531322a04935b6c53254b3cb2b",
+      "published_sha256": "335665efd40cdb13c69c61751685638e19b1d2d021e75c86c8f633f0cd9586c8"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/4/metrics.json",
+      "bytes": 245,
+      "source_sha256": "ed15c370c4d3ff98750e60a6bed454d365c0c4789214c10509ca2caf54d0b588",
+      "published_sha256": "d017a8ee57ba9f2c1448e6e3c28022348bb8b5890c93d4e415d93e4e29e9a541"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/5/metrics.json",
+      "bytes": 244,
+      "source_sha256": "58380976cefc9cd80300ecf7ff1078d6d78af6ed3f0954c47c6cfc375f96a547",
+      "published_sha256": "b80998bb5715b3de78ac49fb0de6a784aa6f10fcc11e0b042c9443760966d8cc"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/12345/metrics.json",
+      "bytes": 245,
+      "source_sha256": "5e2fa01803ed5245d50f80ae8732733b5f76cbfe09a90c412c32ec942f9d2ed6",
+      "published_sha256": "8a540a56ade26ae4d19a50d56449d8dabe9dfcdb0d6945bc291fa3ab7b0be20d"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/2345/metrics.json",
+      "bytes": 244,
+      "source_sha256": "ff2eccdde9dd9a0a2ee07c04b45d30348f0407cb60be75c69308236122ea5ed3",
+      "published_sha256": "6cc12087d1c1b76768866b34b5d3a7bc9e45feb6bb0fc699bb70b3dd4be7fb17"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1345/metrics.json",
+      "bytes": 245,
+      "source_sha256": "d4b48d671fafe00d1296a6fabeebfd91e1ed85ca6f9d1607aa31658a3ceb76bd",
+      "published_sha256": "84f2709dac7d5e9a42cb98a66e9dee406f19abf1430e9cc622dfa0ea44299799"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1245/metrics.json",
+      "bytes": 242,
+      "source_sha256": "f102dd9570d0c42b4cb43e76478eebe732dd04e83b33e4790e34a9bff7ea0448",
+      "published_sha256": "51746ed1dc4628813ed2e9521d380984d137bcffe3814c1e321b7dbbdda5d6a7"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1235/metrics.json",
+      "bytes": 245,
+      "source_sha256": "5ef3faf153ed2e7a0dca67b615ba6524e13f95d2b4af2c1bcfbc4296f5931df8",
+      "published_sha256": "cf89952b66bf722c0ff1e413e2985cd99fc5d1da311340d3348ac902ae26a3b0"
+    },
+    {
+      "path": "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1234/metrics.json",
+      "bytes": 245,
+      "source_sha256": "58ffda3c13f9277455ef02f11e962153e42ddacdfc0a9ab2888f87d996148986",
+      "published_sha256": "0c28aaf2fd4eb552d72279905baea7c975cfec007aa45e748afc8e8171069a82"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V0/COMPLETE.json",
+      "bytes": 1457,
+      "source_sha256": "5622a62d11fdc2c0a075e527a2a60ee17e7bac160844b6c72c35ac4fae60b73d",
+      "published_sha256": "03681ab234cfe74689c091b83bdd69168e1a46c19d328c0d50f01d0f4ef57a03"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V0/stage2/metrics.json",
+      "bytes": 243,
+      "source_sha256": "aff1632b6b847ccbbacefdfd90747d3cb07bbf91bac7546bd6bd8cde28c51205",
+      "published_sha256": "b7897bfcbdf15432688a9d71ad0dbd0b1215c20e7175786dabb15a2d7316198c"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/COMPLETE.json",
+      "bytes": 1454,
+      "source_sha256": "6c6f848abb5c939e52bc18ece0fd2cf4ae95cdb83fc40fcd65d45455d7ea9c90",
+      "published_sha256": "d4561a53513d2370074e2958d91e2aa1b4a8282a10615026543bc1e674121a56"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/stage2/metrics.json",
+      "bytes": 244,
+      "source_sha256": "e58843ae073fe8849aa7da9a1cccc8b2cabebb5f0ad4a2db85f5394386e29e57",
+      "published_sha256": "865d8f09ddeda9621d41529a1401de484d5a11db48cee29ff225fd74dd521caa"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/head_metrics_test.json",
+      "bytes": 2257,
+      "source_sha256": "b96efc01dddb072359070357cc14a0137e1bb01f3eeffb3f5044a0dec626cd73",
+      "published_sha256": "4355bc50d8f2a076bbee18ad102927c7bd7a7ef0f2d6a2d60066465a9c2361cf"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V0/COMPLETE.json",
+      "bytes": 1451,
+      "source_sha256": "836fa1da8272954117a5aa1a14848ebdbbe3f66c39b718a8e2885498e5548976",
+      "published_sha256": "68fd271795fa05a50918d3522f8cb3158e151a41c7c00a4cdadacfb20638d5b8"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V0/stage2/metrics.json",
+      "bytes": 245,
+      "source_sha256": "8c38fcc8ab7ed3c3734f88cddfb5c3b6d401be7200341ec393f89b1b8c125104",
+      "published_sha256": "59fed689542da75c98a6ad7c64db80d36ea865fb03cf24ed5c146bc4ca74ccfc"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/COMPLETE.json",
+      "bytes": 1448,
+      "source_sha256": "a59869871864e8149edda587d96e99486df4f0a9b63af982f06a6d6ec92456ad",
+      "published_sha256": "dac668b2ba067d8648cc6aab831cfe1c8ce5d248a38b1c6c78dec635a8caec5e"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/stage2/metrics.json",
+      "bytes": 245,
+      "source_sha256": "7dc942eb6a31a2d2d3559436f6f95cd25371dca7bf2408f4d49e0e2252962654",
+      "published_sha256": "08ea240fc673be60e3f891dd07f672b751bf787f111440e844739b459ed4e1c9"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/head_metrics_test.json",
+      "bytes": 2260,
+      "source_sha256": "4ce7d6587383743a0e39edc00c085c3f00bc0e7733a1774e19d495ee0e02acfd",
+      "published_sha256": "c31fc097bd3065ffd07651fde907fa3a34901b8919bdbeffcc49bdf117896891"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V0/COMPLETE.json",
+      "bytes": 1462,
+      "source_sha256": "de2f30802bb7b999f08d6d8d43e8627a2303ee479d3860b9d2caff3955ff75c3",
+      "published_sha256": "c5c0b544c8d874c2c436ce072739ad003833a62be369b17b78436e325b24c24c"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V0/stage2/metrics.json",
+      "bytes": 245,
+      "source_sha256": "c2fae1a50d8297f0cb44d01879461f595382267155b92ead82e746338d955b1d",
+      "published_sha256": "4d66608eb6800b4c54c12e95db9b6737ea5e651e387cedd0084ef3850f6ec3b8"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/COMPLETE.json",
+      "bytes": 1460,
+      "source_sha256": "7ca68fb7610ae41e7527bc0bd09ff71ae3144b14268751fd38071dd5b9e03de1",
+      "published_sha256": "a495edae6e4b68806fe10452775e4caa701fbd40a8c8e80a00644cbba04d62bd"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/stage2/metrics.json",
+      "bytes": 246,
+      "source_sha256": "477d8c7f718438a28d62d0770341ff25cdd0706ba4f6af1f888a1033df7edf78",
+      "published_sha256": "af18dc96effe6451c7adcb7c8eeb22d53070ed988cfef6badb6dab178948ce4a"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/head_metrics_test.json",
+      "bytes": 2264,
+      "source_sha256": "a8a74c5e2ed07fad415033092b2644a7b63ec0211a01b7e71cb0bb1a26af2883",
+      "published_sha256": "adb59f15ce1145c41597551b5889aa818f870aa53fa12ace6bf407358ad9c8ad"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V0/COMPLETE.json",
+      "bytes": 1459,
+      "source_sha256": "6c4df93d6cb7f64d84a1909274cebdb2e564eab042f5a3017dda07f319a94280",
+      "published_sha256": "ba5d04291b3ccf462746a1b227996da7edc9f1024879bb549ba0e4de83f86f82"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V0/stage2/metrics.json",
+      "bytes": 244,
+      "source_sha256": "84fa49a9fbfcfa0768c0114d0b8963f06fc97626288cdf50937618e301ed0699",
+      "published_sha256": "0132fea0879a3f4b512ce416bf6552197d49a982e99a07644681bc2969d3c33c"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/COMPLETE.json",
+      "bytes": 1455,
+      "source_sha256": "13d012b9923f8704ea1c505cd61138483ef1921479394a0b2121366d366d3e11",
+      "published_sha256": "63ace0cc6a1630ffc93df2556b9a0234ddbe196327353b106bfb77eeb3c3251b"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/stage2/metrics.json",
+      "bytes": 245,
+      "source_sha256": "3f3d743f745840dbfb75461425355a03ad693165c124b7ac93b65041b286acb2",
+      "published_sha256": "7914029d325933e3f20210958c7b1a678b3d9fa5ead1da681a370cf8f0ca1d0e"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/head_metrics_test.json",
+      "bytes": 2245,
+      "source_sha256": "9f525d737a458d58727a09276476ef91ce37e0704153cf0f5c588219a733948b",
+      "published_sha256": "692e1f9d855feb5e731dd46a4ba6a1e9fb6633dc36ef13fdff5f515790c97925"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V0/COMPLETE.json",
+      "bytes": 1454,
+      "source_sha256": "ed7d2deb943961898ea72af019aeeb20bd3d2e8eff21e6c177bea3bed24a88b9",
+      "published_sha256": "13af129ada95f7995c790e9ca6147478997e63af20d95d9b86d6eb7f4da381c1"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V0/stage2/metrics.json",
+      "bytes": 243,
+      "source_sha256": "408b213e33075418c238835f0c2b32f05921caec00b5f85c6a669732d1c173b4",
+      "published_sha256": "5641b06cd3bf1a585009907540b79dd86b05022bee387d6400c26e2ba88b8097"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/COMPLETE.json",
+      "bytes": 1451,
+      "source_sha256": "4a91e3a5ce069e4d7ea92af6511d199e08f4ef5eb0a2ae5475c38546ca19c5a3",
+      "published_sha256": "7ebcdfac4ba82e92431718deacb625822554fa701079269b93c5d9f1209fbf3d"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/stage2/metrics.json",
+      "bytes": 244,
+      "source_sha256": "5bdc2267233f1c5eda2e16f7807c1a731d04eb4be9e8b0bbe44471a8f6c6a9c2",
+      "published_sha256": "373e70976bf03d38e1262a81ebb0f724da3bae66ac033d81f3914dc0ebf6a245"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/head_metrics_test.json",
+      "bytes": 2244,
+      "source_sha256": "58c5ad979366357b8627572ef072e5be29080995d8655a7f95032ae3be8c1c56",
+      "published_sha256": "05c26bc07bf7f267d4b1a1100dd3d9acd31c386dc483d648ceaec6093ea3e83b"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V0/COMPLETE.json",
+      "bytes": 1465,
+      "source_sha256": "32290306b9edea83d4e011e605f0988a361db1a5be5522d86f4e009e5ba3a1ea",
+      "published_sha256": "ac9af5e7401356235922e14124070106a8fe2cf89e7d981a508f670dd7fdc224"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V0/stage2/metrics.json",
+      "bytes": 243,
+      "source_sha256": "47664ac311ca193664990d3e3bb646a74e603422b58e58ecd4bddc06689b475b",
+      "published_sha256": "74315d6a08f1aa09a3d60df679cff4258220d21bead87e080dc0593a34508c7c"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/COMPLETE.json",
+      "bytes": 1458,
+      "source_sha256": "6b134517e8fa95f5241fe4f7e1f5099f4ba9c5d308617d245343885b72575c34",
+      "published_sha256": "e23b12d49f23b896d7c8efda179777d5830cabb30d6504c4b21d2c78e076dfc3"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/stage2/metrics.json",
+      "bytes": 241,
+      "source_sha256": "c3f28d62958cd07b57d64cce521c955d19e9ebd46d7211703b25d0b25794a100",
+      "published_sha256": "bab74b3fba79d96bf20434253f2d9ce74616ac4fc7af81bff5a2602ce8f19db2"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/head_metrics_test.json",
+      "bytes": 2246,
+      "source_sha256": "2a95408879e60896c72112938ada98a154a37b4e6f8e43735adebca40536cb76",
+      "published_sha256": "bb91baf48e7c637bc81d7e3a1b1394dea7e3c1f3ffbb56916ae1933b73ffa8d2"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V0/COMPLETE.json",
+      "bytes": 1463,
+      "source_sha256": "bf75da7e8b839b196c84540279b25a2aca110556d4638f7bda5bdfc99cb63a63",
+      "published_sha256": "3b59d00b5a21978aa5ba4cfdfddae591acb51cd3be98abf2c7a91e8d666a0c93"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V0/stage2/metrics.json",
+      "bytes": 246,
+      "source_sha256": "8fda753c8947425e81e5a3a6e16fe45c0b8870670aaf20b4430659959c2ec8ce",
+      "published_sha256": "5858f45e79bab62bae91f7c2f1456caca628fe6c2d77e270ffeb4fb81ef556e8"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/COMPLETE.json",
+      "bytes": 1459,
+      "source_sha256": "c38625674776b6bf43ec169366bed6790f2df4cbd97ab4e846a929550d9b8bef",
+      "published_sha256": "3a7ef214e61dd695c7019339f4ba61b6f63098c9985960009730c3186e5bd7df"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/stage2/metrics.json",
+      "bytes": 248,
+      "source_sha256": "1cf346d3a787491b4d1a26fe62e8c388c9758139e29f65031c9488caf5ea6902",
+      "published_sha256": "b77c6c49dde83f5079e8d05e3e529fce80587b17655aa2e18dfad7bc2f5828fe"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/head_metrics_test.json",
+      "bytes": 2347,
+      "source_sha256": "86f654d66a0993724c89d879c472c677fa9406b77283fb1a15c6ff3f17790666",
+      "published_sha256": "890319bea2d9628da4efb2023442a502ce2e7fab78b704d371ba1465c1da89c1"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V0/COMPLETE.json",
+      "bytes": 1457,
+      "source_sha256": "245a88b0c9ca584709923c2b40475c9f25693564886ebe3f78d7c1cc2c198127",
+      "published_sha256": "35c52ef27cec066f6e8848a839ad0a175b904a517c1e95dbaccd1479a2e96ce5"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V0/stage2/metrics.json",
+      "bytes": 245,
+      "source_sha256": "b754be84bd6f5480d1edcb79a484772bd4c9e0df2887020b07793af24d3e9eab",
+      "published_sha256": "e01075762b7010bd433d8bd815e912150d901aa6173ceba94f53660b7c2219f5"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/COMPLETE.json",
+      "bytes": 1454,
+      "source_sha256": "cb2ff9421fe1bc560c91e553ccccee455179766edeb7f4ae1f04dba704f9bff2",
+      "published_sha256": "4eb0a78b71f50222a732fc58e8490e8ed55f548dd6c1fc1d007c0cf37fb20054"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/stage2/metrics.json",
+      "bytes": 247,
+      "source_sha256": "7802de3270040110bcfe2763f945ebd90dee3c8d75f11006e610fd823e849c23",
+      "published_sha256": "78208a0cfaafe28f6d1e5f3d309b0cf2bdd295155647568c9e65ac09b8dcf3fc"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/head_metrics_test.json",
+      "bytes": 2333,
+      "source_sha256": "198f238fa14210758e1c5cea800c10ed884668650018195f68cf6b17dab93394",
+      "published_sha256": "8a6b43b0a7729e51f3509659330f4fd8053bd38738344744511f977151157876"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V0/COMPLETE.json",
+      "bytes": 1470,
+      "source_sha256": "22b18b867da8626c09bffb027c2808f0ebd3f8b2df40935f21a45f28e0cc9567",
+      "published_sha256": "9d03cd6976937bd1093987f233f7f1be5d4dbff39097cd745e2c8ae7df60f784"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V0/stage2/metrics.json",
+      "bytes": 244,
+      "source_sha256": "a55c34582f8fb00045ba0a23e936e025a67b3a34afe92ebcd35c37df775f73b0",
+      "published_sha256": "de3dcf5bd55839df2f64a3aa4337560bdf2d1a7a24350ad6ad49ba3db7a97fbe"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/COMPLETE.json",
+      "bytes": 1467,
+      "source_sha256": "faa8bb78d2c235af1e60aa05160a219b476b2ae212f07ba01f05b3aa444f2f32",
+      "published_sha256": "d3a9bee8b92df6693be368cc1a8208b0ddf075370dcdbacffc5548020a69607e"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/stage2/metrics.json",
+      "bytes": 249,
+      "source_sha256": "c1158e138cb26549ce7c246beb5244d63da05a236269c222ba187903888b7f7a",
+      "published_sha256": "33c611a3f8bacf13da188bab00dcd009dfe98e50e6b9a5b06fe0ed52433a9a2e"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/head_metrics_test.json",
+      "bytes": 2356,
+      "source_sha256": "bed63fe0fb3145c1d2798767318c2d9a295513dde0902df91510f7383dca5d8d",
+      "published_sha256": "f25c99cd4872962e88a34ead7e0b51c9e86f737f9b283c499417b2c22122d8aa"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V0/COMPLETE.json",
+      "bytes": 1466,
+      "source_sha256": "4eb7064d8c38fc0b5e294336311f114ce904faa8f6b3205ccaa3204f632d2edb",
+      "published_sha256": "f49958eaa609c5ebe00c9e26e69af4750c77868a99a613cd34fa0bdaf99ee07c"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V0/stage2/metrics.json",
+      "bytes": 244,
+      "source_sha256": "9e97b5d8c1b9b8dc7250159647f5b18ad5e6d6efe6193651fb07846ac58dadc6",
+      "published_sha256": "0b5a90279ee51b3326822db71d200909f2162e9527ac7fec821ae59f5d1cd986"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V5/COMPLETE.json",
+      "bytes": 1462,
+      "source_sha256": "a0d2fd5f12c50fa3b0d811d2bba9007cd6fd35d7256d3ff3a35bf5d1a86088dd",
+      "published_sha256": "96304615bdf9b3cbd801b136b254620fe5972ceefe1500f092652eb01bb4d3af"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V5/stage2/metrics.json",
+      "bytes": 245,
+      "source_sha256": "cb8d60b3230832148152495c1d25d0fb878de0eec009f2768231aa3568ae1f66",
+      "published_sha256": "89ce46c4b57c4304e5a4049ea220a779cc5840c2c6bbc645a6be7c6837f77933"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V5/head_metrics_test.json",
+      "bytes": 2328,
+      "source_sha256": "19c89515fefcc7f5b1058a3674653b7c78bd6a83e59a5045ad1c4c24cb16cbcf",
+      "published_sha256": "913d8ea330e2eb8278255512eac06a8d987c795d62043936a17d35fe4f71a321"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/reproduction/ETTh1_96/PASS.json",
+      "bytes": 1711,
+      "source_sha256": "6a3960720e9a96f4f9019a358b73be3ed756502ff4630501664317c20056f06c",
+      "published_sha256": "0eaaa662bdb6984a60aab042d9843df8f739b025ef60bcc2fb3b0d996bf54a76"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/quality/ETTh1_96/metrics.json",
+      "bytes": 2492,
+      "source_sha256": "d952945123a64c42799e4fb275d5530c729f74c74933a873d457ce2625d2b4b8",
+      "published_sha256": "2f731c79284474492fa8111b9dea70a0ff1279dd93002156b41de03c966e6df4"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/configs/ETTh1_96_controlled_init.json",
+      "bytes": 120,
+      "source_sha256": "a8c9105031374340be60357ee28b8589333993caf0e6fea2d79e6f8371834271",
+      "published_sha256": "92790dfbc648683947ec27303d848481bcd45b97a8bead9957a968fbd1683a8b"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/reproduction/ETTh1_720/PASS.json",
+      "bytes": 1709,
+      "source_sha256": "3e48db16f356d1a1421ec955a7c815b9ce1d6556290dd97017e427d1e897ed79",
+      "published_sha256": "903c99797984e63deaa5539d0058af68503fd65804bf4255854c1cc0865fef38"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/quality/ETTh1_720/metrics.json",
+      "bytes": 2483,
+      "source_sha256": "2608ddd7ba168f114edf9fb103a658c94c9756125ebe58afab238cc694de0008",
+      "published_sha256": "95e8e62e39c0d2416009eb56058c24b37868bf3dcb382bc95d7e40f02de34072"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/configs/ETTh1_720_controlled_init.json",
+      "bytes": 121,
+      "source_sha256": "0aec72bb7327734efe8368465e928d4947044f879af5ada94ef3c8cd78aa008c",
+      "published_sha256": "51f8e8dc0acf337b089b3275528f259853e18ea2c036000915c98f37079e80c7"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/reproduction/Weather_96/PASS.json",
+      "bytes": 1725,
+      "source_sha256": "65e9675805bba5184df4e9ce910e1fc7b366dbcc2d070f5f75196dcb4a24406e",
+      "published_sha256": "2d28cd565472ae64002c6f5db9788b9da971d8decffd38c4bd369143b812ba29"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/quality/Weather_96/metrics.json",
+      "bytes": 2532,
+      "source_sha256": "827326de5465be86b2b76b1ddb3855e206e4a958ecc20ea8b326e53a4172f2ec",
+      "published_sha256": "1b4f8348c8f869a573f9bb2d7bdb21038afa1409b010f24abf9df849703a66fb"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/configs/Weather_96_controlled_init.json",
+      "bytes": 122,
+      "source_sha256": "e38a2d3a85e94e2f541f89e43bc1987f05e1736ffea779b7239e7f3b92e1a331",
+      "published_sha256": "6df453ac466ddbb69fe7de417255ed5bae628f9870f100d4b88229ba7369dd6d"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/reproduction/Weather_720/PASS.json",
+      "bytes": 1723,
+      "source_sha256": "e3d3c852d4240ad3ae79612b17a5d7975fb5c1488cd30f9baace8fd6f6e2d721",
+      "published_sha256": "3f1eda97b88e0705427bec872556e7c56c6cecb82ee56ce856abcff1c983faeb"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/results/quality/Weather_720/metrics.json",
+      "bytes": 2533,
+      "source_sha256": "c706ddc6a425baafd453ee811ad2f46bed183567f8f26da71f89f59ea26a1799",
+      "published_sha256": "d743b5707cc9980d468d773f51539908204cc238e550a1227f6fb5fb3a4e97f1"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/configs/Weather_720_controlled_init.json",
+      "bytes": 123,
+      "source_sha256": "c94afb4550029ce246cc8aea3161a3c573c6d84610c60f1da1a753bb899c47b5",
+      "published_sha256": "c1791a97bce04c6224db58223d0b0a9aa508c298eb51beb5e90654af5f25e66f"
+    },
+    {
+      "path": "experiments/p100_preselection_comparison/smoke/REAL_BATCH_PASS.json",
+      "bytes": 193,
+      "source_sha256": "b1450c7f4a022d6f565bde348d12b95db3ec2471d6f25b02137b7d230f4de127",
+      "published_sha256": "b0f6035bae2bc8d93cb2a03a33bebb137a2c723964e703b09574f44601d8f9f2"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/REPORT_KO.md",
+      "bytes": 7264,
+      "source_sha256": "1cacc70a579744751f791a09646192cfef3bb65e1806f03bc22b34f9c1639113",
+      "published_sha256": "1cacc70a579744751f791a09646192cfef3bb65e1806f03bc22b34f9c1639113"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_REPORT_KO.md",
+      "bytes": 2959,
+      "source_sha256": "8fc9eba3177fa4013ad6c3e203276255920b04b18bf8c33a048b512f20fbc5e0",
+      "published_sha256": "e04e58b8fdb0a371b4c5702bfe1bfb846afc5cd3c5db3824b5532d04a1a6e7ce"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/SUMMARY.json",
+      "bytes": 607,
+      "source_sha256": "82eae176f3c111273377dcd80b294c8d0994ac7b97287eecd5723c3eb929cf6b",
+      "published_sha256": "832d21f96d448a37584f8390e693239f9b4e275103ab9b938bbc6cbab4c9db9e"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/DATA_QUALITY.csv",
+      "bytes": 3055,
+      "source_sha256": "03d080ca7742b039001a59d86bc076d16b7519812b850847244d7f0f01ba160c",
+      "published_sha256": "e66d0f008415ec0eb3933b62c3584f5045642362406374bb3f7d58554f45002d"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_CHANNEL_DIAGNOSTICS.csv",
+      "bytes": 9497,
+      "source_sha256": "338b34107f30c63de74489ca4c0bc3cf09b14c4ff751ad71daaa4bc02f8a6a4a",
+      "published_sha256": "338b34107f30c63de74489ca4c0bc3cf09b14c4ff751ad71daaa4bc02f8a6a4a"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_SUMMARY.json",
+      "bytes": 2407,
+      "source_sha256": "e5f9e661a8a6d23f075f80ded880216f8de927e774f393d0fdfc8036f21868cb",
+      "published_sha256": "0ca3cc913c3d0bdc605bc59226173af2b2b9a88deaece7537f170de7c1b47558"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/OFFICIAL_SOURCE_COMPARISON.json",
+      "bytes": 1127,
+      "source_sha256": "319879964d33b781db3520b1807e542f58c1a8598e9378c00c19069fbf4c41cc",
+      "published_sha256": "da5ee6f5dbf578ff245330c31b43ef78344a4fe7bc9b5b6fba8da6830e6ce868"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/H720_SEQUENCE_LENGTH_EVIDENCE.json",
+      "bytes": 1980,
+      "source_sha256": "a1f658c33ec10217ea54e7ca9ed0aa3b57375d8542c90778f46ff476163ed28b",
+      "published_sha256": "9abee7a8836dbb63fd95b3fb1ec489eb83f23de610274f25336f66758632901b"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/SOURCE_PROVENANCE.json",
+      "bytes": 971,
+      "source_sha256": "bd373c86370534e3a8e67cd26e691fc8e5ca4785def469b602b35bfbe0f4e2fa",
+      "published_sha256": "4531fcca6ba99366a13c3861830b8338b2ec08ef3c0305f09cc3570c4d65b61e"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/audit.py",
+      "bytes": 10307,
+      "source_sha256": "f532cb2694a9b5ea53608ee6ac0fa924f8a4d65f6b717ce6e716f09634560518",
+      "published_sha256": "b8ec5985c5e826dd3eece0b03222346c3f7e74148dfd86c2b14ac8d220076073"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/followup.py",
+      "bytes": 4242,
+      "source_sha256": "efbda6c5bdb7a2443c7ac4db796fe26699ae4898064fc0c9f5c74465a9107c28",
+      "published_sha256": "363396e205df43d8df268c74838e96d6e58c88d3f51b5b61418c31737bd4ceca"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/Weather_96/AUDIT.json",
+      "bytes": 9175,
+      "source_sha256": "f1188e6df3ec343c9b4c8187b5ea08c56a1e7809829fbb56e79a37c1f42faafc",
+      "published_sha256": "9b2db53d05a8705c1d9f01cac4c32011e01c54964753ea464a0cbad8af1fbbc5"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/Weather_96/per_channel_metrics.csv",
+      "bytes": 1128,
+      "source_sha256": "f4e877f7f31d687dfd14bb594db36f19673eb8fd0eed838bc2757c0df1876436",
+      "published_sha256": "6583defbf252819a445f26f045caa9c5830089a2cbe7875dea7c57b34163ee03"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/Weather_720/AUDIT.json",
+      "bytes": 6840,
+      "source_sha256": "34c19401ad1bac967c1a6270fd958c6152dcfa578eb897359ff39624630c1a54",
+      "published_sha256": "ea65517f87855cc2f96651606139a8d0dc3d81af8c5de14cf06b198004b96513"
+    },
+    {
+      "path": "results/BASE-WEATHER-AUDIT01-20261028/Weather_720/per_channel_metrics.csv",
+      "bytes": 1115,
+      "source_sha256": "e82a1ef74715b3f15b919e3f83e9781860238741b8b8919a2d2ed0092ec5128f",
+      "published_sha256": "d74a64a2c828d3d24d3b2c86b96b056c9b76585b816badeb9d80943ae431ac6b"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/PRESENTATION_REPORT_KO.md",
+      "bytes": 11760,
+      "source_sha256": "e1341689ad8c320b9f1c990b6df0ee22c9a93b423b925d0466de0ff576080dc6",
+      "published_sha256": "51641a2855bdb75855e691db9c4d0c132a9dbd2781151f1bc71d1694988476ee"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/FULL_PRIMARY_SECONDARY_44.csv",
+      "bytes": 8022,
+      "source_sha256": "908ee94de25615cb7ed07cb2def6ceccb49c561d69f1dea6db3d6f874debb5f5",
+      "published_sha256": "908ee94de25615cb7ed07cb2def6ceccb49c561d69f1dea6db3d6f874debb5f5"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/FULL_INDEPENDENT_MODELS_20.csv",
+      "bytes": 9391,
+      "source_sha256": "2b87b4bcd17c4386eaae2fa7bdc5ced7104ae18da8046a6a71d1ac19ebb354fe",
+      "published_sha256": "2b87b4bcd17c4386eaae2fa7bdc5ced7104ae18da8046a6a71d1ac19ebb354fe"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/SELECTION_PROTOCOLS.csv",
+      "bytes": 1313,
+      "source_sha256": "e954742d3123012872505018a42528e0d8df5faad5958fe093c99f2f0f698d11",
+      "published_sha256": "e954742d3123012872505018a42528e0d8df5faad5958fe093c99f2f0f698d11"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/P100_VERIFIED_STAGE2.csv",
+      "bytes": 9830,
+      "source_sha256": "191777a2373824aed8c30d7c1c7cb22d8ed1c9851cfd6cb8bc63c6cfd5aab55d",
+      "published_sha256": "191777a2373824aed8c30d7c1c7cb22d8ed1c9851cfd6cb8bc63c6cfd5aab55d"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/FULL_HEAD_DIAGNOSTICS.csv",
+      "bytes": 535,
+      "source_sha256": "2ebc7b5de0ef7874dee6f752bbf8d5544ff92951dac9da165f7442481d345061",
+      "published_sha256": "2ebc7b5de0ef7874dee6f752bbf8d5544ff92951dac9da165f7442481d345061"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/STAGE1_VALIDATION_SELECTED_31_SUBSETS.csv",
+      "bytes": 494,
+      "source_sha256": "daeb82b8d23ad2f0308967100ab9648edccf601953a6e9d03ec4c15828a23cbc",
+      "published_sha256": "daeb82b8d23ad2f0308967100ab9648edccf601953a6e9d03ec4c15828a23cbc"
+    },
+    {
+      "path": "results/PRESENTATION-WEEKLY-20261029-001122UTC/SOURCE_MANIFEST.json",
+      "bytes": 29969,
+      "source_sha256": "39e2bfe24cd0a26cf8d98d8313582b21d5b42076ebf10c8c1d7e1c501ecbc5c2",
+      "published_sha256": "136cb576f2722034e0e6a5f00561757ec8b4fb8238adf38ba5b766025faffc40"
+    }
+  ],
+  "repo_visibility": "public",
+  "publication_normalization": "LF line endings and trailing whitespace only; original source hashes retained; Python AST equivalence checked",
+  "normalized_files": [
+    "experiments/full_head_analysis01/export_canonical_raw.py",
+    "experiments/full_head_analysis01/finalize_reports.py",
+    "experiments/full_head_analysis01/join_stage1_stage2.py",
+    "experiments/full_head_analysis01/report_completed.py",
+    "experiments/full_head_analysis01/verify_completed.py",
+    "experiments/full_head_analysis01/verify_weather720_legacy_comparators.py",
+    "experiments/p100_preselection_comparison/configs/ETTh1_720_controlled_init.json",
+    "experiments/p100_preselection_comparison/configs/ETTh1_96_controlled_init.json",
+    "experiments/p100_preselection_comparison/configs/Weather_720_controlled_init.json",
+    "experiments/p100_preselection_comparison/configs/Weather_96_controlled_init.json",
+    "experiments/p100_preselection_comparison/reports/Weather_timestamp_source_audit.json",
+    "experiments/p100_preselection_comparison/results/quality/ETTh1_720/metrics.json",
+    "experiments/p100_preselection_comparison/results/quality/ETTh1_96/metrics.json",
+    "experiments/p100_preselection_comparison/results/quality/Weather_720/metrics.json",
+    "experiments/p100_preselection_comparison/results/quality/Weather_96/metrics.json",
+    "experiments/p100_preselection_comparison/results/reproduction/ETTh1_720/PASS.json",
+    "experiments/p100_preselection_comparison/results/reproduction/ETTh1_96/PASS.json",
+    "experiments/p100_preselection_comparison/results/reproduction/Weather_720/PASS.json",
+    "experiments/p100_preselection_comparison/results/reproduction/Weather_96/PASS.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_720/baseline_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V0/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V0/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/COMPLETE.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/head_metrics_test.json",
+    "experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/stage2/metrics.json",
+    "experiments/p100_preselection_comparison/smoke/REAL_BATCH_PASS.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/DATA_QUALITY.csv",
+    "results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_REPORT_KO.md",
+    "results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_SUMMARY.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/H720_SEQUENCE_LENGTH_EVIDENCE.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/OFFICIAL_SOURCE_COMPARISON.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/SOURCE_PROVENANCE.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/SUMMARY.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/Weather_720/AUDIT.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/Weather_720/per_channel_metrics.csv",
+    "results/BASE-WEATHER-AUDIT01-20261028/Weather_96/AUDIT.json",
+    "results/BASE-WEATHER-AUDIT01-20261028/Weather_96/per_channel_metrics.csv",
+    "results/BASE-WEATHER-AUDIT01-20261028/audit.py",
+    "results/BASE-WEATHER-AUDIT01-20261028/followup.py",
+    "results/INTEGRATION-20261029/INTEGRATED_REVIEW_KO.md",
+    "results/INTEGRATION-20261029/SOURCE_SNAPSHOT.json",
+    "results/INTEGRATION-20261029/VALIDATION.json",
+    "results/PRESENTATION-WEEKLY-20261029-001122UTC/PRESENTATION_REPORT_KO.md",
+    "results/PRESENTATION-WEEKLY-20261029-001122UTC/SOURCE_MANIFEST.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/CANONICAL_COMPARATORS_RAW.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/CHECKPOINT_PROVENANCE.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/DELIVERABLE_AUDIT.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/CHECKPOINT_PROVENANCE.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/COMPLETION_VERIFICATION.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/baseline_reproduction.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/newcache_stored_lambda_verification.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1234/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/12345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1235/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1245/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/2/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/2345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/3/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/4/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/5/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/CHECKPOINT_PROVENANCE.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/COMPLETION_VERIFICATION.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/baseline_reproduction.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/newcache_stored_lambda_verification.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1234/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/12345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1235/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1245/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/2/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/2345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/3/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/4/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/5/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_COUNT.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_ERROR_COMPLEMENTARITY.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_LEAVE_ONE_OUT.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_OVERLAP.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_QUALITY.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_STAGE1_STAGE2_JOINED.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_STAGE2_MSE_MAE.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_SUBSET_ANALYSIS.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_UNION_COVERAGE.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/RESOURCE_MEASUREMENT_SCOPE.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/RESOURCE_SUMMARY.csv",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/CHECKPOINT_PROVENANCE.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/COMPLETION_VERIFICATION.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/baseline_reproduction.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/newcache_stored_lambda_verification.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1234/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/12345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1235/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1245/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/2/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/2345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/3/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/4/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/5/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/CHECKPOINT_PROVENANCE.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/COMPLETION_VERIFICATION.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/baseline_reproduction.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/newcache_stored_lambda_verification.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1234/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/12345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1235/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1245/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/2/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/2345/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/3/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/4/metrics.json",
+    "results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/5/metrics.json"
+  ]
+}

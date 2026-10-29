@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://www.bgc-jena.mpg.de/wetter/data/mpi_roof_2020a.zip",
+    "sha256": "6a0be0552a2a26a04c3b41a5281d4a55ae251d4c65ce630971a8662f43b31f9f",
+    "files": [
+      "mpi_roof_2020a.csv"
+    ],
+    "shape": [
+      26200,
+      22
+    ]
+  },
+  {
+    "url": "https://www.bgc-jena.mpg.de/wetter/data/mpi_roof_2020b.zip",
+    "sha256": "c37eca910ee2803b17b8c587f3194bc7625abf994576c50f32538dd7cb65ac77",
+    "files": [
+      "mpi_roof_2020b.csv"
+    ],
+    "shape": [
+      26496,
+      22
+    ]
+  },
+  {
+    "columns": [
+      "Date Time",
+      "p (mbar)",
+      "T (degC)",
+      "Tpot (K)",
+      "Tdew (degC)",
+      "rh (%)",
+      "VPmax (mbar)",
+      "VPact (mbar)",
+      "VPdef (mbar)",
+      "sh (g/kg)",
+      "H2OC (mmol/mol)",
+      "rho (g/m**3)",
+      "wv (m/s)",
+      "max. wv (m/s)",
+      "wd (deg)",
+      "rain (mm)",
+      "raining (s)",
+      "SWDR (W/m\u00b2)",
+      "PAR (\u00b5mol/m\u00b2/s)",
+      "max. PAR (\u00b5mol/m\u00b2/s)",
+      "Tlog (degC)",
+      "CO2 (ppm)"
+    ],
+    "shape": [
+      52696,
+      22
+    ],
+    "numeric_exact": true,
+    "timestamp_exact": true
+  }
+]

@@ -1,0 +1,80 @@
+{
+  "96": {
+    "all21": {
+      "base_mse": 0.16936445602760936,
+      "base_mae": 0.21181175684575132,
+      "full_mse": 0.16817615744158,
+      "full_mae": 0.21593799416408985
+    },
+    "exclude_train_sentinel_channels18": {
+      "base_mse": 0.19457763915465742,
+      "base_mae": 0.23678389677961897,
+      "full_mse": 0.19373177374788447,
+      "full_mae": 0.24126771890619153
+    },
+    "base_better_mse_channels": 15,
+    "base_better_mae_channels": 16,
+    "top3_base_advantage": [
+      {
+        "channel": "rh (%)",
+        "gap": 0.03219617019074994,
+        "overall_gap_contribution": 0.0015331509614642828
+      },
+      {
+        "channel": "wd (deg)",
+        "gap": 0.010292904401356384,
+        "overall_gap_contribution": 0.0004901383048264944
+      },
+      {
+        "channel": "Tdew (degC)",
+        "gap": 0.009249507587993713,
+        "overall_gap_contribution": 0.0004404527422854149
+      }
+    ],
+    "top3_share_of_positive_base_advantage": 0.47310814519150685,
+    "lambda_value": 0.4794265031814575,
+    "full_metric_absdiff": 1.821077177943664e-09
+  },
+  "720": {
+    "all21": {
+      "base_mse": 0.3194298952671315,
+      "base_mae": 0.34381811743163354,
+      "full_mse": 0.34229228003123086,
+      "full_mae": 0.34755550958149994
+    },
+    "exclude_train_sentinel_channels18": {
+      "base_mse": 0.3675668952983912,
+      "base_mae": 0.38231371773478195,
+      "full_mse": 0.3968583848029723,
+      "full_mae": 0.3931616020099782
+    },
+    "base_better_mse_channels": 15,
+    "base_better_mae_channels": 13,
+    "top3_base_advantage": [
+      {
+        "channel": "p (mbar)",
+        "gap": 0.27631180609447026,
+        "overall_gap_contribution": 0.013157705052117632
+      },
+      {
+        "channel": "rho (g/m**3)",
+        "gap": 0.08282436568804719,
+        "overall_gap_contribution": 0.003944017413716533
+      },
+      {
+        "channel": "rh (%)",
+        "gap": 0.04862238437438621,
+        "overall_gap_contribution": 0.002315351636875534
+      }
+    ],
+    "top3_share_of_positive_base_advantage": 0.6552666953560465,
+    "lambda_value": 0.5542343258857727,
+    "full_metric_absdiff": 1.7984011452254478e-07
+  },
+  "excluded_channels": [
+    "wv (m/s)",
+    "max. PAR (\ufffdmol/m\ufffd/s)",
+    "OT"
+  ],
+  "note": "Diagnostic channel exclusion only, unchanged model/scaler/predictions. Not a cleaned-data performance or replacement official score."
+}

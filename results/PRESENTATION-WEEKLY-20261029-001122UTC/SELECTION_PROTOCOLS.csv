@@ -1,0 +1,17 @@
+cell,selection_protocol,subset,configuration,validation_mse,test_mse,test_mae,deployable
+ETTh1_96,Stage2 validation MSE (11 configs),5,H5,0.663050,0.377826,0.401293,True
+ETTh1_96,Stage2 validation MSE (5 singles),5,H5,0.663050,0.377826,0.401293,True
+ETTh1_96,POSTHOC test primary_mse,12345,All-5,,0.374725,0.399461,False
+ETTh1_96,POSTHOC test primary_mae,12345,All-5,,0.374725,0.399461,False
+ETTh1_720,Stage2 validation MSE (11 configs),1245,-H3,1.537592,0.500947,0.503654,True
+ETTh1_720,Stage2 validation MSE (5 singles),5,H5,1.541975,0.499040,0.503562,True
+ETTh1_720,POSTHOC test primary_mse,5,H5,,0.499040,0.503562,False
+ETTh1_720,POSTHOC test primary_mae,5,H5,,0.499040,0.503562,False
+Weather_96,Stage2 validation MSE (11 configs),1345,-H2,0.417876,0.171895,0.219424,True
+Weather_96,Stage2 validation MSE (5 singles),1,H1,0.427489,0.173630,0.228022,True
+Weather_96,POSTHOC test primary_mse,1235,-H4,,0.167752,0.217023,False
+Weather_96,POSTHOC test primary_mae,12345,All-5,,0.168176,0.215938,False
+Weather_720,Stage2 validation MSE (11 configs),2345,-H1,0.635360,0.343051,0.347574,True
+Weather_720,Stage2 validation MSE (5 singles),4,H4,0.638269,0.341977,0.350395,True
+Weather_720,POSTHOC test primary_mse,3,H3,,0.336509,0.348963,False
+Weather_720,POSTHOC test primary_mae,12345,All-5,,0.342292,0.347555,False

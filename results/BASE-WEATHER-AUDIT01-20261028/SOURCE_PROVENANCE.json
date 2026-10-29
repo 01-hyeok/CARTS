@@ -1,0 +1,13 @@
+{
+  "git_head": "728e6a4be9c318298f8271b873dbe2b4d8a38476",
+  "source_sha256": {
+    "models/RelationStage2.py": "e5d087d4c81fe4cf0094358e069bb653d1108221d60170b1cd332345150e30e6",
+    "scripts/train_r_base_forecaster01.py": "d8a1e34b69dd92db286ea7027b4d491496a4fd4b1787973a66c5e20de3739046",
+    "scripts/train_r_stage2_lambda01.py": "71b5569e1eecc3fadd0a6e112dfbbb74ddac5c12f3f6475a14df45987ad0588e",
+    "data_provider/data_loader.py": "cced1cc4f621e083078699e83c276763798a63146161f59e5d7cec768a06062c",
+    "data_provider/data_factory.py": "1cd1f9fe4682fd0c596f1f14c9d42a4626f10016978b01ace9cb9fe5867a0375",
+    "utils/relation_memory.py": "cfcbf9686582c817c3c7d2ed4ec45c10cc55c38e1fee4a6afb0d8f6e042cf61c",
+    "experiments/p100_preselection_comparison/pipeline.py": "c85260a198ddac4fffb85b093259414951144d1df082f69fc0f1a7a59df1051d",
+    "scripts/verify_v5_head_loss_stage2_correctness01.py": "0dd15a0031497b5c5dc67990b0fc4efe541a9fa68a26fc01f46920319fc3a337"
+  }
+}

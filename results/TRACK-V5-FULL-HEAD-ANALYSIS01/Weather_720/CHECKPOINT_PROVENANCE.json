@@ -1,0 +1,33 @@
+{
+  "cell": "Weather_720",
+  "seed": 0,
+  "candidate_support": "FULL",
+  "candidate_count": 35448,
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "physical_gpu": 1,
+  "git_commit": "238c9384e58c33d81dd0a528babacd97359eb8f0",
+  "source_sha256": "fbe943daf43bc0fce548ed0ba96fd1a1f6729a5a3ce6054bc11636784e2c3053",
+  "reference": "checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_RelationStage1_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl720_pl720_0/checkpoint.pth",
+  "checkpoint": "checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/V5/stage1/checkpoint_epoch9.pth",
+  "checkpoint_sha256": "ae05b768d78e65ea77744aef13e89806a1f6d9cbf7f9dfb44d1e0258bc8ac980",
+  "base_checkpoint": "checkpoints/track_r_final_method_generalization01/Weather/H720/seed0/base/checkpoint.pth",
+  "base_sha256": "7b84d42f465528e7bf9f6f1b3e605418e8664a91b2a0bb23c5d9db60c0490951",
+  "selection": {
+    "selection_criterion": "min validation Mean-Mixture RetMSE@10 (test split NEVER used)",
+    "selected_epoch": 9,
+    "selected_checkpoint_path": "checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/V5/stage1/checkpoint_epoch9.pth",
+    "tau_s": 0.1
+  },
+  "batch": 32,
+  "chunk": 0,
+  "timing": "concurrent shared GPU; not isolated speed comparison",
+  "python_executable": "/usr/bin/python3",
+  "torch_version": "1.12.0.dev20220327+cu113",
+  "cuda_version": "11.3",
+  "cudnn_version": 8302,
+  "retrieval_matmul_allow_tf32": true,
+  "stage2_parent_forward_matmul_allow_tf32": false,
+  "stage2_training_subprocess_default_matmul_allow_tf32": true,
+  "cudnn_allow_tf32": true,
+  "precision_evidence": "legacy_parity_metrics_probe.json: original Python1.12/CUDA11.3 exactly reproduces all test R and stored-lambda metrics; parent forward TF32 False; original Stage2 subprocess uses legacy default True"
+}

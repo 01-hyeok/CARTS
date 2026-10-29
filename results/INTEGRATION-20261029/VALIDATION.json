@@ -1,0 +1,15 @@
+{
+  "checked_at_utc": "2026-10-29T02:04:22.296007+00:00",
+  "tests": {
+    "command": "CUDA_VISIBLE_DEVICES= PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider experiments/full_head_analysis01/test_full_analysis.py experiments/p100_preselection_comparison/test_preselection.py",
+    "result": "28 passed in 3.27s",
+    "scope": "existing synthetic CPU tests; no new GPU inference or training"
+  },
+  "allowlist_scan": "PASS: text-only, no symlinks, each <1MB, no private-key/token patterns",
+  "full_primary_rows_verified": 44,
+  "p100_complete_verified": 20,
+  "upstream_topk_comparison_pairs": 8,
+  "publication": "new normal branch push; no force/main reset; checkpoint/cache/dataset/logs excluded",
+  "original_tracked_status": "",
+  "python_ast_equivalence_after_whitespace_normalization": "PASS"
+}

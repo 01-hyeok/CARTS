@@ -1,0 +1,35 @@
+{
+  "status": "COMPLETED",
+  "independent_stage2": {
+    "mse": 0.37096694111824036,
+    "mae": 0.3944612145423889,
+    "lambda_value": 0.4187036156654358,
+    "base_mse": 0.392423152923584,
+    "base_sha256": "dd9713d0a5cbff3f24cbd3144559a170ed73103e90b67d9aaa47b0c5485b9a5f",
+    "passed": true
+  },
+  "provenance": {
+    "cell": "ETTh1_96",
+    "seed": 0,
+    "model": "V0",
+    "method": "paa16_cosine",
+    "checkpoint": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/checkpoints/ETTh1_96/paa16_cosine/V0/ETTh1_96/V0/checkpoint_best_retmse.pth",
+    "checkpoint_sha256": "c7db77802bae10dd8291b85aea67a627154d732c62b031bbbe723f7e926b8248",
+    "selected_epoch": 10,
+    "pool_sha256": {
+      "train": "d2bd473847bafd13404b0d2801f61cac238d6c7b651c486a4461567aab89c76d",
+      "val": "df962fb4272cba651544ce2b28db26e144a952c3455115069fdaebf27d5717af",
+      "test": "7b0007221f7ada7778804c38076e7aeb361aa772b4f0e4fbb5f6bfa478b3573c"
+    },
+    "git_sha": "238c9384e58c33d81dd0a528babacd97359eb8f0",
+    "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+    "physical_gpu_index": 1,
+    "training_batch_size": 32,
+    "training_epochs": 10,
+    "tau_s": 0.1,
+    "tau_t": 0.1,
+    "learning_rate": 0.001,
+    "shared_source_sha256": "06bfacb7a33edd9114aa1b3a90e127dbfd15f4cb2d45cc66111d38568e06f3d8",
+    "note": "Adapter changes only pool metadata verification and saved provenance; no model/loss/optimizer change."
+  }
+}

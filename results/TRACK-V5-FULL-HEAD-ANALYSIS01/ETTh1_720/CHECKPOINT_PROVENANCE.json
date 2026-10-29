@@ -1,0 +1,33 @@
+{
+  "cell": "ETTh1_720",
+  "seed": 0,
+  "candidate_support": "FULL",
+  "candidate_count": 7201,
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "physical_gpu": 1,
+  "git_commit": "b85c715c8ea2ce633d3e2afabb942d21e9dbfeeb",
+  "source_sha256": "fbe943daf43bc0fce548ed0ba96fd1a1f6729a5a3ce6054bc11636784e2c3053",
+  "reference": "checkpoints/soft_set_mse/stage1/ETTh1/seq720_pred720/stage1_carts_softset_ETTh1_720_S0_wce_RelationStage1_ETTh1_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_ETTh1_sl720_pl720_0/checkpoint.pth",
+  "checkpoint": "checkpoints/track_v_multiquery_generalization01/ETTh1/H720/seed0/V5/stage1/checkpoint_epoch6.pth",
+  "checkpoint_sha256": "3d92d37d21059fbde85ad76ce57e11b16b2c0ca951cbaf74d90508fc8486c55a",
+  "base_checkpoint": "checkpoints/track_r_final_method_generalization01/ETTh1/H720/seed0/base/checkpoint.pth",
+  "base_sha256": "a3ffd11f479150e265684da33692692a7744bdd9e58715aae9c5557098dd7b93",
+  "selection": {
+    "selection_criterion": "min validation Mean-Mixture RetMSE@10 (test split NEVER used)",
+    "selected_epoch": 6,
+    "selected_checkpoint_path": "checkpoints/track_v_multiquery_generalization01/ETTh1/H720/seed0/V5/stage1/checkpoint_epoch6.pth",
+    "tau_s": 0.1
+  },
+  "batch": 32,
+  "chunk": 0,
+  "timing": "concurrent shared GPU; not isolated speed comparison",
+  "python_executable": "/usr/bin/python3",
+  "torch_version": "1.12.0.dev20220327+cu113",
+  "cuda_version": "11.3",
+  "cudnn_version": 8302,
+  "retrieval_matmul_allow_tf32": true,
+  "stage2_parent_forward_matmul_allow_tf32": false,
+  "stage2_training_subprocess_default_matmul_allow_tf32": true,
+  "cudnn_allow_tf32": true,
+  "precision_evidence": "legacy_parity_metrics_probe.json: original Python1.12/CUDA11.3 exactly reproduces all test R and stored-lambda metrics; parent forward TF32 False; original Stage2 subprocess uses legacy default True"
+}

@@ -1,0 +1,35 @@
+{
+  "status": "COMPLETED",
+  "independent_stage2": {
+    "mse": 0.1742626577615738,
+    "mae": 0.21229906380176544,
+    "lambda_value": 0.41698792576789856,
+    "base_mse": 0.16936443746089935,
+    "base_sha256": "3ebb33761a0302ef756cce13470c3d3df8612f287e7f409ade4c3fa3f87aff55",
+    "passed": true
+  },
+  "provenance": {
+    "cell": "Weather_96",
+    "seed": 0,
+    "model": "V5",
+    "method": "paa16_cosine",
+    "checkpoint": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/checkpoints/Weather_96/paa16_cosine/V5/Weather_96/V5/checkpoint_epoch6.pth",
+    "checkpoint_sha256": "44b1b747cc924e2578e962ce3c4f3a3527575caf069c51725c5c3b527c328d91",
+    "selected_epoch": 6,
+    "pool_sha256": {
+      "train": "4e473ecf51bcc62f369b159a9b22e56a12fe3216c1619d4e532445ea50a700b0",
+      "val": "f24fa9c6f700380636e383c231b0638642bfe77709ae3acdb15a2a9c7735195c",
+      "test": "f09840b781a6d1b69735adca71b7a088b7d5ab564118fdf23b6996d886b1b1cb"
+    },
+    "git_sha": "238c9384e58c33d81dd0a528babacd97359eb8f0",
+    "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+    "physical_gpu_index": 1,
+    "training_batch_size": 32,
+    "training_epochs": 10,
+    "tau_s": 0.1,
+    "tau_t": 0.1,
+    "learning_rate": 0.001,
+    "shared_source_sha256": "06bfacb7a33edd9114aa1b3a90e127dbfd15f4cb2d45cc66111d38568e06f3d8",
+    "note": "Adapter changes only pool metadata verification and saved provenance; no model/loss/optimizer change."
+  }
+}

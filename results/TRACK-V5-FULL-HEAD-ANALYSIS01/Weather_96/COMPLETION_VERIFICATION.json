@@ -1,0 +1,181 @@
+{
+  "cell": "Weather_96",
+  "status": "VERIFIED",
+  "stage2_configurations": 11,
+  "val_subsets": 31,
+  "test_subsets": 31,
+  "seed": 0,
+  "epoch_selection": "minimum validation MSE verified against all epoch records",
+  "validation_selected_stage2_configuration": {
+    "subset": "1345",
+    "validation_mse": 0.4178762137889862,
+    "best_epoch": 10,
+    "test_mse": 0.17189505696296692,
+    "test_mae": 0.21942365169525146,
+    "lambda_value": 0.48791366815567017,
+    "training_wall_seconds": 36.62570023536682
+  },
+  "validation_selected_single_head": {
+    "subset": "1",
+    "validation_mse": 0.4274890720844269,
+    "best_epoch": 10,
+    "test_mse": 0.17362967133522034,
+    "test_mae": 0.22802183032035828,
+    "lambda_value": 0.4393504559993744,
+    "training_wall_seconds": 29.77573800086975
+  },
+  "all5": {
+    "subset": "12345",
+    "validation_mse": 0.41858822107315063,
+    "best_epoch": 10,
+    "test_mse": 0.16817615926265717,
+    "test_mae": 0.21593798696994781,
+    "lambda_value": 0.4794265031814575,
+    "training_wall_seconds": 36.4067587852478
+  },
+  "cache_verification": {
+    "status": "PASS",
+    "cache_comparisons": [
+      {
+        "split": "train",
+        "query_ids_exact": true,
+        "max_prediction_difference": 0.0
+      },
+      {
+        "split": "val",
+        "query_ids_exact": true,
+        "max_prediction_difference": 0.0
+      },
+      {
+        "split": "test",
+        "query_ids_exact": true,
+        "max_prediction_difference": 0.0
+      }
+    ],
+    "mse": 0.16817615926265717,
+    "mae": 0.21593798696994781,
+    "lambda_value": 0.4794265031814575
+  },
+  "original_checkpoint_integrity": [
+    {
+      "path": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H96/seed0/V5/stage1/checkpoint_epoch10.pth",
+      "sha256": "05abcf3e1eb5f06850f84266e2534281cf53c6e70d391b82ecb5a0dba4874184",
+      "status": "UNCHANGED"
+    },
+    {
+      "path": "/data/pjh_workspace/CARTS/checkpoints/track_r_final_method_generalization01/Weather/H96/seed0/base/checkpoint.pth",
+      "sha256": "3ebb33761a0302ef756cce13470c3d3df8612f287e7f409ade4c3fa3f87aff55",
+      "status": "UNCHANGED"
+    }
+  ],
+  "resource": {
+    "status": "COMPLETED",
+    "cell": "Weather_96",
+    "stage2_configurations": 11,
+    "wall_seconds": 9128.729983091354,
+    "peak_allocated_mib": 1211.80615234375,
+    "peak_reserved_mib": 1640.0
+  },
+  "resource_scope": "analysis worker peak excludes Stage2 child/P100; stage2 wall excludes data preparation",
+  "primary_rows": [
+    {
+      "subset": "1",
+      "validation_mse": 0.4274890720844269,
+      "best_epoch": 10,
+      "test_mse": 0.17362967133522034,
+      "test_mae": 0.22802183032035828,
+      "lambda_value": 0.4393504559993744,
+      "training_wall_seconds": 29.77573800086975
+    },
+    {
+      "subset": "2",
+      "validation_mse": 0.43400973081588745,
+      "best_epoch": 10,
+      "test_mse": 0.1692076325416565,
+      "test_mae": 0.2183336764574051,
+      "lambda_value": 0.37656354904174805,
+      "training_wall_seconds": 45.43395256996155
+    },
+    {
+      "subset": "3",
+      "validation_mse": 0.4345695972442627,
+      "best_epoch": 10,
+      "test_mse": 0.17959558963775635,
+      "test_mae": 0.22293931245803833,
+      "lambda_value": 0.329900860786438,
+      "training_wall_seconds": 45.74173045158386
+    },
+    {
+      "subset": "4",
+      "validation_mse": 0.4279872179031372,
+      "best_epoch": 10,
+      "test_mse": 0.17647753655910492,
+      "test_mae": 0.2335699200630188,
+      "lambda_value": 0.4168846905231476,
+      "training_wall_seconds": 44.898287773132324
+    },
+    {
+      "subset": "5",
+      "validation_mse": 0.42968398332595825,
+      "best_epoch": 10,
+      "test_mse": 0.18152308464050293,
+      "test_mae": 0.23460805416107178,
+      "lambda_value": 0.40058961510658264,
+      "training_wall_seconds": 35.97808337211609
+    },
+    {
+      "subset": "12345",
+      "validation_mse": 0.41858822107315063,
+      "best_epoch": 10,
+      "test_mse": 0.16817615926265717,
+      "test_mae": 0.21593798696994781,
+      "lambda_value": 0.4794265031814575,
+      "training_wall_seconds": 36.4067587852478
+    },
+    {
+      "subset": "2345",
+      "validation_mse": 0.4249069392681122,
+      "best_epoch": 10,
+      "test_mse": 0.17043085396289825,
+      "test_mae": 0.21864357590675354,
+      "lambda_value": 0.4677731692790985,
+      "training_wall_seconds": 38.44236350059509
+    },
+    {
+      "subset": "1345",
+      "validation_mse": 0.4178762137889862,
+      "best_epoch": 10,
+      "test_mse": 0.17189505696296692,
+      "test_mae": 0.21942365169525146,
+      "lambda_value": 0.48791366815567017,
+      "training_wall_seconds": 36.62570023536682
+    },
+    {
+      "subset": "1245",
+      "validation_mse": 0.4217517077922821,
+      "best_epoch": 10,
+      "test_mse": 0.16923579573631287,
+      "test_mae": 0.21814140677452087,
+      "lambda_value": 0.45530423521995544,
+      "training_wall_seconds": 36.81712245941162
+    },
+    {
+      "subset": "1235",
+      "validation_mse": 0.4232141971588135,
+      "best_epoch": 10,
+      "test_mse": 0.1677519828081131,
+      "test_mae": 0.21702347695827484,
+      "lambda_value": 0.4582546651363373,
+      "training_wall_seconds": 34.3552405834198
+    },
+    {
+      "subset": "1234",
+      "validation_mse": 0.42018067836761475,
+      "best_epoch": 10,
+      "test_mse": 0.17009030282497406,
+      "test_mae": 0.2245052307844162,
+      "lambda_value": 0.4712160527706146,
+      "training_wall_seconds": 18.34720492362976
+    }
+  ]
+}

@@ -1,0 +1,468 @@
+{
+  "checked_at_utc": "2026-10-29T00:11:22.049062+00:00",
+  "sources": {
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_STAGE2_MSE_MAE.csv": {
+      "sha256": "c630e43e8802f69ec8370cab2aa6f75b57627e1452c3a104996b4e4ed6887018",
+      "mtime_utc": "2026-10-28T19:30:47.896650+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/CANONICAL_COMPARATORS_RAW.csv": {
+      "sha256": "774c3356a643ea4e04b1159ed6b74125c8bfc07a6c4e0d442dcfc8bde07f2d41",
+      "mtime_utc": "2026-10-28T19:52:21.358482+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/COMPLETION_VERIFICATION.json": {
+      "sha256": "a62ff0f11fffeb5b5ccecb23bcb10c996ded09a597f01ee945fdafa04a8fa2e3",
+      "mtime_utc": "2026-10-28T13:54:59.963420+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1/metrics.json": {
+      "sha256": "86041cb1e9601def62314763a12a5c0ffd4fd0c855ed24cc11fbcbbf4715c91b",
+      "mtime_utc": "2026-10-28T13:47:51.726485+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/2/metrics.json": {
+      "sha256": "54843189c9a5a58bb283712f2cb6b6b19f2ce655a09937a4874cd328278bb08a",
+      "mtime_utc": "2026-10-28T13:48:46.970653+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/3/metrics.json": {
+      "sha256": "88d1b95fde4f81e086b69e07772c90b612ecc1ad55f6a8217f0eb8f4697df3e3",
+      "mtime_utc": "2026-10-28T13:49:39.518796+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/4/metrics.json": {
+      "sha256": "5edec3884d79cbcc487e9b9091178b54f6bfc130c3d10b516b294a087bff1785",
+      "mtime_utc": "2026-10-28T13:50:12.298878+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/5/metrics.json": {
+      "sha256": "4b84153d882a3613d2e3b3eb72b42107860ed813fff37122877103423a876fe5",
+      "mtime_utc": "2026-10-28T13:50:29.098919+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/12345/metrics.json": {
+      "sha256": "668a7ccf16c239ab84cba3530ec911874e38d48fda9d3d177ecf248cf71ff921",
+      "mtime_utc": "2026-10-28T13:50:49.138965+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/2345/metrics.json": {
+      "sha256": "0ac35300a77b8edf2145b9816232f203a2fcf32c7948aa369c36a2ac4e152ce8",
+      "mtime_utc": "2026-10-28T13:51:45.767087+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1345/metrics.json": {
+      "sha256": "dfb829fa3dec3c175cf15ca120cea2536f2ff846952031439642ab9840e4cbcb",
+      "mtime_utc": "2026-10-28T13:52:28.231171+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1245/metrics.json": {
+      "sha256": "48b0e8d24c90a86571faa1689dab2a94d7f80dc7be5ee06ebd3c5ee8d169c512",
+      "mtime_utc": "2026-10-28T13:53:12.143250+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1235/metrics.json": {
+      "sha256": "d8a4d41ce896b625f0b4512a6f6e11335012b1a6936d94bce203a9efa0171c31",
+      "mtime_utc": "2026-10-28T13:53:54.223320+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_96/stage2/1234/metrics.json": {
+      "sha256": "9ce3f0a127733741d116beb278ac1c0ba493553b8e607ffce2280b33cadd6e22",
+      "mtime_utc": "2026-10-28T13:54:11.655348+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/COMPLETION_VERIFICATION.json": {
+      "sha256": "a24d474a828b2e25d5a9b63315b9f807abf3f38ee9bdadcefd126a4d89354078",
+      "mtime_utc": "2026-10-28T14:10:28.640061+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1/metrics.json": {
+      "sha256": "20c81c23a883fcd6ced39dbded08fa6ae88fb7810c477488d9f230d5b2803502",
+      "mtime_utc": "2026-10-28T14:01:44.711825+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/2/metrics.json": {
+      "sha256": "cff604e94439e3eb1aabf27bef9430ab06c456e56d97c17e87627769b16301c5",
+      "mtime_utc": "2026-10-28T14:02:15.955845+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/3/metrics.json": {
+      "sha256": "7c0106ccdda35d95756ba63e2df2a2dbd2351da03a05fb5ea35d8fc7bcef3d0c",
+      "mtime_utc": "2026-10-28T14:03:07.059877+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/4/metrics.json": {
+      "sha256": "87627c610b37ac707305e941a01ca04dd35558065e5c477a55a36dd175f8c3ce",
+      "mtime_utc": "2026-10-28T14:04:00.859907+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/5/metrics.json": {
+      "sha256": "c84f16d497e4a66d8cc83e15adc6aa2d270b386c91c717d1f0fa41b38025cc89",
+      "mtime_utc": "2026-10-28T14:04:56.659936+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/12345/metrics.json": {
+      "sha256": "29d5aea4529a96cfe753c34be45d4273189d63d149b7f8d6e3c625c14be250e6",
+      "mtime_utc": "2026-10-28T14:05:57.943964+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/2345/metrics.json": {
+      "sha256": "616e884904ed5e4e57755174300f1da873f7be9f1bc0dc74abe6e6a0df72b90d",
+      "mtime_utc": "2026-10-28T14:06:26.867976+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1345/metrics.json": {
+      "sha256": "620635f2854fa5e51e45e82ba2389584b1c805d78b4a30c4cd958be64e392acf",
+      "mtime_utc": "2026-10-28T14:06:57.131989+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1245/metrics.json": {
+      "sha256": "9cfa87fe519fc7145c1fc07cf44d899178edd17a7bea39e91726940a0a734a5f",
+      "mtime_utc": "2026-10-28T14:07:53.756011+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1235/metrics.json": {
+      "sha256": "efd105321effc0480709a8f03e3bcda00e92992da26cd75bd72011e75b004be1",
+      "mtime_utc": "2026-10-28T14:08:56.056032+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/ETTh1_720/stage2/1234/metrics.json": {
+      "sha256": "cee5d1b1a22710ecdf28be203886ec082af6d0682dbf955b58409a0baa17161b",
+      "mtime_utc": "2026-10-28T14:09:56.864051+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/COMPLETION_VERIFICATION.json": {
+      "sha256": "e378f9cde50b4d5b48dd2ef45ad7b5442dd3688ab74d3e4f720f093ef0f3adb0",
+      "mtime_utc": "2026-10-28T16:48:46.674642+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1/metrics.json": {
+      "sha256": "286d97ff3878c897bf7395f398a36c932a37fd9ecd6f549ebedc8a27bf29e933",
+      "mtime_utc": "2026-10-28T16:26:50.728008+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/2/metrics.json": {
+      "sha256": "b7777d764ca805e0912c88086278f1560157506c9ad8e7f2c93c793b925adeb7",
+      "mtime_utc": "2026-10-28T16:28:42.463001+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/3/metrics.json": {
+      "sha256": "a96a27503a715ec75c4f6757a909bb59d3b6a191ff74200f1d8ec6c0dcdea4ee",
+      "mtime_utc": "2026-10-28T16:30:35.602002+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/4/metrics.json": {
+      "sha256": "6ae2a4214e3d32c76fc5d9c4c0c3b7d38b5a65a9700784deffcfbc3ac7c0452f",
+      "mtime_utc": "2026-10-28T16:32:22.437073+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/5/metrics.json": {
+      "sha256": "54a42d4ecb5a62ea8e3956496db12d0bcc6506800af73b8a11e3fc8811ffe00c",
+      "mtime_utc": "2026-10-28T16:33:52.256301+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/12345/metrics.json": {
+      "sha256": "c678dfe591dca641988f974de10518f9af4fea32608f1439d24d2eb8a2356f9f",
+      "mtime_utc": "2026-10-28T16:35:23.939524+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/2345/metrics.json": {
+      "sha256": "93f1e5aed49ceed953e0e8427b8ac1926eb31ba1a8ecddf282b6142a6b4fa37a",
+      "mtime_utc": "2026-10-28T16:37:01.267060+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1345/metrics.json": {
+      "sha256": "696eaf2279fb532ff400c5a8406c1d176caa8a18324a85c1d130ceff2a404525",
+      "mtime_utc": "2026-10-28T16:38:34.450569+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1245/metrics.json": {
+      "sha256": "9e2da5f8fbcaa1c44c1011157bad4b8dfd51053f412e1b1e821fd9eaf66a4e11",
+      "mtime_utc": "2026-10-28T16:40:12.770010+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1235/metrics.json": {
+      "sha256": "fd2adab6cdd4f151285a03c6207f0d33acbbe80e4c8e77e14f57e1bb2f46babd",
+      "mtime_utc": "2026-10-28T16:41:47.821436+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_96/stage2/1234/metrics.json": {
+      "sha256": "cd6a0ff7fce1498124797779df2c505e3aa8048af734fc6938b8ce4f4e550da6",
+      "mtime_utc": "2026-10-28T16:42:30.545169+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/COMPLETION_VERIFICATION.json": {
+      "sha256": "26d51ebb9902dd158a9ca8d9cdb60c1ca7fb535c0dbf0a915031bde2380ccec5",
+      "mtime_utc": "2026-10-28T19:47:57.117630+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1/metrics.json": {
+      "sha256": "efc9d3b6e1f721585bc02195d1dfedf598dfb6069f9a792d207c4dc088bc604b",
+      "mtime_utc": "2026-10-28T19:14:24.893926+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/2/metrics.json": {
+      "sha256": "041c90242b9f5648aaa8ee61a73acf74ef1257af09170886ae31320cad07bcdd",
+      "mtime_utc": "2026-10-28T19:15:51.048773+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/3/metrics.json": {
+      "sha256": "8bb43098aed86556afc309ff27f21befbe3bd7531322a04935b6c53254b3cb2b",
+      "mtime_utc": "2026-10-28T19:17:29.195517+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/4/metrics.json": {
+      "sha256": "ed15c370c4d3ff98750e60a6bed454d365c0c4789214c10509ca2caf54d0b588",
+      "mtime_utc": "2026-10-28T19:19:01.462381+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/5/metrics.json": {
+      "sha256": "58380976cefc9cd80300ecf7ff1078d6d78af6ed3f0954c47c6cfc375f96a547",
+      "mtime_utc": "2026-10-28T19:20:32.117302+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/12345/metrics.json": {
+      "sha256": "5e2fa01803ed5245d50f80ae8732733b5f76cbfe09a90c412c32ec942f9d2ed6",
+      "mtime_utc": "2026-10-28T19:22:02.724254+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/2345/metrics.json": {
+      "sha256": "ff2eccdde9dd9a0a2ee07c04b45d30348f0407cb60be75c69308236122ea5ed3",
+      "mtime_utc": "2026-10-28T19:23:49.611049+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1345/metrics.json": {
+      "sha256": "d4b48d671fafe00d1296a6fabeebfd91e1ed85ca6f9d1607aa31658a3ceb76bd",
+      "mtime_utc": "2026-10-28T19:25:26.833978+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1245/metrics.json": {
+      "sha256": "f102dd9570d0c42b4cb43e76478eebe732dd04e83b33e4790e34a9bff7ea0448",
+      "mtime_utc": "2026-10-28T19:27:12.589975+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1235/metrics.json": {
+      "sha256": "5ef3faf153ed2e7a0dca67b615ba6524e13f95d2b4af2c1bcfbc4296f5931df8",
+      "mtime_utc": "2026-10-28T19:28:52.343492+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/Weather_720/stage2/1234/metrics.json": {
+      "sha256": "58ffda3c13f9277455ef02f11e962153e42ddacdfc0a9ab2888f87d996148986",
+      "mtime_utc": "2026-10-28T19:30:31.451987+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_SUBSET_ANALYSIS.csv": {
+      "sha256": "2cb0c84fc127a6ed4115591bea43462daa6f1fb5edbf3399bbb1093f49170a3d",
+      "mtime_utc": "2026-10-28T19:30:47.896650+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/reports/current.json": {
+      "sha256": "fe027af18c16d3e93e2ff80a57adec084967739a1b9d29ef3dfef2408675a74b",
+      "mtime_utc": "2026-10-28T23:52:40.199660+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V0/COMPLETE.json": {
+      "sha256": "5622a62d11fdc2c0a075e527a2a60ee17e7bac160844b6c72c35ac4fae60b73d",
+      "mtime_utc": "2026-10-28T13:36:36.914065+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V0/stage2/metrics.json": {
+      "sha256": "aff1632b6b847ccbbacefdfd90747d3cb07bbf91bac7546bd6bd8cde28c51205",
+      "mtime_utc": "2026-10-28T13:36:35.926053+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/COMPLETE.json": {
+      "sha256": "6c6f848abb5c939e52bc18ece0fd2cf4ae95cdb83fc40fcd65d45455d7ea9c90",
+      "mtime_utc": "2026-10-28T13:48:54.938675+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/baseline_cosine/V5/stage2/metrics.json": {
+      "sha256": "e58843ae073fe8849aa7da9a1cccc8b2cabebb5f0ad4a2db85f5394386e29e57",
+      "mtime_utc": "2026-10-28T13:48:51.682666+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V0/COMPLETE.json": {
+      "sha256": "836fa1da8272954117a5aa1a14848ebdbbe3f66c39b718a8e2885498e5548976",
+      "mtime_utc": "2026-10-28T14:03:25.919888+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V0/stage2/metrics.json": {
+      "sha256": "8c38fcc8ab7ed3c3734f88cddfb5c3b6d401be7200341ec393f89b1b8c125104",
+      "mtime_utc": "2026-10-28T14:03:19.151884+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/COMPLETE.json": {
+      "sha256": "a59869871864e8149edda587d96e99486df4f0a9b63af982f06a6d6ec92456ad",
+      "mtime_utc": "2026-10-28T14:24:25.428935+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/paa16_cosine/V5/stage2/metrics.json": {
+      "sha256": "7dc942eb6a31a2d2d3559436f6f95cd25371dca7bf2408f4d49e0e2252962654",
+      "mtime_utc": "2026-10-28T14:24:19.617031+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V0/COMPLETE.json": {
+      "sha256": "de2f30802bb7b999f08d6d8d43e8627a2303ee479d3860b9d2caff3955ff75c3",
+      "mtime_utc": "2026-10-28T14:41:58.655264+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V0/stage2/metrics.json": {
+      "sha256": "c2fae1a50d8297f0cb44d01879461f595382267155b92ead82e746338d955b1d",
+      "mtime_utc": "2026-10-28T14:41:56.247277+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/COMPLETE.json": {
+      "sha256": "7ca68fb7610ae41e7527bc0bd09ff71ae3144b14268751fd38071dd5b9e03de1",
+      "mtime_utc": "2026-10-28T15:02:30.457590+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_96/saraf_time_aligned/V5/stage2/metrics.json": {
+      "sha256": "477d8c7f718438a28d62d0770341ff25cdd0706ba4f6af1f888a1033df7edf78",
+      "mtime_utc": "2026-10-28T15:02:25.033761+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V0/COMPLETE.json": {
+      "sha256": "6c4df93d6cb7f64d84a1909274cebdb2e564eab042f5a3017dda07f319a94280",
+      "mtime_utc": "2026-10-28T15:27:38.438784+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V0/stage2/metrics.json": {
+      "sha256": "84fa49a9fbfcfa0768c0114d0b8963f06fc97626288cdf50937618e301ed0699",
+      "mtime_utc": "2026-10-28T15:27:32.858403+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/COMPLETE.json": {
+      "sha256": "13d012b9923f8704ea1c505cd61138483ef1921479394a0b2121366d366d3e11",
+      "mtime_utc": "2026-10-28T15:42:00.569119+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/baseline_cosine/V5/stage2/metrics.json": {
+      "sha256": "3f3d743f745840dbfb75461425355a03ad693165c124b7ac93b65041b286acb2",
+      "mtime_utc": "2026-10-28T15:41:58.429100+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V0/COMPLETE.json": {
+      "sha256": "ed7d2deb943961898ea72af019aeeb20bd3d2e8eff21e6c177bea3bed24a88b9",
+      "mtime_utc": "2026-10-28T15:53:10.923195+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V0/stage2/metrics.json": {
+      "sha256": "408b213e33075418c238835f0c2b32f05921caec00b5f85c6a669732d1c173b4",
+      "mtime_utc": "2026-10-28T15:53:09.335196+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/COMPLETE.json": {
+      "sha256": "4a91e3a5ce069e4d7ea92af6511d199e08f4ef5eb0a2ae5475c38546ca19c5a3",
+      "mtime_utc": "2026-10-28T16:06:03.347453+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/paa16_cosine/V5/stage2/metrics.json": {
+      "sha256": "5bdc2267233f1c5eda2e16f7807c1a731d04eb4be9e8b0bbe44471a8f6c6a9c2",
+      "mtime_utc": "2026-10-28T16:05:57.751563+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V0/COMPLETE.json": {
+      "sha256": "32290306b9edea83d4e011e605f0988a361db1a5be5522d86f4e009e5ba3a1ea",
+      "mtime_utc": "2026-10-28T16:16:51.858001+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V0/stage2/metrics.json": {
+      "sha256": "47664ac311ca193664990d3e3bb646a74e603422b58e58ecd4bddc06689b475b",
+      "mtime_utc": "2026-10-28T16:16:47.338052+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/COMPLETE.json": {
+      "sha256": "6b134517e8fa95f5241fe4f7e1f5099f4ba9c5d308617d245343885b72575c34",
+      "mtime_utc": "2026-10-28T16:26:17.236314+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/ETTh1_720/saraf_time_aligned/V5/stage2/metrics.json": {
+      "sha256": "c3f28d62958cd07b57d64cce521c955d19e9ebd46d7211703b25d0b25794a100",
+      "mtime_utc": "2026-10-28T16:26:15.112334+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V0/COMPLETE.json": {
+      "sha256": "bf75da7e8b839b196c84540279b25a2aca110556d4638f7bda5bdfc99cb63a63",
+      "mtime_utc": "2026-10-28T18:42:34.534792+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V0/stage2/metrics.json": {
+      "sha256": "8fda753c8947425e81e5a3a6e16fe45c0b8870670aaf20b4430659959c2ec8ce",
+      "mtime_utc": "2026-10-28T18:42:29.430815+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/COMPLETE.json": {
+      "sha256": "c38625674776b6bf43ec169366bed6790f2df4cbd97ab4e846a929550d9b8bef",
+      "mtime_utc": "2026-10-28T20:25:42.840267+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/baseline_cosine/V5/stage2/metrics.json": {
+      "sha256": "1cf346d3a787491b4d1a26fe62e8c388c9758139e29f65031c9488caf5ea6902",
+      "mtime_utc": "2026-10-28T20:25:40.380297+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V0/COMPLETE.json": {
+      "sha256": "245a88b0c9ca584709923c2b40475c9f25693564886ebe3f78d7c1cc2c198127",
+      "mtime_utc": "2026-10-28T21:36:18.685548+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V0/stage2/metrics.json": {
+      "sha256": "b754be84bd6f5480d1edcb79a484772bd4c9e0df2887020b07793af24d3e9eab",
+      "mtime_utc": "2026-10-28T21:36:17.081557+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/COMPLETE.json": {
+      "sha256": "cb2ff9421fe1bc560c91e553ccccee455179766edeb7f4ae1f04dba704f9bff2",
+      "mtime_utc": "2026-10-28T22:19:15.572656+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/paa16_cosine/V5/stage2/metrics.json": {
+      "sha256": "7802de3270040110bcfe2763f945ebd90dee3c8d75f11006e610fd823e849c23",
+      "mtime_utc": "2026-10-28T22:19:12.768746+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V0/COMPLETE.json": {
+      "sha256": "22b18b867da8626c09bffb027c2808f0ebd3f8b2df40935f21a45f28e0cc9567",
+      "mtime_utc": "2026-10-28T22:57:54.841461+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V0/stage2/metrics.json": {
+      "sha256": "a55c34582f8fb00045ba0a23e936e025a67b3a34afe92ebcd35c37df775f73b0",
+      "mtime_utc": "2026-10-28T22:57:53.169468+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/COMPLETE.json": {
+      "sha256": "faa8bb78d2c235af1e60aa05160a219b476b2ae212f07ba01f05b3aa444f2f32",
+      "mtime_utc": "2026-10-28T23:42:34.179138+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/runs/Weather_96/saraf_time_aligned/V5/stage2/metrics.json": {
+      "sha256": "c1158e138cb26549ce7c246beb5244d63da05a236269c222ba187903888b7f7a",
+      "mtime_utc": "2026-10-28T23:42:32.507147+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_ERROR_COMPLEMENTARITY.csv": {
+      "sha256": "6912da28d0b218b11b21cae55849bebe5e30a2fc0d1db9cc611e157eb4cce015",
+      "mtime_utc": "2026-10-28T19:30:47.888650+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/HEAD_UNION_COVERAGE.csv": {
+      "sha256": "5b51d1316f5d130eee0423f9593747b0ce37f4a3374fa739efb26adcf34f92a5",
+      "mtime_utc": "2026-10-28T19:30:47.888650+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_SUMMARY.json": {
+      "sha256": "e5f9e661a8a6d23f075f80ded880216f8de927e774f393d0fdfc8036f21868cb",
+      "mtime_utc": "2026-10-28T23:51:20.300126+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_CHANNEL_DIAGNOSTICS.csv": {
+      "sha256": "338b34107f30c63de74489ca4c0bc3cf09b14c4ff751ad71daaa4bc02f8a6a4a",
+      "mtime_utc": "2026-10-28T23:51:20.300126+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V5-FULL-HEAD-ANALYSIS01/DELIVERABLE_AUDIT.json": {
+      "sha256": "5d74570fe840172992d651219d2b92d4cfde838ffcfdc4ea42d8439bc3ac58bc",
+      "mtime_utc": "2026-10-28T19:52:21.358482+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/reports/verified_results.csv": {
+      "sha256": "80ced3aec10d8170cff0dbe090253936b1a918da9427258a8ddd62ca1f0722ca",
+      "mtime_utc": "2026-10-28T23:53:11.555476+00:00"
+    },
+    "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/reports/IMPLEMENTATION_AUDIT.md": {
+      "sha256": "6e473e914c16a53710e4adeed06c511bcb86a9736c9593b1f59f7b4ba9775a59",
+      "mtime_utc": "2026-10-28T16:52:36.400994+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/BASE-WEATHER-AUDIT01-20261028/FOLLOWUP_REPORT_KO.md": {
+      "sha256": "8fc9eba3177fa4013ad6c3e203276255920b04b18bf8c33a048b512f20fbc5e0",
+      "mtime_utc": "2026-10-28T23:52:56.599564+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/BASE-WEATHER-AUDIT01-20261028/OFFICIAL_SOURCE_COMPARISON.json": {
+      "sha256": "319879964d33b781db3520b1807e542f58c1a8598e9378c00c19069fbf4c41cc",
+      "mtime_utc": "2026-10-28T23:51:39.908012+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-INFERENCE01/ETTh1/H96/seed0/V0/stage2/metrics.json": {
+      "sha256": "c964c9f5c204defb26dc197fa82d6a61926c11d72e35e21eb509e02a634f1d8b",
+      "mtime_utc": "2026-10-07T07:41:34.610220+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-INFERENCE01/ETTh1/H96/seed0/V1/stage2/metrics.json": {
+      "sha256": "2eb378d2bab1b2d47725d59146581b5425ce8e58ebbee5ff0cd16fe5c4dc41d6",
+      "mtime_utc": "2026-10-07T07:42:09.078074+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/ETTh1/H96/seed0/V2/stage2/metrics.json": {
+      "sha256": "d06211f1e1bcb4a45556a998e50c6760d070698b58ec36ad8fc22313baf3d9d9",
+      "mtime_utc": "2026-10-07T10:42:54.751605+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/ETTh1/H96/seed0/stage2/metrics.json": {
+      "sha256": "52d81079f415204ae59c7bdb9bcabc2e95a2b42d4c14f62179693620f62fd3d6",
+      "mtime_utc": "2026-10-07T09:12:22.728349+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-INFERENCE01/ETTh1/H720/seed0/V0/stage2/metrics.json": {
+      "sha256": "e3f0633d1ec00e57538deeb88874c80633cc742f813d318055a965f3036aba9d",
+      "mtime_utc": "2026-10-07T07:49:21.896158+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-INFERENCE01/ETTh1/H720/seed0/V1/stage2/metrics.json": {
+      "sha256": "27e047a71be427692845b98934b160039d1c137fb11a30f5798799cec7d5b756",
+      "mtime_utc": "2026-10-07T07:50:00.651981+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/ETTh1/H720/seed0/V2/stage2/metrics.json": {
+      "sha256": "fc07e1ec2627a872d7f9e021b66cc7e3e2fac69950f326e0ec87475e6036912c",
+      "mtime_utc": "2026-10-07T10:49:25.081133+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/ETTh1/H720/seed0/stage2/metrics.json": {
+      "sha256": "3f503641a31ee59bf88f42b14f1e2d3ad9c39dd5a8eecf96f3697af847106b28",
+      "mtime_utc": "2026-10-07T09:19:05.201222+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-INFERENCE01/Weather/H96/seed0/V0/stage2/metrics.json": {
+      "sha256": "139f2347b89e7f4b9aff82bdaac56a8b028b78206edd90e4817b8672929be913",
+      "mtime_utc": "2026-10-07T07:56:34.920188+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-INFERENCE01/Weather/H96/seed0/V1/stage2/metrics.json": {
+      "sha256": "0073148208fecccc19cbc66c282f86d7829538765c34c3005e22da8e686f493c",
+      "mtime_utc": "2026-10-07T08:02:09.083539+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/Weather/H96/seed0/V2/stage2/metrics.json": {
+      "sha256": "153d773070fe7f3c4aa79fcbf7fd082e2d8824e7be4dc136fbb18145483a6249",
+      "mtime_utc": "2026-10-07T10:58:06.424937+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/Weather/H96/seed0/stage2/metrics.json": {
+      "sha256": "cf0be3f30506011c2759126dd58c73e8dcc4f4aa64b2ce5d988757a1f737505d",
+      "mtime_utc": "2026-10-07T09:28:17.225732+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H720/seed0/V0/stage2/metrics.json": {
+      "sha256": "6aec63e183d1d5fabfcbe5dc1e058f8e47277e48bc1f7daa778544a7680d3076",
+      "mtime_utc": "2026-09-30T19:46:18.685870+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H720/seed0/V1/stage2/metrics.json": {
+      "sha256": "018f11ca9c2ca37c071d9db32caea10ccbc209771c7f9d12e9d0b834f7810ec2",
+      "mtime_utc": "2026-09-30T21:45:15.473726+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/Weather/H720/seed0/V2/stage2/metrics.json": {
+      "sha256": "47e55afb4c3adbed8e9348a23ad6c22eddc99d413d571b38b9b4f8bb178d3747",
+      "mtime_utc": "2026-10-07T14:20:11.222230+00:00"
+    },
+    "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/Weather/H720/seed0/stage2/metrics.json": {
+      "sha256": "ebcb2a67b9f452d115f8edd8adb20ff5d71382dc6e759b0ee19bb1c6d2474d57",
+      "mtime_utc": "2026-10-07T10:20:15.237336+00:00"
+    }
+  },
+  "full_verified": 44,
+  "p100_verified": 18,
+  "p100_current": {
+    "cell": "Weather_720",
+    "method": "baseline_cosine",
+    "model": "V0",
+    "phase": "training",
+    "pid": 3587985,
+    "seed": 0
+  },
+  "scope": "local server presentation only; no experiment execution or upload"
+}

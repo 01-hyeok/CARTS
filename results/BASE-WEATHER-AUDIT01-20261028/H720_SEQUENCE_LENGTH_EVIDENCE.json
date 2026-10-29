@@ -1,0 +1,87 @@
+[
+  {
+    "path": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/V2/stage1/checkpoint.pth",
+    "metadata": {
+      "config": {
+        "seq_len": null,
+        "pred_len": null,
+        "enc_in": null,
+        "channels": null
+      }
+    },
+    "input_weight_shapes": {
+      "encoder.encoder.0.weight": [
+        256,
+        720
+      ]
+    }
+  },
+  {
+    "path": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/V5/stage1/checkpoint.pth",
+    "metadata": {
+      "config": {
+        "seq_len": null,
+        "pred_len": null,
+        "enc_in": null,
+        "channels": null
+      }
+    },
+    "input_weight_shapes": {
+      "encoder.encoder.0.weight": [
+        256,
+        720
+      ]
+    }
+  },
+  {
+    "path": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/V1/stage1/checkpoint.pth",
+    "metadata": {
+      "config": {
+        "seq_len": null,
+        "pred_len": null,
+        "enc_in": null,
+        "channels": null
+      }
+    },
+    "input_weight_shapes": {
+      "encoder.encoder.0.weight": [
+        256,
+        720
+      ]
+    }
+  },
+  {
+    "path": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/base/checkpoint.pth",
+    "metadata": {
+      "config": {
+        "seq_len": 720,
+        "pred_len": 720,
+        "enc_in": null,
+        "channels": 21
+      }
+    },
+    "input_weight_shapes": {
+      "heads.0.weight": [
+        720,
+        720
+      ]
+    }
+  },
+  {
+    "path": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H720/seed0/V0/stage1/Weather_720/checkpoint.pth",
+    "metadata": {
+      "config": {
+        "seq_len": null,
+        "pred_len": null,
+        "enc_in": null,
+        "channels": null
+      }
+    },
+    "input_weight_shapes": {
+      "encoder.encoder.0.weight": [
+        256,
+        720
+      ]
+    }
+  }
+]

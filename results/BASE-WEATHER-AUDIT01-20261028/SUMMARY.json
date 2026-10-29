@@ -1,0 +1,21 @@
+{
+  "numeric_reproduction": "PASS",
+  "data_quality": "CONCERN_UNCLEANED_MINUS9999_IN_TRAIN_SCALER",
+  "leakage_checks": "PASS_WITHIN_INSPECTED_CODE_AND_DATA",
+  "historical_prediction_array": "UNAVAILABLE",
+  "p100_weather720_actual_comparison": "NOT_YET_AVAILABLE",
+  "cells": {
+    "Weather_96": {
+      "mse": 0.16936445602760955,
+      "mae": 0.2118117568457513
+    },
+    "Weather_720": {
+      "mse": 0.3194298952671261,
+      "mae": 0.34381811743163365
+    }
+  },
+  "source_code_unchanged": true,
+  "retraining": false,
+  "github_push": false,
+  "completed_utc": "2026-10-28T23:45:30.598742+00:00"
+}

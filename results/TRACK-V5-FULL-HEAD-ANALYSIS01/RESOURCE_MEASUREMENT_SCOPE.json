@@ -1,0 +1,7 @@
+{
+  "worker_peak_scope": "PyTorch allocator maximum in analysis worker only; excludes Stage2 child and concurrent P100 processes",
+  "cell_wall_scope": "run_cell after setup, including canonical gate, cache construction and Stage2 children; excludes preceding smoke and setup",
+  "stage2_wall_scope": "Original trainer time from after loading tensors through fitting/evaluation/save; excludes process startup and tensor preparation",
+  "comparison": "Concurrent GPU1 execution; not isolated efficiency benchmark",
+  "precision": "retrieval TF32 True under PyTorch1.12; parent Stage2 verification/secondary TF32 False; unchanged primary training subprocess legacy default True"
+}

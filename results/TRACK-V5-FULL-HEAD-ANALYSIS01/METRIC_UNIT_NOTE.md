@@ -1,0 +1,3 @@
+# Metric aggregation unit
+
+The existing Self-only CI protocol evaluates each query-channel pair. Reported metrics average equally over all query-channel pairs. A fixed validation-selected head subset is shared across the cell. The saved test_subset_query_metrics tensor has shape [queries, channels, subsets, metrics]; its oracle minimizes over subsets separately for each query-channel pair before averaging. Thus oracle_test_aggmse is a non-deployable query-channel oracle, not one shared head subset selected per multivariate query. Oracle MAE independently selects its subset by MAE and is not necessarily the MSE-oracle subset. Pairwise head overlap, cosine and union metrics also average over query-channel pairs.

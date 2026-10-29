@@ -1,0 +1,13 @@
+{
+  "models": [
+    0,
+    5
+  ],
+  "methods": [
+    "baseline_cosine",
+    "paa16_cosine",
+    "saraf_time_aligned"
+  ],
+  "seed": 0,
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec"
+}

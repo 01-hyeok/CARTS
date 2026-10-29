@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "cache_comparisons": [
+    {
+      "split": "train",
+      "query_ids_exact": true,
+      "max_prediction_difference": 0.0
+    },
+    {
+      "split": "val",
+      "query_ids_exact": true,
+      "max_prediction_difference": 0.0
+    },
+    {
+      "split": "test",
+      "query_ids_exact": true,
+      "max_prediction_difference": 0.0
+    }
+  ],
+  "mse": 0.5036835670471191,
+  "mae": 0.5058333277702332,
+  "lambda_value": 0.5509619116783142
+}

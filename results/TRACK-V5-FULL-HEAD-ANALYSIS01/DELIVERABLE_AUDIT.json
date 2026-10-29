@@ -1,0 +1,48 @@
+{
+  "experiments": "COMPLETED_VERIFIED",
+  "cells": [
+    {
+      "cell": "ETTh1_96",
+      "status": "VERIFIED",
+      "stage2": 11,
+      "val_subsets": 31,
+      "test_subsets": 31,
+      "required_files": 14,
+      "original_checkpoints_unchanged": true
+    },
+    {
+      "cell": "ETTh1_720",
+      "status": "VERIFIED",
+      "stage2": 11,
+      "val_subsets": 31,
+      "test_subsets": 31,
+      "required_files": 14,
+      "original_checkpoints_unchanged": true
+    },
+    {
+      "cell": "Weather_96",
+      "status": "VERIFIED",
+      "stage2": 11,
+      "val_subsets": 31,
+      "test_subsets": 31,
+      "required_files": 14,
+      "original_checkpoints_unchanged": true
+    },
+    {
+      "cell": "Weather_720",
+      "status": "VERIFIED",
+      "stage2": 11,
+      "val_subsets": 31,
+      "test_subsets": 31,
+      "required_files": 14,
+      "original_checkpoints_unchanged": true
+    }
+  ],
+  "total_stage2": 44,
+  "total_val_test_subset_rows": 248,
+  "tests": "9 passed",
+  "github_upload": "NOT_DONE",
+  "large_caches_uploaded": false,
+  "research_conclusion": "MIXED / INCONCLUSIVE",
+  "source_originals_preserved": true
+}

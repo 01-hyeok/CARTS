@@ -1,0 +1,5 @@
+cell,selection,subset,validation_aggmse,test_aggmse,test_aggmae,stage2
+ETTh1_96,31 subsets validation AggMSE,245,0.728888,0.433198,0.442688,not inferred from Stage1 selection
+ETTh1_720,31 subsets validation AggMSE,25,1.638848,0.584165,0.555890,not inferred from Stage1 selection
+Weather_96,31 subsets validation AggMSE,1345,0.496723,0.211324,0.254823,not inferred from Stage1 selection
+Weather_720,31 subsets validation AggMSE,2345,0.764016,0.430600,0.388943,not inferred from Stage1 selection
