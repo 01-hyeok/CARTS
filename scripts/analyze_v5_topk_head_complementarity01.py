@@ -226,6 +226,9 @@ CELLS = {
     'Weather_96': dict(name='Weather_96', reference_ckpt='checkpoints/soft_set_mse/stage1/custom/seq96_pred96/stage1_carts_softset_Weather_96_S0_wce_RelationStage1_custom_ftM_sl96_ll0_pl96_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl96_pl96_0/checkpoint.pth',
                         pool='results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H96/seed0/pool_top100/shared_candidate_pool',
                         pred_len=96, seq_len=96),
+    'Weather_720': dict(name='Weather_720', reference_ckpt='checkpoints/soft_set_mse/stage1/custom/seq720_pred720/stage1_carts_softset_Weather_720_S0_wce_RelationStage1_custom_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Weather_sl720_pl720_0/checkpoint.pth',
+                         pool='results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H720/seed0/pool_top100/shared_candidate_pool',
+                         pred_len=720, seq_len=720),
 }
 ARMS = ('S0', 'S1', 'S2', 'D0', 'D1', 'D2')
 
