@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "settings": 12,
+  "full_coverage_cells": 4,
+  "stage2_reproduction_all": true,
+  "query_channel_alignment_all": true,
+  "lambda_retrained": false,
+  "new_training": false
+}

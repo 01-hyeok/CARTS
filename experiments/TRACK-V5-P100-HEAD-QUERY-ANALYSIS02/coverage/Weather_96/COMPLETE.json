@@ -1,0 +1,12 @@
+{
+  "cell": "Weather_96",
+  "split": "test",
+  "sample": "64 evenly spaced test row indices, all channels; same query/channel for every P100 method",
+  "query_count": 64,
+  "full_checkpoint": "checkpoints/track_v_multiquery_generalization01/Weather/H96/seed0/V5/stage1/checkpoint_epoch10.pth",
+  "full_checkpoint_sha": "05abcf3e1eb5f06850f84266e2534281cf53c6e70d391b82ecb5a0dba4874184",
+  "full_cache_maxdiff": 0.0,
+  "python": "/usr/bin/python3",
+  "torch": "1.12.0.dev20220327+cu113",
+  "caveat": "Full and P100 checkpoints differ; retention is descriptive, not a pure preselection causal effect. Future oracle is diagnostic only."
+}

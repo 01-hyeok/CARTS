@@ -1,0 +1,221 @@
+{
+  "status": "PASS",
+  "cell": "Weather_192",
+  "data": {
+    "cell": "Weather_192",
+    "counts": {
+      "train": 36504,
+      "val": 5079,
+      "test": 10348
+    },
+    "channels": 21,
+    "channel_names": [
+      "p (mbar)",
+      "T (degC)",
+      "Tpot (K)",
+      "Tdew (degC)",
+      "rh (%)",
+      "VPmax (mbar)",
+      "VPact (mbar)",
+      "VPdef (mbar)",
+      "sh (g/kg)",
+      "H2OC (mmol/mol)",
+      "rho (g/m**3)",
+      "wv (m/s)",
+      "max. wv (m/s)",
+      "wd (deg)",
+      "rain (mm)",
+      "raining (s)",
+      "SWDR (W/m�)",
+      "PAR (�mol/m�/s)",
+      "max. PAR (�mol/m�/s)",
+      "Tlog (degC)",
+      "OT"
+    ],
+    "starts": {
+      "train": [
+        0,
+        36503
+      ],
+      "val": [
+        36695,
+        41773
+      ],
+      "test": [
+        41965,
+        52312
+      ]
+    },
+    "scaler_train_rows": 36887,
+    "scaler_mean": [
+      990.6424618429255,
+      11.978743188657251,
+      285.9094998237861,
+      5.474408599235503,
+      67.52999105375878,
+      15.683926315504108,
+      9.844447095182584,
+      5.839411445766801,
+      6.215718545829153,
+      9.94795076856345,
+      1206.7523290047984,
+      1.9474169761704665,
+      3.7608498929162035,
+      175.98528397538428,
+      0.011481009569767126,
+      23.287065903977012,
+      160.64175752975302,
+      318.0403689646759,
+      378.4815870089733,
+      22.81172038929704,
+      411.0543416379755
+    ],
+    "scaler_scale": [
+      8.630709833546048,
+      7.718422186776981,
+      7.916676308767531,
+      6.464405778018869,
+      18.755159326241408,
+      8.109081505918006,
+      4.396184747169019,
+      5.902716958360042,
+      2.7998813345512694,
+      4.461935641871606,
+      38.068159995158084,
+      52.09941335817868,
+      2.5959868098469028,
+      86.96403231681457,
+      0.1227842954291551,
+      105.34730507960829,
+      238.7777925095574,
+      468.055552246746,
+      643.3526922078195,
+      7.9779941945883825,
+      383.95709796587886
+    ],
+    "normalized_space": true,
+    "candidate_count": 36504,
+    "seq_len": 192,
+    "pred_len": 192
+  },
+  "loader_pool_checks": [
+    {
+      "split": "train",
+      "rows": [
+        0,
+        18252,
+        36503
+      ],
+      "pool_sha256": "349f4e0834ab7f6430929f2411ac637eb46cc7198b305a5b79baf12212448c0b",
+      "min_valid": 35737,
+      "all_channels_tested": 21
+    },
+    {
+      "split": "val",
+      "rows": [
+        0,
+        2539,
+        5078
+      ],
+      "pool_sha256": "40a67c0457e2948fd28ed40fb12daf00ed650431a697c7c360d01ea85b21272f",
+      "min_valid": 36504,
+      "all_channels_tested": 21
+    },
+    {
+      "split": "test",
+      "rows": [
+        0,
+        5174,
+        10347
+      ],
+      "pool_sha256": "ecb6b5db330b9efd6e3eda0eaf3482af6f47928bf47cf4b226e712506b1183ea",
+      "min_valid": 36504,
+      "all_channels_tested": 21
+    }
+  ],
+  "initialization": [
+    {
+      "seed": 0,
+      "encoder_hash": "f082bed0d479ccf9c142c270ac7959ea31a2cad30339e93fe362e5326964e07f",
+      "head1_hash": "30701fbb9d0817a0d70329d186269c7a73555c9539b2313f34e8a8e39c6840dc",
+      "head2_hash": "5d4c00cc43e723596ebde9b82bc500734c31e4c993faa70961eafda75f7d13d4",
+      "head5_hash": "058c3550281ecb4d5d627c0900bac7d4385d43fd859d3c60602181f2a6731d6b",
+      "epoch1_batch_hash": "4e18d442c87be2ea2f5faafdb90102eaa4908a5a1f1f29999905e012843a197f"
+    },
+    {
+      "seed": 1,
+      "encoder_hash": "99df162c4cceaf60007cb6ae10fc46402516290cd7e7c0056d3a13351770c324",
+      "head1_hash": "8e4bdc5cd8acbc146b091b1569fe929ca6cf44ab7c70bff7cd15d372344ef4ee",
+      "head2_hash": "d51bc7e27d82eba6a6a6da0ff0897581233b4d29cc96313ee8846ae7a57d4cf2",
+      "head5_hash": "622a02dbdd65d0bee226e77d1d948b72dedcb6b0a5f43b2360e3f647766c7c09",
+      "epoch1_batch_hash": "7e06ef76022de201af2828b2d3281be4c3669fa808c06e2e28cafdafcbc85be3"
+    },
+    {
+      "seed": 2,
+      "encoder_hash": "c4cfa4010cc41aae9ff9646ff34e46e9619e6ca55423c17629144fa2b1141e55",
+      "head1_hash": "01131781d96ba309a55d53d5b14a28f2b4bdf4945ee5a48facd0732fa843332d",
+      "head2_hash": "342041374624a7e9fe882d95653c5f98528dfb603cb104c8a643dda4ca866d2d",
+      "head5_hash": "e3da5b187ee060cff83ecb600b3b7011a9eb2c9e19b3bdda8d33aff12c858cb0",
+      "epoch1_batch_hash": "2d5b4988600b068c35b9e73cbdbcd03b7339519ff92af5896a7622406bba2a21"
+    }
+  ],
+  "canonical_actual_B32_parity": [
+    {
+      "channel": 0,
+      "model": "V0",
+      "max_score_diff": 0.0,
+      "kl": 1.4891917705535889,
+      "top10_exact": true
+    },
+    {
+      "channel": 0,
+      "model": "V1",
+      "max_score_diff": 0.0,
+      "kl": 1.4884601831436157,
+      "top10_exact": true
+    },
+    {
+      "channel": 0,
+      "model": "V2",
+      "max_score_diff": 0.0,
+      "kl": 1.4890835285186768,
+      "top10_exact": true
+    },
+    {
+      "channel": 0,
+      "model": "V5",
+      "max_score_diff": 0.0,
+      "kl": 1.4886810779571533,
+      "top10_exact": true
+    },
+    {
+      "channel": 20,
+      "model": "V0",
+      "max_score_diff": 0.0,
+      "kl": 1.138765811920166,
+      "top10_exact": true
+    },
+    {
+      "channel": 20,
+      "model": "V1",
+      "max_score_diff": 0.0,
+      "kl": 1.1387611627578735,
+      "top10_exact": true
+    },
+    {
+      "channel": 20,
+      "model": "V2",
+      "max_score_diff": 0.0,
+      "kl": 1.1387338638305664,
+      "top10_exact": true
+    },
+    {
+      "channel": 20,
+      "model": "V5",
+      "max_score_diff": 0.0,
+      "kl": 1.1387895345687866,
+      "top10_exact": true
+    }
+  ],
+  "training_result_reuse": false
+}

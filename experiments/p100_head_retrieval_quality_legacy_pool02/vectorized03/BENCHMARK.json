@@ -1,0 +1,255 @@
+{
+  "status": "PASS",
+  "gpu": {
+    "physical_index": 1,
+    "uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+    "logical_index": 0,
+    "name": "NVIDIA A100-SXM4-80GB"
+  },
+  "started_at": "2026-10-30T05:37:33.623300+00:00",
+  "parity": [
+    {
+      "dropout_on": false,
+      "legacy_loss": 1.5658957627567924,
+      "vector_loss": 1.5658957958221436,
+      "loss_abs_diff": 3.3065351123795494e-08,
+      "gradient_max_abs_diff": 2.2351741790771484e-08,
+      "gradient_relative_l2": 3.697698502946878e-07,
+      "adam_update_max_abs_diff": 1.9665807485580444e-05,
+      "eval_score_max_abs_diff": 5.364418029785156e-07,
+      "eval_top10_order_diff_rows": 1,
+      "rng_end_equal": true,
+      "units": 4384,
+      "finite": true
+    },
+    {
+      "dropout_on": true,
+      "legacy_loss": 1.6219127548001981,
+      "vector_loss": 1.6219128370285034,
+      "loss_abs_diff": 8.222830527593317e-08,
+      "gradient_max_abs_diff": 2.2351741790771484e-08,
+      "gradient_relative_l2": 3.0001737627571856e-07,
+      "adam_update_max_abs_diff": 3.03611159324646e-06,
+      "eval_score_max_abs_diff": 5.364418029785156e-07,
+      "eval_top10_order_diff_rows": 1,
+      "rng_end_equal": true,
+      "units": 4384,
+      "finite": true
+    }
+  ],
+  "benchmarks": [
+    {
+      "cell": "Solar_96",
+      "method": "legacy",
+      "channel_chunk": 1,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.575119024142623,
+        0.5667047863826156,
+        0.5843406310304999
+      ],
+      "median_seconds": 0.575119024142623,
+      "peak_allocated_bytes": 97517568,
+      "peak_reserved_bytes": 113246208,
+      "loss": 1.485495272344046,
+      "finite": true
+    },
+    {
+      "cell": "Solar_96",
+      "method": "vector",
+      "channel_chunk": 137,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.052097098901867867,
+        0.052228434942662716,
+        0.052455720491707325
+      ],
+      "median_seconds": 0.052228434942662716,
+      "peak_allocated_bytes": 4558498304,
+      "peak_reserved_bytes": 6618611712,
+      "loss": 1.4854063987731934,
+      "finite": true
+    },
+    {
+      "cell": "Solar_96",
+      "method": "vector",
+      "channel_chunk": 32,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.06187504529953003,
+        0.06207591202110052,
+        0.06177682336419821
+      ],
+      "median_seconds": 0.06187504529953003,
+      "peak_allocated_bytes": 1118867456,
+      "peak_reserved_bytes": 1721761792,
+      "loss": 1.485038003782286,
+      "finite": true
+    },
+    {
+      "cell": "Solar_192",
+      "method": "legacy",
+      "channel_chunk": 1,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.5733618037775159,
+        0.5736239347606897,
+        0.5737971682101488
+      ],
+      "median_seconds": 0.5736239347606897,
+      "peak_allocated_bytes": 107095040,
+      "peak_reserved_bytes": 113246208,
+      "loss": 2.058029378417633,
+      "finite": true
+    },
+    {
+      "cell": "Solar_192",
+      "method": "vector",
+      "channel_chunk": 137,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.05262958537787199,
+        0.054459976963698864,
+        0.0546965803951025
+      ],
+      "median_seconds": 0.054459976963698864,
+      "peak_allocated_bytes": 5211999744,
+      "peak_reserved_bytes": 7113539584,
+      "loss": 1.9918595552444458,
+      "finite": true
+    },
+    {
+      "cell": "Solar_192",
+      "method": "vector",
+      "channel_chunk": 32,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.06399889755994081,
+        0.06295321229845285,
+        0.0626568105071783
+      ],
+      "median_seconds": 0.06295321229845285,
+      "peak_allocated_bytes": 1279657984,
+      "peak_reserved_bytes": 1793064960,
+      "loss": 2.097193917218786,
+      "finite": true
+    },
+    {
+      "cell": "Solar_336",
+      "method": "legacy",
+      "channel_chunk": 1,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.5734285935759544,
+        0.5762195801362395,
+        0.5722925309091806
+      ],
+      "median_seconds": 0.5734285935759544,
+      "peak_allocated_bytes": 123877888,
+      "peak_reserved_bytes": 136314880,
+      "loss": 2.083644558913516,
+      "finite": true
+    },
+    {
+      "cell": "Solar_336",
+      "method": "vector",
+      "channel_chunk": 137,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.05938760843127966,
+        0.0597536638379097,
+        0.060200429521501064
+      ],
+      "median_seconds": 0.0597536638379097,
+      "peak_allocated_bytes": 6737775616,
+      "peak_reserved_bytes": 7482638336,
+      "loss": 2.0741498470306396,
+      "finite": true
+    },
+    {
+      "cell": "Solar_336",
+      "method": "vector",
+      "channel_chunk": 32,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.06929036043584347,
+        0.06965746637433767,
+        0.06875670328736305
+      ],
+      "median_seconds": 0.06929036043584347,
+      "peak_allocated_bytes": 1640701440,
+      "peak_reserved_bytes": 1809842176,
+      "loss": 2.086151404972494,
+      "finite": true
+    },
+    {
+      "cell": "Solar_720",
+      "method": "legacy",
+      "channel_chunk": 1,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        1.3944345181807876,
+        0.5672260755673051,
+        0.5718199126422405
+      ],
+      "median_seconds": 0.5718199126422405,
+      "peak_allocated_bytes": 171234816,
+      "peak_reserved_bytes": 176160768,
+      "loss": 2.524053843352045,
+      "finite": true
+    },
+    {
+      "cell": "Solar_720",
+      "method": "vector",
+      "channel_chunk": 137,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.07693176623433828,
+        0.07547382172197104,
+        0.07673473749309778
+      ],
+      "median_seconds": 0.07673473749309778,
+      "peak_allocated_bytes": 10817443840,
+      "peak_reserved_bytes": 11182014464,
+      "loss": 2.5271828174591064,
+      "finite": true
+    },
+    {
+      "cell": "Solar_720",
+      "method": "vector",
+      "channel_chunk": 32,
+      "batch": 32,
+      "channels": 137,
+      "seconds": [
+        0.08780080452561378,
+        0.0853646295145154,
+        0.08470555767416954
+      ],
+      "median_seconds": 0.0853646295145154,
+      "peak_allocated_bytes": 2611054080,
+      "peak_reserved_bytes": 2942304256,
+      "loss": 2.52109444228402,
+      "finite": true
+    }
+  ],
+  "tolerances": {
+    "loss_abs": 2e-05,
+    "grad_relative_l2": 5e-05,
+    "grad_max_abs": 5e-05,
+    "adam_max_abs": 5e-05,
+    "score_max_abs": 3e-06
+  },
+  "benchmark_definition": "1 warmup + 3 synchronized train forward/backward/Adam steps; excludes data loader, pool generation, validation, output writing",
+  "finished_at": "2026-10-30T05:39:17.352326+00:00"
+}

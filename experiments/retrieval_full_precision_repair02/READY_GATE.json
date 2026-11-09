@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "at": "2026-10-30T23:11:26.229017+00:00",
+  "source_hashes": {
+    "full_precision_policy.py": "8cfee7c19718158e20a0246dd4596215a16d48eb54b7460f193847c3d3e6a864",
+    "full_repair_controller.py": "549957f972f8b87b7f2929167251045d945f0e39ed351d6d22910d2d70bdc898",
+    "audit_full_v0_runtime.py": "114cc6808dd23decf21e3e5bfbc7df5f31d14dcc4674d7879daef9cbee52957d",
+    "full_repaired_supplement.py": "f9ebe124da891149bbaa2399c4926013c2d8dc70c6403e7b70fc94d7ef05fc33",
+    "probe_full_cell.py": "839a304c99d2e36ab4f6c85ac5a1e45d234b48e19118ee14ec88850b4fd9318e",
+    "full_precision_runtime.py": "ce075c486ac11d0462f4221c6b148b10fc8297582f9042d3892999dd1622dbad",
+    "test_full_precision_policy.py": "59d40a83d53607c2526546a388acf59a1cf6500fb4a14a16de022967cc815d70",
+    "activate_full_repair02.py": "b00479a94ba0797832f9aa23d17e8c55cf05540ba669a736282775e936b872c6",
+    "full_repaired_run.py": "659134dc886da443d093fa0880c86de97fc14e1a106ed44ce0c784b27d9f755d",
+    "full_v0_score_export.py": "85796d7553b36cb13967bb9381e4a9f43520929d059b83f5b5e34088e90f8491"
+  },
+  "tests": [
+    {
+      "runtime": "torch2",
+      "count": 51,
+      "log": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/FULL_REPAIR02/tests_torch2.log",
+      "sha256": "5ace9b684813cfb59bc607ea7ecc9b24e2ee0276cb745c1c20026ecd8926444a"
+    },
+    {
+      "runtime": "legacy",
+      "count": 51,
+      "log": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/FULL_REPAIR02/tests_legacy.log",
+      "sha256": "91455296000368fe582e1343e744c8e00702105ca80ca4129c9433db77c4e938"
+    }
+  ],
+  "actual_gpu_gate": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/FULL_REPAIR02/ETTh1_192/CANONICAL_REPRODUCTION.json",
+  "actual_gpu_gate_sha256": "bc44b0581796929ae9cdf031f8db516c33b85605ed12ed02d057bd51c1117f21",
+  "all_preexisting_sources_unchanged": true
+}

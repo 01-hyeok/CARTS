@@ -1,0 +1,7 @@
+{
+  "error": "ValueError('invalid timestamps')",
+  "traceback": "Traceback (most recent call last):\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 419, in <module>\n    elif a.action=='run':run()\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 372, in run\n    for method in METHODS: precompute(cell,method)\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 107, in precompute\n    dates,starts,steps=stamps_for(exp,args)\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 86, in stamps_for\n    if dates.isna().any() or not dates.is_monotonic_increasing or dates.duplicated().any(): raise ValueError('invalid timestamps')\nValueError: invalid timestamps\n",
+  "time_utc": "2026-10-28T16:41:47Z",
+  "pid": 3560741,
+  "status": "FAILED"
+}

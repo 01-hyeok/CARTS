@@ -1,0 +1,8 @@
+{
+  "rows": 52696,
+  "missing": 0,
+  "duplicates": 1,
+  "nominal_seconds": 600.0,
+  "gaps": 1,
+  "policy": "actual CSV timestamps; original row order; no imputation/deduplication"
+}

@@ -1,0 +1,21 @@
+{
+  "launched_at": "2026-10-29T16:45:11.319402+00:00",
+  "pid": 3866022,
+  "command": [
+    "/data/pjh_workspace/ts-env/bin/python",
+    "-u",
+    "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality/controller.py"
+  ],
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "physical_index": 1,
+  "log": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01/controller.log",
+  "cpu_tests": {
+    "tests": 29,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "pretraining_gates": "PASS",
+  "total_runs": 144,
+  "stage2": false
+}

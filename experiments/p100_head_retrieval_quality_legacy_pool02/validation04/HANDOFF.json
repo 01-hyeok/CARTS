@@ -1,0 +1,29 @@
+{
+  "reason": "Authorized validation vectorization; hold next run until independent validation gates",
+  "requested_at": "2026-10-30T06:51:24.896288+00:00",
+  "current": {
+    "status": "STAGE1_RUNNING",
+    "target": "Solar_96_V5_seed0",
+    "controller_pid": 3981216,
+    "worker_pid": 3985442,
+    "log": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/logs/Solar_96_V5_seed0.log",
+    "command": [
+      "/data/pjh_workspace/ts-env/bin/python",
+      "-u",
+      "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/runtime_vector.py",
+      "train",
+      "Solar_96_V5_seed0"
+    ],
+    "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+    "physical_gpu_index": 1,
+    "total": 48,
+    "cancelled_by_user": 96,
+    "active_seeds": [
+      0
+    ],
+    "updated_at": "2026-10-30T06:15:16.485416+00:00"
+  },
+  "selected_checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_96/seed0/V5/epoch09.pth",
+  "checkpoint_sha256": "b866ca6e8e030857606c9e67bd009116503c45a51084069be1ccb4cd7daec9ba",
+  "saved_epochs": 10
+}

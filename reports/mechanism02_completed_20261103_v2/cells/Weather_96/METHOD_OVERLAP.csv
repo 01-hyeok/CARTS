@@ -1,0 +1,4 @@
+cell,model,training_support,checkpoint_sha256,comparison,overlap10,ordered_equal_fraction
+Weather_96,V0,P100,20b0f3ca609f4358cb1ad0191dab138998548c537fdca5e7956eb2459efea677,controlled Full-logit restriction vs native P100 path,0.9999443745326548,0.9945012857689993
+Weather_96,V1,P100,2ce4d308d75c10a8784c305aa02d04fac5ca132d42076f4b434196ce5f740520,controlled Full-logit restriction vs native P100 path,0.9999917929638342,0.9991473801316774
+Weather_96,V5,P100,fa903d09c4340f6288fc034249f088fb41a04625db23b3a44e077b1e3227d5ae,controlled Full-logit restriction vs native P100 path,0.9999968083748244,0.9996580401597637

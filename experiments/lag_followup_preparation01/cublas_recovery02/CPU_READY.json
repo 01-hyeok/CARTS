@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "cpu_tests": 11,
+  "py_compile": "PASS",
+  "source_hashes": {
+    "contracts.py": "0d14da6489466ef161f5b3c98bd9fa02aeacf35df127ed0e8c2ae8cb2f84d192",
+    "controller.py": "c0d621c32f772df7def113c791c9016873d516b98f3790359b7e0b8894dc9c32",
+    "probe.py": "2e6a0e93342f08541a50b83de4bbd80dfa97b5c67ae8498f8b7a78662a16403b",
+    "test_contracts.py": "e02298952678a5ad74290d6648c3d717015f8fddb57ed4040ce763ff8993fbb4"
+  },
+  "gpu_probe": "NOT_STARTED",
+  "production_activated": false,
+  "original_sources_modified": false,
+  "scope": "Weather336 P100-trained V0/V1 Full support; exact actual tails7/28; all21channels; no future metric selection"
+}

@@ -1,0 +1,20 @@
+{
+  "status": "PAUSED_AT_SAVED_EPOCH",
+  "run_id": "Solar_96_V2_seed0",
+  "saved_epoch": 7,
+  "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/Solar_96/seed0/V2/epoch07.pth",
+  "checkpoint_sha256": "0c74190aff8e178ac380ea0574f996e5632e5b0816dc8f40cce4f80d74773d79",
+  "old_worker_pid": 3964636,
+  "old_worker_start_ticks": "466757052",
+  "progress_when_stopped": {
+    "status": "TRAINING",
+    "run_id": "Solar_96_V2_seed0",
+    "epoch": 7,
+    "batch": 1100,
+    "pid": 3964636,
+    "updated_at": "2026-10-30T05:27:54.755323+00:00"
+  },
+  "stopped_at": "2026-10-30T05:29:16.297238+00:00",
+  "partial_results_archive": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/vectorized03_prechange/Solar_96_V2_seed0",
+  "reason": "User authorized all-channel vectorization; resume requires tested numerical/RNG policy"
+}

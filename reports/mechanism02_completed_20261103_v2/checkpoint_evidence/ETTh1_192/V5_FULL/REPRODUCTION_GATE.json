@@ -1,0 +1,181 @@
+{
+  "status": "PASS",
+  "identity": {
+    "checkpoint_sha256": "967948da8e0d1e952152bdefa3aebd90d01175507b181f025b9bd42a6a99e204",
+    "pool_hashes": {
+      "train": "c454b49a74ad4a4dad0982a13e16232f867360e083940181b21105a1969dcc3f",
+      "val": "8a0cba9f7d72d340d12af89ff7ef5ec53075a348ff1866b806c27319f2650257",
+      "test": "35e754ab542cfa157fbb06a18d9166894ea70ef067f66658559e058bd480a58a"
+    },
+    "source_hashes": {
+      "adapter.py": "3c2bbf051ae17b8629613fb73b9753917d70112f224dc4c83cb05c36fce9030b",
+      "worker.py": "dbbb1ea1e19aab8485fb8c1ef6fd6b12217c78d2b2093a40ba822c76563045de",
+      "gpu_metrics.py": "f4ab1a7820cd0a2877c0e4fa4e11f6f1c3c1c93d3dc3dbd929086b359a688236",
+      "geometry.py": "6602f8bb93bef96097f82edea49229daf554939ab62347a8ca58a8b21123722d",
+      "feature_analysis.py": "d07ce90b8b3ac3cb7749a579dcd4542e14432f6386756b0ebb8cb90fad1854d6",
+      "ranking.py": "7f55f0f32da969837b79dd5e00381fcd2331767391af50d4003a9986698ae513",
+      "resources.py": "72988ccb8daf48617593fc8e3eaac4f67450c4c467d2d6e7aea141ed5a678f1d",
+      "protocol.py": "7cfa0ae33b7680766c2607dbfdabf388b458791883a96a92fb4e1534ff56ffff",
+      "io_utils.py": "55981d7ab738c29cf7453824cff80aa911d9d5d010b96e023feff7044ec0b032"
+    },
+    "protocol_sha256": "c8df66065d77af417a14ebb2a9dba33e424d8417652d5027e5cd0fcf202c1d4d",
+    "data": {
+      "cell": "ETTh1_192",
+      "counts": {
+        "train": 8257,
+        "val": 2689,
+        "test": 2689
+      },
+      "channels": 7,
+      "channel_names": [
+        "HUFL",
+        "HULL",
+        "MUFL",
+        "MULL",
+        "LUFL",
+        "LULL",
+        "OT"
+      ],
+      "starts": {
+        "train": [
+          0,
+          8256
+        ],
+        "val": [
+          8448,
+          11136
+        ],
+        "test": [
+          11328,
+          14016
+        ]
+      },
+      "scaler_train_rows": 8640,
+      "scaler_mean": [
+        7.937742245659508,
+        2.0210386567335163,
+        5.079770601157927,
+        0.7461858799957015,
+        2.781762386375555,
+        0.7884531235540096,
+        17.1282616982271
+      ],
+      "scaler_scale": [
+        5.812749409143771,
+        2.0901046504076,
+        5.518793579036245,
+        1.9263792741329822,
+        1.0235226594952194,
+        0.6302366362251923,
+        9.176491024944335
+      ],
+      "normalized_space": true,
+      "candidate_count": 8257,
+      "seq_len": 192,
+      "pred_len": 192
+    }
+  },
+  "rows": [
+    {
+      "model": "V5_FULL",
+      "split": "val",
+      "status": "PASS",
+      "queries": 2689,
+      "channels": 7,
+      "units": 18823,
+      "ordered_id_sha256": "85522f8b86f23196aa815770060dcbae6aa881555c4d38d65175d950b53b2fa8",
+      "canonical_ordered_id_sha256": "85522f8b86f23196aa815770060dcbae6aa881555c4d38d65175d950b53b2fa8",
+      "ordered_mismatch_count": 0,
+      "max_prediction_difference": 0.0,
+      "max_query_metric_difference": 0.0,
+      "metrics": [
+        1.2552665804580783,
+        1.0373319708692972,
+        0.6964451537487776,
+        0.05524624130053657
+      ],
+      "source_checkpoint_sha256": "967948da8e0d1e952152bdefa3aebd90d01175507b181f025b9bd42a6a99e204"
+    },
+    {
+      "model": "V5_FULL",
+      "split": "test",
+      "status": "PASS",
+      "queries": 2689,
+      "channels": 7,
+      "units": 18823,
+      "ordered_id_sha256": "112c1150e04dccd05cc782f827d43b1001fc42b19feccfc2a976b9c2ec97acb7",
+      "canonical_ordered_id_sha256": "112c1150e04dccd05cc782f827d43b1001fc42b19feccfc2a976b9c2ec97acb7",
+      "ordered_mismatch_count": 0,
+      "max_prediction_difference": 0.0,
+      "max_query_metric_difference": 0.0,
+      "metrics": [
+        0.6530087514205529,
+        0.47295401611563836,
+        0.4731239008464456,
+        0.06590872868299417
+      ],
+      "source_checkpoint_sha256": "967948da8e0d1e952152bdefa3aebd90d01175507b181f025b9bd42a6a99e204"
+    }
+  ],
+  "seconds": 59.89815629646182,
+  "reference_only_channel_loop": true,
+  "production_channel_loop": false,
+  "source": {
+    "cell": "ETTh1_192",
+    "dataset": "ETTh1",
+    "horizon": "192",
+    "architecture": "V5",
+    "seed": "0",
+    "training_support": "FULL",
+    "status": "CPU_PROVENANCE_PASS_GPU_REPRODUCTION_PENDING",
+    "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/ETTh1/H192/seed0/V5/stage1/checkpoint_epoch6.pth",
+    "checkpoint_sha256": "967948da8e0d1e952152bdefa3aebd90d01175507b181f025b9bd42a6a99e204",
+    "selected_epoch": "6",
+    "epochs_completed": "",
+    "selection_criterion": "min validation Mean-Mixture RetMSE@10 (test split NEVER used)",
+    "teacher": "",
+    "evidence": "/data/pjh_workspace/CARTS/results/TRACK-V-MEANMIX-CHECKPOINT-CORRECTION01/ETTh1/H192/seed0/checkpoint_selection/selected_checkpoint.json",
+    "canonical_retmse": "",
+    "canonical_agg_mse": "",
+    "canonical_agg_mae": "",
+    "canonical_recall": "",
+    "runtime": "historical generation UNKNOWN; existing full reproduction proof retained separately",
+    "new_training": "False",
+    "native_metric_source": "",
+    "torch_version": "1.12.0.dev20220327+cu113",
+    "matmul_tf32": true,
+    "original_runtime": "UNKNOWN",
+    "all_channel_batch": true,
+    "shapes": [
+      {
+        "axis": "candidate",
+        "channel_batch": 7,
+        "encoder_rows": 8257,
+        "candidate_chunk": 1179,
+        "all_channels": true
+      },
+      {
+        "kind": "true_channel_batched_queries",
+        "original_query_batch": 32,
+        "all_channels": 7,
+        "query_chunk": 4,
+        "actual_encoder_batch_rows": 32,
+        "all_channels_in_each_model_call": true,
+        "canonical_row_count_preserved": true,
+        "channel_loops": false,
+        "tail_backend": null
+      },
+      {
+        "kind": "true_channel_batched_queries",
+        "original_query_batch": 32,
+        "all_channels": 7,
+        "query_chunk": 4,
+        "actual_encoder_batch_rows": 32,
+        "all_channels_in_each_model_call": true,
+        "canonical_row_count_preserved": true,
+        "channel_loops": false,
+        "tail_backend": null
+      }
+    ]
+  }
+}

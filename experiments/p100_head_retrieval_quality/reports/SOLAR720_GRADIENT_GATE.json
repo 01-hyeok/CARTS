@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "cell": "Solar_720",
+  "batch": 32,
+  "channels": 137,
+  "candidates": 100,
+  "dropout": 0.1,
+  "query_gradient": true,
+  "candidate_gradient": true,
+  "optimizer_steps_per_path": 1,
+  "exact_loss": true,
+  "exact_gradient": true,
+  "exact_optimizer_update": true,
+  "exact_cuda_rng_after": true,
+  "canonical": {
+    "loss": 2.914338662676567,
+    "seconds": 1.161480619572103,
+    "peak_allocated": 3881987584,
+    "peak_reserved": 4257218560
+  },
+  "compact": {
+    "loss": 2.914338662676567,
+    "seconds": 0.6385983768850565,
+    "peak_allocated": 1416361984,
+    "peak_reserved": 4261412864
+  },
+  "smoke_only": true,
+  "weights_discarded": true
+}

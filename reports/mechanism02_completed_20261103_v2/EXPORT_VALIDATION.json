@@ -1,0 +1,67 @@
+{
+  "at": "2026-11-03T05:58:40.323440+00:00",
+  "status": "PASS_FIVE_CELL_EVIDENCE_EXPORT",
+  "cells": [
+    {
+      "cell": "ETTh1_96",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING",
+      "cell_gate_sha256": "6f5b7a6bced84b743ee958efdca06efaa16bc8732d9c9819c185b9353be16017",
+      "cell_files_fresh_hash_pass": 50,
+      "checkpoint_fresh_hash_pass": 6,
+      "validation_query_count": 2785,
+      "test_query_count": 2785,
+      "channels": 7,
+      "raw_prediction_archives": "Referenced by stored core manifests; not freshly re-read for this report"
+    },
+    {
+      "cell": "ETTh1_192",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING",
+      "cell_gate_sha256": "344e829dc23a7bc7ee50eda3b0bf0d6e05b21a9c7217afeafa7b95e3c5f8badb",
+      "cell_files_fresh_hash_pass": 50,
+      "checkpoint_fresh_hash_pass": 6,
+      "validation_query_count": 2689,
+      "test_query_count": 2689,
+      "channels": 7,
+      "raw_prediction_archives": "Referenced by stored core manifests; not freshly re-read for this report"
+    },
+    {
+      "cell": "ETTh1_336",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING",
+      "cell_gate_sha256": "a09448f97f1b9bd81d743e12e081e5bec78bec624b6bd3e7abc8fa44afdda385",
+      "cell_files_fresh_hash_pass": 50,
+      "checkpoint_fresh_hash_pass": 6,
+      "validation_query_count": 2545,
+      "test_query_count": 2545,
+      "channels": 7,
+      "raw_prediction_archives": "Referenced by stored core manifests; not freshly re-read for this report"
+    },
+    {
+      "cell": "ETTh1_720",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING",
+      "cell_gate_sha256": "45d88b9aba7e75289488b944f9eaa7f6a609a016560fcc4983d9cbf30b2c5bc0",
+      "cell_files_fresh_hash_pass": 50,
+      "checkpoint_fresh_hash_pass": 6,
+      "validation_query_count": 2161,
+      "test_query_count": 2161,
+      "channels": 7,
+      "raw_prediction_archives": "Referenced by stored core manifests; not freshly re-read for this report"
+    },
+    {
+      "cell": "Weather_96",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING",
+      "cell_gate_sha256": "7b006c90c8820179822eb982b20ff216db7f856d77201445d3cc2841f1fcad42",
+      "cell_files_fresh_hash_pass": 50,
+      "checkpoint_fresh_hash_pass": 6,
+      "validation_query_count": 5175,
+      "test_query_count": 10444,
+      "channels": 21,
+      "raw_prediction_archives": "Referenced by stored core manifests; not freshly re-read for this report"
+    }
+  ],
+  "incomplete_cells": [
+    "Weather_192",
+    "Weather_336",
+    "Weather_720"
+  ],
+  "whole_study_complete": false
+}

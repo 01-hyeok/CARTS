@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "cpu_tests": 16,
+  "source_hashes": {
+    "exact_patch.py": "d74598ff169e236291a7eb5a98502c68c99d3eff736996b844e362ff97f24335",
+    "probe_norm.py": "7db43de9cf3d0128d61e6327a6df6cfdc0e808986ebfcada9f8be8653105c2d7",
+    "recovery_controller.py": "5e8cddd86b2c1ded017ef885516f55138c1133d32f29237f9acf8d154584023e",
+    "recover_run.py": "078b3ff5784823d131ea4ab721ddec97a104fb6247da6530b5fb51b46cdc0186",
+    "scope.py": "07b62f63bb053ad93dbdfce1f14bb1337c339b3f603c025c29b4d1c412199cf6",
+    "source_contract.py": "2000b9491775f441001407d1459257c3342c311e3f07a6e7853cb2ce0cbabef9",
+    "test_scope.py": "2995a3ed99008ee9118b8e60af16ec5dcd88ce4aa6fa7f2d18048c5af7234810",
+    "test_source_contract.py": "cdd64f7611526e6fe6b2c1320b633bad69d2b199b619ec5d3d0f3377b87e8556",
+    "validate.py": "2bdd7a7a48890928a7dbc22cc8d78cad16f42d4421e7327050bd548d0cf0c6d2"
+  }
+}

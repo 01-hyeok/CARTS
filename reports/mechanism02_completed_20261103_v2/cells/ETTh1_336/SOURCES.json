@@ -1,0 +1,63 @@
+{
+  "at": "2026-11-02T13:33:57.455130+00:00",
+  "checkpoints": {
+    "V0_P100": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/ETTh1_336/seed0/V0/epoch07.pth",
+      "sha256": "ffa41cb90488081389edc0188872a6ad38769d2b9910e9adcbbe07abe3a107ca",
+      "reproduction_sha256": "7fd2ed53f1fc1eba84786bbb67e2d452b87cd324441339a51768556e4a9bf2df",
+      "selection": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+      "original_runtime": "UNKNOWN"
+    },
+    "V1_P100": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/ETTh1_336/seed0/V1/epoch04.pth",
+      "sha256": "26f1f6e794c56857a4aecd21c6817063ecd309538977183bdc299fc6013e5985",
+      "reproduction_sha256": "81a28e0997b926f373db8a4be33f54942498453bc3a79a60996a7a87ed96e35d",
+      "selection": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+      "original_runtime": "UNKNOWN"
+    },
+    "V5_P100": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/ETTh1_336/seed0/V5/epoch04.pth",
+      "sha256": "cda2b579f7d3f491c250712842ea4b067a48e220baa66f3d759144b442e45ebd",
+      "reproduction_sha256": "3a18736a47649d606ea0ca6d0309d210cee9a14ce31197cd2e863600c51d8b17",
+      "selection": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+      "original_runtime": "UNKNOWN"
+    },
+    "V0_FULL": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/ETTh1/H336/seed0/V0/stage1/ETTh1_336/checkpoint.pth",
+      "sha256": "524e31450f26fa89b2a3f16139d17648e8cfa7b1ec351f6cd1a075e7f6ab3c89",
+      "reproduction_sha256": "5f770682373ddce76d989e397b15dcadabffe1dd9d2540893f4bdd98677e550c",
+      "selection": "min val model_top10_individual_mse",
+      "original_runtime": "UNKNOWN"
+    },
+    "V1_FULL": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/ETTh1/H336/seed0/V1/stage1/checkpoint.pth",
+      "sha256": "1f8ecef1604e122a85a34e2bcbff000e37914ea3234426d68334e7bb57ffc19d",
+      "reproduction_sha256": "7a461bc592698d2da1c6516b47fd6b441100c6dc142fbbc584884addeaa15852",
+      "selection": "original min validation single-head raw-score Top10 RetMSE; no reselection",
+      "original_runtime": "UNKNOWN"
+    },
+    "V5_FULL": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_meanmix_checkpoint_correction01/ETTh1/H336/seed0/V5/stage1_retrain/checkpoint_epoch2.pth",
+      "sha256": "2c66d87d8e24450b8806727421790f4627caa5f5c5e38c8f5310f47926a75b74",
+      "reproduction_sha256": "f0eb0d7abac7aecd99b73f0daffa81449138709d9a2d427995071f4ceb217ed8",
+      "selection": "min validation Mean-Mixture RetMSE@10 (test split NEVER used)",
+      "original_runtime": "UNKNOWN"
+    }
+  },
+  "source_hashes": {
+    "adapter.py": "3c2bbf051ae17b8629613fb73b9753917d70112f224dc4c83cb05c36fce9030b",
+    "worker.py": "f594a69c393a2cf834a9ea017afb68586b09fe9d6b387afca49e7e143f390999",
+    "gpu_metrics.py": "f4ab1a7820cd0a2877c0e4fa4e11f6f1c3c1c93d3dc3dbd929086b359a688236",
+    "geometry.py": "6602f8bb93bef96097f82edea49229daf554939ab62347a8ca58a8b21123722d",
+    "feature_analysis.py": "d07ce90b8b3ac3cb7749a579dcd4542e14432f6386756b0ebb8cb90fad1854d6",
+    "ranking.py": "7f55f0f32da969837b79dd5e00381fcd2331767391af50d4003a9986698ae513",
+    "resources.py": "72988ccb8daf48617593fc8e3eaac4f67450c4c467d2d6e7aea141ed5a678f1d",
+    "protocol.py": "7cfa0ae33b7680766c2607dbfdabf388b458791883a96a92fb4e1534ff56ffff",
+    "io_utils.py": "55981d7ab738c29cf7453824cff80aa911d9d5d010b96e023feff7044ec0b032"
+  },
+  "queries": {
+    "val": 2545,
+    "test": 2545
+  },
+  "smoke": false
+}

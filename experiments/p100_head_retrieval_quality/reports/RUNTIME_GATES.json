@@ -1,0 +1,92 @@
+{
+  "status": "PASS",
+  "checked_at": "2026-10-29T16:38:33.631208+00:00",
+  "gpu": {
+    "physical_index": 1,
+    "uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+    "logical_index": 0,
+    "name": "NVIDIA A100-SXM4-80GB"
+  },
+  "source_hashes": {
+    "data_provider/data_factory.py": "1cd1f9fe4682fd0c596f1f14c9d42a4626f10016978b01ace9cb9fe5867a0375",
+    "data_provider/data_loader.py": "cced1cc4f621e083078699e83c276763798a63146161f59e5d7cec768a06062c",
+    "experiments/p100_head_retrieval_quality/check_plan.py": "8131a47ba3521578c87ca39d128a9c695bf87e355ebe6cf136ee24f7a7228907",
+    "experiments/p100_head_retrieval_quality/controller.py": "42f7a851b09eddd27d108ff49f6da9658acc5635795bb69f10ec680a69f1730e",
+    "experiments/p100_head_retrieval_quality/gates.py": "7c257c2702440bcc5bb80d0e1feb265d4332e097484415085966bdef8815a77b",
+    "experiments/p100_head_retrieval_quality/preparation.py": "8e3321cf430d859402d7621c50c69043db60a5c4682e7355b04a1eac18c99686",
+    "experiments/p100_head_retrieval_quality/prepare_manifest.py": "f5b92cdf160cc3e7597ec3f5b4d27df5fb15f997c6066f528d59e8bd15a33e0c",
+    "experiments/p100_head_retrieval_quality/runtime.py": "061ce7e4abe29ba13c48b4aabca197d955877acbf0022e7d7c4f0f43ab64936e",
+    "experiments/p100_head_retrieval_quality/summarize.py": "23c158a3bc5157f7ebfb987dd06c1064d7858ffb3d320cdf85a2ca5c532d1c25",
+    "models/RelationStage1.py": "ad9a0dab08172839ed812a1d9980854ae66916d50a31d9c819f45c1a1739b444",
+    "scripts/train_factorial_e2e01.py": "92fe993499e01ac326b6621956fecae9c4c30fbea1175b8deac3299dc5376cbb",
+    "scripts/train_horizon_retrieval_expert01.py": "7a158518e2127495bd396199b5b289ca93184238bc386aef41ff4561543e51d9",
+    "scripts/train_k_multislot_predictive_retrieval01.py": "afaa63e0a29109709db13cd7bc6b86a8cf32b6ab7f02297e63257b9b9a2d44bb",
+    "utils/candidate_pool.py": "edab08885362dd51fc79d08e10c96e74adb369ab1006a1ede902efccb8b2550b",
+    "utils/mean_mixture_selection.py": "90e05943d09b1cbe8f1fa48cb170fd828d7d752df571a652fa1d70a730ac9e52",
+    "utils/relation_memory.py": "cfcbf9686582c817c3c7d2ed4ec45c10cc55c38e1fee4a6afb0d8f6e042cf61c"
+  },
+  "teacher_mode": "zscore_future_mse",
+  "cpu_tests": {
+    "tests": 29,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "cells": [
+    "ETTh1_96",
+    "ETTh1_192",
+    "ETTh1_336",
+    "ETTh1_720",
+    "Weather_96",
+    "Weather_192",
+    "Weather_336",
+    "Weather_720",
+    "Solar_96",
+    "Solar_192",
+    "Solar_336",
+    "Solar_720"
+  ],
+  "actual_loader_cells": 12,
+  "actual_meanmix_loss_score_parity": "PASS",
+  "solar_gradient_gate": {
+    "status": "PASS",
+    "cell": "Solar_720",
+    "batch": 32,
+    "channels": 137,
+    "candidates": 100,
+    "dropout": 0.1,
+    "query_gradient": true,
+    "candidate_gradient": true,
+    "optimizer_steps_per_path": 1,
+    "exact_loss": true,
+    "exact_gradient": true,
+    "exact_optimizer_update": true,
+    "exact_cuda_rng_after": true,
+    "canonical": {
+      "loss": 2.914338662676567,
+      "seconds": 1.161480619572103,
+      "peak_allocated": 3881987584,
+      "peak_reserved": 4257218560
+    },
+    "compact": {
+      "loss": 2.914338662676567,
+      "seconds": 0.6385983768850565,
+      "peak_allocated": 1416361984,
+      "peak_reserved": 4261412864
+    },
+    "smoke_only": true,
+    "weights_discarded": true
+  },
+  "full_pool_eligibility_gate": "required per cell after generation before its first training run",
+  "existing_training_results_reused": false,
+  "stage2": false,
+  "elapsed_seconds": 107.45816840045154,
+  "controller_post_gate_validation": {
+    "changed_files": [
+      "experiments/p100_head_retrieval_quality/controller.py"
+    ],
+    "test": "synthetic 144 sequential runs and restart skip",
+    "tests_passed": 1,
+    "checked_at": "2026-10-29T16:45:11.294582+00:00"
+  }
+}

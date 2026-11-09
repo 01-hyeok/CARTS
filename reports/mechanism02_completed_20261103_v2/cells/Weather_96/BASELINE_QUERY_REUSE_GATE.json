@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "sources": [
+    {
+      "support": "P100",
+      "files": {
+        "aggregate/test_schema.json": "4d952c45e02956a293569209d1a0803a4cc6790610277ec87da8c9c02992e970",
+        "aggregate/test_starts.npy": "124c942bdc95b51490195b165d95ae894627eee64f891c2040e76c0fd1382605",
+        "aggregate/test_metrics.npy": "2eab53ccefdbe7ee045eb2ae0d10859f7f3d250f564031ed3c99d40fc56a4fbf",
+        "RETRIEVAL_BASELINE_COMPARISON.csv": "6478672250a5b40d10aabeb0aeb637d3d7b59cdc7cae2689f6bf48fb29c8a762"
+      }
+    },
+    {
+      "support": "FULL",
+      "files": {
+        "aggregate/test_schema.json": "e061207edab8470053ed3fbd260422292d4d188014dd372695eae5e0022aa171",
+        "aggregate/test_starts.npy": "124c942bdc95b51490195b165d95ae894627eee64f891c2040e76c0fd1382605",
+        "aggregate/test_metrics.npy": "baf851c051e3bb8120ee153ee2212b3136a7596a75e0d23eda4efe6f0126acd9",
+        "RETRIEVAL_BASELINE_COMPARISON.csv": "5814c1ea96205212c9be086085acb9cd42c38118369965f0b81de992b346e54b"
+      }
+    }
+  ],
+  "query_ids_aligned": true,
+  "full_array_means_reproduce_csv": true,
+  "smoke_only": false
+}

@@ -1,0 +1,47 @@
+{
+  "status": "PASS_SERVER_CSV_READ_HASH_COUNT_REPORT_RENDER",
+  "at": "2026-11-03T08:36:06.870705Z",
+  "canonical_csv": 135,
+  "nonempty": 129,
+  "aliases": 60,
+  "canonical_rows": 18188,
+  "gates": [
+    {
+      "cell": "ETTh1_96",
+      "gate": "/data/pjh_workspace/CARTS/reports/mechanism02_completed_20261103_v2/cells/ETTh1_96/CELL_ARTIFACT_GATE.json",
+      "sha256": "6f5b7a6bced84b743ee958efdca06efaa16bc8732d9c9819c185b9353be16017",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING"
+    },
+    {
+      "cell": "ETTh1_192",
+      "gate": "/data/pjh_workspace/CARTS/reports/mechanism02_completed_20261103_v2/cells/ETTh1_192/CELL_ARTIFACT_GATE.json",
+      "sha256": "344e829dc23a7bc7ee50eda3b0bf0d6e05b21a9c7217afeafa7b95e3c5f8badb",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING"
+    },
+    {
+      "cell": "ETTh1_336",
+      "gate": "/data/pjh_workspace/CARTS/reports/mechanism02_completed_20261103_v2/cells/ETTh1_336/CELL_ARTIFACT_GATE.json",
+      "sha256": "a09448f97f1b9bd81d743e12e081e5bec78bec624b6bd3e7abc8fa44afdda385",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING"
+    },
+    {
+      "cell": "ETTh1_720",
+      "gate": "/data/pjh_workspace/CARTS/reports/mechanism02_completed_20261103_v2/cells/ETTh1_720/CELL_ARTIFACT_GATE.json",
+      "sha256": "45d88b9aba7e75289488b944f9eaa7f6a609a016560fcc4983d9cbf30b2c5bc0",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING"
+    },
+    {
+      "cell": "Weather_96",
+      "gate": "/data/pjh_workspace/CARTS/reports/mechanism02_completed_20261103_v2/cells/Weather_96/CELL_ARTIFACT_GATE.json",
+      "sha256": "7b006c90c8820179822eb982b20ff216db7f856d77201445d3cc2841f1fcad42",
+      "status": "CORE_AND_CPU_ANALYSES_PASS_STUDY_REVIEW_PENDING"
+    }
+  ],
+  "all_csv_raw_values_in_body": false,
+  "parts": 15,
+  "report_sha256": "1b85b504f8d0554fd5fc9d93132b64b59bd41a5c2314afc571103ad6a81b9b75",
+  "report_chars": 155830,
+  "inventory_sha256": "debc45ec6b892dd478aa7814b8d3e8e93c66eb25b18c793becc510aba1cd56d9",
+  "no_gpu_execution": true,
+  "originals_modified": false
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "ordinal": 1,
+    "support": "P100",
+    "cell": "ETTh1_96",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 2,
+    "support": "P100",
+    "cell": "ETTh1_192",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 3,
+    "support": "P100",
+    "cell": "ETTh1_336",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 4,
+    "support": "P100",
+    "cell": "ETTh1_720",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 5,
+    "support": "P100",
+    "cell": "Weather_96",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 6,
+    "support": "P100",
+    "cell": "Weather_192",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 7,
+    "support": "P100",
+    "cell": "Weather_336",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 8,
+    "support": "P100",
+    "cell": "Weather_720",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 9,
+    "support": "P100",
+    "cell": "Solar_96",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 10,
+    "support": "P100",
+    "cell": "Solar_192",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 11,
+    "support": "P100",
+    "cell": "Solar_336",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 12,
+    "support": "P100",
+    "cell": "Solar_720",
+    "status": "WAITING_EXISTING_TRAINING"
+  },
+  {
+    "ordinal": 13,
+    "support": "FULL",
+    "cell": "ETTh1_96",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 14,
+    "support": "FULL",
+    "cell": "ETTh1_192",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 15,
+    "support": "FULL",
+    "cell": "ETTh1_336",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 16,
+    "support": "FULL",
+    "cell": "ETTh1_720",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 17,
+    "support": "FULL",
+    "cell": "Weather_96",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 18,
+    "support": "FULL",
+    "cell": "Weather_192",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 19,
+    "support": "FULL",
+    "cell": "Weather_336",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 20,
+    "support": "FULL",
+    "cell": "Weather_720",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 21,
+    "support": "FULL",
+    "cell": "Solar_96",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 22,
+    "support": "FULL",
+    "cell": "Solar_192",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 23,
+    "support": "FULL",
+    "cell": "Solar_336",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  },
+  {
+    "ordinal": 24,
+    "support": "FULL",
+    "cell": "Solar_720",
+    "status": "BLOCKED_P100_ALL_COMPLETE"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "cell": "Solar_720",
+  "queries": 4537,
+  "channels": 137,
+  "P": 100,
+  "canonical_order_exact": true,
+  "all_eligible_unique": true,
+  "sha256": "b7bd6a810f0c8b0f6fb64de6917187fb880c54c148e590f2bfcc81e6ca20647a",
+  "not_official_pool": true
+}

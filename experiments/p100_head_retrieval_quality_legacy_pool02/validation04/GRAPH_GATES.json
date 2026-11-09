@@ -1,0 +1,218 @@
+{
+  "status": "PASS",
+  "started_at": "2026-10-30T07:13:04.151659+00:00",
+  "scope": "validation accelerator correctness, not retrieval failure attribution experiment",
+  "cases": [
+    {
+      "cell": "Solar_96",
+      "heads": 5,
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_96/seed0/V5/epoch09.pth",
+      "checkpoint_sha256": "b866ca6e8e030857606c9e67bd009116503c45a51084069be1ccb4cd7daec9ba",
+      "full_validation_queries": 5161,
+      "channels": 137,
+      "units": 707057,
+      "score_mismatch_batches": 0,
+      "pick_mismatch_batches": 0,
+      "metric_abs_differences": {
+        "retmse": 0.0,
+        "agg_mse": 0.0,
+        "agg_mae": 0.0,
+        "recall": 0.0,
+        "regret": 0.0,
+        "last_win": 0.0,
+        "last_tie": 0.0
+      },
+      "canonical_metrics": {
+        "cell": "Solar_96",
+        "split": "val",
+        "query_count": 5161,
+        "channels": 137,
+        "unit_count": 707057,
+        "rows": [
+          {
+            "name": "All",
+            "heads": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "k": 10,
+            "retmse": 0.3416899150261213,
+            "agg_mse": 0.197787410103899,
+            "agg_mae": 0.2434054696013095,
+            "recall": 0.23253797503846418,
+            "regret": 0.24904103041398465,
+            "last_win": 0.920341641480107,
+            "last_tie": 0.0,
+            "last_skill": 0.9074099100493326
+          }
+        ],
+        "last_mse": 2.1361617664404626,
+        "last_mae": 1.0507990620453391,
+        "oracle_k10_boundary_tie_fraction": 5.232958587497189e-05
+      },
+      "cached_metrics": {
+        "cell": "Solar_96",
+        "split": "val",
+        "query_count": 5161,
+        "channels": 137,
+        "unit_count": 707057,
+        "rows": [
+          {
+            "name": "All",
+            "heads": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "k": 10,
+            "retmse": 0.3416899150261213,
+            "agg_mse": 0.197787410103899,
+            "agg_mae": 0.2434054696013095,
+            "recall": 0.23253797503846418,
+            "regret": 0.24904103041398465,
+            "last_win": 0.920341641480107,
+            "last_tie": 0.0,
+            "last_skill": 0.9074099100493326
+          }
+        ],
+        "last_mse": 2.1361617664404626,
+        "last_mae": 1.0507990620453391,
+        "oracle_k10_boundary_tie_fraction": 5.232958587497189e-05,
+        "validation_acceleration": {
+          "method": "canonical B32 CUDA graph + exact-shape candidate cache",
+          "channels_cached": 137,
+          "channel_probe_mismatches": 0,
+          "full_batches_cached": 137,
+          "short_batches_canonical": 0,
+          "channel_fallback_batches": 0,
+          "cache_build_seconds": 0.7285581631585956,
+          "candidate_encode_rows": 3200,
+          "pool_budget": 100,
+          "exact_probe_elements": 56115200,
+          "graph_captures": 1,
+          "graph_replays": 22057,
+          "graph_short_batches_canonical": 137
+        }
+      },
+      "canonical_timing": {
+        "seconds": 64.55112119950354,
+        "peak_allocated_bytes": 64307712,
+        "peak_reserved_bytes": 69206016
+      },
+      "cached_timing": {
+        "seconds": 18.332979544065893,
+        "peak_allocated_bytes": 142355456,
+        "peak_reserved_bytes": 195035136
+      },
+      "speedup": 3.5210381948196607
+    },
+    {
+      "cell": "Solar_720",
+      "heads": 0,
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/soft_set_mse/stage1/Solar/seq720_pred720/stage1_carts_softset_Solar_720_S0_wce_RelationStage1_Solar_ftM_sl720_ll0_pl720_dm128_nh4_el2_dl1_df256_expand2_dc4_fc1_ebtimeF_dtTrue_softset_S0_wce_Solar_sl720_pl720_0/checkpoint.pth",
+      "checkpoint_sha256": "6132e1bfc8c7ebdc1393fecaa8e7c4572956a60531303cbb3c8053a444c5da21",
+      "full_validation_queries": 4537,
+      "channels": 137,
+      "units": 621569,
+      "score_mismatch_batches": 0,
+      "pick_mismatch_batches": 0,
+      "metric_abs_differences": {
+        "retmse": 0.0,
+        "agg_mse": 0.0,
+        "agg_mae": 0.0,
+        "recall": 0.0,
+        "regret": 0.0,
+        "last_win": 0.0,
+        "last_tie": 0.0
+      },
+      "canonical_metrics": {
+        "cell": "Solar_720",
+        "split": "val",
+        "query_count": 4537,
+        "channels": 137,
+        "unit_count": 621569,
+        "rows": [
+          {
+            "name": "All",
+            "heads": [
+              1
+            ],
+            "k": 10,
+            "retmse": 0.34068755991308314,
+            "agg_mse": 0.1826906882947526,
+            "agg_mae": 0.2270460407585661,
+            "recall": 0.1540565921360243,
+            "regret": 0.15999479984115844,
+            "last_win": 0.9981948906718321,
+            "last_tie": 0.0,
+            "last_skill": 0.9095693725082783
+          }
+        ],
+        "last_mse": 2.020230240152616,
+        "last_mae": 1.0024798659077623,
+        "oracle_k10_boundary_tie_fraction": 6.435327373147631e-06
+      },
+      "cached_metrics": {
+        "cell": "Solar_720",
+        "split": "val",
+        "query_count": 4537,
+        "channels": 137,
+        "unit_count": 621569,
+        "rows": [
+          {
+            "name": "All",
+            "heads": [
+              1
+            ],
+            "k": 10,
+            "retmse": 0.34068755991308314,
+            "agg_mse": 0.1826906882947526,
+            "agg_mae": 0.2270460407585661,
+            "recall": 0.1540565921360243,
+            "regret": 0.15999479984115844,
+            "last_win": 0.9981948906718321,
+            "last_tie": 0.0,
+            "last_skill": 0.9095693725082783
+          }
+        ],
+        "last_mse": 2.020230240152616,
+        "last_mae": 1.0024798659077623,
+        "oracle_k10_boundary_tie_fraction": 6.435327373147631e-06,
+        "validation_acceleration": {
+          "method": "canonical B32 CUDA graph + exact-shape candidate cache",
+          "channels_cached": 137,
+          "channel_probe_mismatches": 0,
+          "full_batches_cached": 137,
+          "short_batches_canonical": 0,
+          "channel_fallback_batches": 0,
+          "cache_build_seconds": 0.628882197663188,
+          "candidate_encode_rows": 3200,
+          "pool_budget": 100,
+          "exact_probe_elements": 56115200,
+          "graph_captures": 1,
+          "graph_replays": 19317,
+          "graph_short_batches_canonical": 137
+        }
+      },
+      "canonical_timing": {
+        "seconds": 55.78212668467313,
+        "peak_allocated_bytes": 98914816,
+        "peak_reserved_bytes": 109051904
+      },
+      "cached_timing": {
+        "seconds": 18.234755674377084,
+        "peak_allocated_bytes": 259981824,
+        "peak_reserved_bytes": 396361728
+      },
+      "speedup": 3.0591101784301094
+    }
+  ],
+  "finished_at": "2026-10-30T07:14:18.532327+00:00",
+  "cache_source_sha256": "2ad47831df910e15f09787cc25cc514c95a186b4ec08fb4fee8553b8b0a39d44",
+  "graph_source_sha256": "4b1373725546fb209ac5ae779559275374397574d8cff6869399e14c81cec433"
+}

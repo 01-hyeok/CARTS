@@ -1,0 +1,15 @@
+{
+  "at": "2026-11-03T01:03:18.967318+00:00",
+  "cells": {
+    "ETTh1_96": "CORE_AND_CPU_ANALYSES_SAVED",
+    "ETTh1_192": "CORE_AND_CPU_ANALYSES_SAVED",
+    "ETTh1_336": "CORE_AND_CPU_ANALYSES_SAVED",
+    "ETTh1_720": "CORE_AND_CPU_ANALYSES_SAVED",
+    "Weather_96": "CORE_AND_CPU_ANALYSES_SAVED",
+    "Weather_192": "PENDING",
+    "Weather_336": "PENDING",
+    "Weather_720": "PENDING"
+  },
+  "all_conditions_finished": false,
+  "final_review": "PENDING"
+}

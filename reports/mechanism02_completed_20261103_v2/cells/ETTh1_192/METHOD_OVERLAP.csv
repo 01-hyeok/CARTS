@@ -1,0 +1,4 @@
+cell,model,training_support,checkpoint_sha256,comparison,overlap10,ordered_equal_fraction
+ETTh1_192,V0,P100,471025ff80f7bb5af9b627a608dcbbfa1141b3cd1c7952a2fc628e0deb536191,controlled Full-logit restriction vs native P100 path,1.0,0.9999468735058173
+ETTh1_192,V1,P100,dd2e3cc55d4f3cba02236872de9fc9647d039773a10f6ca51e97ee41c85b4d46,controlled Full-logit restriction vs native P100 path,0.9999946873505818,0.9999468735058173
+ETTh1_192,V5,P100,30350cb32b400794fa54ccb129f1a1921321d1c9f1612dca4771bb21e89638f9,controlled Full-logit restriction vs native P100 path,1.0,1.0

@@ -1,0 +1,102 @@
+{
+  "status": "IMPLEMENTATION_IN_PROGRESS_GATED",
+  "track": "learned_dynamics_cross01",
+  "seed": 0,
+  "gpu_index": 1,
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "datasets": [
+    "ETTh1",
+    "Weather"
+  ],
+  "horizons": [
+    96,
+    192,
+    336,
+    720
+  ],
+  "supports_separately_trained": [
+    "P100",
+    "FULL"
+  ],
+  "condition_count_per_support": 8,
+  "pilot_order": [
+    "ETTh1_96",
+    "ETTh1_720",
+    "Weather_96",
+    "Weather_336",
+    "Weather_720"
+  ],
+  "trainable_arms": [
+    "D1_L2",
+    "D1_MLP",
+    "D2_L2",
+    "D2_MLP",
+    "C1_MLP",
+    "C2_MLP"
+  ],
+  "nontrainable_controls": [
+    "S0",
+    "D0",
+    "C0",
+    "Oracle10",
+    "Random",
+    "LastRepeat"
+  ],
+  "encoder_and_heads_frozen": true,
+  "AR": {
+    "order": 4,
+    "ridge_proposed": 0.001,
+    "tail": 16,
+    "dtype": "float64",
+    "intercept_penalized": false
+  },
+  "normalization": {
+    "feature_statistics": "TRAIN_ONLY; fit once per dataset-horizon, reuse across support for feature definitions",
+    "pair_feature_statistics": "TRAIN_ONLY; explicit logged sample/all-pair population; fixed after fit",
+    "new_score_calibration": "initial scorer outputs on eligible TRAIN pairs; fit once and freeze",
+    "base_score": "0.1 * log(exact official V5 mixture probability)",
+    "base_multiplicative_rescaling": false,
+    "zero_beta_ranking": "use original official probability tensor exactly",
+    "support_invariance_scope": "new raw/calibrated scorer for same checkpoint+calibration; V5 mixture remains support-dependent"
+  },
+  "loss": {
+    "student_tau": 0.1,
+    "teacher_tau": 0.1,
+    "teacher": "official valid-support negative z-score future MSE",
+    "D2_C2": "actual fused score",
+    "rank_weight": 0.0
+  },
+  "optimization": {
+    "name": "AdamW",
+    "lr": 0.001,
+    "max_epochs": 30,
+    "patience": 5,
+    "beta_initial": 0.0,
+    "save_epoch_zero_and_every_epoch": true,
+    "selection": "minimum full validation RetMSE@10; earliest epoch on exact tie",
+    "batch_size": 32,
+    "batch_order": "same seed and timestamp order per condition across trainable arms"
+  },
+  "K": 10,
+  "mask": {
+    "primary": "legacy_raft",
+    "train": "offline bidirectional non-overlap; immutable existing P100 pools",
+    "validation_test": "verified candidate future ends by forecast origin",
+    "causal_sensitivity": false,
+    "decision": "Parent instruction 2026-11-04: preserve original RAFT; do not add causal experiments"
+  },
+  "phase_B": "NOT_AUTHORIZED_BY_PHASE_A_RESULTS_YET; raw-only D1/C1 lack encoder gradient",
+  "launch_gates": [
+    "freeze mask/pool scientific comparison",
+    "complete source audit",
+    "full Train feature/scaler provenance",
+    "checkpoint/pool/source SHA verification",
+    "fresh canonical baseline GPU first/tail reproduction",
+    "actual-data checkpoint save/load",
+    "Full memory/gradient/chunk gate",
+    "existing score-fusion controller finished and GPU resource ownership clear"
+  ],
+  "solar_resume": false,
+  "auto_launch": false,
+  "overwrite_existing": false
+}

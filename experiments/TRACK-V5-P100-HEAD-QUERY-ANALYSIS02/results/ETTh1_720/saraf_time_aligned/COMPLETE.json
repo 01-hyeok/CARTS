@@ -1,0 +1,41 @@
+{
+  "cell": "ETTh1_720",
+  "method": "saraf_time_aligned",
+  "seed": 0,
+  "lambda_fixed": 0.5344321131706238,
+  "checkpoint_sha256": "d0dcef769cf18af5fea69e03b9492b89e60dab83df1db4166677f93358f4dfee",
+  "base_sha256": "a3ffd11f479150e265684da33692692a7744bdd9e58715aae9c5557098dd7b93",
+  "pool_sha256": {
+    "train": "f6aca6dc27f9e1489459ae19185778ff9f75bcd56eade66e0fe6633378cc1ee9",
+    "val": "8a4cfde1d21d5018d0ea68e7ccecff9fa296395635264ae7e1eb08a8cf97e4ba",
+    "test": "639dc3bc20267e4d2688f4a06152d387a10a70d035d5955d6873fba04c5d9187"
+  },
+  "analysis_source_sha256": "2ce368855a12c2222d02fc29af73474ed38a438638d7a9a72fbb619a8335ac39",
+  "query_order": "dataset start index then channel; full test",
+  "n": 2161,
+  "channels": 7,
+  "all5_cache_maxdiff": 0.0,
+  "subsets": [
+    "All5",
+    "Head1",
+    "Head2",
+    "Head3",
+    "Head4",
+    "Head5",
+    "Without1",
+    "Without2",
+    "Without3",
+    "Without4",
+    "Without5"
+  ],
+  "python": "/data/pjh_workspace/ts-env/bin/python",
+  "torch": "2.4.1+cu121",
+  "matmul_tf32": false,
+  "all5_mse": 0.5097698591677361,
+  "all5_mae": 0.5073013559526577,
+  "stage2_reproduction": true,
+  "kl_stage2_reproduction": true,
+  "kl_mse": 0.5263689972872522,
+  "kl_mae": 0.5173631614908835,
+  "base_mse": 0.560353791055392
+}

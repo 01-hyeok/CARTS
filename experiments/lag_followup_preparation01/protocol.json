@@ -1,0 +1,125 @@
+{
+  "status": "FROZEN_BEFORE_NEW_TEST_DIAGNOSTICS_SERVER_GATES_REQUIRED",
+  "date": "2026-11-03",
+  "diagnostic_source": "libfile_087ca51935a08191aef9afd24b9dba16",
+  "diagnostic_lines_read": 1185,
+  "softlag_source": "libfile_f81cf8841d088191801987442e49b22d",
+  "softlag_lines_read": 249,
+  "physical_gpu": 1,
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "solar_policy": "Reboot removed stopped process; do not restart Solar; epoch05 preserved",
+  "existing_mechanism_policy": "Weather336 smoke blocked before reboot; preserve 36 completed core and 6 integrated cells; do not change existing source",
+  "all_channels": true,
+  "seed": 0,
+  "lag_sign": "query[t] versus candidate[t+delta]; positive delta reads a later CANDIDATE PAST index",
+  "radius": "min(16,floor(L/8))",
+  "patch": 16,
+  "stride": 8,
+  "query_patch_starts": "range(r,L-r-16+1,8), same for every delta",
+  "raw_patch_fallback": "demean each patch; unit L2 if patch RMS>1e-8, otherwise zero vector; mean aligned patch cosine",
+  "lag_ties": "maximum similarity; exact ties by minimum absolute lag, then negative lag",
+  "pamr_audit": "2026-11-03 remote utils/models/layers/experiments Python search: no PAMR reference; explicitly defined raw patch fallback used",
+  "diagnostic_track": {
+    "output": "results/TRACK-HEAD-SHIFT-DIAGNOSTIC01",
+    "cells": [
+      "ETTh1_96",
+      "ETTh1_192",
+      "ETTh1_336",
+      "ETTh1_720",
+      "Weather_96",
+      "Weather_192",
+      "Weather_336",
+      "Weather_720"
+    ],
+    "training_supports": [
+      "P100",
+      "FULL"
+    ],
+    "evaluation_supports": [
+      "P100",
+      "FULL"
+    ],
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "native_p100": "P100_NATIVE; never silently substitute P100_CONTROLLED",
+    "D1_D3": "Reuse verified sources; original validation-fixed epsilon results separate from NEW query-boundary-relative sensitivities",
+    "new_near_epsilon": "max(1e-8,fraction*d_oracle10) at fractions .01,.05,.10, all reported; diagnostic future label only",
+    "D2": "C=union(head Top10, mixture Top10); fusion=Rmix-RoracleC; discovery=RoracleC-RoracleSupport; check each Q,C, no clamp",
+    "D4_initial_order": [
+      "ETTh1_96",
+      "ETTh1_336",
+      "ETTh1_720",
+      "Weather_96"
+    ],
+    "D4_followup": [
+      "ETTh1_192",
+      "Weather_192",
+      "Weather_336",
+      "Weather_720"
+    ],
+    "D4_sampling": "32 fixed evenly spaced validation and test timestamps, all channels; expand only with explicit coverage status; no performance-based selection",
+    "D4_full_probe": "future-blind canonical model Top100 and Top200 reranking; full bank used for base retrieval; never called exhaustive shift search",
+    "D4_probe_grid": "alpha [0,.01,.03,.1,.3,1], beta [0,.01,.03,.1]; per-channel validation TopR mixture-score std multiplies both terms; recent unshifted last16 MSE divided by per-channel validation median; minimum validation RetMSE, lower alpha/beta ties",
+    "bootstrap": "paired timestamp blocks H/2H/4H, all channels jointly, 2000 seed0, percentile .025/.975; insufficient<4 blocks"
+  },
+  "softlag_track": {
+    "output": "results/TRACK-SOFTLAG-HEAD-PILOT01",
+    "order": [
+      "ETTh1_96_FULL",
+      "ETTh1_336_FULL",
+      "ETTh1_96_P100",
+      "ETTh1_336_P100"
+    ],
+    "training_support_policy": "native validation-selected V5 checkpoint for each support; no checkpoint reselection",
+    "timestamps": {
+      "train": 64,
+      "val": 32,
+      "test": 32
+    },
+    "sample_rule": "unique linspace row indices fixed before any test evaluation; original starts/splits/masks saved and hashed",
+    "epochs": 5,
+    "save_epochs": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "test_policy": "only after validation selects epoch; do not evaluate every test epoch",
+    "trainable": "B1 shared lag bias+alpha; B2 five lag biases+one common alpha; g and patch features detached",
+    "init": "alpha=0, biases=0; actual canonical B0 score/IDs gate mandatory",
+    "teacher": "original valid-support z-score negative FutureMSE implementation; import and source-hash audit required before training",
+    "tau_s": 0.1,
+    "tau_a": 0.1,
+    "activity": "std_query/(std_query+train_scale_c) * std_candidate/(std_candidate+train_scale_c); train_scale_c=max(1e-8,median train sampled query std)",
+    "optimizer": "Adam, lr .01, no weight decay, shared B1/B2 batch order and fixed query batch8; subject only to correctness/resource gate, never test tuning",
+    "selection": "minimum aggregate validation RetMSE; earlier epoch tie; epoch0 eligible",
+    "parameter_counts": {
+      "H96": {
+        "B1": 26,
+        "B2": 126
+      },
+      "H336": {
+        "B1": 34,
+        "B2": 166
+      }
+    },
+    "verdict": "PROMISING/NEGATIVE/INCONCLUSIVE; small seed0 sampled pilot, no causal specialization or final performance claim"
+  },
+  "unmet_gates": [
+    "remote source/current artifact audit",
+    "server PAMR audit",
+    "current GPU/process/headroom",
+    "Torch CPU/GPU cross-check",
+    "canonical alpha0 score/ordered Top10 reproduction",
+    "original teacher parity",
+    "full native and cross-support adapter",
+    "durable controller deployment"
+  ],
+  "uploads_or_push": false,
+  "parallel_authorization": "Latest user permits D1-D4 and SoftLag concurrently on physical GPU1; at most one major worker per new track, authenticate other track and retain >=24GiB startup headroom"
+}

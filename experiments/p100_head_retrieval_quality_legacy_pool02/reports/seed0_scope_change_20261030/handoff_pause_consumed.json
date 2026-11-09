@@ -1,0 +1,5 @@
+{
+  "reason": "User changed scope to seed0 only; prevent old 144-run queue advancing while seed0-only controller is prepared",
+  "created_at": "2026-10-30T04:55:44.507609+00:00",
+  "scope": "Do not interrupt current worker"
+}

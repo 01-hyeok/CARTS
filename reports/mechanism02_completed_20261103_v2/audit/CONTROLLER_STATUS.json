@@ -1,0 +1,20 @@
+{
+  "status": "RUNNING",
+  "at": "2026-11-03T05:13:14.135728+00:00",
+  "controller_pid": 323446,
+  "phase": "MECHANISM_DIAGNOSTICS",
+  "target": "Weather_192_V0_FULL",
+  "worker_pid": 343046,
+  "command": [
+    "/usr/bin/python3",
+    "-u",
+    "/data/pjh_workspace/CARTS/experiments/retrieval_failure_mechanism02/worker.py",
+    "Weather_192",
+    "V0",
+    "FULL",
+    "--mode",
+    "analyze"
+  ],
+  "log": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/logs/Weather_192_V0_FULL_analysis.log",
+  "shared_gpu_authorized": true
+}

@@ -1,0 +1,151 @@
+{
+  "status": "PASS",
+  "identity": {
+    "checkpoint_sha256": "b756a7ee8bd81a997cc995f3ca8484dbc32e618662e61bc3519e2f04ce70411c",
+    "pool_hashes": {
+      "train": "d7c155baedec21cc97bcd4b6fbd3fb4b19c66d5dcb553713c534f2e795ea85c5",
+      "val": "a6a6fd81ca1e40e0697179b49735e275dbb17c094629f875c26c9729dc5c25e6",
+      "test": "3ac10bbf7c8744331f8e970b88fc965d676a45c4053911ca21b57ea76d76d113"
+    },
+    "source_hashes": {
+      "adapter.py": "3c2bbf051ae17b8629613fb73b9753917d70112f224dc4c83cb05c36fce9030b",
+      "worker.py": "dbbb1ea1e19aab8485fb8c1ef6fd6b12217c78d2b2093a40ba822c76563045de",
+      "gpu_metrics.py": "f4ab1a7820cd0a2877c0e4fa4e11f6f1c3c1c93d3dc3dbd929086b359a688236",
+      "geometry.py": "6602f8bb93bef96097f82edea49229daf554939ab62347a8ca58a8b21123722d",
+      "feature_analysis.py": "d07ce90b8b3ac3cb7749a579dcd4542e14432f6386756b0ebb8cb90fad1854d6",
+      "ranking.py": "7f55f0f32da969837b79dd5e00381fcd2331767391af50d4003a9986698ae513",
+      "resources.py": "72988ccb8daf48617593fc8e3eaac4f67450c4c467d2d6e7aea141ed5a678f1d",
+      "protocol.py": "7cfa0ae33b7680766c2607dbfdabf388b458791883a96a92fb4e1534ff56ffff",
+      "io_utils.py": "55981d7ab738c29cf7453824cff80aa911d9d5d010b96e023feff7044ec0b032"
+    },
+    "protocol_sha256": "c8df66065d77af417a14ebb2a9dba33e424d8417652d5027e5cd0fcf202c1d4d",
+    "data": {
+      "cell": "ETTh1_96",
+      "counts": {
+        "train": 8449,
+        "val": 2785,
+        "test": 2785
+      },
+      "channels": 7,
+      "channel_names": [
+        "HUFL",
+        "HULL",
+        "MUFL",
+        "MULL",
+        "LUFL",
+        "LULL",
+        "OT"
+      ],
+      "starts": {
+        "train": [
+          0,
+          8448
+        ],
+        "val": [
+          8544,
+          11328
+        ],
+        "test": [
+          11424,
+          14208
+        ]
+      },
+      "scaler_train_rows": 8640,
+      "scaler_mean": [
+        7.937742245659508,
+        2.0210386567335163,
+        5.079770601157927,
+        0.7461858799957015,
+        2.781762386375555,
+        0.7884531235540096,
+        17.1282616982271
+      ],
+      "scaler_scale": [
+        5.812749409143771,
+        2.0901046504076,
+        5.518793579036245,
+        1.9263792741329822,
+        1.0235226594952194,
+        0.6302366362251923,
+        9.176491024944335
+      ],
+      "normalized_space": true,
+      "candidate_count": 8449,
+      "seq_len": 96,
+      "pred_len": 96
+    }
+  },
+  "rows": [
+    {
+      "model": "V1_P100",
+      "split": "val",
+      "status": "PASS",
+      "queries": 2785,
+      "channels": 7,
+      "units": 19495,
+      "ordered_id_sha256": "41f8380db8a17367d61e05434157d3a98ec77d275156e503252616e18fdae595",
+      "canonical_ordered_id_sha256": "41f8380db8a17367d61e05434157d3a98ec77d275156e503252616e18fdae595",
+      "ordered_mismatch_count": 0,
+      "max_prediction_difference": 0.0,
+      "max_query_metric_difference": 1.3351440415476645e-06,
+      "metrics": [
+        0.9897719092675176,
+        0.7196538157104944,
+        0.5697342234101623,
+        0.22570915619389595
+      ],
+      "source_checkpoint_sha256": "b756a7ee8bd81a997cc995f3ca8484dbc32e618662e61bc3519e2f04ce70411c"
+    },
+    {
+      "model": "V1_P100",
+      "split": "test",
+      "status": "PASS",
+      "queries": 2785,
+      "channels": 7,
+      "units": 19495,
+      "ordered_id_sha256": "64c8bfb8132357d0a5b338e4c4b2c2cfc814264c900f8c3c174ba4b61a81beb8",
+      "canonical_ordered_id_sha256": "64c8bfb8132357d0a5b338e4c4b2c2cfc814264c900f8c3c174ba4b61a81beb8",
+      "ordered_mismatch_count": 0,
+      "max_prediction_difference": 0.0,
+      "max_query_metric_difference": 5.006790155803742e-07,
+      "metrics": [
+        0.6625532414416719,
+        0.4127141952653666,
+        0.4281172432802249,
+        0.2585739933316236
+      ],
+      "source_checkpoint_sha256": "b756a7ee8bd81a997cc995f3ca8484dbc32e618662e61bc3519e2f04ce70411c"
+    }
+  ],
+  "seconds": 34.24255679361522,
+  "reference_only_channel_loop": false,
+  "production_channel_loop": false,
+  "source": {
+    "cell": "ETTh1_96",
+    "dataset": "ETTh1",
+    "horizon": "96",
+    "architecture": "V1",
+    "seed": "0",
+    "training_support": "P100",
+    "status": "CPU_PROVENANCE_PASS_GPU_REPRODUCTION_PENDING",
+    "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/ETTh1_96/seed0/V1/epoch09.pth",
+    "checkpoint_sha256": "b756a7ee8bd81a997cc995f3ca8484dbc32e618662e61bc3519e2f04ce70411c",
+    "selected_epoch": "9",
+    "epochs_completed": "10",
+    "selection_criterion": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+    "teacher": "valid-support zscore negative FutureMSE KL, tau=.1",
+    "evidence": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/ETTh1_96/seed0/V1",
+    "canonical_retmse": "0.6625532539714263",
+    "canonical_agg_mse": "0.4127141952653666",
+    "canonical_agg_mae": "0.4281172432802249",
+    "canonical_recall": "0.2585739982356686",
+    "runtime": "per-run source hashes; native original selection frozen",
+    "new_training": "False",
+    "native_metric_source": "",
+    "torch_version": "2.4.1+cu121",
+    "matmul_tf32": false,
+    "original_runtime": "UNKNOWN",
+    "all_channel_batch": true,
+    "shapes": []
+  }
+}

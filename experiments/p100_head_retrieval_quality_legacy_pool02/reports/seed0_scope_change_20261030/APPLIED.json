@@ -1,0 +1,45 @@
+{
+  "status": "APPLIED",
+  "active_seeds": [
+    0
+  ],
+  "active_runs": 48,
+  "cancelled_seeds": [
+    1,
+    2
+  ],
+  "cancelled_runs": 96,
+  "cancellation_status": "CANCELLED_BY_USER",
+  "user_request_time": "2026-10-30T04:53:59Z",
+  "applied_at": "2026-10-30T04:59:57.207791+00:00",
+  "training_source_hashes_unchanged": true,
+  "current_worker_restarted": false,
+  "old_controller_pid": 3871532,
+  "new_controller_pid": 3972687,
+  "worker_pid": 3964636,
+  "worker_identity": {
+    "pid": 3964636,
+    "start_ticks": "466757052",
+    "argv": [
+      "/data/pjh_workspace/ts-env/bin/python",
+      "-u",
+      "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/runtime.py",
+      "train",
+      "Solar_96_V2_seed0"
+    ]
+  },
+  "counts": {
+    "COMPLETE": 34,
+    "RUNNING": 1,
+    "NOT_STARTED": 13
+  },
+  "command": [
+    "/data/pjh_workspace/ts-env/bin/python",
+    "-u",
+    "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/orchestration_seed0/controller_seed0.py"
+  ],
+  "log": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/controller_seed0.log",
+  "tests_passed": 9,
+  "completed_result_markers_unchanged": 34,
+  "source_gate_hashes_unchanged": true
+}

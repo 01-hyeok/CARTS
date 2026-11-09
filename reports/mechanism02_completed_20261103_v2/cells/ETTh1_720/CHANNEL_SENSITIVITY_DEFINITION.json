@@ -1,0 +1,32 @@
+{
+  "policy": "train exact normalized -9999 match; diagnostic only, official all-channel metrics unchanged",
+  "channels": [
+    "HUFL",
+    "HULL",
+    "MUFL",
+    "MULL",
+    "LUFL",
+    "LULL",
+    "OT"
+  ],
+  "affected_indices": [],
+  "train_counts": [],
+  "scaler_mean": [
+    7.937742245659508,
+    2.0210386567335163,
+    5.079770601157927,
+    0.7461858799957015,
+    2.781762386375555,
+    0.7884531235540096,
+    17.1282616982271
+  ],
+  "scaler_scale": [
+    5.812749409143771,
+    2.0901046504076,
+    5.518793579036245,
+    1.9263792741329822,
+    1.0235226594952194,
+    0.6302366362251923,
+    9.176491024944335
+  ]
+}

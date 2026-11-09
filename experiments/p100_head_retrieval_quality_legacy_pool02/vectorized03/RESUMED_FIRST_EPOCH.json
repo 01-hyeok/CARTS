@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-30T05:49:55.585172+00:00",
+  "first_epoch_saved": 1,
+  "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_96/seed0/V2/epoch01.pth",
+  "checkpoint_sha256": "bf16dbb054a2e5d60c36a5e0b55a4a3b5d226b35b50b7ce4fe2fd215d25c02cf",
+  "new_epoch_train_and_validation_seconds": 118.9172784416005,
+  "old_epoch_train_and_validation_seconds": 728.1565636089072,
+  "observed_epoch_speedup": 6.123219208775452,
+  "train_query_count": 36601,
+  "channels": 137,
+  "train_query_channel_count": 5014337,
+  "validation_counts": {
+    "query_count": 5161,
+    "channels": 137,
+    "unit_count": 707057
+  },
+  "batch_order_hash_unchanged": true,
+  "workers": [
+    {
+      "pid": 3981230,
+      "argv": [
+        "/data/pjh_workspace/ts-env/bin/python",
+        "-u",
+        "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/runtime_vector.py",
+        "train",
+        "Solar_96_V2_seed0"
+      ]
+    }
+  ],
+  "completed34_still_unchanged": true
+}

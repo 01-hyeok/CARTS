@@ -1,0 +1,185 @@
+{
+  "status": "PASS",
+  "identity": {
+    "checkpoint_sha256": "1f8ecef1604e122a85a34e2bcbff000e37914ea3234426d68334e7bb57ffc19d",
+    "pool_hashes": {
+      "train": "47d9e82f9b755ce1bc72b4178315b804969fe2c55cba7361e0ac85666e09405d",
+      "val": "cd2f7cdaf934569d49a67af97f2e2d6d313d9a492bb8d035c4ff79fa4fec0e58",
+      "test": "7be769365858ac8b6683dbe0eebf1f9d3e079cca04d7145eaee61cc11a48bebf"
+    },
+    "source_hashes": {
+      "adapter.py": "3c2bbf051ae17b8629613fb73b9753917d70112f224dc4c83cb05c36fce9030b",
+      "worker.py": "f594a69c393a2cf834a9ea017afb68586b09fe9d6b387afca49e7e143f390999",
+      "gpu_metrics.py": "f4ab1a7820cd0a2877c0e4fa4e11f6f1c3c1c93d3dc3dbd929086b359a688236",
+      "geometry.py": "6602f8bb93bef96097f82edea49229daf554939ab62347a8ca58a8b21123722d",
+      "feature_analysis.py": "d07ce90b8b3ac3cb7749a579dcd4542e14432f6386756b0ebb8cb90fad1854d6",
+      "ranking.py": "7f55f0f32da969837b79dd5e00381fcd2331767391af50d4003a9986698ae513",
+      "resources.py": "72988ccb8daf48617593fc8e3eaac4f67450c4c467d2d6e7aea141ed5a678f1d",
+      "protocol.py": "7cfa0ae33b7680766c2607dbfdabf388b458791883a96a92fb4e1534ff56ffff",
+      "io_utils.py": "55981d7ab738c29cf7453824cff80aa911d9d5d010b96e023feff7044ec0b032"
+    },
+    "protocol_sha256": "c8df66065d77af417a14ebb2a9dba33e424d8417652d5027e5cd0fcf202c1d4d",
+    "data": {
+      "cell": "ETTh1_336",
+      "counts": {
+        "train": 7969,
+        "val": 2545,
+        "test": 2545
+      },
+      "channels": 7,
+      "channel_names": [
+        "HUFL",
+        "HULL",
+        "MUFL",
+        "MULL",
+        "LUFL",
+        "LULL",
+        "OT"
+      ],
+      "starts": {
+        "train": [
+          0,
+          7968
+        ],
+        "val": [
+          8304,
+          10848
+        ],
+        "test": [
+          11184,
+          13728
+        ]
+      },
+      "scaler_train_rows": 8640,
+      "scaler_mean": [
+        7.937742245659508,
+        2.0210386567335163,
+        5.079770601157927,
+        0.7461858799957015,
+        2.781762386375555,
+        0.7884531235540096,
+        17.1282616982271
+      ],
+      "scaler_scale": [
+        5.812749409143771,
+        2.0901046504076,
+        5.518793579036245,
+        1.9263792741329822,
+        1.0235226594952194,
+        0.6302366362251923,
+        9.176491024944335
+      ],
+      "normalized_space": true,
+      "candidate_count": 7969,
+      "seq_len": 336,
+      "pred_len": 336
+    }
+  },
+  "rows": [
+    {
+      "model": "V1_FULL",
+      "split": "val",
+      "status": "PASS",
+      "queries": 2545,
+      "channels": 7,
+      "units": 17815,
+      "ordered_id_sha256": "5134e6341866730f38cde4438fb5caa591d164775a0dac1b4482f0c1aae272c0",
+      "canonical_ordered_id_sha256": "5134e6341866730f38cde4438fb5caa591d164775a0dac1b4482f0c1aae272c0",
+      "ordered_mismatch_count": 0,
+      "max_prediction_difference": 0.0,
+      "max_query_metric_difference": 0.0,
+      "max_diagnostic_fp64_vs_stored_fp32_difference": 0.0,
+      "query_metric_comparison": "stored Full prediction",
+      "metrics": [
+        1.5752003283018927,
+        1.362964433435494,
+        0.8093394488112966,
+        0.059781083356721866
+      ],
+      "source_checkpoint_sha256": "1f8ecef1604e122a85a34e2bcbff000e37914ea3234426d68334e7bb57ffc19d"
+    },
+    {
+      "model": "V1_FULL",
+      "split": "test",
+      "status": "PASS",
+      "queries": 2545,
+      "channels": 7,
+      "units": 17815,
+      "ordered_id_sha256": "a3b7806ee266dc086042f2af0ae46ae799b95b448a29e15eea2ec3a31dca4af8",
+      "canonical_ordered_id_sha256": "a3b7806ee266dc086042f2af0ae46ae799b95b448a29e15eea2ec3a31dca4af8",
+      "ordered_mismatch_count": 0,
+      "max_prediction_difference": 0.0,
+      "max_query_metric_difference": 0.0,
+      "max_diagnostic_fp64_vs_stored_fp32_difference": 0.0,
+      "query_metric_comparison": "stored Full prediction",
+      "metrics": [
+        0.6846271680664444,
+        0.5159864150999789,
+        0.5087537070129348,
+        0.07849564973337077
+      ],
+      "source_checkpoint_sha256": "1f8ecef1604e122a85a34e2bcbff000e37914ea3234426d68334e7bb57ffc19d"
+    }
+  ],
+  "seconds": 54.94844066537917,
+  "reference_only_channel_loop": true,
+  "production_channel_loop": false,
+  "source": {
+    "cell": "ETTh1_336",
+    "dataset": "ETTh1",
+    "horizon": "336",
+    "architecture": "V1",
+    "seed": "0",
+    "training_support": "FULL",
+    "status": "CPU_PROVENANCE_PASS_GPU_REPRODUCTION_PENDING",
+    "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/ETTh1/H336/seed0/V1/stage1/checkpoint.pth",
+    "checkpoint_sha256": "1f8ecef1604e122a85a34e2bcbff000e37914ea3234426d68334e7bb57ffc19d",
+    "selected_epoch": "4",
+    "epochs_completed": "9",
+    "selection_criterion": "original min validation single-head raw-score Top10 RetMSE; no reselection",
+    "teacher": "valid FULL zscore negative FutureMSE KL; u=-MSE then teacher(-u)",
+    "evidence": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H336/seed0/V1/stage1",
+    "canonical_retmse": "0.6846271828590669",
+    "canonical_agg_mse": "0.5159864174593642",
+    "canonical_agg_mae": "NOT_STORED_REINFERENCE_REQUIRED",
+    "canonical_recall": "0.07849565126438875",
+    "runtime": "UNKNOWN historical generation; all-channel GPU canonical gate required",
+    "new_training": "False",
+    "native_metric_source": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H336/seed0/V1/stage1/final_test_metrics.json",
+    "torch_version": "1.12.0.dev20220327+cu113",
+    "matmul_tf32": true,
+    "original_runtime": "UNKNOWN",
+    "all_channel_batch": true,
+    "shapes": [
+      {
+        "axis": "candidate",
+        "channel_batch": 7,
+        "encoder_rows": 7969,
+        "candidate_chunk": 1138,
+        "all_channels": true
+      },
+      {
+        "kind": "true_channel_batched_queries",
+        "original_query_batch": 32,
+        "all_channels": 7,
+        "query_chunk": 4,
+        "actual_encoder_batch_rows": 32,
+        "all_channels_in_each_model_call": true,
+        "canonical_row_count_preserved": true,
+        "channel_loops": false,
+        "tail_backend": null
+      },
+      {
+        "kind": "true_channel_batched_queries",
+        "original_query_batch": 32,
+        "all_channels": 7,
+        "query_chunk": 4,
+        "actual_encoder_batch_rows": 32,
+        "all_channels_in_each_model_call": true,
+        "canonical_row_count_preserved": true,
+        "channel_loops": false,
+        "tail_backend": null
+      }
+    ]
+  }
+}

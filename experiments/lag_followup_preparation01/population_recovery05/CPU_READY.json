@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "compile_pass": true,
+  "source_hashes": {
+    "controller.py": "1447efcc0ca7947faccdfee8f6100c9fa2c772bac8c9e95f7369e06f2012244f",
+    "probe.py": "cf0708c90ca2ed0f914a3fa09b716c2b6286cd37f40a39745a56aab3e9aa7073"
+  },
+  "production_activated": false
+}

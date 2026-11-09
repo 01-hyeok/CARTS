@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "checks": [
+    "identical-head LOO identity",
+    "distinct-head removal changes selected candidate",
+    "input feature shape",
+    "constant input finite",
+    "block CI identity",
+    "lambda endpoints"
+  ]
+}

@@ -1,0 +1,599 @@
+{
+  "status": "PASS",
+  "at": "2026-11-02T07:13:06.959470+00:00",
+  "rows": [
+    {
+      "cell": "ETTh1_96",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2785,
+      "candidate_id_sha256": "7263bc6b0fbde21dfcdc7c02bb0f61751bcbb3e51d932b89d3e77ae0d1f352e8",
+      "selected_alpha": 10.0,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_96/probe_train.json",
+          "sha256": "87371fa00359c4f87df486385a898e0838a5bf33603cbe20a1e8ad626aed1ddf"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_96/probe_selection.json",
+          "sha256": "b940827508b27291b18295244334632f0dea8eb665041c89029a81f574c7f48b"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_96/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "afed46255fe7c6a84e1dded8b69d18bce82750076fe96f80ce3db470c1f1ee8d"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_96/PROVENANCE.json",
+          "sha256": "2313537d49040d2098d04e20b4c930f41101936cf4401fd422d9540deb709525"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_96/COMPLETE.json",
+          "sha256": "ff5d4f38443db435caa173d056219c7ffc58f3327aa8a64702fd17894494df3b"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_96",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2785,
+      "candidate_id_sha256": "942061db77676ca2b2772341fffa83bcd2bc6ddbcbe6fb35ee5beb16abf4daa9",
+      "selected_alpha": 1.0,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_96/probe_train.json",
+          "sha256": "b04a1941a43c649ecb8a03e05eada8d85fea9244a95f3307d0c4bb5be5d1be5b"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_96/probe_selection.json",
+          "sha256": "f4d061338ca531ce5f41749a0b44549cb92c6da9372f4b6407c1b477bcdae10b"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_96/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "a386d25e4c8316285dbbcd932142d681938628757d28e5fe4fad7c45b0cab13c"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_96/PROVENANCE.json",
+          "sha256": "1fba47d1d4d8764ae9927d2539a7d1de9a8a0029f74507ad55fe473e99ea1b23"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_96/COMPLETE.json",
+          "sha256": "ec3cc7b3abffc097680de04cc24369431972e9b50fbc827d2bd3b5fa372a9a2a"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_192",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2689,
+      "candidate_id_sha256": "9cb266110ea8a06c4aaf2f511bf895c309335bd1506a0f615187b02ec7517cc3",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_192/probe_train.json",
+          "sha256": "d042d374891039ee7eeb76c5c0b71dbe089082b17ea100faa307a8209eedfe3e"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_192/probe_selection.json",
+          "sha256": "a9f5614cc9f3711935d8fa4cc84669da473677d25765b89a8906ea1ed247e2da"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_192/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "ce6dee1ec884aeb9cf9219fef7d5871d8c924ded7e1515603bfc21010e4f71a7"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_192/PROVENANCE.json",
+          "sha256": "b1d4dbe364e6f0625c8e811503397b9eebcd198a534aa6a55bc599e9ab1711e9"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_192/COMPLETE.json",
+          "sha256": "dbc50d64eb7fe2898ddac14548bba39efcb0614b9596f5f191f9b5751f242844"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_192",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2689,
+      "candidate_id_sha256": "d85c5177110b4f63e4a723106f7523b3f8381a4809d697505359411f49bb46b3",
+      "selected_alpha": 10.0,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_192/probe_train.json",
+          "sha256": "2d7eecd3d7ead665d0e740c0b28da63b45da5e8b2faa42a858f0c7a8ed741701"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_192/probe_selection.json",
+          "sha256": "70663fba049170011087d598832f4043e83efc6bae2cc3e9e385827f6b5f3385"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_192/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "1c6d0eff033713b1f0483815faca834e6389b086b5cdfae668efd3cf3330e95d"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_192/PROVENANCE.json",
+          "sha256": "e860fef04a7e4b0b4d5f59588fbe979e51cb187e7c673afca36ad5ae5016a83d"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_192/COMPLETE.json",
+          "sha256": "b20f645b4aefe041156a7fd662285af1e4c2426ba4fee70fee57ee9d36054d13"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_336",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2545,
+      "candidate_id_sha256": "5f9776232e3f6dda63d687eb1d3da47cc5484505c76165e6aeb0907ec9da6623",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_336/probe_train.json",
+          "sha256": "353b9e099e1f7052797e84b323483c86a9632a295d9b0b94b16f7af8615cd126"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_336/probe_selection.json",
+          "sha256": "10926bbfc12f64de4d81fb0bbe3e30cdbbc972cfb19213363a47c993f5757d7e"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_336/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "1080941e0c26f0ddbf9b9eef20c6264fd46a3205d96e781887e3d0d2dbeb6605"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_336/PROVENANCE.json",
+          "sha256": "8008d232d7d423b811fcea6ec70d758f52fdcae6d68827e5c7abf765bbb59f01"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_336/COMPLETE.json",
+          "sha256": "7fc98a8b3dffc3bffc3777cffba97a118feb94ab8ee9ab09c9b4294b8224c7e1"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_336",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2545,
+      "candidate_id_sha256": "19711f5257b928f181fb1565d651d39d6fd04a3fc9d3ee8109df7be67806e81b",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_336/probe_train.json",
+          "sha256": "1e8296a312d980561e5fc347b6483eef100c40f3b5717d8616be8a33912e0289"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_336/probe_selection.json",
+          "sha256": "4630b3aa8844d076d96bfcb5ebd189eb06a3f9984a946cd18b29d4d3086550bd"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_336/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "84c4d3146814af493deeb8afb1f2316fc4176ca54f5ae41fc426dc68aca8532a"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_336/PROVENANCE.json",
+          "sha256": "915cc758e7f34c5f26f0631892c2af4a5b3c59665ccc466ccc4318ec4b335fab"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_336/COMPLETE.json",
+          "sha256": "95768515f630e5147cb846f69a80de77cfb0479cfffdf8ca353ff09d977117a6"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_720",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2161,
+      "candidate_id_sha256": "c989fbe3f1c232e6593838033ff8e96e466c667c007354e9eefed2c673bb2bab",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_720/probe_train.json",
+          "sha256": "91fced18f00e59624916b43326bdd12c8f9c41b0ac7a7e0efdce64bd3251f519"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_720/probe_selection.json",
+          "sha256": "26f5c36c200ecd0cae25ab82ce06f345ab95760500bc619016c645b9c59cd138"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_720/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "73aad001b6862d5755ff9ff538941cffcb15651dbd00aadb170659a66a9fd69f"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_720/PROVENANCE.json",
+          "sha256": "4032be5a724afeadb89201a6bdc43a23ae1dfca4034eb5ba1f4afb2beaf4a5df"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/ETTh1_720/COMPLETE.json",
+          "sha256": "0f4572ff657bf4f4fe81fd7803908adea3efbe521537f821b19c0f031302484e"
+        }
+      }
+    },
+    {
+      "cell": "ETTh1_720",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 7,
+      "train_pairs": 179200,
+      "test_all_queries": 2161,
+      "candidate_id_sha256": "353982f8dae5bce8eff7570b7cc2c43b6e3817799433aebf71c4c80eddbe361f",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_720/probe_train.json",
+          "sha256": "a6447a17bde56b338ef51bad37b7b71b6f5d5e8bce57931da69678baa64c3863"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_720/probe_selection.json",
+          "sha256": "214360c1f2d430b9dd65e2d0ad8256394e2cc52287a0e0048300b811eb14f8f5"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_720/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "045dfbbf220b3ceb48463bd28ac4bcd024ee1183678c255f5ef995db111f2b1a"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_720/PROVENANCE.json",
+          "sha256": "2dcb5821f7b265e71ea5a032108294c7af9b959d917442784fb07f6925c64def"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/ETTh1_720/COMPLETE.json",
+          "sha256": "cad270d3fcaa94156e1688237ab8e1eed8fc152ff589fd4bfdb39cbefd4c5e12"
+        }
+      }
+    },
+    {
+      "cell": "Weather_96",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 10444,
+      "candidate_id_sha256": "9b66d32e596babcc0e9949a89f695b66311882f19807a316c48e35cbb143eebb",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_96/probe_train.json",
+          "sha256": "3765db6d4a28fa492c848764fa5292c4bdfd52791827f9e348bfd296496172b7"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_96/probe_selection.json",
+          "sha256": "80dc0897a04ab3e92ef35486324966ba6258be5dceb3832e032128479fee7977"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_96/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "c10e25397b5cdb7bad29201dff43e8551d12e3bb13211943fafdb8f2e9daadd0"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_96/PROVENANCE.json",
+          "sha256": "e9d715fd55f989cfa43d44aba2c63b4cb2cf4cd0466cd56532aace5ce99b8b20"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_96/COMPLETE.json",
+          "sha256": "de24eee269389cfedc33040e82694789f8148f9eadc4ac82474c993ee14a65a5"
+        }
+      }
+    },
+    {
+      "cell": "Weather_96",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 10444,
+      "candidate_id_sha256": "36b6c325e3006afdcc16165c1748e4fe98f6f2a78082ef81bf62a956988c1346",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_96/probe_train.json",
+          "sha256": "6200665d6ca17e6b190efbc930c7a19aea3775ad96ef374cbffd4c91872a722f"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_96/probe_selection.json",
+          "sha256": "f7e9d45654e08ada675ec9a0c914a5fb7123c7a06aaef573644aed6660636f0d"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_96/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "2d7f1a7dc5dec4e62037f773ceb5d75712d151e367edb7e7cc375965f2aca02e"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_96/PROVENANCE.json",
+          "sha256": "bc08b64aea8cef4976e51f1839b530352c7bc5f3fc4d7d0db7eab6ed15edb1b8"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_96/COMPLETE.json",
+          "sha256": "3c93da023c6a649a5de8502b4f7a3e40b4c7907be1c296bb0f1eb43159fa38a9"
+        }
+      }
+    },
+    {
+      "cell": "Weather_192",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 10348,
+      "candidate_id_sha256": "d03c1ad41450a252b848a06a2aeaf0f1df890a18e15660b9df8404e20c6eb8ec",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_192/probe_train.json",
+          "sha256": "0ae8c93bd9b584f7abe46151a01bbfe8551f5308dfbb18f2246baa085b4066cc"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_192/probe_selection.json",
+          "sha256": "7103037ec772c41ffdeb41ece12947542280f8b70683c8307d1982804b1568a9"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_192/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "f81feb05e0f9d321b54952b8257cd672c76c8af6fab26dfd91dd5c9d5a7128ac"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_192/PROVENANCE.json",
+          "sha256": "d5e26756f5c31eecd34956511a72b288096d5f5310b527df9d232c6fe977e36e"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_192/COMPLETE.json",
+          "sha256": "b8eafe91da2c7096d718bc71bb164623de21e94cd7ddc31fe1d969135627d13e"
+        }
+      }
+    },
+    {
+      "cell": "Weather_192",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 10348,
+      "candidate_id_sha256": "53e3edadb535d5b07d3dcead33507ed662b751babe91e800dbda09af634378e4",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_192/probe_train.json",
+          "sha256": "b5f12ad08b17cdb227d0209d49640d7e4e5381a39470f3708eacaa56d66b612a"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_192/probe_selection.json",
+          "sha256": "bf04cccf8039edd67a9f735a6378c460f124f7dab53787a954adcb8eebaf5bdd"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_192/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "14b8c91c75f6d740ddb4d5b9013db7127a9e4c7599100a3a1e821c19bc388590"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_192/PROVENANCE.json",
+          "sha256": "5d065dcf68ea59630b4745b22568d4285dfdf0decfecafa84540ffbe40504923"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_192/COMPLETE.json",
+          "sha256": "e82ee85bf1cbca3276dc564ee1b34ee20d6a800c08f5379ce3550e3739ca6a90"
+        }
+      }
+    },
+    {
+      "cell": "Weather_336",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 10204,
+      "candidate_id_sha256": "44b6959f0ede84068ec086d9e67a8aae05dd16662ebd645274559c39eb91beef",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_336/probe_train.json",
+          "sha256": "39b0ef05258abac9f4a159b465855dc9be4ffe01a3ee94332822ed776ea06264"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_336/probe_selection.json",
+          "sha256": "83c7124b533ca459a7114e553aac7318ff71d71c6083ba7ec89cdbeaa3bb22be"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_336/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "7ba8b2fd545841cd61bae810d9ceecb55c3a1e3dcbbfe9a707668d4dabcec946"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_336/PROVENANCE.json",
+          "sha256": "48fdb46469b9fd6b3f35afddce3eb0f680b401f845959954cbbd038468f547e6"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_336/COMPLETE.json",
+          "sha256": "f230c2fd5dc000e93caee9173e86b3fa8cc1014c11fef76213d1a7e94a44d9b8"
+        }
+      }
+    },
+    {
+      "cell": "Weather_336",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 10204,
+      "candidate_id_sha256": "24d693671163dd952411f7b1a38da6160d7844841af128bca7de000122480fbb",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_336/probe_train.json",
+          "sha256": "4c6c45f31d97dbf7bc35bf90717f3a1b5453a9955464dfcf4cedeee42fff0e73"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_336/probe_selection.json",
+          "sha256": "2cd8bdea9b11fc7b2541796d32f8fb3280480072f1b706ece2aa7f011c1d76d9"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_336/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "b19925c822906a69a689f7860c3aec6995e3d11eeff6f76dff55e5b4d990113f"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_336/PROVENANCE.json",
+          "sha256": "0d3bd3bdc965746b868bf809362401f05f086ef0f2b6cc48e301e3b518e038aa"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_336/COMPLETE.json",
+          "sha256": "02c02c2b765bb2037c4824d9e27d3cacacf37ac55be89f8982e06368332a16eb"
+        }
+      }
+    },
+    {
+      "cell": "Weather_720",
+      "support": "P100",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 9820,
+      "candidate_id_sha256": "e62880972091636cb8695becfd4fae788c68bda2f0e38252a44a905b7cedc1eb",
+      "selected_alpha": 0.1,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_720/probe_train.json",
+          "sha256": "f7532d350dc2547db5035df261708b35b251f053953da5a8e9dfc55ffe103f21"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_720/probe_selection.json",
+          "sha256": "a1e0367d0e69b2c864e8dde2d2894db2980b695ad3275c4bd62d91a5b01f9e17"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_720/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "8ef1b19f9dbf845ff9ea2a894be9cbd45b5fa27e72104ec99e48db3a58bc84f3"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_720/PROVENANCE.json",
+          "sha256": "8e7d751b90153cda7a4d211ba513680e80a1c6e512a63f4c534ff5d2ee92d189"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/P100/Weather_720/COMPLETE.json",
+          "sha256": "69f630f31b20ae604bce1da53d01490bed3b1a01984de19978cf6f5904379513"
+        }
+      }
+    },
+    {
+      "cell": "Weather_720",
+      "support": "FULL",
+      "status": "PASS",
+      "train_queries": 256,
+      "channels": 21,
+      "train_pairs": 537600,
+      "test_all_queries": 9820,
+      "candidate_id_sha256": "2e8ae6ec5798efc7da47fb4fa8f7e07a0af11c30fe7fe8f2484670ceb5d0a6e9",
+      "selected_alpha": 10.0,
+      "fit_train_only": true,
+      "entire_label_future_inside_train": true,
+      "weights_frozen": true,
+      "selection_validation_only": true,
+      "files": {
+        "probe_train.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_720/probe_train.json",
+          "sha256": "78361d83f0c5a7ab6cae8566143cafed7d3bc66227a7c96476e0178bd508beab"
+        },
+        "probe_selection.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_720/probe_selection.json",
+          "sha256": "4e896df71166f496f6105ee8eafb895a540d8a5baced939550c087106c24ee16"
+        },
+        "PAST_ONLY_PROBE_RESULTS.csv": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_720/PAST_ONLY_PROBE_RESULTS.csv",
+          "sha256": "b8adaab86a361b70ad23b845436e17430d814467d475a34196facc25ffc59016"
+        },
+        "PROVENANCE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_720/PROVENANCE.json",
+          "sha256": "c15c8e90b5ed1a6d8b66ec4fe27c7f1576d46c0838bbadcf75167761c03471d8"
+        },
+        "COMPLETE.json": {
+          "path": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/FULL/Weather_720/COMPLETE.json",
+          "sha256": "2dc52e254195668ebf3f20ad66445781a94e970fad8cc665fa5ff603e51cca48"
+        }
+      }
+    }
+  ],
+  "limitation": "256 fixed train timestamps × all channels × 100 future-free sampled candidates; full validation/test evaluation, not full training population; no impossibility conclusion"
+}

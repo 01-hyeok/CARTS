@@ -1,0 +1,109 @@
+{
+  "status": "PASS",
+  "started_at": "2026-10-30T05:44:33.280462+00:00",
+  "eval": [
+    {
+      "heads": 0,
+      "queries": 65,
+      "channels": 137,
+      "units": 8905,
+      "metric_abs_differences": {
+        "retmse": 0.0,
+        "agg_mse": 0.0,
+        "agg_mae": 0.0,
+        "recall": 0.0,
+        "regret": 0.0,
+        "last_win": 0.0,
+        "last_tie": 0.0
+      },
+      "ordered_selection_changed": 0,
+      "set_selection_changed": 0,
+      "selection_units": 35620,
+      "max_query_mse_difference": 0.0,
+      "max_query_retmse_difference": 0.0,
+      "legacy_seconds": 8.43019486963749,
+      "vector_seconds": 7.731475840322673,
+      "checkpoint_selection_detailed_exact": true,
+      "baseline_random_oracle_max_abs": 0.0
+    },
+    {
+      "heads": 5,
+      "queries": 65,
+      "channels": 137,
+      "units": 8905,
+      "metric_abs_differences": {
+        "retmse": 0.0,
+        "agg_mse": 0.0,
+        "agg_mae": 0.0,
+        "recall": 0.0,
+        "regret": 0.0,
+        "last_win": 0.0,
+        "last_tie": 0.0
+      },
+      "ordered_selection_changed": 0,
+      "set_selection_changed": 0,
+      "selection_units": 302770,
+      "max_query_mse_difference": 0.0,
+      "max_query_retmse_difference": 0.0,
+      "legacy_seconds": 10.984273778274655,
+      "vector_seconds": 11.012085600756109,
+      "checkpoint_selection_detailed_exact": true,
+      "baseline_random_oracle_max_abs": null
+    }
+  ],
+  "h720": [
+    {
+      "dropout_on": false,
+      "legacy_loss": 2.8519269706559007,
+      "vector_loss": 2.851926803588867,
+      "loss_abs_diff": 1.6706703354074648e-07,
+      "gradient_max_abs_diff": 9.499490261077881e-08,
+      "gradient_relative_l2": 6.813248205617128e-07,
+      "adam_update_max_abs_diff": 3.979727625846863e-05,
+      "eval_score_max_abs_diff": 5.364418029785156e-07,
+      "eval_top10_order_diff_rows": 2,
+      "rng_end_equal": true,
+      "units": 4384,
+      "finite": true
+    },
+    {
+      "dropout_on": true,
+      "legacy_loss": 2.915959096302953,
+      "vector_loss": 2.915959119796753,
+      "loss_abs_diff": 2.3493799794493953e-08,
+      "gradient_max_abs_diff": 7.82310962677002e-08,
+      "gradient_relative_l2": 5.327528924681246e-07,
+      "adam_update_max_abs_diff": 3.5725533962249756e-05,
+      "eval_score_max_abs_diff": 5.364418029785156e-07,
+      "eval_top10_order_diff_rows": 2,
+      "rng_end_equal": true,
+      "units": 4384,
+      "finite": true
+    }
+  ],
+  "finished_at": "2026-10-30T05:46:01.365142+00:00",
+  "source_hashes": {
+    "data_provider/data_factory.py": "1cd1f9fe4682fd0c596f1f14c9d42a4626f10016978b01ace9cb9fe5867a0375",
+    "data_provider/data_loader.py": "cced1cc4f621e083078699e83c276763798a63146161f59e5d7cec768a06062c",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/check_plan.py": "8131a47ba3521578c87ca39d128a9c695bf87e355ebe6cf136ee24f7a7228907",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/controller.py": "43fbd8693225e76fd25e1d96d423763781381fa4edbad7aca6b700be6983b89b",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/gates.py": "75abd4fae10679a09b84ed1c8bdd85df8ef6a016a6f110307ab6a35323d847b0",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/preparation.py": "8e3321cf430d859402d7621c50c69043db60a5c4682e7355b04a1eac18c99686",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/prepare_manifest.py": "f5b92cdf160cc3e7597ec3f5b4d27df5fb15f997c6066f528d59e8bd15a33e0c",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/runtime.py": "21b8f1d0185e14f311826226e216b40f36092caa5f601ec5a2952d9cb3edceeb",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/summarize.py": "23c158a3bc5157f7ebfb987dd06c1064d7858ffb3d320cdf85a2ca5c532d1c25",
+    "models/RelationStage1.py": "ad9a0dab08172839ed812a1d9980854ae66916d50a31d9c819f45c1a1739b444",
+    "scripts/precompute_candidate_pool01.py": "465a590bc126a4ceb08f41dc5f216a6c79c03745f7f9edeb5d254d4c07fdba27",
+    "scripts/train_factorial_e2e01.py": "92fe993499e01ac326b6621956fecae9c4c30fbea1175b8deac3299dc5376cbb",
+    "scripts/train_horizon_retrieval_expert01.py": "7a158518e2127495bd396199b5b289ca93184238bc386aef41ff4561543e51d9",
+    "scripts/train_k_multislot_predictive_retrieval01.py": "afaa63e0a29109709db13cd7bc6b86a8cf32b6ab7f02297e63257b9b9a2d44bb",
+    "utils/candidate_pool.py": "edab08885362dd51fc79d08e10c96e74adb369ab1006a1ede902efccb8b2550b",
+    "utils/mean_mixture_selection.py": "90e05943d09b1cbe8f1fa48cb170fd828d7d752df571a652fa1d70a730ac9e52",
+    "utils/relation_memory.py": "cfcbf9686582c817c3c7d2ed4ec45c10cc55c38e1fee4a6afb0d8f6e042cf61c",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/runtime_vector.py": "5a89a4c2ffbcda698bb3111c6785c9d6ea4815d04222dd8db3d830f17049c448",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/vector_ops.py": "4f463234a89cdd973de1d731f649050496a0994471507ecaddba43d7b9480fe3",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/vector_eval.py": "19ec66db4bf1082b8cbc46d56122433393f29d3e0791b7bb84e898d62620acf6"
+  },
+  "benchmark_sha256": "deb6d13956408f570e8ac06655c212c098fb9a478302a067a7d136b5195ad90d",
+  "evaluation_policy": "original canonical channelwise evaluation retained exactly; vector evaluation rejected after near-tie mismatch"
+}

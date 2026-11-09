@@ -1,0 +1,35 @@
+{
+  "cell": "Weather_96",
+  "method": "saraf_time_aligned",
+  "smoke": false,
+  "feature_seconds": 0.0021397052332758904,
+  "splits": [
+    {
+      "split": "train",
+      "queries": 36696,
+      "search_seconds": 105.54764549341053,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.100000023841858,
+      "sha256": "aae876e73b0f41691b5fcdb0724828aba644202e9646e844a743d9c0cbbef121"
+    },
+    {
+      "split": "val",
+      "queries": 5175,
+      "search_seconds": 14.1936647137627,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.100000023841858,
+      "sha256": "e7db2a81e20f7003d06e844413c51aa486e2542744922368dd3e12f73acd7f80"
+    },
+    {
+      "split": "test",
+      "queries": 10444,
+      "search_seconds": 28.959753149189055,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0433063507080078,
+      "sha256": "0f6e532247c921184496e05b378a50db74dfcb329de0f50e92ecd860819efe46"
+    }
+  ],
+  "peak_allocated": 992406016,
+  "peak_reserved": 1818230784,
+  "concurrent_gpu": true
+}

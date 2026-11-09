@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "at": "2026-11-03T20:44:42.326171+00:00",
+  "cpu_tests": 5,
+  "compile_pass": true,
+  "source_hashes": {
+    "controller.py": "6fc23e1b160729a830fbb691e3385251367098912e5267afe2861c0caa8e1538",
+    "population_probe.py": "66a577a171fb6b6232b447061cdc59cc1f02d0362d840d94c6f5eedcd8db1085",
+    "probe.py": "c994e239377a3944349e39a17a40db6e35e776db6589ec2795b9c292a1262ac2",
+    "source_contract.py": "59316eeb11572e2a5ee84bf08e47adf4e8e7b7383dd0e62d148135fab4d5f527",
+    "test_source_contract.py": "fd3da0ba12ae7d11b8ccf5da4743360c42fcd6649bbcb2ec0957c4b72c467739"
+  },
+  "production_activated": false,
+  "scope": "Read-only GPU query-kernel and candidate-ID diagnosis after the live full-population queue releases its lock; no result replacement or threshold change",
+  "review_revision": "explicit reference encoder import and immediate pre-GPU hash recheck"
+}

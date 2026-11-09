@@ -1,0 +1,34 @@
+{
+  "all5_beats_best_single_fraction": 0.06237028416254486,
+  "all5_worse_than_best_single_fraction": 0.8573416739404519,
+  "mean_gain_vs_best_single": -0.06488887965679169,
+  "mean_harm_vs_best_single": 0.06533557921648026,
+  "block_ci_gain": {
+    "mean": -0.0648888796147991,
+    "ci95": [
+      -0.07973875436622434,
+      -0.052113954333458605
+    ],
+    "blocks": 7
+  },
+  "success_definition": "fixed-lambda single-head Stage2 MSE below same-query Base",
+  "oracle_best_single": "future-based diagnostic only, not deployable",
+  "quality_columns": [
+    "best_individual_P100_mse",
+    "oracle_individual_top10_mean_mse",
+    "selected_All5_individual_mean_mse",
+    "P100_individual_mean_mse",
+    "P100_input_delta_last_cosine_eps1e-8",
+    "selected_All5_input_delta_last_cosine_eps1e-8",
+    "within_P100_input_cosine_vs_negative_future_mse_correlation_zero_if_degenerate"
+  ],
+  "quality_mean": [
+    0.31551018357276917,
+    0.35612863302230835,
+    0.7590968608856201,
+    1.933599829673767,
+    0.7536218762397766,
+    0.7583865523338318,
+    0.0611259825527668
+  ]
+}

@@ -1,0 +1,107 @@
+[
+  {
+    "part": "PART_01.txt",
+    "chars": 8221,
+    "bytes": 10162,
+    "sha256": "986cf46e735e1a4326b8d296e8168f3cf26420d822aeaacde2ccdf00f00e34c4",
+    "start": "Mechanism02 상세 보고서 1/15\n\nMechanism02 완료 5조건 상세 해석 보고서\n\n서버 원본 CSV를 직접 읽어 작성한 고정 snapshot이다. 범위는 ETTh1 H96/H192/H336/H720와 Weather H96, seed0 Stage1이다. 195개 CSV 중 60개는 동일 바이트 별칭이며, 고"
+  },
+  {
+    "part": "PART_02.txt",
+    "chars": 11639,
+    "bytes": 11767,
+    "sha256": "fff1fa18140c206101cd647cf2ef7808e2769df917806e3cff553432bb2f8878",
+    "start": "Mechanism02 상세 보고서 2/15\n\n② E96 head 단독·결합·제거 전체 지표\n\n| 학습 | 평가 | 방법 | val선택head | RetMSE | AggMSE | AggMAE | Recall10 | NDCG10 | Oracle regret | ΔRet−All5 |\n| --- | --- | --- | --- "
+  },
+  {
+    "part": "PART_03.txt",
+    "chars": 11662,
+    "bytes": 11790,
+    "sha256": "4bce162413f68aa3ee73acb0bd2fde0d90a18fc3f552f4dc694d211b804239c2",
+    "start": "Mechanism02 상세 보고서 3/15\n\n② E336 head 단독·결합·제거 전체 지표\n\n| 학습 | 평가 | 방법 | val선택head | RetMSE | AggMSE | AggMAE | Recall10 | NDCG10 | Oracle regret | ΔRet−All5 |\n| --- | --- | --- | ---"
+  },
+  {
+    "part": "PART_04.txt",
+    "chars": 10141,
+    "bytes": 10796,
+    "sha256": "9a2f5ee205b90d219eb14ad4e7eb8d6b34432886c01c7d6223027ff577220882",
+    "start": "Mechanism02 상세 보고서 4/15\n\n② W96 head 단독·결합·제거 전체 지표\n\n| 학습 | 평가 | 방법 | val선택head | RetMSE | AggMSE | AggMAE | Recall10 | NDCG10 | Oracle regret | ΔRet−All5 |\n| --- | --- | --- | --- "
+  },
+  {
+    "part": "PART_05.txt",
+    "chars": 10528,
+    "bytes": 11372,
+    "sha256": "ac951ae7164d8bd1e28e48c1f1affb6ebf2e8269eb2cffd0fccddb502abf848b",
+    "start": "Mechanism02 상세 보고서 5/15\n\n③ head별 확률 질량과 암묵적 가중치 — 70행 전체\n\n| 조건 | 학습 | 모델 | head | mass 평균 | mass P05 | mass P95 | weight 평균 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| E9"
+  },
+  {
+    "part": "PART_06.txt",
+    "chars": 7938,
+    "bytes": 8326,
+    "sha256": "44af2d06e6fde389d11fb66dd81b24c308406c37b5933d276e87fd0e31163d5b",
+    "start": "Mechanism02 상세 보고서 6/15\n\nRegret 분해 — 같은 P100 내 선택30조합\n\npool=O_P100−O_Full; ranking=M_P100−O_P100; total=M_P100−O_Full. Q×C별 항등식과 부등식을 검증하며 음수 clamp하지 않는다. share=집계 regret의 비율, tota"
+  },
+  {
+    "part": "PART_07.txt",
+    "chars": 11797,
+    "bytes": 12070,
+    "sha256": "999ec2dfa3132048b83855ab0984317879aaf013d90385d246c8cfe7c90562a1",
+    "start": "Mechanism02 상세 보고서 7/15\n\nGlobal/Top-K 순위 상관 — native test\n\n각 split 최대256개 고정 timestamp, 모든 채널. ALL_VALID, STUDENT_TOP50/100, ORACLE_TOP100의 집합 정의가 다르다. 전체 Q 커버리지의 상관이라고 쓰지 않는다. 대규모"
+  },
+  {
+    "part": "PART_08.txt",
+    "chars": 12576,
+    "bytes": 13416,
+    "sha256": "d0570062ce72b07bd3ac7fc135f6317fd1000fb51484e1174c2e73183fcbf210",
+    "start": "Mechanism02 상세 보고서 8/15\n\nBaseline 대비 query별 승률 — V5 vs Raw/Pearson/Random\n\n같은 Q×C/support/mask, Δ=model−baseline. 평균 개선과 대다수 query 승리는 다를 수 있다. 기본 평균성능표는 앞서 전달한 표 참조.\n\n| 조건 | suppo"
+  },
+  {
+    "part": "PART_09.txt",
+    "chars": 5408,
+    "bytes": 5627,
+    "sha256": "76aa0a750da61e886039fcc73dab1845b286090d5d9cde37ade262b8d2c6afec",
+    "start": "Mechanism02 상세 보고서 9/15\n\nMissedOracle−FalseSelected 과거 특성 — native Full V5\n\n원본은35특성×두학습support×두평가support×3모델×3블록규칙. query내 group평균의 paired 차이. 35특성 중공통 query특성은두group에서같아차이0이될수있다."
+  },
+  {
+    "part": "PART_10.txt",
+    "chars": 11210,
+    "bytes": 11602,
+    "sha256": "77f8f6c7df58425413294c0c9bb175d0a050fd0c02e83041eda50263e004c065",
+    "start": "Mechanism02 상세 보고서 10/15\n\n실제 timestamp calendar 진단 — Full V5\n\n실제 history마지막timestamp의hour주기유사도/weekday/weekend/month. 존재하는timestamp만사용;future입력없음. group평균과paired차이의행정의를구분한다. 이것도tim"
+  },
+  {
+    "part": "PART_11.txt",
+    "chars": 13217,
+    "bytes": 13393,
+    "sha256": "0afacf4a7c1dc6fe651f51a40fd8d51d621bdeffe8f1b597891ecb4d2bb071aa",
+    "start": "Mechanism02 상세 보고서 11/15\n\n입력-only strata — V5, 실제 Q×C수로 재집계\n\n경계는 validation 고정, test 입력만으로 group배정. 채널별 strata크기가달라 mean의단순평균대신query수로가중. 이가중평균은조건전체채널을제외하지않는다.\n\n| 조건 | support | 특성"
+  },
+  {
+    "part": "PART_12.txt",
+    "chars": 12543,
+    "bytes": 13021,
+    "sha256": "a58458d344d85112b70660bf2569a1413b68d0159eba034dbdd757b8c49e7535",
+    "start": "Mechanism02 상세 보고서 12/15\n\nObserved past–future ambiguity — native V5\n\nregret구간은validation고정이나regret자체미래정답을사용하는사후진단이다. 위input-onlystrata와구분한다. 이분산만으로모든encoder에서해결불가능한irreducibleunce"
+  },
+  {
+    "part": "PART_13.txt",
+    "chars": 12366,
+    "bytes": 13347,
+    "sha256": "2dbf0cdc872ac3631b7f2f14857df2d8d8dfd49897e0329a0c0c9e00d325b0f8",
+    "start": "Mechanism02 상세 보고서 13/15\n\nHead의 exact Oracle-positive cluster coverage — native V5\n\n정확한Oracle-positiveID가포함된validation선택cluster의포괄비율. 외부후보는미할당. E96은대상V5공간의val선택이모두k1이라빈파일(N/A)이며누락학"
+  },
+  {
+    "part": "PART_14.txt",
+    "chars": 10481,
+    "bytes": 10581,
+    "sha256": "3f2d344fc3980f9b8f1e367b65252e9ba36fdb596eef05b8e33028182b8bb4ca",
+    "start": "Mechanism02 상세 보고서 14/15\n\n고유 135 CSV의 원본 행수 및 SHA256\n\nroot=/data/pjh_workspace/CARTS/reports/mechanism02_completed_20261103_v2/. 원본실험root=/data/pjh_workspace/CARTS/results/TRACK-RE"
+  },
+  {
+    "part": "PART_15.txt",
+    "chars": 6437,
+    "bytes": 6738,
+    "sha256": "0ec31e4713cc54e1892f522a0f87f024b805d0c0b2374402e0b35b537e19aae7",
+    "start": "Mechanism02 상세 보고서 15/15\n\n고유 135 CSV의 원본 행수 및 SHA256 (계속)\n\n| 파일(서버export root기준) | 데이터행N | SHA256 |\n| --- | --- | --- |\n| cells/ETTh1_96/FEATURE_PAIRED.csv | 1260 | 1405afecfd13936"
+  }
+]

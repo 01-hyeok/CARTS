@@ -1,0 +1,107 @@
+Mechanism02 상세 보고서 13/15
+
+Head의 exact Oracle-positive cluster coverage — native V5
+
+정확한Oracle-positiveID가포함된validation선택cluster의포괄비율. 외부후보는미할당. E96은대상V5공간의val선택이모두k1이라빈파일(N/A)이며누락학습으로채우지않는다. cluster간거리/size 상세는GEOMETRY_TEST원본참조.
+
+| 조건 | 학습 | 공간 | head/방법 | val k | cluster포괄비율 |
+| --- | --- | --- | --- | --- | --- |
+| W96 | P100 | 10_oracle_candidate_embedding | 1 | 2 | 0.347354 |
+| W96 | P100 | 10_oracle_candidate_embedding | 2 | 2 | 0.290591 |
+| W96 | P100 | 10_oracle_candidate_embedding | 3 | 2 | 0.364392 |
+| W96 | P100 | 10_oracle_candidate_embedding | 4 | 2 | 0.369417 |
+| W96 | P100 | 10_oracle_candidate_embedding | 5 | 2 | 0.358891 |
+| W96 | P100 | 10_oracle_candidate_embedding | All5 | 2 | 0.382197 |
+| W96 | P100 | 10_oracle_candidate_embedding | ValidationBestSingle | 2 | 0.358891 |
+| W96 | FULL | 10_oracle_candidate_embedding | 1 | 2 | 0.003265 |
+| W96 | FULL | 10_oracle_candidate_embedding | 2 | 2 | 0.005284 |
+| W96 | FULL | 10_oracle_candidate_embedding | 3 | 2 | 0.022378 |
+| W96 | FULL | 10_oracle_candidate_embedding | 4 | 2 | 0.004530 |
+| W96 | FULL | 10_oracle_candidate_embedding | 5 | 2 | 0.000976 |
+| W96 | FULL | 10_oracle_candidate_embedding | All5 | 2 | 0.014759 |
+| W96 | FULL | 10_oracle_candidate_embedding | ValidationBestSingle | 2 | 0.003265 |
+| W96 | FULL | 30_oracle_candidate_embedding | 1 | 3 | 0.006303 |
+| W96 | FULL | 30_oracle_candidate_embedding | 2 | 3 | 0.008265 |
+| W96 | FULL | 30_oracle_candidate_embedding | 3 | 3 | 0.021062 |
+| W96 | FULL | 30_oracle_candidate_embedding | 4 | 3 | 0.007344 |
+| W96 | FULL | 30_oracle_candidate_embedding | 5 | 3 | 0.001986 |
+| W96 | FULL | 30_oracle_candidate_embedding | All5 | 3 | 0.020708 |
+| W96 | FULL | 30_oracle_candidate_embedding | ValidationBestSingle | 3 | 0.006303 |
+
+Measured core 자원 — 30checkpoint
+
+Solar와공유GPU에서측정한동기화walltime이며GPUkernel시간/사용률이아니다. 선행재현gate·오류복구·controller대기제외. namedphase는total을모두덮지않고distance에는metric내oracle sorting이포함되지않는다. 현재VRAM점유와allocatorpeak도다르다.
+
+| 조건 | 학습 | 모델 | wall 초 | peak alloc GiB | peak reserve GiB | 거리 wall | score wall | ranking wall | feature/geometry wall | multihead wall |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| E96 | P100 | V0 | 701.469419 | 0.165667 | 0.234375 | 6.285036 | 17.920155 | 78.894260 | 496.562243 | 0.000000 |
+| E96 | P100 | V1 | 701.681436 | 0.165728 | 0.234375 | 6.355509 | 18.112415 | 79.821956 | 482.595903 | 0.000000 |
+| E96 | P100 | V5 | 807.483928 | 0.478179 | 0.542969 | 7.781435 | 17.455165 | 78.388804 | 486.477325 | 105.374712 |
+| E96 | FULL | V0 | 2125.523348 | 0.168282 | 0.220703 | 7.713133 | 18.043770 | 66.038730 | 1932.855718 | 0.000000 |
+| E96 | FULL | V1 | 701.833994 | 0.164957 | 0.242188 | 6.518281 | 15.298092 | 65.864073 | 486.743386 | 0.000000 |
+| E96 | FULL | V5 | 767.053145 | 0.469805 | 0.541016 | 6.327571 | 14.856910 | 68.501101 | 450.868923 | 108.436788 |
+| E192 | P100 | V0 | 680.338925 | 0.228205 | 0.312500 | 11.284041 | 19.737991 | 77.994850 | 478.653215 | 0.000000 |
+| E192 | P100 | V1 | 678.170906 | 0.228266 | 0.312500 | 9.941745 | 21.044854 | 77.607042 | 469.962531 | 0.000000 |
+| E192 | P100 | V5 | 804.866505 | 0.469466 | 0.601562 | 9.847287 | 19.754964 | 76.977970 | 484.200241 | 104.311297 |
+| E192 | FULL | V0 | 1973.961444 | 0.221875 | 0.306641 | 9.668475 | 17.679614 | 66.941278 | 1778.891379 | 0.000000 |
+| E192 | FULL | V1 | 635.232950 | 0.220340 | 0.302734 | 9.577221 | 17.606713 | 67.229532 | 431.675151 | 0.000000 |
+| E192 | FULL | V5 | 732.401177 | 0.461573 | 0.564453 | 9.875298 | 17.497601 | 67.434311 | 434.159261 | 103.724175 |
+| E336 | P100 | V0 | 675.952391 | 0.336905 | 0.478516 | 15.515645 | 24.819474 | 76.636507 | 451.093621 | 0.000000 |
+| E336 | P100 | V1 | 657.087025 | 0.336967 | 0.478516 | 14.213430 | 24.920166 | 76.412439 | 443.437451 | 0.000000 |
+| E336 | P100 | V5 | 776.086836 | 0.457462 | 0.687500 | 14.193236 | 25.168288 | 76.816779 | 450.615727 | 99.502752 |
+| E336 | FULL | V0 | 2038.713760 | 0.330575 | 0.439453 | 13.990130 | 22.161785 | 65.166348 | 1841.785095 | 0.000000 |
+| E336 | FULL | V1 | 600.493536 | 0.329040 | 0.433594 | 13.896509 | 21.729923 | 67.111644 | 409.837874 | 0.000000 |
+| E336 | FULL | V5 | 691.567735 | 0.449026 | 0.539062 | 13.960869 | 20.630124 | 65.282659 | 407.632426 | 99.692892 |
+| E720 | P100 | V0 | 592.864306 | 0.625876 | 0.894531 | 20.561195 | 29.548373 | 72.313209 | 378.079225 | 0.000000 |
+| E720 | P100 | V1 | 470.650993 | 0.625937 | 0.892578 | 10.508606 | 16.639820 | 64.888741 | 308.688185 | 0.000000 |
+| E720 | P100 | V5 | 491.815726 | 0.663789 | 0.904297 | 8.217539 | 12.856018 | 62.853592 | 303.145181 | 18.551064 |
+| E720 | FULL | V0 | 1350.216708 | 0.626716 | 0.812500 | 8.008647 | 15.050566 | 52.232801 | 1203.082428 | 0.000000 |
+| E720 | FULL | V1 | 426.639611 | 0.626157 | 0.886719 | 8.060597 | 11.462813 | 52.869466 | 291.922519 | 0.000000 |
+| E720 | FULL | V5 | 592.447161 | 0.653951 | 0.896484 | 18.118796 | 24.021657 | 60.704804 | 331.825317 | 72.610299 |
+| W96 | P100 | V0 | 3049.547834 | 1.966057 | 2.587891 | 166.353384 | 267.586880 | 376.194842 | 1682.174900 | 0.000000 |
+| W96 | P100 | V1 | 3037.389048 | 1.966118 | 2.587891 | 166.868483 | 280.561695 | 378.431359 | 1668.693581 | 0.000000 |
+| W96 | P100 | V5 | 3730.979715 | 6.017835 | 7.287109 | 167.521827 | 283.211395 | 376.408251 | 1687.875997 | 604.836250 |
+| W96 | FULL | V0 | 8023.664347 | 1.975717 | 2.707031 | 167.453766 | 548.299901 | 344.733636 | 6342.059272 | 0.000000 |
+| W96 | FULL | V1 | 2892.250454 | 1.966405 | 2.781250 | 165.857033 | 249.176494 | 344.687969 | 1668.230379 | 0.000000 |
+| W96 | FULL | V5 | 3561.952746 | 6.006740 | 7.373047 | 164.121402 | 266.631482 | 352.181734 | 1629.250034 | 602.896170 |
+
+종합 판단 및 남은 작업
+
+① head는서로다른유용후보를일부검색하지만그고유성이최종결합기여를보장하지않는다. ② All5와single/LOO/union의차이는완료됐으나후보별탈락귀속은미완료다. ③ softmax분모가V5의암묵head가중치를바꾸고조건별검색순위·RetMSE에영향을준다. support제한과학습파라미터차이는분리해야한다. ④ 실제temporalshift검증은미구현이다.
+
+다음loss연구방향은조건별검증가설이다: poolregret/coverage가문제면preselection, 깊은missedrank와rankingregret면representation/ranking, 경계교환손실이집중될때boundary/regretweightedloss, past-future불일치가남으면teacherreliability/context를검토한다. 지금새loss학습결과는없다. WCE와KL은동일fixedteacher일때teacherentropy상수차이일수있으므로단순명칭변경을새학습신호라고주장하면안된다. RankNet/WeightedRankNet·margin·choice·TopKaux/differentiableTopK·hardnegative는별도후속통제실험이필요하다. seed0,역사적학습예산차이,중첩window,다중비교,Weather sentinel,고비용상관표본,geometrycontrol부족으로현재인과적단일원인판정은INCONCLUSIVE다.
+
+모든 27 metric family 정의·coverage inventory
+
+행수순서E96/E192/E336/E720/W96. 행수는Q×C표본수가아니다. JSONinventory에원본컬럼이모두있다. 본문에서피벗/부분추출/가중재집계한곳은각표에명시했다.
+
+| family | 5조건행수 | 정의/coverage |
+| --- | --- | --- |
+| AMBIGUITY_NEW_MODELS | 36,36,36,36,36 | Regret strata fixed on validation; past-nearest future variance and ranking regret summarized on test. Association, not irreducible uncertainty. |
+| BASELINE_QUERY_WIN_RATE | 36,36,36,36,36 | Per-query/channel paired model versus reused verified baseline errors, win/tie fractions and model-minus-baseline mean difference. |
+| CALENDAR_FEATURES | 360,360,360,360,360 | Actual dataset timestamps only, past-only calendar features; query-paired contrasts and time-block CI. Not time-shifted future alignment. |
+| CHANNEL_METRICS | 189,189,189,189,567 | Same core metrics per channel, all test queries. Global means average channels equally within cell. |
+| CORE_COMPARISON | 20,20,20,20,20 | Full test Q*C; native checkpoint support. RetMSE=mean individual aligned-candidate future MSE; AggMSE/MAE=error of mean Top10 future; Recall=overlap with same-support Oracle10. LastRepeat has no retrieval metrics. |
+| CROSS_SUPPORT | 27,27,27,27,27 | Same frozen checkpoint evaluated on Full and P100; FULL, P100_CONTROLLED, P100_LOCAL_NORMALIZER, P100_FULL_NORMALIZER; P100_NATIVE only for P100-trained checkpoints. Training support is distinct from evaluation variant. |
+| FEATURE_PAIRED | 1260,1260,1260,1260,1260 | Per-Q*C mean past feature of MissedOracle minus FalseSelected. Finite observations only. Paired time-block bootstrap H/2H/4H, primary2H, 2000 resamples seed0; all channels jointly. exploratory; effective blocks <4 insufficient. |
+| GEOMETRY_TEST | 108,108,108,108,108 | Oracle/random/past-nearest sets size10/30. Shared candidate embeddings and baseline past spaces. Cluster k selected on validation with null k1 allowed. Geometry descriptive; no causal or forced multimodality claim. |
+| GEOMETRY_VALIDATION_SELECTION | 36,36,36,36,36 | Validation-only frozen k/selection rule by cell/support/representation/set size; no test reselection. |
+| HEAD_CLUSTER_COVERAGE | 0,7,14,14,42 | Selected validation-defined Oracle-positive clusters containing exact retrieved positive IDs; outside-positive candidates unassigned. All5 and validation-selected head fixed K10. |
+| HEAD_PROBABILITY_MASS | 14,14,14,14,14 | m_h=Z_P100,h/Z_Full,h; implicit weight=m_h/sum_h(m_h). Means/quantiles over full test Q*C. |
+| HEAD_UNIQUE_RELEVANCE | 20,20,20,20,20 | Per-Q*C mean head Top10 candidates absent from all other heads; useful if future MSE <= Oracle10 boundary + validation-frozen channel epsilon. Exact exclusive Oracle count separate. Not final-mixture retained contribution. |
+| HEAD_UTILITY | 60,60,60,60,60 | Fixed checkpoint, fixed K10: All5, validation-selected single, explicitly posthoc single, each head, LOO, deployable union scored by original support mixture, future-selected Oracle union. Delta=method RetMSE-All5; positive worse. No direct useful-candidate dropout attribution. |
+| INPUT_STRATA_BY_CHANNEL | 714,696,630,618,1920 | Input-only feature boundaries frozen on validation; per-channel test strata counts and means. Weighted by actual counts; missing/empty strata not imputed. |
+| METHOD_OVERLAP | 3,3,3,3,3 | Ordered and set overlap of controlled Full-logit P100 restriction versus native P100 numerical path; never silently equated. |
+| MISSED_ORACLE | 27,27,27,27,27 | Oracle10 candidates not selected. Pooled rank count/mean/median/P90 and mutually exclusive rank-bin fractions. Ranking rank is not temporal lag. |
+| MODEL_DISAGREEMENT | 12,12,12,12,12 | Same evaluation support, model Top10 overlap, query-channel win/tie and difference quantiles; model training support retained. |
+| NEAR_ORACLE_CANDIDATE_ANALYSIS | 12,12,12,12,12 | Frozen validation epsilon; test near-optimal population/selected fraction, exact Oracle Recall, candidate-MSE distribution and boundary gap. Threshold evaluation is diagnostic, not deployable future input. |
+| NORMALIZER_CONTROL | 6,6,6,6,6 | Identical logits/P100 IDs/mask/tau; FP64 logsumexp denominator-only intervention. changed_order_fraction=any ordered Top10 difference per Q*C; same_set_fraction=set equality; delta RetMSE=Full-normalized restriction minus P100-local normalization. |
+| PAIRED_TIME_BLOCK_CI | 72,72,72,72,72 | Paired model differences, timestamp blocks with all channels together; primary L+H, sensitivities H and2*(L+H); seed0 bootstrap2000; not training-seed uncertainty. |
+| PROBE_COMPARISON | 6,6,6,6,6 | Previously frozen Ridge probe, train-only 256 sampled timestamps/all channels, validation selection. Test difference=probe RetMSE-model RetMSE. Not full training-data fit or proof of impossibility. |
+| RANKING_SAMPLED_AGGREGATE_EXPORT | 216,216,216,216,216 | Exact aggregate of saved ranking rows at <=256 deterministic timestamps per split, all channels. Includes subset/support definitions and source SHA; not full-query global correlation coverage. |
+| REGRET_DECOMPOSITION | 21,21,21,21,21 | For P100 selection: pool=OracleP100-OracleFull; ranking=model-OracleP100; total=model-OracleFull. Query-channel identities checked; shares ratio of aggregate sums; zero denominator undefined; no negative clipping. |
+| REGRET_TAILS | 63,63,63,63,63 | Channel-mean per timestamp, then query-time quantiles and worst-fraction regret shares. Do not interpret each channel/window as independent. |
+| RESOURCE_SUMMARY | 6,6,6,6,6 | Measured worker wall time and phase synchronized wall time under shared GPU; allocated/reserved bytes separate. Excludes preceding reproduction/controller waits; not GPU kernel seconds. |
+| WEATHER_CHANNEL_SENSITIVITY | 15,15,15,15,45 | Diagnostic channel subsets based on train sentinel audit; official full-channel result unchanged. |
+| WEATHER_RECALL_DIAGNOSTIC | 0,0,0,0,0 | EMPTY placeholder; no metric values in this file. Related near-oracle and channel diagnostics exist separately; do not mark this file completed. |
+

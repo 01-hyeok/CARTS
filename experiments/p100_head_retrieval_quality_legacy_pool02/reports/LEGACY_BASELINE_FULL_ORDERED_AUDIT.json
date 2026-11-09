@@ -1,0 +1,155 @@
+{
+  "status": "PASS",
+  "rows": [
+    {
+      "cell": "ETTh1_96",
+      "split": "train",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H96/seed0/pool_top100/shared_candidate_pool/train.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/ETTh1_96/baseline_cosine/train.pt",
+      "shape": [
+        8449,
+        7,
+        100
+      ],
+      "full_ordered_parity": true,
+      "superseded_order_changed_query_channel_rows": 628,
+      "superseded_set_changed_query_channel_rows": 12
+    },
+    {
+      "cell": "ETTh1_96",
+      "split": "val",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H96/seed0/pool_top100/shared_candidate_pool/val.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/ETTh1_96/baseline_cosine/val.pt",
+      "shape": [
+        2785,
+        7,
+        100
+      ],
+      "full_ordered_parity": true,
+      "superseded_order_changed_query_channel_rows": 255,
+      "superseded_set_changed_query_channel_rows": 2
+    },
+    {
+      "cell": "ETTh1_96",
+      "split": "test",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H96/seed0/pool_top100/shared_candidate_pool/test.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/ETTh1_96/baseline_cosine/test.pt",
+      "shape": [
+        2785,
+        7,
+        100
+      ],
+      "full_ordered_parity": true,
+      "superseded_order_changed_query_channel_rows": 216,
+      "superseded_set_changed_query_channel_rows": 0
+    },
+    {
+      "cell": "ETTh1_720",
+      "split": "train",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H720/seed0/pool_top100/shared_candidate_pool/train.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/ETTh1_720/baseline_cosine/train.pt",
+      "shape": [
+        7201,
+        7,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "ETTh1_720",
+      "split": "val",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H720/seed0/pool_top100/shared_candidate_pool/val.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/ETTh1_720/baseline_cosine/val.pt",
+      "shape": [
+        2161,
+        7,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "ETTh1_720",
+      "split": "test",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/ETTh1/H720/seed0/pool_top100/shared_candidate_pool/test.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/ETTh1_720/baseline_cosine/test.pt",
+      "shape": [
+        2161,
+        7,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "Weather_96",
+      "split": "train",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H96/seed0/pool_top100/shared_candidate_pool/train.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/Weather_96/baseline_cosine/train.pt",
+      "shape": [
+        36696,
+        21,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "Weather_96",
+      "split": "val",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H96/seed0/pool_top100/shared_candidate_pool/val.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/Weather_96/baseline_cosine/val.pt",
+      "shape": [
+        5175,
+        21,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "Weather_96",
+      "split": "test",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H96/seed0/pool_top100/shared_candidate_pool/test.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/Weather_96/baseline_cosine/test.pt",
+      "shape": [
+        10444,
+        21,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "Weather_720",
+      "split": "train",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H720/seed0/pool_top100/shared_candidate_pool/train.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/Weather_720/baseline_cosine/train.pt",
+      "shape": [
+        35448,
+        21,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "Weather_720",
+      "split": "val",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H720/seed0/pool_top100/shared_candidate_pool/val.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/Weather_720/baseline_cosine/val.pt",
+      "shape": [
+        4551,
+        21,
+        100
+      ],
+      "full_ordered_parity": true
+    },
+    {
+      "cell": "Weather_720",
+      "split": "test",
+      "legacy": "/data/pjh_workspace/CARTS/results/TRACK-V-MULTIQUERY-GENERALIZATION01/Weather/H720/seed0/pool_top100/shared_candidate_pool/test.pt",
+      "baseline": "/data/pjh_workspace/CARTS/experiments/p100_preselection_comparison/results/pools/Weather_720/baseline_cosine/test.pt",
+      "shape": [
+        9820,
+        21,
+        100
+      ],
+      "full_ordered_parity": true
+    }
+  ]
+}

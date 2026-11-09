@@ -1,0 +1,36 @@
+{
+  "status": "CPU_READY_REAL_GPU_GATE_AT_EXECUTION",
+  "at": "2026-10-30T16:48:27.268889+00:00",
+  "tests": [
+    {
+      "runtime": "/data/pjh_workspace/ts-env/bin/python",
+      "passed": 47,
+      "failed": 0,
+      "evidence": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/CPU_RUNTIME_TESTS.xml"
+    },
+    {
+      "runtime": "/usr/bin/python3",
+      "passed": 47,
+      "failed": 0,
+      "evidence": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/LEGACY_CPU_RUNTIME_TESTS.xml"
+    }
+  ],
+  "source_sha256": {
+    "PROTOCOL.json": "2c8b0b3ac1177c867b8632b44ca15f105dc61b3c2c05d855b8a436bb062f0d84",
+    "activate_diagnostics.py": "91bddb03f70d60a4eda805f05c9b9c6f5452c3252348881b1f61a7e0a06ce0e5",
+    "diagnostic_adapter.py": "014f28c111f5add866862c31f731ab3e22e5e47abeb6503311f207673646293b",
+    "diagnostic_controller.py": "6a0ed6af9a269ba0070b59b75abc8e8c3c26d7b859a4c77123a4fb1aeed02f3f",
+    "diagnostic_core.py": "e7699c94c92dd66200dcb7bfe7e3a9b8815497889c155d3a43c8fe53816b0e73",
+    "diagnostic_metrics.py": "86f868b23ca4aae94e984cec40efdd9dfa740e5e73f099b9da421e695bde38e7",
+    "diagnostic_report.py": "c9d448ca286db3b63c81568bdc768c48e93607fd44c1d01aa5056d51760a601b",
+    "diagnostic_run.py": "27d90c73c353983c1cf05506df7d22088b4003db0e538e68c98ebb89969167b7",
+    "oracle_k_completion.py": "80f0697b16faa17e7ecb45d2b9b6078809c23bb408ec90c5617e6eb8ca555e7e",
+    "oracle_k_summary.py": "6792635aa23098499f54a26914937c2c465402417e505c579d7e296c2dc90268",
+    "phase0.py": "3c2d064b6932ba3a2521122da0fedb4cc574da1fce0029ea697f5e3aa53aeee1",
+    "test_diagnostic_core.py": "728baef374d32f9fa8d74df8f7e49b40ea0302de4e0d8556c5644d1945790947",
+    "test_diagnostic_runtime.py": "d0f062b2efc6397e5108eb307e490909b3eef01c4578ec37eb01b3dcbc20425f",
+    "write_diagnostic_audit.py": "c3cbdf2d8bdeae7e6e898fb9893bb95c396fe63d096e6b8e699fd4e1c596a996"
+  },
+  "gpu_smoke": "deferred until existing48 release GPU1; fail closed before attribution/probe",
+  "all_original_results_preserved": true
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "split": "train",
+    "queries": 8449,
+    "mismatches": [
+      {
+        "offset": 8448,
+        "batch": 1,
+        "channel": 0,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 8448,
+        "batch": 1,
+        "channel": 1,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 8448,
+        "batch": 1,
+        "channel": 2,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 8448,
+        "batch": 1,
+        "channel": 4,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 8448,
+        "batch": 1,
+        "channel": 5,
+        "native_diff": 12,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 8448,
+        "batch": 1,
+        "channel": 6,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      }
+    ]
+  },
+  {
+    "split": "val",
+    "queries": 2785,
+    "mismatches": [
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 0,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 1,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 2,
+        "native_diff": 6,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 3,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 4,
+        "native_diff": 5,
+        "tf32_diff": 0,
+        "set_diff": 32
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 5,
+        "native_diff": 2,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 6,
+        "native_diff": 12,
+        "tf32_diff": 0,
+        "set_diff": 0
+      }
+    ]
+  },
+  {
+    "split": "test",
+    "queries": 2785,
+    "mismatches": [
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 1,
+        "native_diff": 2,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 2,
+        "native_diff": 2,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 4,
+        "native_diff": 4,
+        "tf32_diff": 0,
+        "set_diff": 0
+      },
+      {
+        "offset": 2784,
+        "batch": 1,
+        "channel": 5,
+        "native_diff": 17,
+        "tf32_diff": 0,
+        "set_diff": 0
+      }
+    ]
+  }
+]

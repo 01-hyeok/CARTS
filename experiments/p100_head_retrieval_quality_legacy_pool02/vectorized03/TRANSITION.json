@@ -1,0 +1,174 @@
+{
+  "at": "2026-10-30T05:46:46.085396+00:00",
+  "completed_34_unchanged": {
+    "ETTh1_96_V0_seed0": "5d5b4e46ab681661c00f5a51563410f1cb7f07034965bd40112d5419839923c0",
+    "ETTh1_96_V1_seed0": "5eef3165755ad1aea40c1446a57ca2767203a4d79acc9742b76b93438b85bde8",
+    "ETTh1_96_V2_seed0": "41ef92b346336a666b347a446383c771176a4f6b33c03e312c970334509225c9",
+    "ETTh1_96_V5_seed0": "006d3839d7a2393eae0f4a6898dd04c7c280a2bf629081ab38ea71c9a2a875dd",
+    "ETTh1_192_V0_seed0": "085a3f6f0601b2a2f8c0423fe8a88e0587ff9c05be8138b233fe35dd3070ea63",
+    "ETTh1_192_V1_seed0": "14e6aa9c7871bc84a4529cf12e63c93da1347ad6ef71ff00159f7848351fe3fa",
+    "ETTh1_192_V2_seed0": "9d58104160c53c7145ec133c09363c5f1c99cb79713c7dc2186f002427256f0c",
+    "ETTh1_192_V5_seed0": "655593bf77e3a4857cde7f28115367a5863bbcf98534e94356d21cd8ec94e3dc",
+    "ETTh1_336_V0_seed0": "3750396e76977636615ac128fc10fbd3272056b174b3706ef2a204f680beecf8",
+    "ETTh1_336_V1_seed0": "4a5cdf48128891745dabc7248fc9aba1797387c900c6c341e4a19498d76dd650",
+    "ETTh1_336_V2_seed0": "4d148320e5fec901aa02394816908780bc8a2ad2d04e543ae85cb7bf4da917f8",
+    "ETTh1_336_V5_seed0": "494a414ceefff4479e633ab8f51658b1e6afed9ec7c1c2ee23f97c99ea917613",
+    "ETTh1_720_V0_seed0": "0187f4e28aa2d68e1258480e79954363e73c8252a6153bbb92442945ee4a77dc",
+    "ETTh1_720_V1_seed0": "ec304b11642c20ac6c9fda79191a3d48dafc9672fa2109f75d4c6a69d621c9ce",
+    "ETTh1_720_V2_seed0": "4e0de9afb79602eb3c38f0b4f7903281559dddbbb0b14fa7c49eab967b526afc",
+    "ETTh1_720_V5_seed0": "843e363e0abb7a630baaefaa45d8e155ebef67c4f9e65da271af5d8f443be22c",
+    "Weather_96_V0_seed0": "d6e24074c973f24fb3383ffab25391027b9939286ad7e5b09d11f6089c8691ea",
+    "Weather_96_V1_seed0": "bf6a73b62a705554f5b48d65f07b7eea4ba753253f5aa9fb21322694d831cc22",
+    "Weather_96_V2_seed0": "6c91883e8f74c3d3d56afaaf8d213076ef23599b3fac3f2bd7d1adb0c60f6d51",
+    "Weather_96_V5_seed0": "af6f39c584fce7badf965d240142225652a1595c3a1d06da6c54d84acc5a69e1",
+    "Weather_192_V0_seed0": "e632731f8f17487413b8c01ebb78a144c1a93bb9c9c24bf87377076101ee298d",
+    "Weather_192_V1_seed0": "8a67731f2f5a118a768829c3cf7bee8dd17cf2ba853b8731e9b3427cc65cc71b",
+    "Weather_192_V2_seed0": "70334a1a6639fe1dd4afe9c335220f217feb96a5493a03d3b00425f06077eed8",
+    "Weather_192_V5_seed0": "19089dc26c34fede5f6ed23c4a1670f121d85d666f081d40379d34ca33fbdc7c",
+    "Weather_336_V0_seed0": "b4046c9c0e341060edb5469863e4b0593e60f4ee482006bc5fc3ff370c99e83f",
+    "Weather_336_V1_seed0": "028f110ebc85586f5ab44c44d2595aa7498777b50f6bd3ee0c973923ec07e7bf",
+    "Weather_336_V2_seed0": "61269c7d98060369b75bb6b3d46f352064e8309b447ab01b4172af61ec3929d6",
+    "Weather_336_V5_seed0": "893b979b9f2d026c911e0ca3d71ef14ab49cd4ae2cb496ed6909f4d91536afd4",
+    "Weather_720_V0_seed0": "4540b774c6af682bdad7c722576fa2fb2ed3bcb74a326f95bb7f9672e7c9acf6",
+    "Weather_720_V1_seed0": "21b72824e217b81de9da345234ae01911d67ac145be4bf9f47dc1a01f6e62e1c",
+    "Weather_720_V2_seed0": "9cb4e5b9fae8ff7ef476e8374c1623274c7488c2ccd18edf3484f55b3a19ddf9",
+    "Weather_720_V5_seed0": "20ff4f53a85eaf01a893028272b77433a5da8b5614be283812bb912933696208",
+    "Solar_96_V0_seed0": "d2075b30521019f81963acff1308bcc6264373963c2a61204c072e21fcf54241",
+    "Solar_96_V1_seed0": "9514fe9f7bb644efb1ef4feb279cd56ca4b86d416d9ae50e8cfcaa0d613af345"
+  },
+  "rerouted": [
+    {
+      "run_id": "Solar_96_V2_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_96/seed0/V2",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_96/seed0/V2",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_96/seed0/V2"
+    },
+    {
+      "run_id": "Solar_96_V5_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_96/seed0/V5",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_96/seed0/V5",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_96/seed0/V5"
+    },
+    {
+      "run_id": "Solar_192_V0_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_192/seed0/V0",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_192/seed0/V0",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_192/seed0/V0"
+    },
+    {
+      "run_id": "Solar_192_V1_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_192/seed0/V1",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_192/seed0/V1",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_192/seed0/V1"
+    },
+    {
+      "run_id": "Solar_192_V2_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_192/seed0/V2",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_192/seed0/V2",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_192/seed0/V2"
+    },
+    {
+      "run_id": "Solar_192_V5_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_192/seed0/V5",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_192/seed0/V5",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_192/seed0/V5"
+    },
+    {
+      "run_id": "Solar_336_V0_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_336/seed0/V0",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_336/seed0/V0",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_336/seed0/V0"
+    },
+    {
+      "run_id": "Solar_336_V1_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_336/seed0/V1",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_336/seed0/V1",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_336/seed0/V1"
+    },
+    {
+      "run_id": "Solar_336_V2_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_336/seed0/V2",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_336/seed0/V2",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_336/seed0/V2"
+    },
+    {
+      "run_id": "Solar_336_V5_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_336/seed0/V5",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_336/seed0/V5",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_336/seed0/V5"
+    },
+    {
+      "run_id": "Solar_720_V0_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_720/seed0/V0",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_720/seed0/V0",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_720/seed0/V0"
+    },
+    {
+      "run_id": "Solar_720_V1_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_720/seed0/V1",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_720/seed0/V1",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_720/seed0/V1"
+    },
+    {
+      "run_id": "Solar_720_V2_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_720/seed0/V2",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_720/seed0/V2",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_720/seed0/V2"
+    },
+    {
+      "run_id": "Solar_720_V5_seed0",
+      "previous_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs/Solar_720/seed0/V5",
+      "new_output": "results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/runs_vectorized03/Solar_720/seed0/V5",
+      "new_checkpoint": "checkpoints/track_p100_head_retrieval_quality01_legacy_pool02_vectorized03/Solar_720/seed0/V5"
+    }
+  ],
+  "superseded_partial_run": {
+    "status": "PAUSED_AT_SAVED_EPOCH",
+    "run_id": "Solar_96_V2_seed0",
+    "saved_epoch": 7,
+    "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/Solar_96/seed0/V2/epoch07.pth",
+    "checkpoint_sha256": "0c74190aff8e178ac380ea0574f996e5632e5b0816dc8f40cce4f80d74773d79",
+    "old_worker_pid": 3964636,
+    "old_worker_start_ticks": "466757052",
+    "progress_when_stopped": {
+      "status": "TRAINING",
+      "run_id": "Solar_96_V2_seed0",
+      "epoch": 7,
+      "batch": 1100,
+      "pid": 3964636,
+      "updated_at": "2026-10-30T05:27:54.755323+00:00"
+    },
+    "stopped_at": "2026-10-30T05:29:16.297238+00:00",
+    "partial_results_archive": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/vectorized03_prechange/Solar_96_V2_seed0",
+    "reason": "User authorized all-channel vectorization; resume requires tested numerical/RNG policy"
+  },
+  "reason": "Restart only incomplete Solar H96 V2 from common seed0 initialization; batched FP32 GEMM/reduction not bitwise trajectory-equivalent despite matching Dropout RNG progression",
+  "total": 48,
+  "active_seed": 0,
+  "cancelled_by_user": 96,
+  "training_channels": 137,
+  "evaluation": "original canonical channelwise",
+  "stage2": false,
+  "source_hashes": {
+    "data_provider/data_factory.py": "1cd1f9fe4682fd0c596f1f14c9d42a4626f10016978b01ace9cb9fe5867a0375",
+    "data_provider/data_loader.py": "cced1cc4f621e083078699e83c276763798a63146161f59e5d7cec768a06062c",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/check_plan.py": "8131a47ba3521578c87ca39d128a9c695bf87e355ebe6cf136ee24f7a7228907",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/controller.py": "43fbd8693225e76fd25e1d96d423763781381fa4edbad7aca6b700be6983b89b",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/gates.py": "75abd4fae10679a09b84ed1c8bdd85df8ef6a016a6f110307ab6a35323d847b0",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/preparation.py": "8e3321cf430d859402d7621c50c69043db60a5c4682e7355b04a1eac18c99686",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/prepare_manifest.py": "f5b92cdf160cc3e7597ec3f5b4d27df5fb15f997c6066f528d59e8bd15a33e0c",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/runtime.py": "21b8f1d0185e14f311826226e216b40f36092caa5f601ec5a2952d9cb3edceeb",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/summarize.py": "23c158a3bc5157f7ebfb987dd06c1064d7858ffb3d320cdf85a2ca5c532d1c25",
+    "models/RelationStage1.py": "ad9a0dab08172839ed812a1d9980854ae66916d50a31d9c819f45c1a1739b444",
+    "scripts/precompute_candidate_pool01.py": "465a590bc126a4ceb08f41dc5f216a6c79c03745f7f9edeb5d254d4c07fdba27",
+    "scripts/train_factorial_e2e01.py": "92fe993499e01ac326b6621956fecae9c4c30fbea1175b8deac3299dc5376cbb",
+    "scripts/train_horizon_retrieval_expert01.py": "7a158518e2127495bd396199b5b289ca93184238bc386aef41ff4561543e51d9",
+    "scripts/train_k_multislot_predictive_retrieval01.py": "afaa63e0a29109709db13cd7bc6b86a8cf32b6ab7f02297e63257b9b9a2d44bb",
+    "utils/candidate_pool.py": "edab08885362dd51fc79d08e10c96e74adb369ab1006a1ede902efccb8b2550b",
+    "utils/mean_mixture_selection.py": "90e05943d09b1cbe8f1fa48cb170fd828d7d752df571a652fa1d70a730ac9e52",
+    "utils/relation_memory.py": "cfcbf9686582c817c3c7d2ed4ec45c10cc55c38e1fee4a6afb0d8f6e042cf61c",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/runtime_vector.py": "5a89a4c2ffbcda698bb3111c6785c9d6ea4815d04222dd8db3d830f17049c448",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/vector_ops.py": "4f463234a89cdd973de1d731f649050496a0994471507ecaddba43d7b9480fe3",
+    "experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/vector_eval.py": "19ec66db4bf1082b8cbc46d56122433393f29d3e0791b7bb84e898d62620acf6"
+  }
+}

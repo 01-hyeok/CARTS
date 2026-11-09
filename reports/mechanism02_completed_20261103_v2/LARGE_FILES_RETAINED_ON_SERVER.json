@@ -1,0 +1,72 @@
+[
+  {
+    "cell": "ETTh1_96",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_96/GLOBAL_RANKING_QUALITY.csv",
+    "bytes": 81762833,
+    "sha256": "6385af0390de11735071f7c558a198d2445fb1d804804b96eb5138fe823de190",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_96",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_96/RANKING_QUALITY.csv",
+    "bytes": 81762833,
+    "sha256": "6385af0390de11735071f7c558a198d2445fb1d804804b96eb5138fe823de190",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_192",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_192/GLOBAL_RANKING_QUALITY.csv",
+    "bytes": 82101907,
+    "sha256": "a9115d70bcd18fe51348389952b357ae568af3ffcc8cb600cf30a0683ec3f8ed",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_192",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_192/RANKING_QUALITY.csv",
+    "bytes": 82101907,
+    "sha256": "a9115d70bcd18fe51348389952b357ae568af3ffcc8cb600cf30a0683ec3f8ed",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_336",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_336/GLOBAL_RANKING_QUALITY.csv",
+    "bytes": 82055994,
+    "sha256": "ea8e8046e9168e7ba8c395ac39b40da31075824cc643d88d8d00975645b72500",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_336",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_336/RANKING_QUALITY.csv",
+    "bytes": 82055994,
+    "sha256": "ea8e8046e9168e7ba8c395ac39b40da31075824cc643d88d8d00975645b72500",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_720",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_720/GLOBAL_RANKING_QUALITY.csv",
+    "bytes": 82014415,
+    "sha256": "e0a2d5521ea9f05c265906687ad023dfe8b161f4b3846d42997dee680dee9a00",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "ETTh1_720",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/ETTh1_720/RANKING_QUALITY.csv",
+    "bytes": 82014415,
+    "sha256": "e0a2d5521ea9f05c265906687ad023dfe8b161f4b3846d42997dee680dee9a00",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "Weather_96",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/Weather_96/GLOBAL_RANKING_QUALITY.csv",
+    "bytes": 246615072,
+    "sha256": "58d29034347000f2fd7c6e1cee854b1f5c4ba5695854d8274b264724fef4f4e2",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  },
+  {
+    "cell": "Weather_96",
+    "source": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-MECHANISM02/cells/Weather_96/RANKING_QUALITY.csv",
+    "bytes": 246615072,
+    "sha256": "58d29034347000f2fd7c6e1cee854b1f5c4ba5695854d8274b264724fef4f4e2",
+    "reason": "per-query ranking details; original remains on server; exact sampled-row aggregate included"
+  }
+]

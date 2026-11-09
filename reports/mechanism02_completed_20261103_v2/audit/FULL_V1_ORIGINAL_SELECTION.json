@@ -1,0 +1,712 @@
+[
+  {
+    "cell": "ETTh1_96",
+    "config": {
+      "cell": "ETTh1_96",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 8449,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 9,
+    "original_val_mse": 0.9599861030304667,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "0.7313909115562625",
+        "epoch": "1",
+        "ndcg10": "0.9598499519209215",
+        "recall10": "0.04255450213680086",
+        "retmse10": "1.0233436970932113"
+      },
+      {
+        "agg_mse10": "0.7246952888139488",
+        "epoch": "2",
+        "ndcg10": "0.9609862834620274",
+        "recall10": "0.043575276818511484",
+        "retmse10": "1.0103150823661138"
+      },
+      {
+        "agg_mse10": "0.725156475171336",
+        "epoch": "3",
+        "ndcg10": "0.9611983943272934",
+        "recall10": "0.04215952881362751",
+        "retmse10": "1.0078387549058632"
+      },
+      {
+        "agg_mse10": "0.7289291486033234",
+        "epoch": "4",
+        "ndcg10": "0.9619520545464413",
+        "recall10": "0.0429443454331207",
+        "retmse10": "0.9970139962338459"
+      },
+      {
+        "agg_mse10": "0.7365880829335849",
+        "epoch": "5",
+        "ndcg10": "0.9610736962861665",
+        "recall10": "0.042949475585328946",
+        "retmse10": "1.0106052619550558"
+      },
+      {
+        "agg_mse10": "0.7360073832922576",
+        "epoch": "6",
+        "ndcg10": "0.9619971043453917",
+        "recall10": "0.04265196339293424",
+        "retmse10": "0.9934447359934805"
+      },
+      {
+        "agg_mse10": "0.733456010701076",
+        "epoch": "7",
+        "ndcg10": "0.961737918119976",
+        "recall10": "0.04328289424862486",
+        "retmse10": "0.987370893288099"
+      },
+      {
+        "agg_mse10": "0.7355754949643569",
+        "epoch": "8",
+        "ndcg10": "0.962033250387524",
+        "recall10": "0.04346242715843704",
+        "retmse10": "0.98175817246497"
+      },
+      {
+        "agg_mse10": "0.7235807538429998",
+        "epoch": "9",
+        "ndcg10": "0.9638301887766585",
+        "recall10": "0.045396256666973514",
+        "retmse10": "0.9599861030304667"
+      },
+      {
+        "agg_mse10": "0.7371812323296061",
+        "epoch": "10",
+        "ndcg10": "0.9627840840471008",
+        "recall10": "0.044626828735762604",
+        "retmse10": "0.9711508960777687"
+      }
+    ],
+    "checkpoint_sha256": "9e4a5f8a8e90acf8b7032e39ebdbd548bb9c70da7ff7a6582524ca943b4f4930",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "ETTh1_192",
+    "config": {
+      "cell": "ETTh1_192",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 8257,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 8,
+    "original_val_mse": 1.2582983159109478,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "1.0954170013876223",
+        "epoch": "1",
+        "ndcg10": "0.9503162146209942",
+        "recall10": "0.0454869051576959",
+        "retmse10": "1.4266253553173756"
+      },
+      {
+        "agg_mse10": "1.089054865771992",
+        "epoch": "2",
+        "ndcg10": "0.9522988768748166",
+        "recall10": "0.04594910583378044",
+        "retmse10": "1.40105163342374"
+      },
+      {
+        "agg_mse10": "1.0381039771530585",
+        "epoch": "3",
+        "ndcg10": "0.9594502085004939",
+        "recall10": "0.04960952176935252",
+        "retmse10": "1.2917931203234685"
+      },
+      {
+        "agg_mse10": "1.0564014942304163",
+        "epoch": "4",
+        "ndcg10": "0.9583686682089022",
+        "recall10": "0.05248366457708063",
+        "retmse10": "1.3029055344351026"
+      },
+      {
+        "agg_mse10": "1.0748563729341774",
+        "epoch": "5",
+        "ndcg10": "0.9581525696519013",
+        "recall10": "0.05365244749659769",
+        "retmse10": "1.3155864746254056"
+      },
+      {
+        "agg_mse10": "1.0638529679438693",
+        "epoch": "6",
+        "ndcg10": "0.9592329933546697",
+        "recall10": "0.052425225444879424",
+        "retmse10": "1.2913862160349958"
+      },
+      {
+        "agg_mse10": "1.0568536021583665",
+        "epoch": "7",
+        "ndcg10": "0.9602802537841991",
+        "recall10": "0.05763693440513366",
+        "retmse10": "1.2781748184835797"
+      },
+      {
+        "agg_mse10": "1.055290937309709",
+        "epoch": "8",
+        "ndcg10": "0.9623728396313316",
+        "recall10": "0.057700686783337896",
+        "retmse10": "1.2582983159109478"
+      },
+      {
+        "agg_mse10": "1.0712792140317953",
+        "epoch": "9",
+        "ndcg10": "0.9608522663522792",
+        "recall10": "0.05687722598417706",
+        "retmse10": "1.2735628407369959"
+      },
+      {
+        "agg_mse10": "1.1091111262001825",
+        "epoch": "10",
+        "ndcg10": "0.9586834120698495",
+        "recall10": "0.06012856736102355",
+        "retmse10": "1.320804837697093"
+      }
+    ],
+    "checkpoint_sha256": "6bd87b186029d04337b64220f7a4fce4abf7970a845dcf3c62e521db510df8ae",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "ETTh1_336",
+    "config": {
+      "cell": "ETTh1_336",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 7969,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 4,
+    "original_val_mse": 1.575200358221379,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "1.3716174969069583",
+        "epoch": "1",
+        "ndcg10": "0.9472863830343713",
+        "recall10": "0.05086724781568486",
+        "retmse10": "1.7030249018298418"
+      },
+      {
+        "agg_mse10": "1.3272485022661293",
+        "epoch": "2",
+        "ndcg10": "0.9550920463431394",
+        "recall10": "0.0603704756576962",
+        "retmse10": "1.5903151553633372"
+      },
+      {
+        "agg_mse10": "1.352077945363411",
+        "epoch": "3",
+        "ndcg10": "0.9547113076508998",
+        "recall10": "0.05776031554631895",
+        "retmse10": "1.6009276787016187"
+      },
+      {
+        "agg_mse10": "1.3629644299169086",
+        "epoch": "4",
+        "ndcg10": "0.955540271451759",
+        "recall10": "0.059781084828854546",
+        "retmse10": "1.575200358221379"
+      },
+      {
+        "agg_mse10": "1.3904488237259462",
+        "epoch": "5",
+        "ndcg10": "0.9525421313880836",
+        "recall10": "0.05900645631436314",
+        "retmse10": "1.6243200460043712"
+      },
+      {
+        "agg_mse10": "1.3739503691847526",
+        "epoch": "6",
+        "ndcg10": "0.9552287805960348",
+        "recall10": "0.059837216351295235",
+        "retmse10": "1.5831850328640826"
+      },
+      {
+        "agg_mse10": "1.4164728469270487",
+        "epoch": "7",
+        "ndcg10": "0.9540486659355923",
+        "recall10": "0.060471514206136036",
+        "retmse10": "1.6201610478463548"
+      },
+      {
+        "agg_mse10": "1.3969131735245766",
+        "epoch": "8",
+        "ndcg10": "0.9539660432115887",
+        "recall10": "0.06360370595569595",
+        "retmse10": "1.6011476322402118"
+      },
+      {
+        "agg_mse10": "1.444883167439219",
+        "epoch": "9",
+        "ndcg10": "0.9528143138387649",
+        "recall10": "0.06029750308460511",
+        "retmse10": "1.642043415147737"
+      }
+    ],
+    "checkpoint_sha256": "1f8ecef1604e122a85a34e2bcbff000e37914ea3234426d68334e7bb57ffc19d",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "ETTh1_720",
+    "config": {
+      "cell": "ETTh1_720",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 7201,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 6,
+    "original_val_mse": 1.9029345819732126,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "1.5687988426504553",
+        "epoch": "1",
+        "ndcg10": "0.9475831771752741",
+        "recall10": "0.03947907803259894",
+        "retmse10": "1.9330547587715674"
+      },
+      {
+        "agg_mse10": "1.7061064293909871",
+        "epoch": "2",
+        "ndcg10": "0.9393094879168548",
+        "recall10": "0.03684141002770275",
+        "retmse10": "2.024137015666446"
+      },
+      {
+        "agg_mse10": "1.7640892115053484",
+        "epoch": "3",
+        "ndcg10": "0.9422941477085803",
+        "recall10": "0.04620876685479364",
+        "retmse10": "2.0579140282925525"
+      },
+      {
+        "agg_mse10": "1.696205172952014",
+        "epoch": "4",
+        "ndcg10": "0.9456383115105582",
+        "recall10": "0.04794076955301902",
+        "retmse10": "1.9745292620703951"
+      },
+      {
+        "agg_mse10": "1.7402768246344362",
+        "epoch": "5",
+        "ndcg10": "0.9450252813128791",
+        "recall10": "0.04682356110093235",
+        "retmse10": "2.004881891545785"
+      },
+      {
+        "agg_mse10": "1.6432614155311203",
+        "epoch": "6",
+        "ndcg10": "0.9489401270536735",
+        "recall10": "0.0487472744023342",
+        "retmse10": "1.9029345819732126"
+      },
+      {
+        "agg_mse10": "1.6822049419649958",
+        "epoch": "7",
+        "ndcg10": "0.9472807037339394",
+        "recall10": "0.050148742263722325",
+        "retmse10": "1.9284741907352385"
+      },
+      {
+        "agg_mse10": "1.6993060096553607",
+        "epoch": "8",
+        "ndcg10": "0.9466578754105539",
+        "recall10": "0.05102796435411304",
+        "retmse10": "1.9495041479616462"
+      },
+      {
+        "agg_mse10": "1.695464828651596",
+        "epoch": "9",
+        "ndcg10": "0.9463420259414302",
+        "recall10": "0.04932240520315145",
+        "retmse10": "1.9380845406353808"
+      },
+      {
+        "agg_mse10": "1.6749497614936377",
+        "epoch": "10",
+        "ndcg10": "0.9494146943573061",
+        "recall10": "0.05463740439032613",
+        "retmse10": "1.9163128864255294"
+      }
+    ],
+    "checkpoint_sha256": "43cfe8da9ce67bea75d8733267adb325597f4eece512f9bde69d74f74964fb8e",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "Weather_96",
+    "config": {
+      "cell": "Weather_96",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 36696,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 9,
+    "original_val_mse": 0.6253522582193449,
+    "validation_epoch_records": [
+      {
+        "epoch": 1,
+        "retmse10": 1.0840553745983221
+      },
+      {
+        "epoch": 10,
+        "retmse10": 0.6321861083506989
+      },
+      {
+        "epoch": 2,
+        "retmse10": 1.004921640379006
+      },
+      {
+        "epoch": 3,
+        "retmse10": 0.7288560639937115
+      },
+      {
+        "epoch": 4,
+        "retmse10": 0.8063983166933554
+      },
+      {
+        "epoch": 5,
+        "retmse10": 0.6663333732231146
+      },
+      {
+        "epoch": 6,
+        "retmse10": 0.6617779304428926
+      },
+      {
+        "epoch": 7,
+        "retmse10": 0.6860133862018256
+      },
+      {
+        "epoch": 8,
+        "retmse10": 0.6573154354863313
+      },
+      {
+        "epoch": 9,
+        "retmse10": 0.6253522582193449
+      }
+    ],
+    "checkpoint_sha256": "d6d4a6ac3764be6aeac2ee8f79f0a1298b9bb9f3b1eead9dc37fab6e9c9ab6a9",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "Weather_192",
+    "config": {
+      "cell": "Weather_192",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 36504,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 8,
+    "original_val_mse": 0.6812896569717438,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "0.6045402300317695",
+        "epoch": "1",
+        "ndcg10": "0.9568080332536291",
+        "recall10": "0.010950787338319149",
+        "retmse10": "0.9348896529364958"
+      },
+      {
+        "agg_mse10": "0.5874749273255947",
+        "epoch": "2",
+        "ndcg10": "0.9583921839415472",
+        "recall10": "0.011310813253654748",
+        "retmse10": "0.7829886122540918"
+      },
+      {
+        "agg_mse10": "0.5908809038081634",
+        "epoch": "3",
+        "ndcg10": "0.9581297964033962",
+        "recall10": "0.012254005901261984",
+        "retmse10": "0.7782006871073387"
+      },
+      {
+        "agg_mse10": "0.5686779554941797",
+        "epoch": "4",
+        "ndcg10": "0.9622265009378055",
+        "recall10": "0.010564509629552205",
+        "retmse10": "0.7356723704606448"
+      },
+      {
+        "agg_mse10": "0.5934728057469054",
+        "epoch": "5",
+        "ndcg10": "0.9612319035416937",
+        "recall10": "0.010649828242563109",
+        "retmse10": "0.7539721631218288"
+      },
+      {
+        "agg_mse10": "0.5753896148861611",
+        "epoch": "6",
+        "ndcg10": "0.9658900795536915",
+        "recall10": "0.009468493239743522",
+        "retmse10": "0.7246708248913356"
+      },
+      {
+        "agg_mse10": "0.5693199220590343",
+        "epoch": "7",
+        "ndcg10": "0.9660454637230274",
+        "recall10": "0.009893211251165377",
+        "retmse10": "0.703464354730553"
+      },
+      {
+        "agg_mse10": "0.5523679262944033",
+        "epoch": "8",
+        "ndcg10": "0.9652188833927663",
+        "recall10": "0.009416927110262078",
+        "retmse10": "0.6812896569717438"
+      },
+      {
+        "agg_mse10": "0.550284740428792",
+        "epoch": "9",
+        "ndcg10": "0.9659135868356237",
+        "recall10": "0.009310044369964559",
+        "retmse10": "0.6848183322356745"
+      },
+      {
+        "agg_mse10": "0.573187320294243",
+        "epoch": "10",
+        "ndcg10": "0.9659263233086138",
+        "recall10": "0.009238789352641366",
+        "retmse10": "0.7115854183495269"
+      }
+    ],
+    "checkpoint_sha256": "0803bfda2d6458c84e2bf56c81868bf5bfe6d538b88df1f5e4b8f24e574efd33",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "Weather_336",
+    "config": {
+      "cell": "Weather_336",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 36216,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 6,
+    "original_val_mse": 0.7660840103179597,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "0.7224585040592104",
+        "epoch": "1",
+        "ndcg10": "0.956297545258892",
+        "recall10": "0.010711632506423043",
+        "retmse10": "0.9063869881032949"
+      },
+      {
+        "agg_mse10": "0.6991406887825775",
+        "epoch": "2",
+        "ndcg10": "0.9601323066505664",
+        "recall10": "0.01047715560445083",
+        "retmse10": "0.8715434862251776"
+      },
+      {
+        "agg_mse10": "0.6725792982784523",
+        "epoch": "3",
+        "ndcg10": "0.9615552850597104",
+        "recall10": "0.010818739031298309",
+        "retmse10": "0.7797833224272782"
+      },
+      {
+        "agg_mse10": "0.6808442039635142",
+        "epoch": "4",
+        "ndcg10": "0.9624795689621705",
+        "recall10": "0.010867950235913918",
+        "retmse10": "0.803149769048175"
+      },
+      {
+        "agg_mse10": "0.6830855641540123",
+        "epoch": "5",
+        "ndcg10": "0.9642538000281562",
+        "recall10": "0.00966179402174938",
+        "retmse10": "0.8085130216784672"
+      },
+      {
+        "agg_mse10": "0.6676174874047373",
+        "epoch": "6",
+        "ndcg10": "0.9639254045617582",
+        "recall10": "0.009330824743998564",
+        "retmse10": "0.7660840103179597"
+      },
+      {
+        "agg_mse10": "0.6772810464405247",
+        "epoch": "7",
+        "ndcg10": "0.9651686807119789",
+        "recall10": "0.009643460479478918",
+        "retmse10": "0.7922966780087166"
+      },
+      {
+        "agg_mse10": "0.6962746299618133",
+        "epoch": "8",
+        "ndcg10": "0.9626371060392243",
+        "recall10": "0.00912626062380961",
+        "retmse10": "0.7819929153016135"
+      },
+      {
+        "agg_mse10": "0.6800534120670948",
+        "epoch": "9",
+        "ndcg10": "0.9644480287249402",
+        "recall10": "0.009931008105222917",
+        "retmse10": "0.8303407556892056"
+      },
+      {
+        "agg_mse10": "0.7169738811125382",
+        "epoch": "10",
+        "ndcg10": "0.9645309026411429",
+        "recall10": "0.009881796917142586",
+        "retmse10": "0.9847882092519555"
+      }
+    ],
+    "checkpoint_sha256": "6d79129555700a0051e0028049b09b92dad2e54d7576da126b90263ac778fc01",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  },
+  {
+    "cell": "Weather_720",
+    "config": {
+      "cell": "Weather_720",
+      "arm": "S1",
+      "num_slots": 1,
+      "slot_std": 0.001,
+      "tau_t": 0.1,
+      "tau_s": 0.1,
+      "top_k": 10,
+      "batch_size": 32,
+      "learning_rate": 0.001,
+      "train_epochs": 10,
+      "patience": 5,
+      "init_seed": 0,
+      "loader_seed": 0,
+      "n_candidates": 35448,
+      "checkpoint_criterion": "min val retmse10 (round-robin Top-10 individual MSE) -- IDENTICAL to Original-KL/J0's own criterion, PART 10"
+    },
+    "selected_epoch": 2,
+    "original_val_mse": 0.8416510607306134,
+    "validation_epoch_records": [
+      {
+        "agg_mse10": "0.7844865844872172",
+        "epoch": "1",
+        "ndcg10": "0.9649640578346306",
+        "recall10": "0.009702734288155126",
+        "retmse10": "0.8901897859543927"
+      },
+      {
+        "agg_mse10": "0.7603445720775388",
+        "epoch": "2",
+        "ndcg10": "0.9684482575301101",
+        "recall10": "0.010135920089283873",
+        "retmse10": "0.8416510607306134"
+      },
+      {
+        "agg_mse10": "0.7690048148321688",
+        "epoch": "3",
+        "ndcg10": "0.9661004109305843",
+        "recall10": "0.008896004193938963",
+        "retmse10": "0.8528772366439692"
+      },
+      {
+        "agg_mse10": "0.7658205201687168",
+        "epoch": "4",
+        "ndcg10": "0.9682748384251486",
+        "recall10": "0.009194211837752594",
+        "retmse10": "0.8485078403816048"
+      },
+      {
+        "agg_mse10": "0.7724838042094319",
+        "epoch": "5",
+        "ndcg10": "0.9678766771278948",
+        "recall10": "0.008646974632445424",
+        "retmse10": "0.8483344021175397"
+      },
+      {
+        "agg_mse10": "0.7860675351989007",
+        "epoch": "6",
+        "ndcg10": "0.967263820672262",
+        "recall10": "0.01038913495094995",
+        "retmse10": "0.8693701074738345"
+      },
+      {
+        "agg_mse10": "0.7857210351471559",
+        "epoch": "7",
+        "ndcg10": "0.9667857108306893",
+        "recall10": "0.0097173831183575",
+        "retmse10": "0.851515233773021"
+      }
+    ],
+    "checkpoint_sha256": "ed4a4fcca44dcb7339f9c76b6ffde5aa317faa3b18dccfa382e8d3ce72a2e6aa",
+    "note": "S=1 round-robin degenerates to ordinary raw-score Top10; softmax FP32 tie changes must not be hidden; do not reuse multihead Round-Robin cache"
+  }
+]

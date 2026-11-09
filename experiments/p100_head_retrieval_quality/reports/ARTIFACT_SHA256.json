@@ -1,0 +1,34 @@
+{
+  "created_at_utc": "2026-10-29T08:37:09.828213+00:00",
+  "repository_head": "5c59b1a33cb080698269ced3499fb2e935e13083",
+  "owned_files": {
+    "README.md": "fe8e55172869359953e7c44933dd6c0297ee2fd8f0d39d56101e420e318dc8dd",
+    "check_plan.py": "5b6b1185f7ff8d99c173a778cd6c76f22b244e16150f8074c844e687ac2e5e78",
+    "configs/protocol.json": "dca4da01da691f79b9c0fbf7cf10884db6bec26b2a7229f45f5816239a7cccd2",
+    "configs/run_manifest.csv": "982000ecce0a885a3912bfcd1d2c9f48ed6d7d9c83607b5a51b9203021076576",
+    "configs/run_manifest.json": "475fb289ccbdbf453d3bb7b5041b56540a922c58893c7fb988d924d1f06b7cf1",
+    "preparation.py": "8e3321cf430d859402d7621c50c69043db60a5c4682e7355b04a1eac18c99686",
+    "prepare_manifest.py": "f5b92cdf160cc3e7597ec3f5b4d27df5fb15f997c6066f528d59e8bd15a33e0c",
+    "reports/EXECUTION_DESIGN_KO.md": "ad4dfa051a17e61998f73963dc2e0df79e4eefaab9138407274c3097fdc79711",
+    "reports/PREPARATION_STATUS.json": "c636b07db704a930cf0c857054e17f9d5e34ea87e6c0477d606719fa51e98dcb",
+    "reports/PROTOCOL_REVIEW_KO.md": "f6597622ccca32e16380e1ec8fa71bdc2fe6526eebfa4f07f543b4d4d3ee856f",
+    "reports/data_reference_audit.json": "c5be5e3c3f73646cd07d746ba5636d2f246208673d933f5a1735f4848526ebfb",
+    "reports/plan_check.json": "8491072da04b0d7bef18a9eaec97fa9caba9875db1108813fdde21d69dcfd9ff",
+    "reports/static_preparation.log": "5b7bf51df8fa33ba1243f847549f90f364f69b21459426a81968a265b30cafd0",
+    "reports/synthetic_tests.log": "67078567af7eadf08e73ec443713b8a4c7d9aded400601c60fa4e600f1819503",
+    "reports/synthetic_tests.xml": "9e848860d2e64adb455305a404e7dc1251a727a7c395448f2e9eae1321eedb20",
+    "tests/conftest.py": "581507fd661ea26b3e8a06b9d90fe1e2b7d2048eb7d2a5df8a4987b9eb6cbeca",
+    "tests/test_preparation.py": "06dbe73f165fbd900875534e317b11f121afa38f52d14b050799652dd65d15cd"
+  },
+  "canonical_sources_read_only": {
+    "scripts/train_horizon_retrieval_expert01.py": "7a158518e2127495bd396199b5b289ca93184238bc386aef41ff4561543e51d9",
+    "scripts/train_k_multislot_predictive_retrieval01.py": "afaa63e0a29109709db13cd7bc6b86a8cf32b6ab7f02297e63257b9b9a2d44bb",
+    "scripts/train_v_sharedtop100_01.py": "06bfacb7a33edd9114aa1b3a90e127dbfd15f4cb2d45cc66111d38568e06f3d8",
+    "scripts/train_margutil01.py": "e43ad9c2e259db5cbeb0d1b955447510ed730085a2a5a10cc278445a87e37bf9",
+    "utils/relation_memory.py": "cfcbf9686582c817c3c7d2ed4ec45c10cc55c38e1fee4a6afb0d8f6e042cf61c",
+    "utils/mean_mixture_selection.py": "90e05943d09b1cbe8f1fa48cb170fd828d7d752df571a652fa1d70a730ac9e52",
+    "scripts/train_retriever_pool01.py": "be054477c123a2e99dabd4b77d9e6a0a0d1d7e6a49bd85013e58169ee8e5acfb",
+    "models/RelationStage1.py": "ad9a0dab08172839ed812a1d9980854ae66916d50a31d9c819f45c1a1739b444",
+    "data_provider/data_loader.py": "cced1cc4f621e083078699e83c276763798a63146161f59e5d7cec768a06062c"
+  }
+}

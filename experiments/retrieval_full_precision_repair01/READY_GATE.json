@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "at": "2026-10-30T22:30:55.438976+00:00",
+  "source_hashes": {
+    "full_repro_probe.py": "1a06b6fa5bc019c7bfe367b76fd35ef3b3200b2f64b4103bc019607d785ee54c",
+    "full_precision_policy.py": "9a0a8199d89fc5c795d325cab91e0f7c7eebb2219c6e818d9cc2be3a504aa2fa",
+    "prepare_full_repair.py": "1972208c945117905923f3c678e74029acfdaeb9f6847214075edc00f692cc6c",
+    "full_repair_controller.py": "6a625e46ea52ae307dccb5646a73f5bc4c2d21329f03474da6186b12d42925df",
+    "full_repaired_supplement.py": "d631a9937d341c471c4bd44f84c04eaaab7463de18d0bd718de22d085848b940",
+    "full_precision_runtime.py": "4f200408937d66197a0dac0e7f280bd8983655bf89686a75e077584c718da003",
+    "activate_full_repair.py": "236ce45b4a1c787534b1434edaf121ce64562b69f0a4cef939d60aa8ee934857",
+    "test_full_precision_policy.py": "84d0b69e00323206534a7562fd8d9385c060a0d2c55f3fb8be0350215f3b60b4",
+    "full_repro_probe_initial.py": "244ac02f4d768cd6b20a8e0f3c3b9e1d07ba5533417ab10ef3e22aedce2dfa4b",
+    "full_repaired_run.py": "3bf66c08dd721c7ada074db6ec47df280c2d7912027e5de30da6078364cac06c",
+    "full_v0_score_export.py": "ed7a08437f48e8aef7cae2fba63da1f19170b182d756e7344c2c72afccb9fc30"
+  },
+  "tests": [
+    {
+      "runtime": "torch2",
+      "tests": 49,
+      "exit_code": 0,
+      "log": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/FULL_REPAIR01/tests_torch2.log",
+      "sha256": "41848ce0db9bd07a1569ebeafe4717b5cee849052773e077d93e4b4fae1670c1"
+    },
+    {
+      "runtime": "legacy",
+      "tests": 49,
+      "exit_code": 0,
+      "log": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/FULL_REPAIR01/tests_legacy.log",
+      "sha256": "65d13d60961bcf7195d9432c00dac5b4fbcf1ba69a23b782050f25dd7f0c4959"
+    }
+  ],
+  "actual_gpu_gate": "/data/pjh_workspace/CARTS/results/TRACK-RETRIEVAL-FAILURE-ATTRIBUTION01/00_Audit/FULL_REPAIR01/ETTh1_96/CANONICAL_REPRODUCTION.json",
+  "actual_gpu_gate_sha256": "00efb30296b1d0b3b3fac9f923f49de37faf1a27eb78304a2570d83244bb5562",
+  "all_p100_deliverables_preserved": true,
+  "all_candidates_channels_unchanged": true
+}

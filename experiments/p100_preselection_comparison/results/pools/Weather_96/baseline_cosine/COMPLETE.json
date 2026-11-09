@@ -1,0 +1,39 @@
+{
+  "cell": "Weather_96",
+  "method": "baseline_cosine",
+  "smoke": false,
+  "feature_seconds": 1.9106082618236542e-05,
+  "splits": [
+    {
+      "split": "train",
+      "queries": 36696,
+      "search_seconds": 166.4088859288022,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0,
+      "sha256": "dc5bc2299c0f1e0aaa307eb029467af307424c284de9101244b407c6146a3a09"
+    },
+    {
+      "split": "val",
+      "queries": 5175,
+      "search_seconds": 16.037216944620013,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0,
+      "sha256": "c5312f1cd8cc0cfbf423115ade6bf1e84e5854e01b7a2a5ae896bcaac4d68dae"
+    },
+    {
+      "split": "test",
+      "queries": 10444,
+      "search_seconds": 32.43638659827411,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0,
+      "sha256": "3ceba2504017ae6d3b680edf11328f60894e2e8ea4a86ce37c9dad4bf0ab1e69"
+    }
+  ],
+  "peak_allocated": 676342272,
+  "peak_reserved": 708837376,
+  "concurrent_gpu": true,
+  "precompute_python": "/usr/bin/python3",
+  "torch_version": "1.12.0.dev20220327+cu113",
+  "cuda_version": "11.3",
+  "baseline_ordered_id_parity": "ALL_SPLITS_EXACT"
+}

@@ -1,0 +1,42 @@
+{
+  "run_id": "Solar_96_V2_seed0",
+  "identity": {
+    "pid": 3964636,
+    "start_ticks": "466757052",
+    "argv": [
+      "/data/pjh_workspace/ts-env/bin/python",
+      "-u",
+      "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/runtime.py",
+      "train",
+      "Solar_96_V2_seed0"
+    ]
+  },
+  "previous_current": {
+    "status": "STAGE1_RUNNING",
+    "target": "Solar_96_V2_seed0",
+    "controller_pid": 3871532,
+    "worker_pid": 3964636,
+    "log": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/logs/Solar_96_V2_seed0.log",
+    "command": [
+      "/data/pjh_workspace/ts-env/bin/python",
+      "-u",
+      "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/runtime.py",
+      "train",
+      "Solar_96_V2_seed0"
+    ],
+    "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+    "physical_gpu_index": 1,
+    "updated_at": "2026-10-30T04:03:47.153843+00:00"
+  },
+  "old_controller_identity": {
+    "pid": 3871532,
+    "start_ticks": "462900570",
+    "argv": [
+      "/data/pjh_workspace/ts-env/bin/python",
+      "-u",
+      "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/controller.py"
+    ]
+  },
+  "requested_at": "2026-10-30T04:59:57.097142+00:00",
+  "reason": "User excluded seeds1 and2; current seed0 worker is adopted unchanged"
+}

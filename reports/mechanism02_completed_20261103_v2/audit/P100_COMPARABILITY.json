@@ -1,0 +1,106 @@
+[
+  {
+    "cell": "ETTh1_96",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "ETTh1_192",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "ETTh1_336",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "ETTh1_720",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "Weather_96",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "Weather_192",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "Weather_336",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  },
+  {
+    "cell": "Weather_720",
+    "models": [
+      "V0",
+      "V1",
+      "V5"
+    ],
+    "common_init": true,
+    "common_pool": true,
+    "common_batches": true,
+    "all_ten_epochs": true,
+    "teacher_equal": true
+  }
+]

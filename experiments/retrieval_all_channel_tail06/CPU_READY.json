@@ -1,0 +1,15 @@
+{
+  "status": "CPU_PASS_GPU_UNTESTED",
+  "cpu_tests": 38,
+  "source_hashes": {
+    "audit_scope.py": "1c2b4ca9c5b1c2e793f2c69e57055b5bd20fcb74912ff1fe8cf984b85947049c",
+    "coverage_gate.py": "46c9a4f129df22aa1e4c61aeba3f3f540cc6324208904b31427cce8a6235fe05",
+    "diagnose_weather720.py": "225cd9a94ecc24f97695ada99de251c89334760d50dddbc7b035bb2145d3ef0e",
+    "run_after_boundary.py": "d1dad9c8931de4c1b257d59aff35a08e34e9fc93552451fac7bb19fab75bf699",
+    "score_backends.py": "e797bb2d829819f1a6cea079132bf31bc5b7fcc681fb4dad2288678d8214f5bd",
+    "test_batch_layout.py": "2e5935992d7b5e405d249b9a28fc0300fddfce09e150e3ba4746efdcdfa51b59",
+    "test_coverage_gate.py": "e9be46174b5a3e1a56904dbdf096f3fb0f22830267dca24d312ac7a32f076e32"
+  },
+  "gpu_tests_started": false,
+  "production_release": false
+}

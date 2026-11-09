@@ -1,0 +1,20 @@
+{
+  "status": "CPU_PASS_GPU_GATE_AT_EXECUTION",
+  "source_hashes": {
+    "supplement_common.py": "462d6e230aa0b1d194ba7490c172ce7b7800cdca50a814783e226de8c5f4e26d",
+    "activate_supplement.py": "5027cc8d58b338b193756485a62520625286019f69f839e2b232778cac0eaa60",
+    "supplement_cpu.py": "7e3539654aacc340e83a9a9c0d93117b94742c29c395d1a9644878ca695c28de",
+    "supplement_inference.py": "8b86ff225d55830024acec87e9167f05dbcf07225aa0486b03d21486dc0f3514",
+    "test_supplement.py": "9d48ea539e164f4d8fded88acad43c34d69ea6842cc023353de536d03fce9a89",
+    "test_supplement_torch.py": "e5733a55a8084fa6e25dd0c62b5ea9da435c4434ae847f6efe71f4f96232480a",
+    "supplement_controller.py": "75ec0138a04bd9bdda413b6e762bdc02e8bc671d0c58660677af197c840ca859",
+    "supplement_report.py": "37667b67ef42e83c733ded04d8486f607e3ae00a3e2927b9a88a17a477a95503"
+  },
+  "torch2_cpu_tests": 10,
+  "legacy_cpu_tests": 10,
+  "source_syntax": "PASS",
+  "queue_order": "P100 non-Full-dependent deliverables before Full; final expanded deliverables before Solar Full8",
+  "actual_gpu_smoke": "PENDING until current worker finishes; first canonical full-channel batch gate mandatory",
+  "original_code_untouched": true,
+  "cpu_addendum": "Common-channel V5-minus-V0 contrasts across fixed validation strata; old CPU source preserved"
+}

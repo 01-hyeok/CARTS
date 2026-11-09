@@ -1,0 +1,12 @@
+{
+  "cell": "ETTh1_720",
+  "split": "test",
+  "sample": "64 evenly spaced test row indices, all channels; same query/channel for every P100 method",
+  "query_count": 64,
+  "full_checkpoint": "checkpoints/track_v_multiquery_generalization01/ETTh1/H720/seed0/V5/stage1/checkpoint_epoch6.pth",
+  "full_checkpoint_sha": "3d92d37d21059fbde85ad76ce57e11b16b2c0ca951cbaf74d90508fc8486c55a",
+  "full_cache_maxdiff": 0.0,
+  "python": "/usr/bin/python3",
+  "torch": "1.12.0.dev20220327+cu113",
+  "caveat": "Full and P100 checkpoints differ; retention is descriptive, not a pure preselection causal effect. Future oracle is diagnostic only."
+}

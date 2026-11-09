@@ -1,0 +1,19 @@
+{
+  "launched_at": "2026-10-29T17:21:02.335959+00:00",
+  "controller_pid": 3871532,
+  "command": [
+    "/data/pjh_workspace/ts-env/bin/python",
+    "-u",
+    "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/controller.py"
+  ],
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "physical_index": 1,
+  "log": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/controller.log",
+  "total_new_official_runs": 144,
+  "superseded_completed_runs": 7,
+  "old_training_results_reused": false,
+  "pretraining_gates": "PASS",
+  "legacy_four_cells_full_ordered_parity": "PASS",
+  "cpu_tests": 31,
+  "stage2": false
+}

@@ -1,0 +1,11 @@
+{
+  "controller_pid": 3981216,
+  "log": "/data/pjh_workspace/CARTS/results/TRACK-P100-HEAD-RETRIEVAL-QUALITY01-LEGACYPOOL02/logs/controller_vectorized03.log",
+  "command": [
+    "/data/pjh_workspace/ts-env/bin/python",
+    "-u",
+    "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/controller_vector.py"
+  ],
+  "at": "2026-10-30T05:46:46.109725+00:00",
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec"
+}

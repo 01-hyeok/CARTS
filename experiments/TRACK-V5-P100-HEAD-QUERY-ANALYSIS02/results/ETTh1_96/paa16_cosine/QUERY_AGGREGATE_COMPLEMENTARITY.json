@@ -1,0 +1,14 @@
+{
+  "unit": "query averaged across channels before selecting best single head",
+  "all5_beats_best_single_fraction": 0.10233393177737882,
+  "all5_worse_fraction": 0.8976660682226212,
+  "mean_positive_harm": 0.01766577735543251,
+  "block_ci": {
+    "mean": -0.0171401376489891,
+    "ci95": [
+      -0.019223831645728377,
+      -0.015210884252964105
+    ],
+    "blocks": 15
+  }
+}

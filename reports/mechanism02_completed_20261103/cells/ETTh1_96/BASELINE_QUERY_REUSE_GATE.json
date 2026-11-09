@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "sources": [
+    {
+      "support": "P100",
+      "files": {
+        "aggregate/test_schema.json": "05629d798304c581698349551065352ffe6b4ae07e3304ba6e1af1e9fb03e5d3",
+        "aggregate/test_starts.npy": "c01d0fdb584de3c852562a3100f9cef165d5458c4207e9836e662297fb99d166",
+        "aggregate/test_metrics.npy": "c487d224dbffae609c9093b9a93f7a251d5b38ac434c1d4f06fe8374ceb117a9",
+        "RETRIEVAL_BASELINE_COMPARISON.csv": "4540358984cc1b3c16f6eb4563916bdafe5a4ea6c39e885d7213b63737e7ebf9"
+      }
+    },
+    {
+      "support": "FULL",
+      "files": {
+        "aggregate/test_schema.json": "5fc70fbab18424584f4bc66f9cf8f170e7102bf13d100701057c39dd71036ae0",
+        "aggregate/test_starts.npy": "c01d0fdb584de3c852562a3100f9cef165d5458c4207e9836e662297fb99d166",
+        "aggregate/test_metrics.npy": "b64497667c4c103e2c98bf014e2aec86bf81807871aec72fe57bac6ba76e4b20",
+        "RETRIEVAL_BASELINE_COMPARISON.csv": "038ff5fe39b324c35f197df5c30d966ef7eebc0a9f2de8d119c64a0fc6944347"
+      }
+    }
+  ],
+  "query_ids_aligned": true,
+  "full_array_means_reproduce_csv": true,
+  "smoke_only": false
+}

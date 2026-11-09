@@ -1,0 +1,70 @@
+{
+  "checked_at_utc": "2026-10-29T08:37:09.828213+00:00",
+  "status": "PREPARATION_COMPLETE_AWAITING_TEACHER_DECISION",
+  "repository_head": "5c59b1a33cb080698269ced3499fb2e935e13083",
+  "scope": "isolated CPU preparation only",
+  "teacher": {
+    "status": "PENDING_USER_DECISION",
+    "mode": null,
+    "implicit_default": false
+  },
+  "manifest": {
+    "runs": 144,
+    "not_started": 144,
+    "seed_order": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_seed": 48,
+    "stage2": false,
+    "physical_gpu_index": 1,
+    "max_concurrent_runs": 1
+  },
+  "validation": {
+    "synthetic_tests": {
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "python_syntax_files_passed": 5,
+    "static_data_files": 3,
+    "static_reference_configurations": 12,
+    "manifest_gate": "PASS_BLOCKED_AS_EXPECTED",
+    "tracked_source_changes": [],
+    "staged_changes": []
+  },
+  "not_run": [
+    "GPU training",
+    "actual epoch",
+    "actual loader smoke",
+    "large P100 generation",
+    "real model initialization hashes",
+    "Solar forward/gradient/memory smoke",
+    "canonical reproduction",
+    "Stage2",
+    "GitHub upload"
+  ],
+  "remaining_work": [
+    "record explicit user teacher decision",
+    "implement and verify dedicated training/evaluation runner",
+    "actual loader/query/channel/P100 validation",
+    "real initialization and batch hash validation",
+    "Solar RNG-aware gradient/memory smoke",
+    "canonical reproduction gate"
+  ],
+  "training_dispatcher_present": false,
+  "new_results_or_checkpoint_roots_created": false,
+  "evidence": [
+    "configs/protocol.json",
+    "configs/run_manifest.json",
+    "configs/run_manifest.csv",
+    "reports/data_reference_audit.json",
+    "reports/synthetic_tests.log",
+    "reports/synthetic_tests.xml",
+    "reports/plan_check.json",
+    "reports/PROTOCOL_REVIEW_KO.md",
+    "reports/EXECUTION_DESIGN_KO.md"
+  ]
+}

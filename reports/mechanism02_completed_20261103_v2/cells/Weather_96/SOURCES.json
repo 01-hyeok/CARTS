@@ -1,0 +1,63 @@
+{
+  "at": "2026-11-03T01:03:17.769721+00:00",
+  "checkpoints": {
+    "V0_P100": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/Weather_96/seed0/V0/epoch09.pth",
+      "sha256": "20b0f3ca609f4358cb1ad0191dab138998548c537fdca5e7956eb2459efea677",
+      "reproduction_sha256": "3bc04ece9ea642ec603f37452258a1b9de93cc771561c21aefb62cf54901b633",
+      "selection": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+      "original_runtime": "UNKNOWN"
+    },
+    "V1_P100": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/Weather_96/seed0/V1/epoch08.pth",
+      "sha256": "2ce4d308d75c10a8784c305aa02d04fac5ca132d42076f4b434196ce5f740520",
+      "reproduction_sha256": "7121a1d0e268606eea36ca9e87d54e9bdaec368a0d08451800f59ae0f87822d3",
+      "selection": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+      "original_runtime": "UNKNOWN"
+    },
+    "V5_P100": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_p100_head_retrieval_quality01_legacy_pool02/Weather_96/seed0/V5/epoch04.pth",
+      "sha256": "fa903d09c4340f6288fc034249f088fb41a04625db23b3a44e077b1e3227d5ae",
+      "reproduction_sha256": "3bb5db441789083acd69a5a5539d6b8ca400df26e751f49ed551ea2ce1f968ca",
+      "selection": "minimum validation Mean-Mixture RetMSE@10; first epoch on exact tie",
+      "original_runtime": "UNKNOWN"
+    },
+    "V0_FULL": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H96/seed0/V0/stage1/Weather_96/checkpoint.pth",
+      "sha256": "3f3605fa4e77c906a1bb8d5a767f8f8660177be5945ea8c9900dd2c566ef9c07",
+      "reproduction_sha256": "d3c7f481f64608962fcb18dc00b3ce2bd9a825b9ed2559b5818746d9bc952061",
+      "selection": "min val model_top10_individual_mse",
+      "original_runtime": "UNKNOWN"
+    },
+    "V1_FULL": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H96/seed0/V1/stage1/checkpoint.pth",
+      "sha256": "d6d4a6ac3764be6aeac2ee8f79f0a1298b9bb9f3b1eead9dc37fab6e9c9ab6a9",
+      "reproduction_sha256": "e13855a45b6ee1f56c35439c5bd1e345c59434ae689e602303f82d04e80000c8",
+      "selection": "original min validation single-head raw-score Top10 RetMSE; no reselection",
+      "original_runtime": "UNKNOWN"
+    },
+    "V5_FULL": {
+      "checkpoint": "/data/pjh_workspace/CARTS/checkpoints/track_v_multiquery_generalization01/Weather/H96/seed0/V5/stage1/checkpoint_epoch10.pth",
+      "sha256": "05abcf3e1eb5f06850f84266e2534281cf53c6e70d391b82ecb5a0dba4874184",
+      "reproduction_sha256": "ea371db0368d5be911bc6f3326c82b9ca4ba40af37f2bbdae44782384e60e894",
+      "selection": "min validation Mean-Mixture RetMSE@10 (test split NEVER used)",
+      "original_runtime": "UNKNOWN"
+    }
+  },
+  "source_hashes": {
+    "adapter.py": "970810147ddd51cc5a3366a8dcb7419c44459a04bf8bb4994343643d9a56ff6f",
+    "worker.py": "f594a69c393a2cf834a9ea017afb68586b09fe9d6b387afca49e7e143f390999",
+    "gpu_metrics.py": "f4ab1a7820cd0a2877c0e4fa4e11f6f1c3c1c93d3dc3dbd929086b359a688236",
+    "geometry.py": "6602f8bb93bef96097f82edea49229daf554939ab62347a8ca58a8b21123722d",
+    "feature_analysis.py": "d07ce90b8b3ac3cb7749a579dcd4542e14432f6386756b0ebb8cb90fad1854d6",
+    "ranking.py": "7f55f0f32da969837b79dd5e00381fcd2331767391af50d4003a9986698ae513",
+    "resources.py": "72988ccb8daf48617593fc8e3eaac4f67450c4c467d2d6e7aea141ed5a678f1d",
+    "protocol.py": "7cfa0ae33b7680766c2607dbfdabf388b458791883a96a92fb4e1534ff56ffff",
+    "io_utils.py": "55981d7ab738c29cf7453824cff80aa911d9d5d010b96e023feff7044ec0b032"
+  },
+  "queries": {
+    "val": 5175,
+    "test": 10444
+  },
+  "smoke": false
+}

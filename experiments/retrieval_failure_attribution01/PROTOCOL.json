@@ -1,0 +1,115 @@
+{
+  "version": "retrieval_failure_attribution01",
+  "confirmed_attachment": "libfile_bdf819f7a4ac8191b126af541b9cfa1b",
+  "withdrawn_attachment_not_used": "libfile_f87a8892914481918202046e8c2368b7",
+  "seed": 0,
+  "gpu_physical_index": 1,
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "stage1_training": false,
+  "stage2": false,
+  "stage_order": [
+    "ORACLE_K_SUPPLEMENT_ALL_12",
+    "P100_ALL_12",
+    "FULL_ALL_12",
+    "FILL_DEFERRED_FULL_DEPENDENCIES",
+    "SOLAR_FULL8_AFTER_DIAGNOSTIC_SUMMARY"
+  ],
+  "cell_order": [
+    "ETTh1_96",
+    "ETTh1_192",
+    "ETTh1_336",
+    "ETTh1_720",
+    "Weather_96",
+    "Weather_192",
+    "Weather_336",
+    "Weather_720",
+    "Solar_96",
+    "Solar_192",
+    "Solar_336",
+    "Solar_720"
+  ],
+  "primary_metric": "test RetMSE@10",
+  "topk": 10,
+  "seq_len_equals_pred_len": true,
+  "all_queries": true,
+  "all_channels": true,
+  "ndcg": {
+    "name": "NDCG_inverse_MSE_v1",
+    "relevance": "g(d)=1/(1+d), d>=0 normalized delta-last aligned future MSE",
+    "gain": "g directly, not 2**g-1",
+    "discount": "1/log2(rank+1)",
+    "ideal": "same valid support sorted increasing future MSE",
+    "tie": "stable inherited support order: P100 stored ID order; FULL canonical bank ID order",
+    "legacy_metric": "Do not reuse legacy NDCG name or claim parity if transform differs"
+  },
+  "ranking": {
+    "spearman": "average ranks for exact ties",
+    "kendall_p100": "exact tau-b",
+    "kendall_full": "APPROXIMATE tau-b from 4096 fixed future-free candidate pairs per query/channel, seed0; report unique pair count and tie exclusions",
+    "kendall_full_pair_budget": 4096,
+    "full_global_spearman": "exact average ranks on one query/channel score vector at a time; streaming candidate vectors may spill to local disk"
+  },
+  "regret": {
+    "identity": "Rmodel-Rfull=(Rp100-Rfull)+(Rmodel-Rp100)",
+    "inequality_domain": "Rfull<=Rp100<=Rmodel applies ONLY to model selected inside that same P100",
+    "full_model": "For Full-selected model assert Rfull<=Rmodel only; never require Rp100<=Rmodel",
+    "p100_phase_full_dependencies": "DEFERRED_FULL_DEPENDENCY"
+  },
+  "full_scoring": {
+    "streaming": true,
+    "global_softmax": "exact global per-head logsumexp across all eligible candidates, then mean probabilities; no per-chunk softmax",
+    "full_oracle": "stream all valid candidates, exact running Top10; no query/channel/candidate pruning"
+  },
+  "probe": {
+    "allowed": [
+      "ridge",
+      "small two-layer MLP"
+    ],
+    "input": "past-only",
+    "candidate_selection": "future-free; no Oracle-chosen training pairs",
+    "fit": "train only",
+    "scaler": "train only",
+    "selection": "validation only",
+    "test": "one final evaluation",
+    "retriever_frozen": true,
+    "implementation": "streaming Ridge regression only; fixed alphas [0.1,1,10]",
+    "train_query_budget_per_channel": 256,
+    "train_query_selection": "uniform deterministic row grid, future-free",
+    "full_train_candidate_sample": "100 eligible IDs uniformly sampled without replacement per query/channel; seed0; no future selection",
+    "evaluation": "ALL validation/test queries, channels and candidates in evaluation support",
+    "selection_objective": "mean validation future-MSE regression error over all eligible candidate pairs",
+    "primary_evaluation_not_subsampled": true
+  },
+  "statistics": {
+    "bootstrap_seed": 0,
+    "repetitions": 2000,
+    "time_block_length": "2*(seq_len+pred_len)",
+    "channels": "resample all channels of each query time jointly",
+    "uncertainty": "exploratory; no independent-window p-values"
+  },
+  "scheduler": {
+    "wait_for_existing_48_seed0_complete": true,
+    "do_not_interrupt_existing_jobs": true,
+    "major_gpu_workers": 1,
+    "upload": false,
+    "push": false,
+    "pending_gpu": "Existing48-run controller has exclusive major GPU use; new diagnostic inference not launched until it is complete and free-GPU check passes",
+    "required_predecessor_before_p100": "ORACLE_K_SUPPLEMENT_FINAL_GATE_PASS"
+  },
+  "protocol_frozen_before_new_diagnostic_val_test": "2026-10-30T07:37:45.852251+00:00",
+  "legacy_ndcg": {
+    "name": "legacy_shifted_negative_MSE",
+    "gain": "max_valid(d)-d; direct gain",
+    "source": "scripts/train_patch_retrieval_expert01.py:88",
+    "policy": "reproduce legacy metric only for canonical gate; separately report NDCG_inverse_MSE_v1"
+  },
+  "baseline_numerics": {
+    "cosine_eps": 1e-12,
+    "znorm_std": "population; denominator std+1e-6",
+    "calendar_anchor": "last observed history timestamp",
+    "period": "at least two cycles; otherwise undefined",
+    "historical_full_v0": "raw cosine TopK (single-slot legacy argmax); preserve FP tie behavior",
+    "full_v5": "canonical global per-head softmax mean, never per-chunk softmax"
+  },
+  "implementation_ready_at": "2026-10-30T16:48:27.268889+00:00"
+}

@@ -1,0 +1,7 @@
+{
+  "error": "AssertionError('baseline IDs differ')",
+  "traceback": "Traceback (most recent call last):\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 435, in <module>\n    elif a.action=='run':run()\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 388, in run\n    for method in METHODS: precompute(cell,method)\n  File \"experiments/p100_preselection_comparison/pipeline.py\", line 159, in precompute\n    if method=='baseline_cosine': assert torch.equal(pick.cpu(),old['pool_idx_global'][offset:offset+len(qs),c,:].long()), 'baseline IDs differ'\nAssertionError: baseline IDs differ\n",
+  "time_utc": "2026-10-28T16:51:47Z",
+  "pid": 3586571,
+  "status": "FAILED"
+}

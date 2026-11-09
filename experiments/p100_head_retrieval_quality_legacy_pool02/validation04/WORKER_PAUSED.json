@@ -1,0 +1,16 @@
+{
+  "status": "PAUSED_IN_FINAL_TEST_AFTER_EPOCH10_SAVED",
+  "identity": {
+    "pid": 3985442,
+    "argv": [
+      "/data/pjh_workspace/ts-env/bin/python",
+      "-u",
+      "/data/pjh_workspace/CARTS/experiments/p100_head_retrieval_quality_legacy_pool02/vectorized03/runtime_vector.py",
+      "train",
+      "Solar_96_V5_seed0"
+    ],
+    "start_ticks": "467545985"
+  },
+  "at": "2026-10-30T06:55:45.221661+00:00",
+  "resume": "SIGCONT same identity; retains current in-memory evaluation"
+}

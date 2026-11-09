@@ -1,0 +1,134 @@
+Mechanism02 상세 보고서 10/15
+
+실제 timestamp calendar 진단 — Full V5
+
+실제 history마지막timestamp의hour주기유사도/weekday/weekend/month. 존재하는timestamp만사용;future입력없음. group평균과paired차이의행정의를구분한다. 이것도time-shift future alignment가아니다.
+
+| 조건 | group | feature | 평균/차이 | finite N | CI low | CI high | 충분? |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| E96 | CorrectOracle | hour_cyclic_similarity | 0.840274 | 6874 | — | — |  |
+| E96 | CorrectOracle | weekday_equal | 0.161769 | 6874 | — | — |  |
+| E96 | CorrectOracle | weekend_equal | 0.620943 | 6874 | — | — |  |
+| E96 | CorrectOracle | month_equal | 0.139719 | 6874 | — | — |  |
+| E96 | MissedOracle | hour_cyclic_similarity | 0.686570 | 19495 | — | — |  |
+| E96 | MissedOracle | weekday_equal | 0.135909 | 19495 | — | — |  |
+| E96 | MissedOracle | weekend_equal | 0.595575 | 19495 | — | — |  |
+| E96 | MissedOracle | month_equal | 0.139524 | 19495 | — | — |  |
+| E96 | FalseSelected | hour_cyclic_similarity | 0.631471 | 19495 | — | — |  |
+| E96 | FalseSelected | weekday_equal | 0.139851 | 19495 | — | — |  |
+| E96 | FalseSelected | weekend_equal | 0.586884 | 19495 | — | — |  |
+| E96 | FalseSelected | month_equal | 0.117400 | 19495 | — | — |  |
+| E96 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.055098 |  | -0.000587 | 0.104662 | True |
+| E96 | paired Missed minus FalseSelected | weekday_equal | -0.003942 |  | -0.015105 | 0.006794 | True |
+| E96 | paired Missed minus FalseSelected | weekend_equal | 0.008691 |  | -0.002949 | 0.020306 | True |
+| E96 | paired Missed minus FalseSelected | month_equal | 0.022124 |  | -0.005003 | 0.048547 | True |
+| E96 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.055098 |  | 0.006312 | 0.102160 | True |
+| E96 | paired Missed minus FalseSelected | weekday_equal | -0.003942 |  | -0.015046 | 0.008166 | True |
+| E96 | paired Missed minus FalseSelected | weekend_equal | 0.008691 |  | -0.006254 | 0.021974 | True |
+| E96 | paired Missed minus FalseSelected | month_equal | 0.022124 |  | 0.000363 | 0.043792 | True |
+| E96 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.055098 |  | -0.007048 | 0.115154 | True |
+| E96 | paired Missed minus FalseSelected | weekday_equal | -0.003942 |  | -0.014915 | 0.007465 | True |
+| E96 | paired Missed minus FalseSelected | weekend_equal | 0.008691 |  | -0.004305 | 0.021753 | True |
+| E96 | paired Missed minus FalseSelected | month_equal | 0.022124 |  | -0.002527 | 0.052835 | True |
+| E192 | CorrectOracle | hour_cyclic_similarity | 0.561665 | 6608 | — | — |  |
+| E192 | CorrectOracle | weekday_equal | 0.122725 | 6608 | — | — |  |
+| E192 | CorrectOracle | weekend_equal | 0.589851 | 6608 | — | — |  |
+| E192 | CorrectOracle | month_equal | 0.164296 | 6608 | — | — |  |
+| E192 | MissedOracle | hour_cyclic_similarity | 0.672979 | 18823 | — | — |  |
+| E192 | MissedOracle | weekday_equal | 0.128137 | 18823 | — | — |  |
+| E192 | MissedOracle | weekend_equal | 0.581109 | 18823 | — | — |  |
+| E192 | MissedOracle | month_equal | 0.147796 | 18823 | — | — |  |
+| E192 | FalseSelected | hour_cyclic_similarity | 0.345386 | 18823 | — | — |  |
+| E192 | FalseSelected | weekday_equal | 0.142813 | 18823 | — | — |  |
+| E192 | FalseSelected | weekend_equal | 0.589862 | 18823 | — | — |  |
+| E192 | FalseSelected | month_equal | 0.157439 | 18823 | — | — |  |
+| E192 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.327592 |  | 0.242313 | 0.418852 | True |
+| E192 | paired Missed minus FalseSelected | weekday_equal | -0.014677 |  | -0.024350 | -0.003846 | True |
+| E192 | paired Missed minus FalseSelected | weekend_equal | -0.008753 |  | -0.019695 | 0.003268 | True |
+| E192 | paired Missed minus FalseSelected | month_equal | -0.009643 |  | -0.066216 | 0.038101 | True |
+| E192 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.327592 |  | 0.258747 | 0.398406 | True |
+| E192 | paired Missed minus FalseSelected | weekday_equal | -0.014677 |  | -0.024639 | -0.004849 | True |
+| E192 | paired Missed minus FalseSelected | weekend_equal | -0.008753 |  | -0.020335 | 0.002321 | True |
+| E192 | paired Missed minus FalseSelected | month_equal | -0.009643 |  | -0.072745 | 0.036390 | True |
+| E192 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.327592 |  | 0.241396 | 0.443393 | True |
+| E192 | paired Missed minus FalseSelected | weekday_equal | -0.014677 |  | -0.025365 | -0.003418 | True |
+| E192 | paired Missed minus FalseSelected | weekend_equal | -0.008753 |  | -0.023369 | 0.006189 | True |
+| E192 | paired Missed minus FalseSelected | month_equal | -0.009643 |  | -0.064187 | 0.031301 | True |
+| E336 | CorrectOracle | hour_cyclic_similarity | 0.500424 | 6488 | — | — |  |
+| E336 | CorrectOracle | weekday_equal | 0.128986 | 6488 | — | — |  |
+| E336 | CorrectOracle | weekend_equal | 0.599635 | 6488 | — | — |  |
+| E336 | CorrectOracle | month_equal | 0.188248 | 6488 | — | — |  |
+| E336 | MissedOracle | hour_cyclic_similarity | 0.641709 | 17815 | — | — |  |
+| E336 | MissedOracle | weekday_equal | 0.120088 | 17815 | — | — |  |
+| E336 | MissedOracle | weekend_equal | 0.569637 | 17815 | — | — |  |
+| E336 | MissedOracle | month_equal | 0.183759 | 17815 | — | — |  |
+| E336 | FalseSelected | hour_cyclic_similarity | 0.372880 | 17815 | — | — |  |
+| E336 | FalseSelected | weekday_equal | 0.137580 | 17815 | — | — |  |
+| E336 | FalseSelected | weekend_equal | 0.601972 | 17815 | — | — |  |
+| E336 | FalseSelected | month_equal | 0.147503 | 17815 | — | — |  |
+| E336 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.268828 |  | 0.197738 | 0.351767 | True |
+| E336 | paired Missed minus FalseSelected | weekday_equal | -0.017493 |  | -0.032579 | -0.000610 | True |
+| E336 | paired Missed minus FalseSelected | weekend_equal | -0.032335 |  | -0.045047 | -0.017721 | True |
+| E336 | paired Missed minus FalseSelected | month_equal | 0.036256 |  | 0.003030 | 0.111508 | True |
+| E336 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.268828 |  | 0.196352 | 0.339293 | True |
+| E336 | paired Missed minus FalseSelected | weekday_equal | -0.017493 |  | -0.033250 | -0.002025 | True |
+| E336 | paired Missed minus FalseSelected | weekend_equal | -0.032335 |  | -0.044979 | -0.019714 | True |
+| E336 | paired Missed minus FalseSelected | month_equal | 0.036256 |  | -0.015926 | 0.108929 | True |
+| E336 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.268828 |  | 0.197738 | 0.332355 | False |
+| E336 | paired Missed minus FalseSelected | weekday_equal | -0.017493 |  | -0.021042 | -0.014321 | False |
+| E336 | paired Missed minus FalseSelected | weekend_equal | -0.032335 |  | -0.040596 | -0.024953 | False |
+| E336 | paired Missed minus FalseSelected | month_equal | 0.036256 |  | 0.006241 | 0.069845 | False |
+| E720 | CorrectOracle | hour_cyclic_similarity | 0.915483 | 4830 | — | — |  |
+| E720 | CorrectOracle | weekday_equal | 0.112617 | 4830 | — | — |  |
+| E720 | CorrectOracle | weekend_equal | 0.619627 | 4830 | — | — |  |
+| E720 | CorrectOracle | month_equal | 0.132671 | 4830 | — | — |  |
+| E720 | MissedOracle | hour_cyclic_similarity | 0.800466 | 15127 | — | — |  |
+| E720 | MissedOracle | weekday_equal | 0.120080 | 15127 | — | — |  |
+| E720 | MissedOracle | weekend_equal | 0.582309 | 15127 | — | — |  |
+| E720 | MissedOracle | month_equal | 0.200478 | 15127 | — | — |  |
+| E720 | FalseSelected | hour_cyclic_similarity | 0.677205 | 15127 | — | — |  |
+| E720 | FalseSelected | weekday_equal | 0.150604 | 15127 | — | — |  |
+| E720 | FalseSelected | weekend_equal | 0.602687 | 15127 | — | — |  |
+| E720 | FalseSelected | month_equal | 0.117382 | 15127 | — | — |  |
+| E720 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.123261 |  | 0.053485 | 0.158197 | False |
+| E720 | paired Missed minus FalseSelected | weekday_equal | -0.030523 |  | -0.040504 | -0.010589 | False |
+| E720 | paired Missed minus FalseSelected | weekend_equal | -0.020378 |  | -0.025980 | -0.009189 | False |
+| E720 | paired Missed minus FalseSelected | month_equal | 0.083096 |  | 0.049273 | 0.150649 | False |
+| E720 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.123261 |  | 0.053485 | 0.176797 | True |
+| E720 | paired Missed minus FalseSelected | weekday_equal | -0.030523 |  | -0.078908 | -0.002385 | True |
+| E720 | paired Missed minus FalseSelected | weekend_equal | -0.020378 |  | -0.057699 | 0.005653 | True |
+| E720 | paired Missed minus FalseSelected | month_equal | 0.083096 |  | 0.018148 | 0.150649 | True |
+| E720 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.123261 |  | 0.123261 | 0.123261 | False |
+| E720 | paired Missed minus FalseSelected | weekday_equal | -0.030523 |  | -0.030523 | -0.030523 | False |
+| E720 | paired Missed minus FalseSelected | weekend_equal | -0.020378 |  | -0.020378 | -0.020378 | False |
+| E720 | paired Missed minus FalseSelected | month_equal | 0.083096 |  | 0.083096 | 0.083096 | False |
+| W96 | CorrectOracle | hour_cyclic_similarity | 0.860605 | 6354 | — | — |  |
+| W96 | CorrectOracle | weekday_equal | 0.135462 | 6354 | — | — |  |
+| W96 | CorrectOracle | weekend_equal | 0.594920 | 6354 | — | — |  |
+| W96 | CorrectOracle | month_equal | 0.000000 | 6354 | — | — |  |
+| W96 | MissedOracle | hour_cyclic_similarity | 0.471628 | 219324 | — | — |  |
+| W96 | MissedOracle | weekday_equal | 0.143100 | 219324 | — | — |  |
+| W96 | MissedOracle | weekend_equal | 0.606989 | 219324 | — | — |  |
+| W96 | MissedOracle | month_equal | 0.000000 | 219324 | — | — |  |
+| W96 | FalseSelected | hour_cyclic_similarity | 0.377509 | 219324 | — | — |  |
+| W96 | FalseSelected | weekday_equal | 0.139885 | 219324 | — | — |  |
+| W96 | FalseSelected | weekend_equal | 0.603377 | 219324 | — | — |  |
+| W96 | FalseSelected | month_equal | 0.000000 | 219324 | — | — |  |
+| W96 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.094119 |  | 0.069263 | 0.118177 | True |
+| W96 | paired Missed minus FalseSelected | weekday_equal | 0.003215 |  | -0.005967 | 0.012362 | True |
+| W96 | paired Missed minus FalseSelected | weekend_equal | 0.003613 |  | -0.007139 | 0.014659 | True |
+| W96 | paired Missed minus FalseSelected | month_equal | 0.000000 |  | 0.000000 | 0.000000 | True |
+| W96 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.094119 |  | 0.067387 | 0.120561 | True |
+| W96 | paired Missed minus FalseSelected | weekday_equal | 0.003215 |  | -0.006387 | 0.012853 | True |
+| W96 | paired Missed minus FalseSelected | weekend_equal | 0.003613 |  | -0.006031 | 0.013482 | True |
+
+실제 timestamp calendar 진단 — Full V5 (계속)
+
+| 조건 | group | feature | 평균/차이 | finite N | CI low | CI high | 충분? |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| W96 | paired Missed minus FalseSelected | month_equal | 0.000000 |  | 0.000000 | 0.000000 | True |
+| W96 | paired Missed minus FalseSelected | hour_cyclic_similarity | 0.094119 |  | 0.070258 | 0.116367 | True |
+| W96 | paired Missed minus FalseSelected | weekday_equal | 0.003215 |  | -0.004360 | 0.010736 | True |
+| W96 | paired Missed minus FalseSelected | weekend_equal | 0.003613 |  | -0.007436 | 0.014776 | True |
+| W96 | paired Missed minus FalseSelected | month_equal | 0.000000 |  | 0.000000 | 0.000000 | True |
+

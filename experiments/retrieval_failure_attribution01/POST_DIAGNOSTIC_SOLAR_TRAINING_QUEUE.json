@@ -1,0 +1,144 @@
+{
+  "approved_at": "2026-10-30T07:47:23Z",
+  "user_message": "Sentinel_9ed0f5f642d88191b4d13c9e96f8a105",
+  "recorded_at": "2026-10-30T07:51:02.007973+00:00",
+  "status": "BLOCKED_ALL_PREDECESSORS",
+  "dependencies": [
+    "EXISTING_SEED0_48_COMPLETE",
+    "P100_DIAGNOSTICS_ALL_12_TERMINAL_VALIDATED",
+    "FULL_DIAGNOSTICS_ALL_12_TERMINAL_VALIDATED_WITH_MISSING_RECORDED",
+    "DIAGNOSTIC_SUMMARY_VALIDATED"
+  ],
+  "gpu_uuid": "GPU-91418a73-202a-2a9b-57d5-2538b19e07ec",
+  "major_gpu_workers": 1,
+  "stage2": false,
+  "new_loss": false,
+  "seed": 0,
+  "scope": "Solar Full Candidate V0 and V5 only; after all currently approved experiments; missing diagnostic rows remain missing until trained and independently validated",
+  "runs": [
+    {
+      "cell": "Solar_96",
+      "model": "V0",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_96/V0/seed0"
+    },
+    {
+      "cell": "Solar_96",
+      "model": "V5",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_96/V5/seed0"
+    },
+    {
+      "cell": "Solar_192",
+      "model": "V0",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_192/V0/seed0"
+    },
+    {
+      "cell": "Solar_192",
+      "model": "V5",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_192/V5/seed0"
+    },
+    {
+      "cell": "Solar_336",
+      "model": "V0",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_336/V0/seed0"
+    },
+    {
+      "cell": "Solar_336",
+      "model": "V5",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_336/V5/seed0"
+    },
+    {
+      "cell": "Solar_720",
+      "model": "V0",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_720/V0/seed0"
+    },
+    {
+      "cell": "Solar_720",
+      "model": "V5",
+      "seed": 0,
+      "support": "FULL",
+      "channels": 137,
+      "status": "WAITING_ALL_PREDECESSORS",
+      "requires": [
+        "audited_existing_full_protocol",
+        "unit_and_gradient_gates",
+        "real_batch_and_H720_memory_smoke"
+      ],
+      "output": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/Solar_720/V5/seed0"
+    }
+  ],
+  "actual_training_started": false,
+  "executor_status": "IMPLEMENTATION_AND_SMOKE_REQUIRED; cannot run merely because predecessors complete",
+  "upload": false,
+  "push": false,
+  "durable_waiter": {
+    "controller_pid": 4088382,
+    "code": "experiments/solar_full_missing_checkpoints01/solar_full_controller.py",
+    "status_path": "results/TRACK-SOLAR-FULL-MISSING-CHECKPOINTS01/CONTROLLER_STATUS.json",
+    "cpu_tests_passed": 14,
+    "gpu_smoke": "DEFERRED_UNTIL_ALL_PREDECESSORS_PASS",
+    "actual_training_started": false
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "cell": "ETTh1_720",
+  "checks": [
+    {
+      "mse": 0.5219389796257019,
+      "mae": 0.5130046010017395,
+      "lambda_value": 0.4540719985961914,
+      "base_mse": 0.5603537559509277,
+      "base_sha256": "a3ffd11f479150e265684da33692692a7744bdd9e58715aae9c5557098dd7b93",
+      "passed": true,
+      "arm": 0,
+      "stage1": {
+        "retmse10": 1.020577073097229,
+        "D": 0.10205771028995514,
+        "C": 0.538490355014801,
+        "agg_mse10": 0.640548050403595,
+        "recall10": 0.22270113229751587,
+        "ndcg10": 0.8477186560630798
+      },
+      "checkpoint": "checkpoints/track_v_sharedtop100_signfix01/ETTh1/H720/seed0/pool_top100/ETTh1_720/V0/checkpoint_best_retmse.pth",
+      "checkpoint_sha256": "a22f893d4596223d1d03d500e3eadbdc50bb070f5dc48e1da5a6bdb7e452eec7"
+    },
+    {
+      "mse": 0.5149174928665161,
+      "mae": 0.5084376335144043,
+      "lambda_value": 0.47933247685432434,
+      "base_mse": 0.5603537559509277,
+      "base_sha256": "a3ffd11f479150e265684da33692692a7744bdd9e58715aae9c5557098dd7b93",
+      "passed": true,
+      "arm": 5,
+      "stage1": {
+        "retmse10": 0.9426332116127014,
+        "D": 0.09426332265138626,
+        "C": 0.5263068675994873,
+        "agg_mse10": 0.6205701231956482,
+        "recall10": 0.3212864398956299,
+        "ndcg10": 0.8894565105438232,
+        "top10_overlap_vs_roundrobin": 0.8909831047058105
+      },
+      "checkpoint": "checkpoints/track_v_sharedtop100_signfix01/ETTh1/H720/seed0/pool_top100/ETTh1_720/V5/checkpoint_epoch9.pth",
+      "checkpoint_sha256": "58bdd0000d00aed83cccc140dadd603e910dce733b9965ebbacce491635ab29c"
+    }
+  ],
+  "source": "fresh Stage1 cache + existing saved lambda forward",
+  "seed": 0
+}

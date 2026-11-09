@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "tests": 10,
+  "source_hashes": {
+    "scope.py": "229e5dddf133c41a019d950fb3e91aa854f51a7568f425eb8c85830dc088530d",
+    "test_scope.py": "320b890d2b2fcac2b363fa168a2f20cd444f7f7b3cc09931667862d79e027621",
+    "validate_weather.py": "821267cc7a5730f6262f628271b8cea4c5332f0c2f83411d3a0946ca0348d991",
+    "weather_patch.py": "35fa2c786c3266d9b19698f65c4ef47add0fd187ab9291f0935a64d84df63527"
+  },
+  "production_activated": false
+}

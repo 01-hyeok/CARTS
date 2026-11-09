@@ -1,0 +1,14 @@
+{
+  "plan_valid": true,
+  "total_runs": 144,
+  "run_status": "NOT_STARTED",
+  "teacher_mode": null,
+  "gpu_execution_enabled": false,
+  "launch_ready": false,
+  "blocker": "BLOCKED: teacher is unresolved; no training may start",
+  "further_gates": [
+    "actual loader/pool validation",
+    "RNG-aware Solar forward/gradient smoke",
+    "canonical reproduction"
+  ]
+}

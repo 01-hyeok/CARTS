@@ -1,0 +1,151 @@
+{
+  "status": "PASS",
+  "settings": [
+    {
+      "cell": "ETTh1_96",
+      "method": "baseline_cosine",
+      "status": "PASS",
+      "queries": 2785,
+      "channels": 7,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "ETTh1_96",
+      "method": "paa16_cosine",
+      "status": "PASS",
+      "queries": 2785,
+      "channels": 7,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "ETTh1_96",
+      "method": "saraf_time_aligned",
+      "status": "PASS",
+      "queries": 2785,
+      "channels": 7,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "ETTh1_720",
+      "method": "baseline_cosine",
+      "status": "PASS",
+      "queries": 2161,
+      "channels": 7,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "ETTh1_720",
+      "method": "paa16_cosine",
+      "status": "PASS",
+      "queries": 2161,
+      "channels": 7,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "ETTh1_720",
+      "method": "saraf_time_aligned",
+      "status": "PASS",
+      "queries": 2161,
+      "channels": 7,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "Weather_96",
+      "method": "baseline_cosine",
+      "status": "PASS",
+      "queries": 10444,
+      "channels": 21,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "Weather_96",
+      "method": "paa16_cosine",
+      "status": "PASS",
+      "queries": 10444,
+      "channels": 21,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "Weather_96",
+      "method": "saraf_time_aligned",
+      "status": "PASS",
+      "queries": 10444,
+      "channels": 21,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "Weather_720",
+      "method": "baseline_cosine",
+      "status": "PASS",
+      "queries": 9820,
+      "channels": 21,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "Weather_720",
+      "method": "paa16_cosine",
+      "status": "PASS",
+      "queries": 9820,
+      "channels": 21,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    },
+    {
+      "cell": "Weather_720",
+      "method": "saraf_time_aligned",
+      "status": "PASS",
+      "queries": 9820,
+      "channels": 21,
+      "all5_exact": true,
+      "stage2_and_kl_verified": true,
+      "finite": true,
+      "unique_top10": true,
+      "loo_replacement_recomputed": true
+    }
+  ],
+  "shared_analysis_source_sha": "2ce368855a12c2222d02fc29af73474ed38a438638d7a9a72fbb619a8335ac39",
+  "coverage_cells": 4
+}

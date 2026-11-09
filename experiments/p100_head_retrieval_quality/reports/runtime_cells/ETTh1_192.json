@@ -1,0 +1,179 @@
+{
+  "status": "PASS",
+  "cell": "ETTh1_192",
+  "data": {
+    "cell": "ETTh1_192",
+    "counts": {
+      "train": 8257,
+      "val": 2689,
+      "test": 2689
+    },
+    "channels": 7,
+    "channel_names": [
+      "HUFL",
+      "HULL",
+      "MUFL",
+      "MULL",
+      "LUFL",
+      "LULL",
+      "OT"
+    ],
+    "starts": {
+      "train": [
+        0,
+        8256
+      ],
+      "val": [
+        8448,
+        11136
+      ],
+      "test": [
+        11328,
+        14016
+      ]
+    },
+    "scaler_train_rows": 8640,
+    "scaler_mean": [
+      7.937742245659508,
+      2.0210386567335163,
+      5.079770601157927,
+      0.7461858799957015,
+      2.781762386375555,
+      0.7884531235540096,
+      17.1282616982271
+    ],
+    "scaler_scale": [
+      5.812749409143771,
+      2.0901046504076,
+      5.518793579036245,
+      1.9263792741329822,
+      1.0235226594952194,
+      0.6302366362251923,
+      9.176491024944335
+    ],
+    "normalized_space": true,
+    "candidate_count": 8257,
+    "seq_len": 192,
+    "pred_len": 192
+  },
+  "loader_pool_checks": [
+    {
+      "split": "train",
+      "rows": [
+        0,
+        4128,
+        8256
+      ],
+      "pool_sha256": "35d3d3fd59efd1933d5019fe6ef84d452828fafa5370c6dd55840f26ec0e991a",
+      "min_valid": 7490,
+      "all_channels_tested": 7
+    },
+    {
+      "split": "val",
+      "rows": [
+        0,
+        1344,
+        2688
+      ],
+      "pool_sha256": "b5400881f2b5be7a2309a47dc29d387929382907eb146d5a00b91128d5257d7f",
+      "min_valid": 8257,
+      "all_channels_tested": 7
+    },
+    {
+      "split": "test",
+      "rows": [
+        0,
+        1344,
+        2688
+      ],
+      "pool_sha256": "6f20af806b9336c75c091af927f3eae43dca874c9a2154c805cc35dc453632bf",
+      "min_valid": 8257,
+      "all_channels_tested": 7
+    }
+  ],
+  "initialization": [
+    {
+      "seed": 0,
+      "encoder_hash": "f082bed0d479ccf9c142c270ac7959ea31a2cad30339e93fe362e5326964e07f",
+      "head1_hash": "30701fbb9d0817a0d70329d186269c7a73555c9539b2313f34e8a8e39c6840dc",
+      "head2_hash": "5d4c00cc43e723596ebde9b82bc500734c31e4c993faa70961eafda75f7d13d4",
+      "head5_hash": "058c3550281ecb4d5d627c0900bac7d4385d43fd859d3c60602181f2a6731d6b",
+      "epoch1_batch_hash": "888c6705d294de2c36251696dc9dfcc10a5e809cd58644bd1ec63f98df763244"
+    },
+    {
+      "seed": 1,
+      "encoder_hash": "99df162c4cceaf60007cb6ae10fc46402516290cd7e7c0056d3a13351770c324",
+      "head1_hash": "8e4bdc5cd8acbc146b091b1569fe929ca6cf44ab7c70bff7cd15d372344ef4ee",
+      "head2_hash": "d51bc7e27d82eba6a6a6da0ff0897581233b4d29cc96313ee8846ae7a57d4cf2",
+      "head5_hash": "622a02dbdd65d0bee226e77d1d948b72dedcb6b0a5f43b2360e3f647766c7c09",
+      "epoch1_batch_hash": "9a4e7dc915640d48dd207a7c179d2302e6cc4e8bba7dc4de572a561fabf194e6"
+    },
+    {
+      "seed": 2,
+      "encoder_hash": "c4cfa4010cc41aae9ff9646ff34e46e9619e6ca55423c17629144fa2b1141e55",
+      "head1_hash": "01131781d96ba309a55d53d5b14a28f2b4bdf4945ee5a48facd0732fa843332d",
+      "head2_hash": "342041374624a7e9fe882d95653c5f98528dfb603cb104c8a643dda4ca866d2d",
+      "head5_hash": "e3da5b187ee060cff83ecb600b3b7011a9eb2c9e19b3bdda8d33aff12c858cb0",
+      "epoch1_batch_hash": "e05bc79a989706b038b73406803d3025e1cad368b2e4d4105fe0afbbdff3976e"
+    }
+  ],
+  "canonical_actual_B32_parity": [
+    {
+      "channel": 0,
+      "model": "V0",
+      "max_score_diff": 0.0,
+      "kl": 2.0855042934417725,
+      "top10_exact": true
+    },
+    {
+      "channel": 0,
+      "model": "V1",
+      "max_score_diff": 0.0,
+      "kl": 2.0855584144592285,
+      "top10_exact": true
+    },
+    {
+      "channel": 0,
+      "model": "V2",
+      "max_score_diff": 0.0,
+      "kl": 2.0852670669555664,
+      "top10_exact": true
+    },
+    {
+      "channel": 0,
+      "model": "V5",
+      "max_score_diff": 0.0,
+      "kl": 2.0853850841522217,
+      "top10_exact": true
+    },
+    {
+      "channel": 6,
+      "model": "V0",
+      "max_score_diff": 0.0,
+      "kl": 2.8421685695648193,
+      "top10_exact": true
+    },
+    {
+      "channel": 6,
+      "model": "V1",
+      "max_score_diff": 0.0,
+      "kl": 2.8419783115386963,
+      "top10_exact": true
+    },
+    {
+      "channel": 6,
+      "model": "V2",
+      "max_score_diff": 0.0,
+      "kl": 2.8418498039245605,
+      "top10_exact": true
+    },
+    {
+      "channel": 6,
+      "model": "V5",
+      "max_score_diff": 0.0,
+      "kl": 2.8415439128875732,
+      "top10_exact": true
+    }
+  ],
+  "training_result_reuse": false
+}

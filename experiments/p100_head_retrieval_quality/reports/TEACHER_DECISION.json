@@ -1,0 +1,11 @@
+{
+  "status": "USER_CONFIRMED",
+  "mode": "zscore_future_mse",
+  "decision_reference": "Sentinel_9c73660e0d7881919464e994bd3bf7be at 2026-10-29T16:10:00Z",
+  "allowed_modes": [
+    "zscore_future_mse",
+    "raw_future_mse"
+  ],
+  "tau_t": 0.1,
+  "note": "Keep existing canonical per-query valid-P100 z-score teacher. Raw-MSE alternative is not used."
+}

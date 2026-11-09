@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "queries": 2785,
+  "channels": 7,
+  "agg_mse": 1.2943706512451172,
+  "agg_mae": 0.7131813168525696,
+  "normalized_space": true,
+  "all_horizon": true
+}

@@ -1,0 +1,41 @@
+{
+  "cell": "Weather_96",
+  "method": "paa16_cosine",
+  "seed": 0,
+  "lambda_fixed": 0.41698792576789856,
+  "checkpoint_sha256": "44b1b747cc924e2578e962ce3c4f3a3527575caf069c51725c5c3b527c328d91",
+  "base_sha256": "3ebb33761a0302ef756cce13470c3d3df8612f287e7f409ade4c3fa3f87aff55",
+  "pool_sha256": {
+    "train": "4e473ecf51bcc62f369b159a9b22e56a12fe3216c1619d4e532445ea50a700b0",
+    "val": "f24fa9c6f700380636e383c231b0638642bfe77709ae3acdb15a2a9c7735195c",
+    "test": "f09840b781a6d1b69735adca71b7a088b7d5ab564118fdf23b6996d886b1b1cb"
+  },
+  "analysis_source_sha256": "2ce368855a12c2222d02fc29af73474ed38a438638d7a9a72fbb619a8335ac39",
+  "query_order": "dataset start index then channel; full test",
+  "n": 10444,
+  "channels": 21,
+  "all5_cache_maxdiff": 0.0,
+  "subsets": [
+    "All5",
+    "Head1",
+    "Head2",
+    "Head3",
+    "Head4",
+    "Head5",
+    "Without1",
+    "Without2",
+    "Without3",
+    "Without4",
+    "Without5"
+  ],
+  "python": "/data/pjh_workspace/ts-env/bin/python",
+  "torch": "2.4.1+cu121",
+  "matmul_tf32": false,
+  "all5_mse": 0.1742626706053316,
+  "all5_mae": 0.21229907816206706,
+  "stage2_reproduction": true,
+  "kl_stage2_reproduction": true,
+  "kl_mse": 0.17198579260224978,
+  "kl_mae": 0.2135344205082984,
+  "base_mse": 0.16936446077174314
+}

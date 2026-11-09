@@ -1,0 +1,35 @@
+{
+  "cell": "ETTh1_96",
+  "method": "paa16_cosine",
+  "smoke": true,
+  "feature_seconds": 0.006998835131525993,
+  "splits": [
+    {
+      "split": "train",
+      "queries": 32,
+      "search_seconds": 0.012597570195794106,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0,
+      "sha256": "c37713f404f74f3add499a31e16ab43d4cb2ce75d61a2104ffe6ba90163617ac"
+    },
+    {
+      "split": "val",
+      "queries": 32,
+      "search_seconds": 0.009678998962044716,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0,
+      "sha256": "b6348b80418dcb5d691cbc5a8fa3d49375571c61110d26b67ddddc4c4beea960"
+    },
+    {
+      "split": "test",
+      "queries": 32,
+      "search_seconds": 0.009442627429962158,
+      "normalization_scope": "entire split query x train memory timestamps",
+      "time_bonus_global_max": 1.0,
+      "sha256": "cbcffb2f8d105b71f561af29841908d301b5608860db9185173f34081846f0a4"
+    }
+  ],
+  "peak_allocated": 78084608,
+  "peak_reserved": 121634816,
+  "concurrent_gpu": true
+}

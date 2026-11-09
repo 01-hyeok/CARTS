@@ -1,0 +1,9 @@
+{
+  "worker_run": "Solar_96_V5_seed0",
+  "pause_start": "2026-10-30T06:55:45.221661+00:00",
+  "resume_at": "2026-10-30T07:21:15.955526+00:00",
+  "pause_seconds": 1530.733865,
+  "original_complete_unchanged": true,
+  "elapsed_includes_pause": true,
+  "do_not_label_elapsed_gpu_compute_time": true
+}
